@@ -759,12 +759,12 @@ int handle_data_set_compress(InvocationContext &context)
 
 int handle_data_set_copy(InvocationContext &context)
 {
-  string dsn1 = context.get<string>("dsn1", ""); // fromDataSetName
-  string dsn2 = context.get<string>("dsn2", ""); // toDataSetName
+  string source = context.get<string>("source", "");
+  string target = context.get<string>("target", "");
   bool replace = context.get<bool>("replace", false);
 
   ZDS zds = {};
-  int rc = zds_copy_dsn(&zds, dsn1, dsn2, replace);
+  int rc = zds_copy_dsn(&zds, source, target, replace);
 
   if (rc != RTNCD_SUCCESS)
   {
@@ -913,8 +913,8 @@ void register_commands(parser::Command &root_command)
 
   // Copy subcommand
   auto ds_copy_cmd = command_ptr(new Command("copy", "copy data set"));
-  ds_copy_cmd->add_positional_arg("dsn1", "source data set to copy from", ArgType_Single, true);
-  ds_copy_cmd->add_positional_arg("dsn2", "target data set to copy to", ArgType_Single, true);
+  ds_copy_cmd->add_positional_arg("source", "source data set to copy from", ArgType_Single, true);
+  ds_copy_cmd->add_positional_arg("target", "target data set to copy to", ArgType_Single, true);
   ds_copy_cmd->add_keyword_arg("replace", make_aliases("--replace", "-r"), "replace like-named members in target PDS", ArgType_Flag, false, ArgValue(false));
   ds_copy_cmd->set_handler(handle_data_set_copy);
   data_set_cmd->add_command(ds_copy_cmd);

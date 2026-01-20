@@ -29,7 +29,7 @@ string get_test_dsn()
 {
   static int counter = 0;
   counter++;
-  // CodeQL: rand() is fine here - just generating unique test dataset names, not for security
+  // CodeQL: rand() is fine here - just generating unique test data set names, not for security
   srand(time(nullptr) + counter);   // codeql[cpp/weak-cryptographic-algorithm]
   int random_num = rand() % 100000; // codeql[cpp/weak-cryptographic-algorithm]
   // Use user's HLQ from zutils, but with a simpler qualifier without #
@@ -73,7 +73,7 @@ void create_pdse(ZDS *zds, const string &dsn)
     throw runtime_error("Failed to create PDSE: " + get_create_error(zds, response, rc));
 }
 
-// Helper function to create a sequential dataset with explicit attributes
+// Helper function to create a sequential data set with explicit attributes
 void create_seq(ZDS *zds, const string &dsn)
 {
   memset(zds, 0, sizeof(ZDS));
@@ -87,7 +87,7 @@ void create_seq(ZDS *zds, const string &dsn)
   string response;
   int rc = zds_create_dsn(zds, dsn, attrs, response);
   if (rc != 0)
-    throw runtime_error("Failed to create sequential dataset: " + get_create_error(zds, response, rc));
+    throw runtime_error("Failed to create sequential data set: " + get_create_error(zds, response, rc));
 }
 
 void zds_tests()
@@ -99,7 +99,7 @@ void zds_tests()
            {
              afterAll([&]()
                       {
-                         // Cleanup created datasets
+                         // Cleanup created data sets
                          for (const auto &dsn : created_dsns)
                          {
                            try
@@ -325,7 +325,7 @@ void zds_tests()
                              ExpectWithContext(rc, zds_copy.diag.e_msg).ToBe(0);
                            });
 
-                        it("should fail to copy PDS member to sequential dataset without member name",
+                        it("should fail to copy PDS member to sequential data set without member name",
                            [&]()
                            {
                              string source_pds = get_test_dsn();
@@ -349,7 +349,7 @@ void zds_tests()
                              Expect(string(zds_copy.diag.e_msg)).ToContain("specifying target member");
                            });
 
-                        it("should copy sequential dataset to sequential dataset",
+                        it("should copy sequential data set to sequential data set",
                            [&]()
                            {
                              string source_dsn = get_test_dsn();
@@ -394,7 +394,7 @@ void zds_tests()
                              ExpectWithContext(rc, zds_copy.diag.e_msg).ToBe(0);
                            });
 
-                        it("should fail to copy sequential dataset to PDS member",
+                        it("should fail to copy sequential data set to PDS member",
                            [&]()
                            {
                              string source_dsn = get_test_dsn();
@@ -414,7 +414,7 @@ void zds_tests()
                              ZDS zds_copy = {0};
                              int rc = zds_copy_dsn(&zds_copy, source_dsn, tgt_member);
                              Expect(rc).Not().ToBe(0);
-                             Expect(string(zds_copy.diag.e_msg)).ToContain("sequential dataset to PDS member");
+                             Expect(string(zds_copy.diag.e_msg)).ToContain("sequential data set to PDS member");
                            });
 
                         it("should copy PDS with multiple members",
@@ -453,7 +453,7 @@ void zds_tests()
                              Expect(string(zds.diag.e_msg)).ToContain("not found");
                            });
 
-                        it("should preserve dataset attributes when copying",
+                        it("should preserve data set attributes when copying",
                            [&]()
                            {
                              string source_dsn = get_test_dsn();
@@ -489,7 +489,7 @@ void zds_tests()
                              // is that the copy succeeded and data is intact.
                            });
 
-                        it("should fail to overwrite existing sequential dataset without replace flag",
+                        it("should fail to overwrite existing sequential data set without replace flag",
                            [&]()
                            {
                              string source_dsn = get_test_dsn();
@@ -517,7 +517,7 @@ void zds_tests()
                              Expect(string(zds_copy.diag.e_msg)).ToContain("already exists");
                            });
 
-                        it("should overwrite existing sequential dataset with replace flag",
+                        it("should overwrite existing sequential data set with replace flag",
                            [&]()
                            {
                              string source_dsn = get_test_dsn();
@@ -697,7 +697,7 @@ void zds_tests()
                              ExpectWithContext(rc, zds_copy.diag.e_msg).ToBe(0);
                            });
 
-                        it("should copy empty sequential dataset",
+                        it("should copy empty sequential data set",
                            [&]()
                            {
                              string source_dsn = get_test_dsn();
@@ -850,7 +850,7 @@ void zds_tests()
                              ZDS zds_copy = {0};
                              int rc = zds_copy_dsn(&zds_copy, source_dsn, tgt_member);
                              Expect(rc).Not().ToBe(0);
-                             Expect(string(zds_copy.diag.e_msg)).ToContain("sequential dataset to PDS member");
+                             Expect(string(zds_copy.diag.e_msg)).ToContain("sequential data set to PDS member");
                            });
                       });
 
@@ -915,7 +915,7 @@ void zds_tests()
                              ExpectWithContext(rc, zds_compress.diag.e_msg).ToBe(0);
                            });
 
-                        it("should fail when compressing a sequential dataset",
+                        it("should fail when compressing a sequential data set",
                            [&]()
                            {
                              string ps_dsn = get_test_dsn();
@@ -953,7 +953,7 @@ void zds_tests()
                              Expect(has_error).ToBe(true);
                            });
 
-                        it("should fail when compressing nonexistent dataset",
+                        it("should fail when compressing nonexistent data set",
                            []()
                            {
                              ZDS zds = {0};

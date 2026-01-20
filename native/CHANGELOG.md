@@ -6,7 +6,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Recent Changes
 
-- `c`: Added `zowex ds copy` command to copy datasets and members with optional `--replace` flag for overwrite protection. Supports PDS-to-PDS, member-to-member copies (via IEBCOPY), and sequential-to-sequential (via file I/O)[#750](https://github.com/zowe/zowe-native-proto/pull/750)
+- `c`: Added `zowex ds copy` command to copy data sets and members with optional `--replace` flag for overwrite protection. Supports PDS-to-PDS, member-to-member copies (via IEBCOPY), and sequential-to-sequential (via file I/O). [#750](https://github.com/zowe/zowe-native-proto/pull/750)
 - `c`: Implement command `zowex job view-file` to print contents of a job output data set.
 - The `zowex job submit-jcl` command now displays the submitted job in the following format: `JobName(JobId)` [#733](https://github.com/zowe/zowe-native-proto/issues/733)
 - `c`: Rename command `zowex job view-file` to `zowex job view-file-by-id` so that `view-file` can be used to print a specific file (data set) name. [#740](https://github.com/zowe/zowe-native-proto/issues/740)
