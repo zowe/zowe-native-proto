@@ -55,6 +55,45 @@ void zut_tests()
                              expect(parmlibs.size()).ToBeGreaterThan(0);
                            });
                       });
+             describe("zut_bpxwdyn",
+                      []() -> void
+                      {
+                        it("should allocate a sysout data set, get the DS name, and free it",
+                           []() -> void
+                           {
+                             std::string cmd = "ALLOC SYSOUT";
+                             unsigned int code = 0;
+                             std::string dsname = "";
+                             std::string resp = "";
+                             int rc = zut_bpxwdyn_rtdsn(cmd, &code, resp, dsname);
+                             expect(rc).ToBe(0);
+                             expect(dsname.size()).ToBeGreaterThan(0);
+                             expect(code).ToBe(0);
+
+                             cmd = "FREE SYSOUT";
+                             rc = zut_bpxwdyn(cmd, &code, resp);
+                             expect(rc).ToBe(0);
+                             expect(code).ToBe(0);
+                           });
+
+                        it("should allocate a data set, get the DD name, and free it",
+                           []() -> void
+                           {
+                             std::string cmd = "ALLOC DA('SYS.MACLIB') SHR";
+                             unsigned int code = 0;
+                             std::string ddname = "";
+                             std::string resp = "";
+                             int rc = zut_bpxwdyn_rtdd(cmd, &code, resp, ddname);
+                             expect(rc).ToBe(0);
+                             expect(ddname.size()).ToBeGreaterThan(0);
+                             expect(code).ToBe(0);
+
+                             cmd = "FREE DD(" + ddname + ")";
+                             rc = zut_bpxwdyn(cmd, &code, resp);
+                             expect(rc).ToBe(0);
+                             expect(code).ToBe(0);
+                           });
+                      });
 
              describe("zut_encode",
                       []() -> void
