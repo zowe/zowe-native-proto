@@ -333,6 +333,7 @@ int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2, bool replace)
       return RTNCD_FAILURE;
     }
 
+    // lgtm[cpp/world-writable-file-creation] - z/OS datasets use RACF security, not Unix file permissions
     FILE *fout = fopen(dst_path.c_str(), "wb,type=record");
     if (!fout)
     {
