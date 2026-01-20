@@ -29,8 +29,9 @@ string get_test_dsn()
 {
   static int counter = 0;
   counter++;
-  srand(time(nullptr) + counter);
-  int random_num = rand() % 100000;
+  // CodeQL: rand() is fine here - just generating unique test dataset names, not for security
+  srand(time(nullptr) + counter);   // codeql[cpp/weak-cryptographic-algorithm]
+  int random_num = rand() % 100000; // codeql[cpp/weak-cryptographic-algorithm]
   // Use user's HLQ from zutils, but with a simpler qualifier without #
   return get_user() + ".ZDSTEST.T" + to_string(random_num) + to_string(counter);
 }

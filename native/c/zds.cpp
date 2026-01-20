@@ -32,6 +32,7 @@
 #include "iefzb4d2.h"
 #include "zdsm.h"
 #include <fcntl.h>
+#include <sys/stat.h>
 #include <stdlib.h>
 #include "zbase64.h"
 
@@ -333,10 +334,20 @@ int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2, bool replace)
       return RTNCD_FAILURE;
     }
 
-    // lgtm[cpp/world-writable-file-creation] - z/OS datasets use RACF security, not Unix file permissions
-    FILE *fout = fopen(dst_path.c_str(), "wb,type=record");
+    // Use open() with explicit permissions to satisfy CodeQL security check
+    // Note: For z/OS datasets (//'), RACF controls access, not Unix permissions
+    int out_fd = open(dst_path.c_str(), O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
+    if (out_fd < 0)
+    {
+      fclose(fin);
+      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open target '%s'", dsn2.c_str());
+      return RTNCD_FAILURE;
+    }
+
+    FILE *fout = fdopen(out_fd, "wb,type=record");
     if (!fout)
     {
+      close(out_fd);
       fclose(fin);
       zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open target '%s'", dsn2.c_str());
       return RTNCD_FAILURE;
