@@ -90,6 +90,91 @@ void create_seq(ZDS *zds, const string &dsn)
     throw runtime_error("Failed to create sequential data set: " + get_create_error(zds, response, rc));
 }
 
+// Helper to write data to a data set or member
+void write_to_dsn(const string &dsn, const string &data)
+{
+  ZDS zds = {0};
+  zds_write_to_dsn(&zds, dsn, data);
+}
+
+// Test context to manage data set creation and cleanup
+struct CopyTestContext
+{
+  vector<string> &cleanup_list;
+  string source_dsn;
+  string target_dsn;
+
+  CopyTestContext(vector<string> &list) : cleanup_list(list)
+  {
+    source_dsn = get_test_dsn();
+    target_dsn = get_test_dsn();
+    cleanup_list.push_back(source_dsn);
+    cleanup_list.push_back(target_dsn);
+  }
+
+  void create_source_pds()
+  {
+    ZDS zds = {0};
+    create_pds(&zds, source_dsn);
+  }
+
+  void create_source_pdse()
+  {
+    ZDS zds = {0};
+    create_pdse(&zds, source_dsn);
+  }
+
+  void create_source_seq()
+  {
+    ZDS zds = {0};
+    create_seq(&zds, source_dsn);
+  }
+
+  void create_target_pds()
+  {
+    ZDS zds = {0};
+    create_pds(&zds, target_dsn);
+  }
+
+  void create_target_seq()
+  {
+    ZDS zds = {0};
+    create_seq(&zds, target_dsn);
+  }
+
+  void write_source_member(const string &member, const string &data)
+  {
+    write_to_dsn(source_dsn + "(" + member + ")", data);
+  }
+
+  void write_source(const string &data)
+  {
+    write_to_dsn(source_dsn, data);
+  }
+
+  void write_target_member(const string &member, const string &data)
+  {
+    write_to_dsn(target_dsn + "(" + member + ")", data);
+  }
+
+  void write_target(const string &data)
+  {
+    write_to_dsn(target_dsn, data);
+  }
+
+  int copy(bool replace = false)
+  {
+    ZDS zds = {0};
+    return zds_copy_dsn(&zds, source_dsn, target_dsn, replace);
+  }
+
+  int copy_member(const string &src_mem, const string &tgt_mem, bool replace = false)
+  {
+    ZDS zds = {0};
+    return zds_copy_dsn(&zds, source_dsn + "(" + src_mem + ")", target_dsn + "(" + tgt_mem + ")", replace);
+  }
+};
+
 void zds_tests()
 {
   vector<string> created_dsns;
@@ -283,161 +368,76 @@ void zds_tests()
                         it("should copy PDS to PDS",
                            [&]()
                            {
-                             string source_dsn = get_test_dsn();
-                             string target_dsn = get_test_dsn();
-                             created_dsns.push_back(source_dsn);
-                             created_dsns.push_back(target_dsn);
-
-                             // Separate ZDS for create
-                             ZDS zds_create = {0};
-                             create_pds(&zds_create, source_dsn);
-
-                             // Separate ZDS for write
-                             ZDS zds_write = {0};
-                             string test_data = "Test data";
-                             string member_dsn = source_dsn + "(MEMBER)";
-                             zds_write_to_dsn(&zds_write, member_dsn, test_data);
-
-                             // Separate ZDS for copy
-                             ZDS zds_copy = {0};
-                             int rc = zds_copy_dsn(&zds_copy, source_dsn, target_dsn);
-                             ExpectWithContext(rc, zds_copy.diag.e_msg).ToBe(0);
+                             CopyTestContext ctx(created_dsns);
+                             ctx.create_source_pds();
+                             ctx.write_source_member("MEMBER", "Test data");
+                             Expect(ctx.copy()).ToBe(0);
                            });
 
                         it("should copy PDSE to nonexisting PDS (creates target)",
                            [&]()
                            {
-                             string source_dsn = get_test_dsn();
-                             string target_dsn = get_test_dsn();
-                             created_dsns.push_back(source_dsn);
-                             created_dsns.push_back(target_dsn);
-
-                             ZDS zds_create = {0};
-                             create_pdse(&zds_create, source_dsn);
-
-                             ZDS zds_write = {0};
-                             string test_data = "Test data";
-                             string member_dsn = source_dsn + "(MEMBER)";
-                             zds_write_to_dsn(&zds_write, member_dsn, test_data);
-
-                             ZDS zds_copy = {0};
-                             int rc = zds_copy_dsn(&zds_copy, source_dsn, target_dsn);
-                             ExpectWithContext(rc, zds_copy.diag.e_msg).ToBe(0);
+                             CopyTestContext ctx(created_dsns);
+                             ctx.create_source_pdse();
+                             ctx.write_source_member("MEMBER", "Test data");
+                             Expect(ctx.copy()).ToBe(0);
                            });
 
                         it("should fail to copy PDS member to sequential data set without member name",
                            [&]()
                            {
-                             string source_pds = get_test_dsn();
-                             string target_dsn = get_test_dsn();
-                             created_dsns.push_back(source_pds);
-                             created_dsns.push_back(target_dsn);
+                             CopyTestContext ctx(created_dsns);
+                             ctx.create_source_pds();
+                             ctx.write_source_member("MEMBER", "Member content");
 
-                             ZDS zds_create = {0};
-                             create_pds(&zds_create, source_pds);
-
-                             ZDS zds_write = {0};
-                             string test_data = "Member content";
-                             string member_dsn = source_pds + "(MEMBER)";
-                             zds_write_to_dsn(&zds_write, member_dsn, test_data);
-
-                             string src_member = source_pds + "(MEMBER)";
-                             // Should fail because target member name not specified
-                             ZDS zds_copy = {0};
-                             int rc = zds_copy_dsn(&zds_copy, src_member, target_dsn);
+                             ZDS zds = {0};
+                             int rc = zds_copy_dsn(&zds, ctx.source_dsn + "(MEMBER)", ctx.target_dsn);
                              Expect(rc).Not().ToBe(0);
-                             Expect(string(zds_copy.diag.e_msg)).ToContain("specifying target member");
+                             Expect(string(zds.diag.e_msg)).ToContain("specifying target member");
                            });
 
                         it("should copy sequential data set to sequential data set",
                            [&]()
                            {
-                             string source_dsn = get_test_dsn();
-                             string target_dsn = get_test_dsn();
-                             created_dsns.push_back(source_dsn);
-                             created_dsns.push_back(target_dsn);
-
-                             ZDS zds_create = {0};
-                             create_seq(&zds_create, source_dsn);
-
-                             ZDS zds_write = {0};
-                             string test_data = "Sequential data";
-                             zds_write_to_dsn(&zds_write, source_dsn, test_data);
-
-                             ZDS zds_copy = {0};
-                             int rc = zds_copy_dsn(&zds_copy, source_dsn, target_dsn);
-                             ExpectWithContext(rc, zds_copy.diag.e_msg).ToBe(0);
+                             CopyTestContext ctx(created_dsns);
+                             ctx.create_source_seq();
+                             ctx.write_source("Sequential data");
+                             Expect(ctx.copy()).ToBe(0);
                            });
 
                         it("should copy member to member",
                            [&]()
                            {
-                             string source_pds = get_test_dsn();
-                             string target_pds = get_test_dsn();
-                             created_dsns.push_back(source_pds);
-                             created_dsns.push_back(target_pds);
-
-                             ZDS zds_create1 = {0};
-                             create_pds(&zds_create1, source_pds);
-                             ZDS zds_create2 = {0};
-                             create_pds(&zds_create2, target_pds);
-
-                             ZDS zds_write = {0};
-                             string test_data = "Source member data";
-                             string src_member_dsn = source_pds + "(SRCMEM)";
-                             zds_write_to_dsn(&zds_write, src_member_dsn, test_data);
-
-                             string src_member = source_pds + "(SRCMEM)";
-                             string tgt_member = target_pds + "(TGTMEM)";
-                             ZDS zds_copy = {0};
-                             int rc = zds_copy_dsn(&zds_copy, src_member, tgt_member);
-                             ExpectWithContext(rc, zds_copy.diag.e_msg).ToBe(0);
+                             CopyTestContext ctx(created_dsns);
+                             ctx.create_source_pds();
+                             ctx.create_target_pds();
+                             ctx.write_source_member("SRCMEM", "Source member data");
+                             Expect(ctx.copy_member("SRCMEM", "TGTMEM")).ToBe(0);
                            });
 
                         it("should fail to copy sequential data set to PDS member",
                            [&]()
                            {
-                             string source_dsn = get_test_dsn();
-                             string target_pds = get_test_dsn();
-                             created_dsns.push_back(source_dsn);
-                             created_dsns.push_back(target_pds);
+                             CopyTestContext ctx(created_dsns);
+                             ctx.create_source_seq();
+                             ctx.write_source("Sequential data");
 
-                             ZDS zds_create = {0};
-                             create_seq(&zds_create, source_dsn);
-
-                             ZDS zds_write = {0};
-                             string test_data = "Sequential data";
-                             zds_write_to_dsn(&zds_write, source_dsn, test_data);
-
-                             string tgt_member = target_pds + "(MEMBER)";
-                             // Should fail because sequential to PDS member is not allowed
-                             ZDS zds_copy = {0};
-                             int rc = zds_copy_dsn(&zds_copy, source_dsn, tgt_member);
+                             ZDS zds = {0};
+                             int rc = zds_copy_dsn(&zds, ctx.source_dsn, ctx.target_dsn + "(MEMBER)");
                              Expect(rc).Not().ToBe(0);
-                             Expect(string(zds_copy.diag.e_msg)).ToContain("sequential data set to PDS member");
+                             Expect(string(zds.diag.e_msg)).ToContain("sequential data set to PDS member");
                            });
 
                         it("should copy PDS with multiple members",
                            [&]()
                            {
-                             string source_dsn = get_test_dsn();
-                             string target_dsn = get_test_dsn();
-                             created_dsns.push_back(source_dsn);
-                             created_dsns.push_back(target_dsn);
-
-                             ZDS zds_create = {0};
-                             create_pds(&zds_create, source_dsn);
+                             CopyTestContext ctx(created_dsns);
+                             ctx.create_source_pds();
                              for (int i = 1; i <= 3; i++)
                              {
-                               ZDS zds_write = {0};
-                               string mem_dsn = source_dsn + "(MEM" + to_string(i) + ")";
-                               string mem_data = "Data " + to_string(i);
-                               zds_write_to_dsn(&zds_write, mem_dsn, mem_data);
+                               ctx.write_source_member("MEM" + to_string(i), "Data " + to_string(i));
                              }
-
-                             ZDS zds_copy = {0};
-                             int rc = zds_copy_dsn(&zds_copy, source_dsn, target_dsn);
-                             ExpectWithContext(rc, zds_copy.diag.e_msg).ToBe(0);
+                             Expect(ctx.copy()).ToBe(0);
                            });
 
                         it("should fail when copying from nonexistent source",
@@ -456,130 +456,68 @@ void zds_tests()
                         it("should preserve data set attributes when copying",
                            [&]()
                            {
-                             string source_dsn = get_test_dsn();
-                             string target_dsn = get_test_dsn();
-                             created_dsns.push_back(source_dsn);
-                             created_dsns.push_back(target_dsn);
-
-                             ZDS zds_create = {0};
-                             create_seq(&zds_create, source_dsn);
-
-                             ZDS zds_write = {0};
-                             string test_data = "Test data";
-                             zds_write_to_dsn(&zds_write, source_dsn, test_data);
-
-                             ZDS zds_copy = {0};
-                             int rc = zds_copy_dsn(&zds_copy, source_dsn, target_dsn);
-                             ExpectWithContext(rc, zds_copy.diag.e_msg).ToBe(0);
+                             CopyTestContext ctx(created_dsns);
+                             ctx.create_source_seq();
+                             ctx.write_source("Test data");
+                             Expect(ctx.copy()).ToBe(0);
 
                              // Verify target was created and data was copied
                              vector<ZDSEntry> target_entries;
                              ZDS zds_list = {0};
-                             zds_list_data_sets(&zds_list, target_dsn, target_entries, true);
+                             zds_list_data_sets(&zds_list, ctx.target_dsn, target_entries, true);
                              Expect(target_entries.empty()).ToBe(false);
 
                              // Verify content was copied correctly
                              ZDS zds_read = {0};
                              string content;
-                             zds_read_from_dsn(&zds_read, target_dsn, content);
+                             zds_read_from_dsn(&zds_read, ctx.target_dsn, content);
                              Expect(content.find("Test data") != string::npos).ToBe(true);
-
-                             // Note: LIKE allocation is used for attribute preservation, but SMS ACS
-                             // routines may override attributes on some systems. The key verification
-                             // is that the copy succeeded and data is intact.
                            });
 
                         it("should fail to overwrite existing sequential data set without replace flag",
                            [&]()
                            {
-                             string source_dsn = get_test_dsn();
-                             string target_dsn = get_test_dsn();
-                             created_dsns.push_back(source_dsn);
-                             created_dsns.push_back(target_dsn);
-
-                             ZDS zds_create1 = {0};
-                             create_seq(&zds_create1, source_dsn);
-                             ZDS zds_create2 = {0};
-                             create_seq(&zds_create2, target_dsn);
-
-                             ZDS zds_write1 = {0};
-                             string source_data = "Source data";
-                             zds_write_to_dsn(&zds_write1, source_dsn, source_data);
-
-                             ZDS zds_write2 = {0};
-                             string target_data = "Old target data";
-                             zds_write_to_dsn(&zds_write2, target_dsn, target_data);
+                             CopyTestContext ctx(created_dsns);
+                             ctx.create_source_seq();
+                             ctx.create_target_seq();
+                             ctx.write_source("Source data");
+                             ctx.write_target("Old target data");
 
                              // Without replace flag, should fail
-                             ZDS zds_copy = {0};
-                             int rc = zds_copy_dsn(&zds_copy, source_dsn, target_dsn, false);
+                             ZDS zds = {0};
+                             int rc = zds_copy_dsn(&zds, ctx.source_dsn, ctx.target_dsn, false);
                              Expect(rc).Not().ToBe(0);
-                             Expect(string(zds_copy.diag.e_msg)).ToContain("already exists");
+                             Expect(string(zds.diag.e_msg)).ToContain("already exists");
                            });
 
                         it("should overwrite existing sequential data set with replace flag",
                            [&]()
                            {
-                             string source_dsn = get_test_dsn();
-                             string target_dsn = get_test_dsn();
-                             created_dsns.push_back(source_dsn);
-                             created_dsns.push_back(target_dsn);
-
-                             ZDS zds_create1 = {0};
-                             create_seq(&zds_create1, source_dsn);
-                             ZDS zds_create2 = {0};
-                             create_seq(&zds_create2, target_dsn);
-
-                             ZDS zds_write1 = {0};
-                             string source_data = "Source data";
-                             zds_write_to_dsn(&zds_write1, source_dsn, source_data);
-
-                             ZDS zds_write2 = {0};
-                             string target_data = "Old target data";
-                             zds_write_to_dsn(&zds_write2, target_dsn, target_data);
-
-                             // With replace flag, should succeed
-                             ZDS zds_copy = {0};
-                             int rc = zds_copy_dsn(&zds_copy, source_dsn, target_dsn, true);
-                             ExpectWithContext(rc, zds_copy.diag.e_msg).ToBe(0);
+                             CopyTestContext ctx(created_dsns);
+                             ctx.create_source_seq();
+                             ctx.create_target_seq();
+                             ctx.write_source("Source data");
+                             ctx.write_target("Old target data");
+                             Expect(ctx.copy(true)).ToBe(0);
                            });
 
                         it("should skip existing members in PDS without replace flag",
                            [&]()
                            {
-                             string source_dsn = get_test_dsn();
-                             string target_dsn = get_test_dsn();
-                             created_dsns.push_back(source_dsn);
-                             created_dsns.push_back(target_dsn);
-
-                             ZDS zds_create1 = {0};
-                             create_pds(&zds_create1, source_dsn);
-                             ZDS zds_create2 = {0};
-                             create_pds(&zds_create2, target_dsn);
-
-                             string src_mem1 = source_dsn + "(MEM1)";
-                             string src_mem2 = source_dsn + "(MEM2)";
-                             string tgt_mem1 = target_dsn + "(MEM1)";
-                             string src_mem_data = "Source member";
-                             string src_mem2_data = "Source member 2";
-                             string tgt_mem_data = "Old target member";
-
-                             ZDS zds_write1 = {0};
-                             zds_write_to_dsn(&zds_write1, src_mem1, src_mem_data);
-                             ZDS zds_write2 = {0};
-                             zds_write_to_dsn(&zds_write2, src_mem2, src_mem2_data);
-                             ZDS zds_write3 = {0};
-                             zds_write_to_dsn(&zds_write3, tgt_mem1, tgt_mem_data);
+                             CopyTestContext ctx(created_dsns);
+                             ctx.create_source_pds();
+                             ctx.create_target_pds();
+                             ctx.write_source_member("MEM1", "Source member");
+                             ctx.write_source_member("MEM2", "Source member 2");
+                             ctx.write_target_member("MEM1", "Old target member");
 
                              // Without replace flag, MEM1 should be skipped, MEM2 should be added
-                             ZDS zds_copy = {0};
-                             int rc = zds_copy_dsn(&zds_copy, source_dsn, target_dsn, false);
-                             ExpectWithContext(rc, zds_copy.diag.e_msg).ToBe(0);
+                             Expect(ctx.copy(false)).ToBe(0);
 
                              // Verify MEM2 was added
                              vector<ZDSMem> members;
                              ZDS zds_list = {0};
-                             zds_list_members(&zds_list, target_dsn, members);
+                             zds_list_members(&zds_list, ctx.target_dsn, members);
                              bool found_mem2 = false;
                              for (const auto &mem : members)
                              {
@@ -592,224 +530,98 @@ void zds_tests()
                         it("should replace existing members in PDS with replace flag",
                            [&]()
                            {
-                             string source_dsn = get_test_dsn();
-                             string target_dsn = get_test_dsn();
-                             created_dsns.push_back(source_dsn);
-                             created_dsns.push_back(target_dsn);
-
-                             ZDS zds_create1 = {0};
-                             create_pds(&zds_create1, source_dsn);
-                             ZDS zds_create2 = {0};
-                             create_pds(&zds_create2, target_dsn);
-
-                             string src_mem1 = source_dsn + "(MEM1)";
-                             string tgt_mem1 = target_dsn + "(MEM1)";
-                             string src_mem_data = "Source member";
-                             string tgt_mem_data = "Old target member";
-
-                             ZDS zds_write1 = {0};
-                             zds_write_to_dsn(&zds_write1, src_mem1, src_mem_data);
-                             ZDS zds_write2 = {0};
-                             zds_write_to_dsn(&zds_write2, tgt_mem1, tgt_mem_data);
-
-                             // With replace flag, should overwrite MEM1
-                             ZDS zds_copy = {0};
-                             int rc = zds_copy_dsn(&zds_copy, source_dsn, target_dsn, true);
-                             ExpectWithContext(rc, zds_copy.diag.e_msg).ToBe(0);
+                             CopyTestContext ctx(created_dsns);
+                             ctx.create_source_pds();
+                             ctx.create_target_pds();
+                             ctx.write_source_member("MEM1", "Source member");
+                             ctx.write_target_member("MEM1", "Old target member");
+                             Expect(ctx.copy(true)).ToBe(0);
                            });
 
                         it("should fail to overwrite existing member without replace flag",
                            [&]()
                            {
-                             string source_pds = get_test_dsn();
-                             string target_pds = get_test_dsn();
-                             created_dsns.push_back(source_pds);
-                             created_dsns.push_back(target_pds);
+                             CopyTestContext ctx(created_dsns);
+                             ctx.create_source_pds();
+                             ctx.create_target_pds();
+                             ctx.write_source_member("MEM", "New source data");
+                             ctx.write_target_member("MEM", "Old target data");
 
-                             ZDS zds_create1 = {0};
-                             create_pds(&zds_create1, source_pds);
-                             ZDS zds_create2 = {0};
-                             create_pds(&zds_create2, target_pds);
-
-                             string src_mem = source_pds + "(MEM)";
-                             string tgt_mem = target_pds + "(MEM)";
-                             string new_data = "New source data";
-                             string old_data = "Old target data";
-
-                             ZDS zds_write1 = {0};
-                             zds_write_to_dsn(&zds_write1, src_mem, new_data);
-                             ZDS zds_write2 = {0};
-                             zds_write_to_dsn(&zds_write2, tgt_mem, old_data);
-
-                             string src_member = source_pds + "(MEM)";
-                             string tgt_member = target_pds + "(MEM)";
-                             // Without replace flag, should fail
-                             ZDS zds_copy = {0};
-                             int rc = zds_copy_dsn(&zds_copy, src_member, tgt_member, false);
+                             ZDS zds = {0};
+                             int rc = zds_copy_dsn(&zds, ctx.source_dsn + "(MEM)", ctx.target_dsn + "(MEM)", false);
                              Expect(rc).Not().ToBe(0);
-                             Expect(string(zds_copy.diag.e_msg)).ToContain("already exists");
+                             Expect(string(zds.diag.e_msg)).ToContain("already exists");
                            });
 
                         it("should overwrite existing member with replace flag",
                            [&]()
                            {
-                             string source_pds = get_test_dsn();
-                             string target_pds = get_test_dsn();
-                             created_dsns.push_back(source_pds);
-                             created_dsns.push_back(target_pds);
-
-                             ZDS zds_create1 = {0};
-                             create_pds(&zds_create1, source_pds);
-                             ZDS zds_create2 = {0};
-                             create_pds(&zds_create2, target_pds);
-
-                             string src_mem = source_pds + "(MEM)";
-                             string tgt_mem = target_pds + "(MEM)";
-                             string new_data = "New source data";
-                             string old_data = "Old target data";
-
-                             ZDS zds_write1 = {0};
-                             zds_write_to_dsn(&zds_write1, src_mem, new_data);
-                             ZDS zds_write2 = {0};
-                             zds_write_to_dsn(&zds_write2, tgt_mem, old_data);
-
-                             string src_member = source_pds + "(MEM)";
-                             string tgt_member = target_pds + "(MEM)";
-                             // With replace flag, should succeed
-                             ZDS zds_copy = {0};
-                             int rc = zds_copy_dsn(&zds_copy, src_member, tgt_member, true);
-                             ExpectWithContext(rc, zds_copy.diag.e_msg).ToBe(0);
+                             CopyTestContext ctx(created_dsns);
+                             ctx.create_source_pds();
+                             ctx.create_target_pds();
+                             ctx.write_source_member("MEM", "New source data");
+                             ctx.write_target_member("MEM", "Old target data");
+                             Expect(ctx.copy_member("MEM", "MEM", true)).ToBe(0);
                            });
 
                         it("should copy empty PDS",
                            [&]()
                            {
-                             string source_dsn = get_test_dsn();
-                             string target_dsn = get_test_dsn();
-                             created_dsns.push_back(source_dsn);
-                             created_dsns.push_back(target_dsn);
-
-                             ZDS zds_create = {0};
-                             create_pds(&zds_create, source_dsn);
-
-                             ZDS zds_copy = {0};
-                             int rc = zds_copy_dsn(&zds_copy, source_dsn, target_dsn);
-                             ExpectWithContext(rc, zds_copy.diag.e_msg).ToBe(0);
+                             CopyTestContext ctx(created_dsns);
+                             ctx.create_source_pds();
+                             Expect(ctx.copy()).ToBe(0);
                            });
 
                         it("should copy empty sequential data set",
                            [&]()
                            {
-                             string source_dsn = get_test_dsn();
-                             string target_dsn = get_test_dsn();
-                             created_dsns.push_back(source_dsn);
-                             created_dsns.push_back(target_dsn);
-
-                             ZDS zds_create = {0};
-                             create_seq(&zds_create, source_dsn);
-
-                             ZDS zds_copy = {0};
-                             int rc = zds_copy_dsn(&zds_copy, source_dsn, target_dsn);
-                             ExpectWithContext(rc, zds_copy.diag.e_msg).ToBe(0);
+                             CopyTestContext ctx(created_dsns);
+                             ctx.create_source_seq();
+                             Expect(ctx.copy()).ToBe(0);
                            });
 
                         it("should copy PDSE to PDSE",
                            [&]()
                            {
-                             string source_dsn = get_test_dsn();
-                             string target_dsn = get_test_dsn();
-                             created_dsns.push_back(source_dsn);
-                             created_dsns.push_back(target_dsn);
-
-                             ZDS zds_create = {0};
-                             create_pdse(&zds_create, source_dsn);
-
-                             ZDS zds_write = {0};
-                             string test_data = "PDSE data";
-                             string member_dsn = source_dsn + "(MEMBER)";
-                             zds_write_to_dsn(&zds_write, member_dsn, test_data);
-
-                             ZDS zds_copy = {0};
-                             int rc = zds_copy_dsn(&zds_copy, source_dsn, target_dsn);
-                             ExpectWithContext(rc, zds_copy.diag.e_msg).ToBe(0);
+                             CopyTestContext ctx(created_dsns);
+                             ctx.create_source_pdse();
+                             ctx.write_source_member("MEMBER", "PDSE data");
+                             Expect(ctx.copy()).ToBe(0);
                            });
 
                         it("should copy PDS to new target without replace flag",
                            [&]()
                            {
-                             string source_dsn = get_test_dsn();
-                             string target_dsn = get_test_dsn();
-                             created_dsns.push_back(source_dsn);
-                             created_dsns.push_back(target_dsn);
-
-                             ZDS zds_create = {0};
-                             create_pds(&zds_create, source_dsn);
-
-                             ZDS zds_write = {0};
-                             string test_data = "Test data";
-                             string member_dsn = source_dsn + "(MEMBER)";
-                             zds_write_to_dsn(&zds_write, member_dsn, test_data);
-
-                             // Target doesn't exist, so replace flag doesn't matter
-                             ZDS zds_copy = {0};
-                             int rc = zds_copy_dsn(&zds_copy, source_dsn, target_dsn, false);
-                             ExpectWithContext(rc, zds_copy.diag.e_msg).ToBe(0);
+                             CopyTestContext ctx(created_dsns);
+                             ctx.create_source_pds();
+                             ctx.write_source_member("MEMBER", "Test data");
+                             Expect(ctx.copy(false)).ToBe(0);
                            });
 
                         it("should copy sequential to new target without replace flag",
                            [&]()
                            {
-                             string source_dsn = get_test_dsn();
-                             string target_dsn = get_test_dsn();
-                             created_dsns.push_back(source_dsn);
-                             created_dsns.push_back(target_dsn);
-
-                             ZDS zds_create = {0};
-                             create_seq(&zds_create, source_dsn);
-
-                             ZDS zds_write = {0};
-                             string test_data = "Sequential data";
-                             zds_write_to_dsn(&zds_write, source_dsn, test_data);
-
-                             // Target doesn't exist, so replace flag doesn't matter
-                             ZDS zds_copy = {0};
-                             int rc = zds_copy_dsn(&zds_copy, source_dsn, target_dsn, false);
-                             ExpectWithContext(rc, zds_copy.diag.e_msg).ToBe(0);
+                             CopyTestContext ctx(created_dsns);
+                             ctx.create_source_seq();
+                             ctx.write_source("Sequential data");
+                             Expect(ctx.copy(false)).ToBe(0);
                            });
 
                         it("should add new members to existing PDS without replace flag",
                            [&]()
                            {
-                             string source_dsn = get_test_dsn();
-                             string target_dsn = get_test_dsn();
-                             created_dsns.push_back(source_dsn);
-                             created_dsns.push_back(target_dsn);
+                             CopyTestContext ctx(created_dsns);
+                             ctx.create_source_pds();
+                             ctx.create_target_pds();
+                             ctx.write_source_member("MEM1", "Source data");
+                             ctx.write_target_member("MEM2", "Target data");
 
-                             ZDS zds_create1 = {0};
-                             create_pds(&zds_create1, source_dsn);
-                             ZDS zds_create2 = {0};
-                             create_pds(&zds_create2, target_dsn);
-
-                             // Source has MEM1, target has MEM2
-                             string src_mem1 = source_dsn + "(MEM1)";
-                             string tgt_mem2 = target_dsn + "(MEM2)";
-                             string src_data = "Source data";
-                             string tgt_data = "Target data";
-
-                             ZDS zds_write1 = {0};
-                             zds_write_to_dsn(&zds_write1, src_mem1, src_data);
-                             ZDS zds_write2 = {0};
-                             zds_write_to_dsn(&zds_write2, tgt_mem2, tgt_data);
-
-                             // Without replace, MEM1 should be added to target
-                             ZDS zds_copy = {0};
-                             int rc = zds_copy_dsn(&zds_copy, source_dsn, target_dsn, false);
-                             ExpectWithContext(rc, zds_copy.diag.e_msg).ToBe(0);
+                             Expect(ctx.copy(false)).ToBe(0);
 
                              // Verify both members exist in target
                              vector<ZDSMem> members;
                              ZDS zds_list = {0};
-                             zds_list_members(&zds_list, target_dsn, members);
+                             zds_list_members(&zds_list, ctx.target_dsn, members);
                              bool found_mem1 = false;
                              bool found_mem2 = false;
                              for (const auto &mem : members)
@@ -826,31 +638,16 @@ void zds_tests()
                         it("should fail to copy sequential to PDS member (not allowed)",
                            [&]()
                            {
-                             string source_dsn = get_test_dsn();
-                             string target_pds = get_test_dsn();
-                             created_dsns.push_back(source_dsn);
-                             created_dsns.push_back(target_pds);
+                             CopyTestContext ctx(created_dsns);
+                             ctx.create_source_seq();
+                             ctx.create_target_pds();
+                             ctx.write_source("Sequential source data");
+                             ctx.write_target_member("EXISTING", "Old member data");
 
-                             ZDS zds_create1 = {0};
-                             create_seq(&zds_create1, source_dsn);
-                             ZDS zds_create2 = {0};
-                             create_pds(&zds_create2, target_pds);
-
-                             string source_data = "Sequential source data";
-                             string existing_mem = target_pds + "(EXISTING)";
-                             string old_mem_data = "Old member data";
-
-                             ZDS zds_write1 = {0};
-                             zds_write_to_dsn(&zds_write1, source_dsn, source_data);
-                             ZDS zds_write2 = {0};
-                             zds_write_to_dsn(&zds_write2, existing_mem, old_mem_data);
-
-                             string tgt_member = target_pds + "(EXISTING)";
-                             // Sequential to PDS member is not allowed
-                             ZDS zds_copy = {0};
-                             int rc = zds_copy_dsn(&zds_copy, source_dsn, tgt_member);
+                             ZDS zds = {0};
+                             int rc = zds_copy_dsn(&zds, ctx.source_dsn, ctx.target_dsn + "(EXISTING)");
                              Expect(rc).Not().ToBe(0);
-                             Expect(string(zds_copy.diag.e_msg)).ToContain("sequential data set to PDS member");
+                             Expect(string(zds.diag.e_msg)).ToContain("sequential data set to PDS member");
                            });
                       });
 
