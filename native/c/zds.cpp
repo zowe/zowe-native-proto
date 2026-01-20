@@ -201,10 +201,40 @@ int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2, bool replace)
   else if (!replace && !is_pds_full_copy)
   {
     // Target exists and --replace not specified for sequential/member copy
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg,
-                                  "Target '%s' already exists. Use --replace to overwrite.",
-                                  dsn2.c_str());
-    return RTNCD_FAILURE;
+    // For member copies, we need to check if the specific member exists, not just the PDS
+    bool target_actually_exists = false;
+
+    if (info2.type == ZDS_TYPE_MEMBER)
+    {
+      // Check if the specific member exists in the target PDS
+      vector<ZDSMem> target_members;
+      ZDS temp_zds = {};
+      zds_list_members(&temp_zds, info2.base_dsn, target_members);
+
+      for (vector<ZDSMem>::iterator it = target_members.begin(); it != target_members.end(); ++it)
+      {
+        string mem_name = it->name;
+        zut_trim(mem_name);
+        if (mem_name == info2.member_name)
+        {
+          target_actually_exists = true;
+          break;
+        }
+      }
+    }
+    else
+    {
+      // For sequential datasets, the base dataset existing means target exists
+      target_actually_exists = true;
+    }
+
+    if (target_actually_exists)
+    {
+      zds->diag.e_msg_len = sprintf(zds->diag.e_msg,
+                                    "Target '%s' already exists. Use --replace to overwrite.",
+                                    dsn2.c_str());
+      return RTNCD_FAILURE;
+    }
   }
 
   // 2. Determine copy method
@@ -406,14 +436,18 @@ int zds_read_from_dd(ZDS *zds, string ddname, string &response)
     return RTNCD_FAILURE;
   }
 
-  bool first = true;
+  bool started = false;
   string line;
   while (getline(in, line))
   {
-    if (!first)
+    // Skip leading empty lines (preserves original behavior for IEBCOPY output)
+    if (!started && line.empty())
+      continue;
+
+    if (started)
       response.push_back('\n');
     response += line;
-    first = false;
+    started = true;
   }
   in.close();
 
