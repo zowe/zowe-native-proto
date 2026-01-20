@@ -15,6 +15,7 @@
 #include "ztype.h"
 #include <unistd.h>
 #include "zds.hpp"
+#include "zut.hpp"
 
 // TODO(Kelosky): test on archived data set
 int main()
@@ -22,64 +23,33 @@ int main()
   int rc = 0;
   unsigned int code = 0;
 
-  std::vector<std::string> data;
-  data.push_back("hello world                                                                     ");
-  // data.push_back("012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789abcdefghijkl");
-  data.push_back("          0123456789012345678901234567890123456789012345678901234567890123456789");
-  // data.push_back("0123456789          012345678901234567890123456789012345678901234567890123456789");
-  // data.push_back(" hey workld");
-  // data.push_back(" one more");
-  // data.push_back("hello world                                                                     ");
-  // data.push_back("012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789abcdefghijkl");
-  // data.push_back("          0123456789012345678901234567890123456789012345678901234567890123456789");
-  // data.push_back("0123456789          012345678901234567890123456789012345678901234567890123456789");
-  // data.push_back(" hey workld");
-  // data.push_back(" one more");
-  // data.push_back("hello world                                                                     ");
-  // data.push_back("012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789abcdefghijkl");
-  // data.push_back("          0123456789012345678901234567890123456789012345678901234567890123456789");
-  // data.push_back("0123456789          012345678901234567890123456789012345678901234567890123456789");
-  // data.push_back(" hey workld");
-  // data.push_back(" one more");
-  // data.push_back("hello world                                                                     ");
-  // data.push_back("012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789abcdefghijkl");
-  // data.push_back("          0123456789012345678901234567890123456789012345678901234567890123456789");
-  // data.push_back("0123456789          012345678901234567890123456789012345678901234567890123456789");
-  data.push_back(" hey workld");
-  data.push_back(" one more");
+  std::string dsname = "DKELOSKY.JCL";
+  std::string alloc_cmd = "ALLOC DA('" + dsname + "') SHR";
+  std::string resp = "";
+  std::string ddname = "";
 
-  ZDS zds = {0};
-  IO_CTRL *ioc = NULL;
-  rc = zds_open_output_bpam(&zds, "DKELOSKY.IO.O.FB80(data)", ioc);
-  // rc = zds_open_output_bpam(&zds, "DKELOSKY.IO.O.V25(OMGNESS)", ioc);
-  // rc = zds_open_output_bpam(&zds, "DKELOSKY.IO.O.V256(OMGNESS)", ioc);
-  // rc = zds_open_output_bpam(&zds, "DKELOSKY.IO.O.VB256(OMGNESS)", ioc);
-  if (0 != rc)
-  {
-    std::cout << "zds_open_output_bpam failed: " << rc << std::endl;
-    std::cout << "  Details: " << zds.diag.e_msg << std::endl;
+  rc = zut_bpxwdyn_rtdd(alloc_cmd, &code, resp, ddname);
+  std::cout << "ddname: '" << ddname << "'" << std::endl;
+  std::cout << "resp: '" << resp << "'" << std::endl;
+  std::cout << "code: '" << code << "'" << std::endl;
+  std::cout << "rc: '" << rc << "'" << std::endl;
 
-    return -1;
-  }
+  std::cout << "--------------------------------" << std::endl;
+  alloc_cmd = "ALLOC SYSOUT";
+  rc = zut_bpxwdyn_rtdsn(alloc_cmd, &code, resp, dsname);
+  std::cout << "dsname: '" << dsname << "'" << std::endl;
+  std::cout << "resp: '" << resp << "'" << std::endl;
+  std::cout << "code: '" << code << "'" << std::endl;
+  std::cout << "rc: '" << rc << "'" << std::endl;
 
-  for (std::vector<std::string>::iterator it = data.begin(); it != data.end(); ++it)
-  {
-    rc = zds_write_output_bpam(&zds, ioc, *it);
-    if (0 != rc)
-    {
-      std::cout << "zds_write_output_bpam failed: " << rc << std::endl;
-      std::cout << "  Details: " << zds.diag.e_msg << std::endl;
-      return -1;
-    }
-  }
-
-  rc = zds_close_output_bpam(&zds, ioc);
-  if (0 != rc && RTNCD_WARNING != rc) // ignore warnings
-  {
-    std::cout << "zds_close_output_bpam failed: " << rc << std::endl;
-    std::cout << "  Details: " << zds.diag.e_msg << std::endl;
-    return -1;
-  }
+  std::cout << "--------------------------------" << std::endl;
+  alloc_cmd = "ALLOC FI(SYSIN) DA('" + std::string("SYS1.MACLIB") + "') SHR";
+  ddname = "";
+  rc = zut_bpxwdyn(alloc_cmd, &code, resp);
+  std::cout << "ddname: '" << ddname << "'" << std::endl;
+  std::cout << "resp: '" << resp << "'" << std::endl;
+  std::cout << "code: '" << code << "'" << std::endl;
+  std::cout << "rc: '" << rc << "'" << std::endl;
 
   return 0;
 }

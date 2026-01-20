@@ -16,13 +16,11 @@
 #include "asasymbp.h"
 #include "zattachx.h"
 #include "zstorage.h"
-#include "zwto.h"
 #include "zutm.h"
 #include "zutm31.h"
 #include "zecb.h"
 #include "zam.h"
-#include "zrecovery.h"
-#include "zecb.h"
+#include "zuttype.h"
 
 #define ZUT_BPXWDYN_SERVICE_FAILURE -2
 
@@ -69,6 +67,7 @@ int ZUTWDYN(BPXWDYN_PARM *parm, BPXWDYN_RESPONSE *response)
   int rc = 0;
 
   int rtddn_index = RTDDN_INDEX;
+  int rtdsn_index = RTDSN_INDEX;
   int msg_index = MSG_INDEX;
   int input_parameters = INPUT_PARAMETERS;
 
@@ -91,6 +90,11 @@ int ZUTWDYN(BPXWDYN_PARM *parm, BPXWDYN_RESPONSE *response)
   {
     parameters[rtddn_index].len = 8 + 1; // max ddname length is 8 + 1 for the null terminator
     strcpy(parameters[rtddn_index].str, "RTDDN");
+  }
+  else if (parm->rtdsn)
+  {
+    parameters[rtdsn_index].len = 44 + 1; // max dsname length is 44 + 1 for the null terminator
+    strcpy(parameters[rtdsn_index].str, "RTDSN");
   }
   else
   {
@@ -168,7 +172,14 @@ int ZUTWDYN(BPXWDYN_PARM *parm, BPXWDYN_RESPONSE *response)
     respp = respp + len;
   }
 
-  strcpy(response->ddname, parameters[rtddn_index].str);
+  if (parm->rtdd)
+  {
+    strcpy(response->ddname, parameters[rtddn_index].str);
+  }
+  else if (parm->rtdsn)
+  {
+    strcpy(response->dsname, parameters[rtdsn_index].str);
+  }
 
   return (0 != rc) ? ZUT_BPXWDYN_SERVICE_FAILURE : RTNCD_SUCCESS;
 }

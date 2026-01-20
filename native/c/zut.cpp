@@ -84,7 +84,7 @@ void zut_uppercase_pad_truncate(char *target, string source, int len)
 }
 
 // https://www.ibm.com/docs/en/zos/3.2.0?topic=output-requesting-dynamic-allocation
-int zut_bpxwdyn(string parm, unsigned int *code, string &resp, string &ddname)
+int zut_bpxwdyn(string parm, unsigned int *code, string &resp, string &ddname, string &dsname)
 {
   char bpx_response[RET_ARG_MAX_LEN * MSG_ENTRIES + 1] = {0};
 
@@ -98,16 +98,26 @@ int zut_bpxwdyn(string parm, unsigned int *code, string &resp, string &ddname)
   BPXWDYN_PARM *bparm = (BPXWDYN_PARM *)p;
   BPXWDYN_RESPONSE *response = (BPXWDYN_RESPONSE *)(p + sizeof(BPXWDYN_PARM));
 
-  // if input ddname is empty, set the rtdd flag
-  if (ddname == RTDDN)
+  if (ddname == "RTDDN")
   {
     bparm->rtdd = 1;
+  }
+  else if (dsname == "RTDSN")
+  {
+    bparm->rtdsn = 1;
   }
 
   bparm->len = sprintf(bparm->str, "%s", parm.c_str());
   int rc = ZUTWDYN(bparm, response);
 
-  ddname = string(response->ddname);
+  if (bparm->rtdd)
+  {
+    ddname = string(response->ddname);
+  }
+  else if (bparm->rtdsn)
+  {
+    dsname = string(response->dsname);
+  }
 
   resp = string(response->response);
   *code = response->code;
@@ -119,8 +129,23 @@ int zut_bpxwdyn(string parm, unsigned int *code, string &resp, string &ddname)
 
 int zut_bpxwdyn(string parm, unsigned int *code, string &resp)
 {
-  string ddname;
-  return zut_bpxwdyn(parm, code, resp, ddname);
+  string ddname = "";
+  string dsname = "";
+  return zut_bpxwdyn(parm, code, resp, ddname, dsname);
+}
+
+int zut_bpxwdyn_rtdd(string parm, unsigned int *code, string &resp, string &ddname)
+{
+  ddname = "RTDDN";
+  string dsname = "";
+  return zut_bpxwdyn(parm, code, resp, ddname, dsname);
+}
+
+int zut_bpxwdyn_rtdsn(string parm, unsigned int *code, string &resp, string &dsname)
+{
+  string ddname = "";
+  dsname = "RTDSN";
+  return zut_bpxwdyn(parm, code, resp, ddname, dsname);
 }
 
 string zut_build_etag(const size_t mtime, const size_t byte_size)
