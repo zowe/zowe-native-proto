@@ -553,7 +553,7 @@ void zowex_job_list_tests(vector<string> &_jobs, vector<string> &_ds, vector<str
                   _jobs.push_back(jobid);
                 });
 
-             it("should use 'vf' alias for view-file command",
+             it("should use 'vfbi' alias for view-file-by-id command",
                 [&]()
                 {
                   string jcl = "//IEFBR14 JOB (IZUACCT),TEST,REGION=0M\n//RUN EXEC PGM=IEFBR14";
@@ -588,7 +588,47 @@ void zowex_job_list_tests(vector<string> &_jobs, vector<string> &_ds, vector<str
                     return;
                   }
 
-                  rc = execute_command_with_output(zowex_command + " job vf " + jobid + " " + file_id, response);
+                  rc = execute_command_with_output(zowex_command + " job vfbi " + jobid + " " + file_id, response);
+                  ExpectWithContext(rc, response).ToBe(0);
+                  Expect(response).ToContain("IEFBR14");
+                });
+
+             it("should use 'vf' alias for view-file command",
+                [&]()
+                {
+                  string jcl = "//IEFBR14 JOB (IZUACCT),TEST,REGION=0M\n//RUN EXEC PGM=IEFBR14";
+                  string command = "printf \"" + jcl + "\" | " + zowex_command + " job submit-jcl --wait output --only-jobid";
+                  string stdout_output, stderr_output;
+                  int rc = execute_command(command, stdout_output, stderr_output);
+                  string jobid = TrimChars(stdout_output);
+                  _jobs.push_back(jobid);
+
+                  string response;
+                  rc = execute_command_with_output(zowex_command + " job list-files " + jobid + " --rfc", response);
+                  ExpectWithContext(rc, response).ToBe(0);
+
+                  vector<string> lines = parse_rfc_response(response, "\n");
+                  string dsn = "";
+                  for (const auto &line : lines)
+                  {
+                    if (line.find("JESMSGLG") != string::npos)
+                    {
+                      vector<string> parts = parse_rfc_response(line, ",");
+                      if (parts.size() >= 3)
+                      {
+                        dsn = parts[1];
+                        break;
+                      }
+                    }
+                  }
+
+                  if (dsn.empty())
+                  {
+                    TestLog("Could not find JESMSGLG file, skipping vf alias test");
+                    return;
+                  }
+
+                  rc = execute_command_with_output(zowex_command + " job vf " + dsn, response);
                   ExpectWithContext(rc, response).ToBe(0);
                   Expect(response).ToContain("IEFBR14");
                 });
