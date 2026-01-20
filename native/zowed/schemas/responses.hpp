@@ -142,7 +142,8 @@ struct WriteDatasetResponse {};
 ZJSON_SCHEMA(WriteDatasetResponse,
     FIELD_REQUIRED(success, BOOL),
     FIELD_REQUIRED(etag, STRING),
-    FIELD_OPTIONAL(contentLen, NUMBER)
+    FIELD_OPTIONAL(contentLen, NUMBER),
+    FIELD_OPTIONAL(truncationWarning, STRING)
 );
 
 struct CancelJobResponse {};
