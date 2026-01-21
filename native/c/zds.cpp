@@ -630,7 +630,7 @@ int zds_rename_dsn(ZDS *zds, string dsn_Before, string dsn_After)
   }
   if (zds_dataset_exists(dsn_After))
   {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Target data already exists '%s'", dsn_After.c_str());
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Target data set name already exists '%s'", dsn_After.c_str());
     return RTNCD_FAILURE;
   }
 

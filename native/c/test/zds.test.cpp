@@ -225,5 +225,84 @@ void zds_tests()
                              }
                            });
                       });
+
+             describe("rename",
+                      []() -> void
+                      {
+                        it("should fail if source or target data sets are empty",
+                           []() -> void
+                           {
+                             ZDS zds = {0};
+                             int rc = zds_rename_dsn(&zds, "", "USER.TEST");
+                             Expect(rc).ToBe(RTNCD_FAILURE);
+                             Expect(string(zds.diag.e_msg)).ToContain("Data set names must be valid");
+
+                             ZDS zds2 = {0};
+                             rc = zds_rename_dsn(&zds2, "USER.TEST", "");
+                             Expect(rc).ToBe(RTNCD_FAILURE);
+                             Expect(string(zds2.diag.e_msg)).ToContain("Data set names must be valid");
+                           });
+
+                        it("should fail if target data set name exceeds max length",
+                           []() -> void
+                           {
+                             ZDS zds = {0};
+                             string longName = "USER.TEST.TEST.TEST.TEST.TEST.TEST.TEST.TEST.TEST.TEST.TEST.TEST";
+                             int rc = zds_rename_dsn(&zds, "USER.TEST", longName);
+                             Expect(rc).ToBe(RTNCD_FAILURE);
+                             Expect(string(zds.diag.e_msg)).ToContain("Target data set name exceeds max character length of 44");
+                           });
+
+                        it("should fail if source data set does not exist",
+                           []() -> void
+                           {
+                             ZDS zds = {0};
+                             int rc = zds_rename_dsn(&zds, "USER.NONEXISTENT", "USER.TEST");
+                             Expect(rc).ToBe(RTNCD_FAILURE);
+                             Expect(string(zds.diag.e_msg)).ToContain("Source data set does not exist");
+                           });
+
+                        it("should fail if target data set already exists",
+                           []() -> void
+                           {
+                             DS_ATTRIBUTES attr = {0};
+
+                             attr.dsorg = "PS";
+                             attr.recfm = "FB";
+                             attr.lrecl = 80;
+                             attr.blksize = 0;
+                             attr.alcunit = "TRACKS";
+                             attr.primary = 1;
+                             attr.secondary = 1;
+                             attr.dirblk = 0;
+                             ZDS zds = {0};
+                             string response;
+                             int rc = zds_create_dsn(&zds, "USER.TEST", attr, response);
+                             rc = zds_create_dsn(&zds, "USER.EXISTING", attr, response);
+                             rc = zds_rename_dsn(&zds, "USER.TEST", "USER.EXISTING");
+                             Expect(rc).ToBe(RTNCD_FAILURE);
+                             Expect(string(zds.diag.e_msg)).ToContain("Target data set name already exists");
+                           });
+
+                        it("should rename dataset successfully when valid",
+                           []() -> void
+                           {
+                             DS_ATTRIBUTES attr = {0};
+
+                             attr.dsorg = "PS";
+                             attr.recfm = "FB";
+                             attr.lrecl = 80;
+                             attr.blksize = 0;
+                             attr.alcunit = "TRACKS";
+                             attr.primary = 1;
+                             attr.secondary = 1;
+                             attr.dirblk = 0;
+                             ZDS zds = {0};
+                             string response;
+                             int rc = zds_create_dsn(&zds, "USER.TEST.BEFORE", attr, response);
+                             rc = zds_rename_dsn(&zds, "USER.TEST.BEFORE", "USER.TEST.AFTER");
+                             ExpectWithContext(rc, zds.diag.e_msg).ToBe(0);
+                           });
+                      });
            });
 }
