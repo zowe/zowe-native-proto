@@ -100,11 +100,11 @@ int zut_bpxwdyn(string parm, unsigned int *code, string &resp, string &ddname, s
 
   if (ddname == "RTDDN")
   {
-    bparm->rtdd = 1;
+    bparm->rtdd = 1; // set bit flag indicating we want to return the DD name
   }
   else if (dsname == "RTDSN")
   {
-    bparm->rtdsn = 1;
+    bparm->rtdsn = 1; // set bit flag indicating we want to return the DS name
   }
 
   bparm->len = sprintf(bparm->str, "%s", parm.c_str());
@@ -131,21 +131,21 @@ int zut_bpxwdyn(string parm, unsigned int *code, string &resp)
 {
   string ddname = "";
   string dsname = "";
-  return zut_bpxwdyn(parm, code, resp, ddname, dsname);
+  return zut_bpxwdyn_common(parm, code, resp, ddname, dsname);
 }
 
 int zut_bpxwdyn_rtdd(string parm, unsigned int *code, string &resp, string &ddname)
 {
   ddname = "RTDDN";
   string dsname = "";
-  return zut_bpxwdyn(parm, code, resp, ddname, dsname);
+  return zut_bpxwdyn_common(parm, code, resp, ddname, dsname);
 }
 
 int zut_bpxwdyn_rtdsn(string parm, unsigned int *code, string &resp, string &dsname)
 {
   string ddname = "";
   dsname = "RTDSN";
-  return zut_bpxwdyn(parm, code, resp, ddname, dsname);
+  return zut_bpxwdyn_common(parm, code, resp, ddname, dsname);
 }
 
 string zut_build_etag(const size_t mtime, const size_t byte_size)
