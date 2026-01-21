@@ -58,7 +58,7 @@ void zut_tests()
              describe("zut_bpxwdyn",
                       []() -> void
                       {
-                        it("should allocate a sysout data set, get the DS name, and free it",
+                        it("should allocate a sysout data set and get the DS name",
                            []() -> void
                            {
                              std::string cmd = "ALLOC SYSOUT";
