@@ -266,10 +266,4 @@ int zds_read_from_dsn_streamed(ZDS *zds, const std::string &dsn, const std::stri
  */
 int zds_write_to_dsn_streamed(ZDS *zds, const std::string &dsn, const std::string &pipe, size_t *content_len);
 
-/**
- * @brief Check if a data set exists
- * @param dsn data set to check for
- */
-bool zds_dataset_exists(const std::string &dsn);
-
 #endif
