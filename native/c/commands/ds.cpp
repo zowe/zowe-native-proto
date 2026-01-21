@@ -776,7 +776,7 @@ int handle_data_set_copy(InvocationContext &context)
     return RTNCD_FAILURE;
   }
 
-  context.output_stream() << "Data set '" << dsn1 << "' copied to '" << dsn2 << "'" << endl;
+  context.output_stream() << "Data set '" << source << "' copied to '" << target << "'" << endl;
   return RTNCD_SUCCESS;
 }
 
