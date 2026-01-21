@@ -229,6 +229,21 @@ void zds_tests()
              describe("rename",
                       []() -> void
                       {
+                        beforeEach([]() -> void
+                                   {
+                          ZDS zds = {0};
+                          zds_delete_dsn(&zds, "USER.TEST");
+                          zds_delete_dsn(&zds, "USER.EXISTING");
+                          zds_delete_dsn(&zds, "USER.TEST.BEFORE");
+                          zds_delete_dsn(&zds, "USER.TEST.AFTER"); });
+
+                        afterEach([]() -> void
+                                  {
+                          ZDS zds = {0};
+                          zds_delete_dsn(&zds, "USER.TEST");
+                          zds_delete_dsn(&zds, "USER.EXISTING");
+                          zds_delete_dsn(&zds, "USER.TEST.BEFORE");
+                          zds_delete_dsn(&zds, "USER.TEST.AFTER"); });
                         it("should fail if source or target data sets are empty",
                            []() -> void
                            {
@@ -265,6 +280,7 @@ void zds_tests()
                         it("should fail if target data set already exists",
                            []() -> void
                            {
+                             ZDS zds = {0};
                              DS_ATTRIBUTES attr = {0};
 
                              attr.dsorg = "PS";
@@ -275,7 +291,7 @@ void zds_tests()
                              attr.primary = 1;
                              attr.secondary = 1;
                              attr.dirblk = 0;
-                             ZDS zds = {0};
+
                              string response;
                              int rc = zds_create_dsn(&zds, "USER.TEST", attr, response);
                              rc = zds_create_dsn(&zds, "USER.EXISTING", attr, response);
@@ -287,6 +303,7 @@ void zds_tests()
                         it("should rename dataset successfully when valid",
                            []() -> void
                            {
+                             ZDS zds = {0};
                              DS_ATTRIBUTES attr = {0};
 
                              attr.dsorg = "PS";
@@ -297,7 +314,7 @@ void zds_tests()
                              attr.primary = 1;
                              attr.secondary = 1;
                              attr.dirblk = 0;
-                             ZDS zds = {0};
+
                              string response;
                              int rc = zds_create_dsn(&zds, "USER.TEST.BEFORE", attr, response);
                              rc = zds_rename_dsn(&zds, "USER.TEST.BEFORE", "USER.TEST.AFTER");
