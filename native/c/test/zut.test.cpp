@@ -66,6 +66,7 @@ void zut_tests()
                              std::string dsname = "";
                              std::string resp = "";
                              int rc = zut_bpxwdyn_rtdsn(cmd, &code, resp, dsname);
+                             TestLog("dsname: " + dsname + " resp: " + resp + " rc: " + to_string(rc));
                              expect(rc).ToBe(0);
                              expect(dsname.size()).ToBeGreaterThan(0);
                              expect(code).ToBe(0);
@@ -84,6 +85,7 @@ void zut_tests()
                              std::string ddname = "";
                              std::string resp = "";
                              int rc = zut_bpxwdyn_rtdd(cmd, &code, resp, ddname);
+                             TestLog("ddname: " + ddname + " resp: " + resp + " rc: " + to_string(rc));
                              expect(rc).ToBe(0);
                              expect(ddname.size()).ToBeGreaterThan(0);
                              expect(code).ToBe(0);
