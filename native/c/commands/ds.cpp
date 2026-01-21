@@ -628,27 +628,18 @@ int handle_data_set_write(InvocationContext &context)
     string data;
     string line;
 
-    if (!isatty(fileno(stdin)))
+    if (!isatty(fileno(stdout)))
     {
       istreambuf_iterator<char> begin(context.input_stream());
       istreambuf_iterator<char> end;
       data.assign(begin, end);
-
-      // Remove trailing newline if present to avoid extra empty record on mainframe
-      if (!data.empty() && data[data.length() - 1] == '\n')
-      {
-        data.erase(data.length() - 1);
-      }
     }
     else
     {
-      bool first = true;
       while (getline(context.input_stream(), line))
       {
-        if (!first)
-          data.push_back('\n');
         data += line;
-        first = false;
+        data.push_back('\n');
       }
     }
 

@@ -96,42 +96,39 @@ int zds_get_type_info(const string &dsn, ZDSTypeInfo &info)
   zut_trim(info.member_name);
   transform(info.member_name.begin(), info.member_name.end(), info.member_name.begin(), ::toupper);
 
+  // Quick check if data set exists before querying attributes
+  if (!zds_dataset_exists(info.base_dsn))
+  {
+    return RTNCD_SUCCESS;
+  }
+
   ZDS zds = {};
   vector<ZDSEntry> entries;
   int rc = zds_list_data_sets(&zds, info.base_dsn, entries, true);
-  if ((rc == RTNCD_SUCCESS || rc == RTNCD_WARNING) && !entries.empty())
+  if (rc == RTNCD_SUCCESS && entries.size() == 1)
   {
-    // List may return multiple entries due to wildcard matching, so find exact match
-    for (vector<ZDSEntry>::iterator it = entries.begin(); it != entries.end(); ++it)
-    {
-      string name = it->name;
-      zut_trim(name);
-      if (name == info.base_dsn)
-      {
-        info.exists = true;
-        info.entry = *it;
+    ZDSEntry &entry = entries[0];
+    info.exists = true;
+    info.entry = entry;
 
-        if (it->dsorg == ZDS_DSORG_PS)
-        {
-          info.type = ZDS_TYPE_PS;
-        }
-        else if (it->dsorg == ZDS_DSORG_PO || it->dsorg == ZDS_DSORG_PDSE || it->dsorg == "POU")
-        {
-          if (!info.member_name.empty())
-          {
-            info.type = ZDS_TYPE_MEMBER;
-          }
-          else
-          {
-            info.type = ZDS_TYPE_PDS;
-          }
-        }
-        else if (it->dsorg == ZDS_DSORG_VSAM)
-        {
-          info.type = ZDS_TYPE_VSAM;
-        }
-        break;
+    if (entry.dsorg == ZDS_DSORG_PS)
+    {
+      info.type = ZDS_TYPE_PS;
+    }
+    else if (entry.dsorg == ZDS_DSORG_PO || entry.dsorg == ZDS_DSORG_PDSE || entry.dsorg == "POU")
+    {
+      if (!info.member_name.empty())
+      {
+        info.type = ZDS_TYPE_MEMBER;
       }
+      else
+      {
+        info.type = ZDS_TYPE_PDS;
+      }
+    }
+    else if (entry.dsorg == ZDS_DSORG_VSAM)
+    {
+      info.type = ZDS_TYPE_VSAM;
     }
   }
 
