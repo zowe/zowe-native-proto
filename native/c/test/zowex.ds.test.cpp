@@ -91,70 +91,70 @@ void zowex_ds_tests()
                   Expect(response).ToContain("view");
                   Expect(response).ToContain("write"); });
 
-             // TODO: https://github.com/zowe/zowe-native-proto/issues/640
-             xdescribe("compress",
-                       [&]() -> void
-                       {
-                         beforeEach(
-                             [&]() -> void
-                             {
-                               _ds.push_back(get_random_ds());
-                             });
-                         it("should error when the data set is PS",
+             describe("compress",
+                      [&]() -> void
+                      {
+                        beforeEach(
                             [&]() -> void
                             {
-                              string ds = _ds.back();
-                              _create_ds(ds, "--dsorg PS");
-
-                              string response;
-                              string command = zowex_command + " data-set compress " + ds;
-                              int rc = execute_command_with_output(command, response);
-                              ExpectWithContext(rc, response).Not().ToBe(0);
-                              Expect(response).ToContain("Error: data set '" + ds + "' is not a PDS'");
+                              _ds.push_back(get_random_ds());
                             });
-                         it("should error when the data set is PDS/E",
-                            [&]() -> void
-                            {
-                              string ds = _ds.back();
-                              _create_ds(ds, "--dsorg PO --dirblk 2 --dsntype LIBRARY");
+                        it("should error when the data set is PS",
+                           [&]() -> void
+                           {
+                             string ds = _ds.back();
+                             _create_ds(ds, "--dsorg PS");
 
-                              string response;
-                              string command = zowex_command + " data-set compress " + ds;
-                              int rc = execute_command_with_output(command, response);
-                              ExpectWithContext(rc, response).Not().ToBe(0);
-                              Expect(response).ToContain("Error: data set '" + ds + "' is not a PDS'");
-                            });
+                             string response;
+                             string command = zowex_command + " data-set compress " + ds;
+                             int rc = execute_command_with_output(command, response);
+                             ExpectWithContext(rc, response).Not().ToBe(0);
+                             Expect(response).ToContain("Error: data set '" + ds + "' is not a PDS");
+                           });
+                        it("should error when the data set is PDS/E",
+                           [&]() -> void
+                           {
+                             string ds = _ds.back();
+                             _create_ds(ds, "--dsorg PO --dirblk 2 --dsntype LIBRARY");
 
-                         it("should error when the data set doesn't exist",
-                            [&]() -> void
-                            {
-                              string ds = _ds.back() + ".GHOST";
+                             string response;
+                             string command = zowex_command + " data-set compress " + ds;
+                             int rc = execute_command_with_output(command, response);
+                             ExpectWithContext(rc, response).Not().ToBe(0);
+                             Expect(response).ToContain("Error: data set '" + ds + "' is not a PDS");
+                           });
 
-                              string response;
-                              string command = zowex_command + " data-set compress " + ds;
-                              int rc = execute_command_with_output(command, response);
-                              ExpectWithContext(rc, response).Not().ToBe(0);
-                              Expect(response).ToContain("Error: data set '" + ds + "' is not a PDS'");
-                            });
+                        it("should error when the data set doesn't exist",
+                           [&]() -> void
+                           {
+                             string ds = _ds.back() + ".GHOST";
 
-                         xit("should compress a data set",
-                             [&]() -> void
-                             {
-                               string ds = _ds.back();
-                               _create_ds(ds, "--dsorg PO --dirblk 2");
+                             string response;
+                             string command = zowex_command + " data-set compress " + ds;
+                             int rc = execute_command_with_output(command, response);
+                             ExpectWithContext(rc, response).Not().ToBe(0);
+                             Expect(response).ToContain("Error: data set '" + ds + "' is not a PDS");
+                           });
 
-                               string response;
-                               string command = zowex_command + " data-set compress " + ds;
-                               int rc = execute_command_with_output(command, response);
-                               ExpectWithContext(rc, response).ToBe(0);
-                               Expect(response).ToContain("Data set compressed");
-                             });
+                        it("should compress a data set",
+                           [&]() -> void
+                           {
+                             string ds = _ds.back();
+                             _create_ds(ds, "--dsorg PO --dirblk 2");
 
-                         // TODO: https://github.com/zowe/zowe-native-proto/issues/666
-                         xit("should error when the data set is VSAM", []() -> void {});
-                         xit("should error when the data set is GDG", []() -> void {});
-                         xit("should error when the data set is ALIAS", []() -> void {});
-                       });
+                             string response;
+                             string command = zowex_command + " data-set compress " + ds;
+                             int rc = execute_command_with_output(command, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+                             Expect(response).ToContain("Data set");
+                             Expect(response).ToContain("compressed");
+                           });
+
+                        // TODO: https://github.com/zowe/zowe-native-proto/issues/666
+                        xit("should error when the data set is VSAM", []() -> void {});
+                        xit("should error when the data set is GDG", []() -> void {});
+                        xit("should error when the data set is ALIAS", []() -> void {});
+                      });
              describe("create",
                       [&]() -> void
                       {
@@ -1124,6 +1124,23 @@ void zowex_ds_tests()
                              rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain("a3 85 a2 a3 4f 15");
+                           });
+
+                        it("should write content to a data set with multibyte encoding",
+                           [&]() -> void
+                           {
+                             string ds = _ds.back();
+                             _create_ds(ds, "--dsorg PS");
+                             string response;
+                             string command = "echo '\xe3\x81\x93\xe3\x82\x93\xe3\x81\xab\xe3\x81\xa1\xe3\x81\xaf' | " + zowex_command + " data-set write " + ds + " --encoding IBM-939";
+                             int rc = execute_command_with_output(command, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+                             Expect(response).ToContain("Wrote data to '" + ds + "'");
+
+                             command = zowex_command + " data-set view " + ds + " --rfb";
+                             rc = execute_command_with_output(command, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+                             Expect(response).ToContain("0e 44 8a 44 bd 44 97 44 92 44 9d 0f");
                            });
 
                         it("should fail to write to a non-existent data set",

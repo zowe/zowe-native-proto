@@ -6,8 +6,13 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Recent Changes
 
+- Fixed an issue where the Zowe Explorer "Submit as JCL" command displayed `undefined` as the job name within the "Job submitted" notification. Now, the job name and ID are present in the information message. [#733](https://github.com/zowe/zowe-native-proto/issues/733)
+
+## `0.2.2`
+
 - Fixed an issue where prompts could disappear when VS Code window loses focus while connecting to a new host. [#710](https://github.com/zowe/zowe-native-proto/pull/710)
 - Fixed an issue where `usedp` attribute was not hidden in "Show Attributes" webview when its value is undefined. [#712](https://github.com/zowe/zowe-native-proto/pull/712)
+- Fixed an issue where listing data sets could silently fail when there is an authentication error. [#721](https://github.com/zowe/zowe-native-proto/pull/721)
 
 ## `0.2.1`
 

@@ -6,9 +6,18 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Recent Changes
 
+- `c`: Implement command `zowex job view-file` to print contents of a job output data set.
+- The `zowex job submit-jcl` command now displays the submitted job in the following format: `JobName(JobId)` [#733](https://github.com/zowe/zowe-native-proto/issues/733)
+- `c`: Rename command `zowex job view-file` to `zowex job view-file-by-id` so that `view-file` can be used to print a specific file (data set) name. [#740](https://github.com/zowe/zowe-native-proto/issues/740)
+
+## `0.2.2`
+
+- `c`: Renable `zowex ds compress` and correct 0C4 abend. [#640](https://github.com/zowe/zowe-native-proto/issues/640)
 - `c`: Fixed an issue where `--wait ACTIVE` on `zowex job` commands would wait indefinitely if the job was fast enough to reach the `OUTPUT` phase before polling its status. [#700](https://github.com/zowe/zowe-native-proto/pull/700)
 - `zowed`: Fixed `message` property of `error` object in the JSON response to contain valuable details about errors thrown by `zowex`. [#712](https://github.com/zowe/zowe-native-proto/pull/712)
 - `c`: You can now access dynamic arguments from a command handler through its `InvocationContext` parameter. [#715](https://github.com/zowe/zowe-native-proto/pull/715)
+- `zowed`: Fixed an issue where the `submitJcl` command failed if an encoding was not specified for the JCL contents. [#724](https://github.com/zowe/zowe-native-proto/pull/724)
+- `c`: Fixed an issue where multibyte codepages like IBM-939 were not always encoded correctly when writing data sets and USS files. [#718](https://github.com/zowe/zowe-native-proto/pull/718)
 
 ## `0.2.1`
 
