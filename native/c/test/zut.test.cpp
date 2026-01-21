@@ -66,12 +66,14 @@ void zut_tests()
                              std::string dsname = "";
                              std::string resp = "";
                              int rc = zut_bpxwdyn_rtdsn(cmd, &code, resp, dsname);
+                             TestLog("dsname: " + dsname + " resp: " + resp + " rc: " + to_string(rc));
                              expect(rc).ToBe(0);
                              expect(dsname.size()).ToBeGreaterThan(0);
                              expect(code).ToBe(0);
 
                              cmd = "FREE DS('" + dsname + "')";
                              rc = zut_bpxwdyn(cmd, &code, resp);
+                             TestLog("cmd: " + cmd + " resp: " + resp + " rc: " + to_string(rc));
                              expect(rc).ToBe(0);
                              expect(code).ToBe(0);
                            });
