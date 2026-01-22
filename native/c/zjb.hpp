@@ -76,7 +76,7 @@ int zjb_list_by_owner(ZJB *zjb, std::string owner_name, std::string prefix_name,
  * @param owner_name owner name of the job to query, defaults to current user if == "", may use wild cards, i.e.
  * "IBMUS*"
  * @param prefix job prefix, defaults to "*" if == "", may use wild cards, i.e. "IBMUS*"
- * @param status job status, defaults to "*" if == "", supports "ACTIVE" or "HELD"
+ * @param status job status, defaults to "*" if == "", supports "ACTIVE" only
  * @param jobs populated list returned containing job information array
  * @return int 0 for success; non zero otherwise
  */

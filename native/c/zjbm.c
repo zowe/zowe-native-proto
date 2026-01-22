@@ -343,10 +343,6 @@ int ZJBMLIST(ZJB *zjb, ZJB_JOB_INFO **PTR64 job_info, int *entries)
     stat.statphaz = stat___onmain;
     stat.statsel3 |= statsphz;
   }
-  else if (0 == strcmp(zjb->status_name, "HELD    "))
-  {
-    stat.statsel3 |= statshld;
-  }
 
   return ZJBMTCOM(zjb, &stat, job_info, entries);
 }
