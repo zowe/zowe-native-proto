@@ -16,6 +16,7 @@
 #include "../zusf.hpp"
 #include "../zut.hpp"
 #include <unistd.h>
+#include <regex.h>
 
 using namespace ast;
 using namespace parser;
@@ -24,6 +25,41 @@ using namespace commands::common;
 
 namespace job
 {
+
+/**
+ * @brief Parse a string to determine if it's a regex pattern
+ *
+ * Detects regex patterns in the format: /pattern/ or /pattern/g
+ *
+ * @param input The input string to check
+ * @param pattern Output parameter for the extracted pattern
+ * @return true if input is a regex pattern, false otherwise
+ */
+bool parse_regex_pattern(const string &input, string &pattern)
+{
+  pattern = input;
+
+  if (input.size() >= 2 && input[0] == '/')
+  {
+    // Check for /pattern/
+    if (input[input.size() - 1] == '/')
+    {
+      pattern = input.substr(1, input.size() - 2);
+      return true;
+    }
+    // Check for /pattern/g
+    else if (input.size() >= 3 &&
+             input[input.size() - 2] == '/' &&
+             input[input.size() - 1] == 'g')
+    {
+      pattern = input.substr(1, input.size() - 3);
+      return true;
+    }
+  }
+
+  return false;
+}
+
 int handle_job_list(InvocationContext &context)
 {
   int rc = 0;
@@ -447,6 +483,94 @@ int handle_job_delete(InvocationContext &context)
   return RTNCD_SUCCESS;
 }
 
+int handle_job_watch(InvocationContext &context)
+{
+  int rc = 0;
+  ZJB zjb = {};
+  string job_dsn = context.get<std::string>("job-dsn", "");
+  string until_match = context.get<std::string>("until-match", "");
+  long long max_sleep_seconds = context.get<long long>("max-wait-seconds");
+
+#define MAX_SLEEP_SECONDS 60ll * 5ll
+
+  if (max_sleep_seconds > MAX_SLEEP_SECONDS)
+  {
+    context.error_stream() << "Error: max-wait-seconds must be less than " << MAX_SLEEP_SECONDS << " seconds" << endl;
+    return RTNCD_FAILURE;
+  }
+
+  string pattern;
+  bool is_regex = parse_regex_pattern(until_match, pattern);
+
+  bool found_match = false;
+  string matched;
+  long long total_sleep_seconds = 0;
+
+  do
+  {
+    string response;
+    rc = zjb_read_job_content_by_dsn(&zjb, job_dsn, response);
+    if (0 != rc)
+    {
+      context.error_stream() << "Error: could not read job content: '" << job_dsn << "' rc: '" << rc << "'" << endl;
+      context.error_stream() << "  Details: " << zjb.diag.e_msg << endl;
+      return RTNCD_FAILURE;
+    }
+
+    if (is_regex)
+    {
+      regex_t re;
+      int ret = regcomp(&re, pattern.c_str(), REG_EXTENDED);
+      if (ret == 0)
+      {
+        regmatch_t match[1];
+        if (regexec(&re, response.c_str(), 1, match, 0) == 0)
+        {
+          matched = response.substr(match[0].rm_so, match[0].rm_eo - match[0].rm_so);
+          found_match = true;
+        }
+        regfree(&re);
+      }
+      else
+      {
+        context.error_stream() << "Error: invalid regex pattern: '" << pattern << "'" << endl;
+      }
+    }
+    else
+    {
+      // Use string to search for the pattern in the response
+      if (response.find(pattern) != string::npos)
+      {
+        matched = pattern;
+        found_match = true;
+      }
+    }
+
+    if (found_match)
+    {
+      break;
+    }
+    total_sleep_seconds++;
+    sleep(1);
+
+  } while (total_sleep_seconds < max_sleep_seconds);
+
+  if (found_match)
+  {
+    context.output_stream() << (is_regex ? "'Regex'" : "'String'") << " pattern in job spool files matched in " << total_sleep_seconds << "s on:\n"
+                            << endl;
+    context.output_stream() << matched << endl;
+    return RTNCD_SUCCESS;
+  }
+  else
+  {
+    context.error_stream() << "Error: " << (is_regex ? "'Regex'" : "'String'") << " pattern " << pattern << " in job spool files not found in " << total_sleep_seconds << "s" << endl;
+    return RTNCD_FAILURE;
+  }
+
+  return found_match ? RTNCD_SUCCESS : RTNCD_FAILURE;
+}
+
 int handle_job_cancel(InvocationContext &context)
 {
   int rc = 0;
@@ -685,6 +809,17 @@ void register_commands(parser::Command &root_command)
   job_delete_cmd->add_positional_arg(JOB_ID);
   job_delete_cmd->set_handler(handle_job_delete);
   job_group->add_command(job_delete_cmd);
+
+  // Watch subcommand
+  auto job_watch_cmd = command_ptr(new Command("watch", "watch job spool files for a given string pattern"));
+  job_watch_cmd->add_alias("wch");
+  job_watch_cmd->add_positional_arg("job-dsn", "job dsn to watch (from 'job list-files')", ArgType_Single, true);
+  job_watch_cmd->add_keyword_arg("until-match", make_aliases("--until-match", "--um"), "string pattern to watch for in spool files", ArgType_Single, true);
+  job_watch_cmd->add_keyword_arg("max-wait-seconds", make_aliases("--max-wait-seconds", "--mws"), "maximum number of seconds to wait for the pattern to match", ArgType_Single, false, ArgValue(15ll));
+  job_watch_cmd->set_handler(handle_job_watch);
+  job_watch_cmd->add_example("Watch job spool files for a given string pattern", "zowex job watch --job-dsn IBMUSER.IEFBR14@.JOB01684.D0000002.JESMSGLG --until-match \"$HASP395 IEFBR14@ ENDED\"");
+  job_watch_cmd->add_example("Watch job spool files for a given regex pattern", "zowex job watch --job-dsn IBMUSER.IEFBR14@.JOB01684D0000002.JESMSGLG --until-match \"/^.*ENDED.*$/g\"");
+  job_group->add_command(job_watch_cmd);
 
   // Cancel subcommand
   auto job_cancel_cmd = command_ptr(new Command("cancel", "cancel a job"));
