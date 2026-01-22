@@ -135,6 +135,42 @@ int zds_get_type_info(const string &dsn, ZDSTypeInfo &info)
   return RTNCD_SUCCESS;
 }
 
+// Check if a specific member exists in a PDS
+static bool member_exists_in_pds(const string &pds_dsn, const string &member_name)
+{
+  vector<ZDSMem> members;
+  ZDS temp_zds = {};
+  zds_list_members(&temp_zds, pds_dsn, members);
+
+  for (vector<ZDSMem>::iterator it = members.begin(); it != members.end(); ++it)
+  {
+    string mem_name = it->name;
+    zut_trim(mem_name);
+    if (mem_name == member_name)
+    {
+      return true;
+    }
+  }
+  return false;
+}
+
+// Delete all members in a PDS
+static void delete_all_members(const string &pds_dsn)
+{
+  vector<ZDSMem> members;
+  ZDS temp_zds = {};
+  zds_list_members(&temp_zds, pds_dsn, members);
+
+  for (vector<ZDSMem>::iterator it = members.begin(); it != members.end(); ++it)
+  {
+    string mem_name = it->name;
+    zut_trim(mem_name);
+    string member_dsn = pds_dsn + "(" + mem_name + ")";
+    ZDS del_zds = {};
+    zds_delete_dsn(&del_zds, member_dsn);
+  }
+}
+
 // Copy PDS to PDS using IEBCOPY
 static int copy_pds_to_pds(ZDS *zds, const ZDSTypeInfo &src, const ZDSTypeInfo &dst, bool replace)
 {
@@ -332,29 +368,9 @@ int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2, bool replace,
   else if (!replace && !is_pds_full_copy)
   {
     // Check if target already exists (for member, check specific member not just PDS)
-    bool target_actually_exists = false;
-
-    if (target_is_member)
-    {
-      vector<ZDSMem> target_members;
-      ZDS temp_zds = {};
-      zds_list_members(&temp_zds, info2.base_dsn, target_members);
-
-      for (vector<ZDSMem>::iterator it = target_members.begin(); it != target_members.end(); ++it)
-      {
-        string mem_name = it->name;
-        zut_trim(mem_name);
-        if (mem_name == info2.member_name)
-        {
-          target_actually_exists = true;
-          break;
-        }
-      }
-    }
-    else
-    {
-      target_actually_exists = true;
-    }
+    bool target_actually_exists = target_is_member
+                                      ? member_exists_in_pds(info2.base_dsn, info2.member_name)
+                                      : true;
 
     if (target_actually_exists)
     {
@@ -368,18 +384,7 @@ int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2, bool replace,
   // --overwrite: delete all existing members in target PDS first
   if (overwrite && is_pds_full_copy && info2.exists)
   {
-    vector<ZDSMem> target_members;
-    ZDS temp_zds = {};
-    zds_list_members(&temp_zds, info2.base_dsn, target_members);
-
-    for (vector<ZDSMem>::iterator it = target_members.begin(); it != target_members.end(); ++it)
-    {
-      string mem_name = it->name;
-      zut_trim(mem_name);
-      string member_dsn = info2.base_dsn + "(" + mem_name + ")";
-      ZDS del_zds = {};
-      zds_delete_dsn(&del_zds, member_dsn);
-    }
+    delete_all_members(info2.base_dsn);
   }
 
   if (is_pds_full_copy)

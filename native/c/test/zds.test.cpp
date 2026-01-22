@@ -162,16 +162,16 @@ struct CopyTestContext
     write_to_dsn(target_dsn, data);
   }
 
-  int copy(bool replace = false)
+  int copy(bool replace = false, bool overwrite = false)
   {
     ZDS zds = {0};
-    return zds_copy_dsn(&zds, source_dsn, target_dsn, replace);
+    return zds_copy_dsn(&zds, source_dsn, target_dsn, replace, overwrite);
   }
 
-  int copy_member(const string &src_mem, const string &tgt_mem, bool replace = false)
+  int copy_member(const string &src_mem, const string &tgt_mem, bool replace = false, bool overwrite = false)
   {
     ZDS zds = {0};
-    return zds_copy_dsn(&zds, source_dsn + "(" + src_mem + ")", target_dsn + "(" + tgt_mem + ")", replace);
+    return zds_copy_dsn(&zds, source_dsn + "(" + src_mem + ")", target_dsn + "(" + tgt_mem + ")", replace, overwrite);
   }
 };
 
@@ -180,9 +180,9 @@ void zds_tests()
   vector<string> created_dsns;
 
   describe("zds",
-           [&]()
+           [&]() -> void
            {
-             afterAll([&]()
+             afterAll([&]() -> void
                       {
                          // Cleanup created data sets
                          for (const auto &dsn : created_dsns)
@@ -200,10 +200,10 @@ void zds_tests()
                          created_dsns.clear(); });
 
              describe("list",
-                      []()
+                      []() -> void
                       {
                         it("should list data sets with a given DSN",
-                           []()
+                           []() -> void
                            {
                              int rc = 0;
                              ZDS zds = {0};
@@ -225,7 +225,7 @@ void zds_tests()
                            });
 
                         it("should find dsn (SYS1.MACLIB) based on a pattern: (SYS1.*)",
-                           []()
+                           []() -> void
                            {
                              int rc = 0;
                              ZDS zds = {0};
@@ -249,69 +249,88 @@ void zds_tests()
                       });
 
              describe("source encoding tests",
-                      []()
+                      []() -> void
                       {
                         it("should use default source encoding (UTF-8) when not specified",
-                           []()
+                           []() -> void
                            {
                              ZDS zds = {0};
+                             // Set target encoding but no source encoding
                              strcpy(zds.encoding_opts.codepage, "IBM-1047");
                              zds.encoding_opts.data_type = eDataTypeText;
+                             // source_codepage should be empty/null
+
+                             // The actual encoding conversion should use UTF-8 as source when source_codepage is empty
+                             // Since we can't easily test the actual file operations without a real data set,
+                             // we'll verify the struct is properly initialized
                              Expect(strlen(zds.encoding_opts.source_codepage)).ToBe(0);
                              Expect(strlen(zds.encoding_opts.codepage)).ToBe(8); // "IBM-1047"
                            });
 
                         it("should use specified source encoding when provided",
-                           []()
+                           []() -> void
                            {
                              ZDS zds = {0};
+                             // Set both target and source encoding
                              strcpy(zds.encoding_opts.codepage, "IBM-1047");
                              strcpy(zds.encoding_opts.source_codepage, "IBM-037");
                              zds.encoding_opts.data_type = eDataTypeText;
+
+                             // Verify both encodings are set correctly
                              Expect(string(zds.encoding_opts.codepage)).ToBe("IBM-1047");
                              Expect(string(zds.encoding_opts.source_codepage)).ToBe("IBM-037");
                              Expect(zds.encoding_opts.data_type).ToBe(eDataTypeText);
                            });
 
                         it("should handle binary data type correctly with source encoding",
-                           []()
+                           []() -> void
                            {
                              ZDS zds = {0};
                              strcpy(zds.encoding_opts.codepage, "binary");
                              strcpy(zds.encoding_opts.source_codepage, "UTF-8");
                              zds.encoding_opts.data_type = eDataTypeBinary;
+
+                             // For binary data, encoding should not be used for conversion
                              Expect(string(zds.encoding_opts.codepage)).ToBe("binary");
                              Expect(string(zds.encoding_opts.source_codepage)).ToBe("UTF-8");
                              Expect(zds.encoding_opts.data_type).ToBe(eDataTypeBinary);
                            });
 
                         it("should handle empty source encoding gracefully",
-                           []()
+                           []() -> void
                            {
                              ZDS zds = {0};
                              strcpy(zds.encoding_opts.codepage, "IBM-1047");
+                             // Explicitly set source_codepage to empty
                              memset(zds.encoding_opts.source_codepage, 0, sizeof(zds.encoding_opts.source_codepage));
                              zds.encoding_opts.data_type = eDataTypeText;
+
+                             // Should handle empty source encoding (will default to UTF-8 in actual conversion)
                              Expect(strlen(zds.encoding_opts.source_codepage)).ToBe(0);
                              Expect(string(zds.encoding_opts.codepage)).ToBe("IBM-1047");
                            });
 
                         it("should handle maximum length encoding names",
-                           []()
+                           []() -> void
                            {
                              ZDS zds = {0};
+                             // Test with maximum length encoding names (15 chars + null terminator)
                              string long_target = "IBM-1234567890A"; // 15 characters
                              string long_source = "UTF-1234567890B"; // 15 characters
+
                              strncpy(zds.encoding_opts.codepage, long_target.c_str(), sizeof(zds.encoding_opts.codepage) - 1);
                              strncpy(zds.encoding_opts.source_codepage, long_source.c_str(), sizeof(zds.encoding_opts.source_codepage) - 1);
+
+                             // Ensure null termination
                              zds.encoding_opts.codepage[sizeof(zds.encoding_opts.codepage) - 1] = '\0';
                              zds.encoding_opts.source_codepage[sizeof(zds.encoding_opts.source_codepage) - 1] = '\0';
+
                              Expect(string(zds.encoding_opts.codepage)).ToBe(long_target);
                              Expect(string(zds.encoding_opts.source_codepage)).ToBe(long_source);
                            });
 
                         it("should preserve encoding settings through struct copy",
-                           []()
+                           []() -> void
                            {
                              ZDS zds1 = {0};
                              strcpy(zds1.encoding_opts.codepage, "IBM-1047");
@@ -324,33 +343,42 @@ void zds_tests()
                            });
 
                         it("should validate encoding struct size assumptions",
-                           []()
+                           []() -> void
                            {
+                             // Verify the struct size is as expected for both fields
                              Expect(sizeof(((ZEncode *)0)->codepage)).ToBe(16);
                              Expect(sizeof(((ZEncode *)0)->source_codepage)).ToBe(16);
+
+                             // Verify the fields are at expected offsets
                              ZEncode encode = {0};
                              strcpy(encode.codepage, "test1");
                              strcpy(encode.source_codepage, "test2");
+
                              Expect(string(encode.codepage)).ToBe("test1");
                              Expect(string(encode.source_codepage)).ToBe("test2");
                            });
 
                         it("should handle common encoding combinations",
-                           []()
+                           []() -> void
                            {
                              ZDS zds = {0};
                              zds.encoding_opts.data_type = eDataTypeText;
+
+                             // Test common mainframe encoding conversions
                              struct EncodingPair
                              {
                                const char *source;
                                const char *target;
                              };
+
                              EncodingPair pairs[] = {
-                                 {"UTF-8", "IBM-1047"},
-                                 {"IBM-037", "UTF-8"},
-                                 {"IBM-1047", "IBM-037"},
-                                 {"ISO8859-1", "IBM-1047"},
-                                 {"UTF-8", "binary"}};
+                                 {"UTF-8", "IBM-1047"},     // UTF-8 to EBCDIC
+                                 {"IBM-037", "UTF-8"},      // EBCDIC to UTF-8
+                                 {"IBM-1047", "IBM-037"},   // EBCDIC to EBCDIC
+                                 {"ISO8859-1", "IBM-1047"}, // ASCII to EBCDIC
+                                 {"UTF-8", "binary"}        // Text to binary
+                             };
+
                              for (const auto &pair : pairs)
                              {
                                memset(&zds.encoding_opts, 0, sizeof(zds.encoding_opts));
@@ -363,10 +391,10 @@ void zds_tests()
                       });
 
              describe("copy",
-                      [&]()
+                      [&]() -> void
                       {
                         it("should copy PDS to PDS",
-                           [&]()
+                           [&]() -> void
                            {
                              CopyTestContext ctx(created_dsns);
                              ctx.create_source_pds();
@@ -375,7 +403,7 @@ void zds_tests()
                            });
 
                         it("should copy PDSE to nonexisting PDS (creates target)",
-                           [&]()
+                           [&]() -> void
                            {
                              CopyTestContext ctx(created_dsns);
                              ctx.create_source_pdse();
@@ -384,7 +412,7 @@ void zds_tests()
                            });
 
                         it("should copy PDS member to sequential data set",
-                           [&]()
+                           [&]() -> void
                            {
                              CopyTestContext ctx(created_dsns);
                              ctx.create_source_pds();
@@ -396,7 +424,7 @@ void zds_tests()
                            });
 
                         it("should copy sequential data set to sequential data set",
-                           [&]()
+                           [&]() -> void
                            {
                              CopyTestContext ctx(created_dsns);
                              ctx.create_source_seq();
@@ -405,7 +433,7 @@ void zds_tests()
                            });
 
                         it("should copy member to member",
-                           [&]()
+                           [&]() -> void
                            {
                              CopyTestContext ctx(created_dsns);
                              ctx.create_source_pds();
@@ -415,7 +443,7 @@ void zds_tests()
                            });
 
                         it("should copy sequential data set to PDS member",
-                           [&]()
+                           [&]() -> void
                            {
                              CopyTestContext ctx(created_dsns);
                              ctx.create_source_seq();
@@ -427,7 +455,7 @@ void zds_tests()
                            });
 
                         it("should copy PDS with multiple members",
-                           [&]()
+                           [&]() -> void
                            {
                              CopyTestContext ctx(created_dsns);
                              ctx.create_source_pds();
@@ -439,7 +467,7 @@ void zds_tests()
                            });
 
                         it("should fail when copying from nonexistent source",
-                           [&]()
+                           [&]() -> void
                            {
                              ZDS zds = {0};
                              string source_dsn = "NONEXISTENT.DATASET.NAME";
@@ -452,26 +480,32 @@ void zds_tests()
                            });
 
                         it("should preserve data set attributes when copying",
-                           [&]()
+                           [&]() -> void
                            {
                              CopyTestContext ctx(created_dsns);
                              ctx.create_source_seq();
                              ctx.write_source("Test data");
                              Expect(ctx.copy()).ToBe(0);
 
+                             // Verify target was created and data was copied
                              vector<ZDSEntry> target_entries;
                              ZDS zds_list = {0};
                              zds_list_data_sets(&zds_list, ctx.target_dsn, target_entries, true);
                              Expect(target_entries.empty()).ToBe(false);
 
+                             // Verify content was copied correctly
                              ZDS zds_read = {0};
                              string content;
                              zds_read_from_dsn(&zds_read, ctx.target_dsn, content);
                              Expect(content.find("Test data") != string::npos).ToBe(true);
+
+                             // Note: LIKE allocation is used for attribute preservation, but SMS ACS
+                             // routines may override attributes on some systems. The key verification
+                             // is that the copy succeeded and data is intact.
                            });
 
                         it("should fail to overwrite existing sequential data set without replace flag",
-                           [&]()
+                           [&]() -> void
                            {
                              CopyTestContext ctx(created_dsns);
                              ctx.create_source_seq();
@@ -486,7 +520,7 @@ void zds_tests()
                            });
 
                         it("should overwrite existing sequential data set with replace flag",
-                           [&]()
+                           [&]() -> void
                            {
                              CopyTestContext ctx(created_dsns);
                              ctx.create_source_seq();
@@ -497,7 +531,7 @@ void zds_tests()
                            });
 
                         it("should skip existing members in PDS without replace flag",
-                           [&]()
+                           [&]() -> void
                            {
                              CopyTestContext ctx(created_dsns);
                              ctx.create_source_pds();
@@ -508,6 +542,7 @@ void zds_tests()
 
                              Expect(ctx.copy(false)).ToBe(0);
 
+                             // Verify MEM2 was copied (MEM1 should be skipped since it exists)
                              vector<ZDSMem> members;
                              ZDS zds_list = {0};
                              zds_list_members(&zds_list, ctx.target_dsn, members);
@@ -521,7 +556,7 @@ void zds_tests()
                            });
 
                         it("should replace existing members in PDS with replace flag",
-                           [&]()
+                           [&]() -> void
                            {
                              CopyTestContext ctx(created_dsns);
                              ctx.create_source_pds();
@@ -532,7 +567,7 @@ void zds_tests()
                            });
 
                         it("should overwrite entire PDS with overwrite flag",
-                           [&]()
+                           [&]() -> void
                            {
                              CopyTestContext ctx(created_dsns);
                              ctx.create_source_pds();
@@ -563,7 +598,7 @@ void zds_tests()
                            });
 
                         it("should fail to overwrite existing member without replace flag",
-                           [&]()
+                           [&]() -> void
                            {
                              CopyTestContext ctx(created_dsns);
                              ctx.create_source_pds();
@@ -578,7 +613,7 @@ void zds_tests()
                            });
 
                         it("should overwrite existing member with replace flag",
-                           [&]()
+                           [&]() -> void
                            {
                              CopyTestContext ctx(created_dsns);
                              ctx.create_source_pds();
@@ -589,7 +624,7 @@ void zds_tests()
                            });
 
                         it("should copy empty PDS",
-                           [&]()
+                           [&]() -> void
                            {
                              CopyTestContext ctx(created_dsns);
                              ctx.create_source_pds();
@@ -597,7 +632,7 @@ void zds_tests()
                            });
 
                         it("should copy empty sequential data set",
-                           [&]()
+                           [&]() -> void
                            {
                              CopyTestContext ctx(created_dsns);
                              ctx.create_source_seq();
@@ -605,7 +640,7 @@ void zds_tests()
                            });
 
                         it("should copy PDSE to PDSE",
-                           [&]()
+                           [&]() -> void
                            {
                              CopyTestContext ctx(created_dsns);
                              ctx.create_source_pdse();
@@ -614,7 +649,7 @@ void zds_tests()
                            });
 
                         it("should copy PDS to new target without replace flag",
-                           [&]()
+                           [&]() -> void
                            {
                              CopyTestContext ctx(created_dsns);
                              ctx.create_source_pds();
@@ -623,7 +658,7 @@ void zds_tests()
                            });
 
                         it("should copy sequential to new target without replace flag",
-                           [&]()
+                           [&]() -> void
                            {
                              CopyTestContext ctx(created_dsns);
                              ctx.create_source_seq();
@@ -632,7 +667,7 @@ void zds_tests()
                            });
 
                         it("should add new members to existing PDS without replace flag",
-                           [&]()
+                           [&]() -> void
                            {
                              CopyTestContext ctx(created_dsns);
                              ctx.create_source_pds();
@@ -642,6 +677,7 @@ void zds_tests()
 
                              Expect(ctx.copy(false)).ToBe(0);
 
+                             // Verify both original and copied members exist
                              vector<ZDSMem> members;
                              ZDS zds_list = {0};
                              zds_list_members(&zds_list, ctx.target_dsn, members);
@@ -659,7 +695,7 @@ void zds_tests()
                            });
 
                         it("should copy sequential to existing PDS member with replace",
-                           [&]()
+                           [&]() -> void
                            {
                              CopyTestContext ctx(created_dsns);
                              ctx.create_source_seq();
@@ -674,10 +710,10 @@ void zds_tests()
                       });
 
              describe("compress",
-                      [&]()
+                      [&]() -> void
                       {
                         it("should compress a PDS",
-                           [&]()
+                           [&]() -> void
                            {
                              string pds_dsn = get_test_dsn();
                              created_dsns.push_back(pds_dsn);
@@ -700,7 +736,7 @@ void zds_tests()
                            });
 
                         it("should compress PDS with multiple members",
-                           [&]()
+                           [&]() -> void
                            {
                              string pds_dsn = get_test_dsn();
                              created_dsns.push_back(pds_dsn);
@@ -721,7 +757,7 @@ void zds_tests()
                            });
 
                         it("should compress empty PDS",
-                           [&]()
+                           [&]() -> void
                            {
                              string pds_dsn = get_test_dsn();
                              created_dsns.push_back(pds_dsn);
@@ -735,7 +771,7 @@ void zds_tests()
                            });
 
                         it("should fail when compressing a sequential data set",
-                           [&]()
+                           [&]() -> void
                            {
                              string ps_dsn = get_test_dsn();
                              created_dsns.push_back(ps_dsn);
@@ -750,7 +786,7 @@ void zds_tests()
                            });
 
                         it("should fail when compressing a PDSE",
-                           [&]()
+                           [&]() -> void
                            {
                              string pdse_dsn = get_test_dsn();
                              created_dsns.push_back(pdse_dsn);
@@ -773,7 +809,7 @@ void zds_tests()
                            });
 
                         it("should fail when compressing nonexistent data set",
-                           []()
+                           []() -> void
                            {
                              ZDS zds = {0};
                              string nonexistent_dsn = "NONEXISTENT.DATASET.NAME";
@@ -783,7 +819,7 @@ void zds_tests()
                            });
 
                         it("should preserve member content after compression",
-                           [&]()
+                           [&]() -> void
                            {
                              string pds_dsn = get_test_dsn();
                              created_dsns.push_back(pds_dsn);
