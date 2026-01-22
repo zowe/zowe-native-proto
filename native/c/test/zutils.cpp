@@ -260,8 +260,9 @@ void create_seq(ZDS *zds, const string &dsn)
   create_dsn_with_attrs(zds, dsn, attrs, "sequential data set");
 }
 
-void write_to_dsn(const string &dsn, const string &data)
+void write_to_dsn(const string &dsn, const string &content)
 {
   ZDS zds = {0};
+  string data = content;
   zds_write_to_dsn(&zds, dsn, data);
 }
