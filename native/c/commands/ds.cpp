@@ -753,9 +753,10 @@ int handle_data_set_copy(InvocationContext &context)
   string source = context.get<string>("source", "");
   string target = context.get<string>("target", "");
   bool replace = context.get<bool>("replace", false);
+  bool overwrite = context.get<bool>("overwrite", false);
 
   ZDS zds = {};
-  int rc = zds_copy_dsn(&zds, source, target, replace);
+  int rc = zds_copy_dsn(&zds, source, target, replace, overwrite);
 
   if (rc != RTNCD_SUCCESS)
   {
@@ -907,6 +908,7 @@ void register_commands(parser::Command &root_command)
   ds_copy_cmd->add_positional_arg("source", "source data set to copy from", ArgType_Single, true);
   ds_copy_cmd->add_positional_arg("target", "target data set to copy to", ArgType_Single, true);
   ds_copy_cmd->add_keyword_arg("replace", make_aliases("--replace", "-r"), "replace like-named members in target PDS", ArgType_Flag, false, ArgValue(false));
+  ds_copy_cmd->add_keyword_arg("overwrite", make_aliases("--overwrite", "-o"), "replace entire target data set with source", ArgType_Flag, false, ArgValue(false));
   ds_copy_cmd->set_handler(handle_data_set_copy);
   data_set_cmd->add_command(ds_copy_cmd);
 

@@ -154,29 +154,26 @@ static int copy_pds_to_pds(ZDS *zds, const ZDSTypeInfo &src, const ZDSTypeInfo &
     return RTNCD_FAILURE;
   }
 
-  // Build IEBCOPY control statements
   string control_stmts;
 
   if (replace)
   {
-    // With --replace: copy all members, replacing like-named ones
+    // INDD with R option replaces like-named members
     control_stmts = "        COPY OUTDD=" + outdd_name + ",INDD=((" + indd_name + ",R))";
   }
   else
   {
-    // Without --replace: exclude members that already exist in target
+    // Exclude existing members in target
     vector<ZDSMem> target_members;
     ZDS temp_zds = {};
     zds_list_members(&temp_zds, dst.base_dsn, target_members);
 
     if (target_members.empty())
     {
-      // No existing members, just do a simple copy
       control_stmts = "        COPY OUTDD=" + outdd_name + ",INDD=" + indd_name;
     }
     else
     {
-      // Use EXCLUDE to skip members that already exist in target
       control_stmts = "        COPY OUTDD=" + outdd_name + ",INDD=" + indd_name + "\n";
       control_stmts += "        EXCLUDE MEMBER=(";
 
@@ -184,7 +181,7 @@ static int copy_pds_to_pds(ZDS *zds, const ZDSTypeInfo &src, const ZDSTypeInfo &
       {
         if (i > 0)
           control_stmts += ",";
-        // Check if we need to continue on next line (IEBCOPY has 71 char limit)
+        // IEBCOPY has 71 char line limit
         if (control_stmts.length() - control_stmts.rfind('\n') > 60)
         {
           control_stmts += "\n               ";
@@ -218,7 +215,7 @@ static int copy_pds_to_pds(ZDS *zds, const ZDSTypeInfo &src, const ZDSTypeInfo &
   return RTNCD_SUCCESS;
 }
 
-// Copy sequential data set or member using file I/O
+// Copy sequential data set or member using record I/O
 static int copy_sequential(ZDS *zds, const string &src_dsn, const string &dst_dsn)
 {
   string src_path = "//'" + src_dsn + "'";
@@ -231,8 +228,7 @@ static int copy_sequential(ZDS *zds, const string &src_dsn, const string &dst_ds
     return RTNCD_FAILURE;
   }
 
-  // Use open() with explicit permissions to satisfy CodeQL security check
-  // Note: For z/OS data sets (//'), RACF controls access, not Unix permissions
+  // open() with explicit permissions for CodeQL; RACF controls actual z/OS access
   int out_fd = open(dst_path.c_str(), O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
   if (out_fd < 0)
   {
@@ -269,7 +265,7 @@ static int copy_sequential(ZDS *zds, const string &src_dsn, const string &dst_ds
   return RTNCD_SUCCESS;
 }
 
-int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2, bool replace)
+int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2, bool replace, bool overwrite)
 {
   int rc = 0;
   ZDSTypeInfo info1 = {};
@@ -284,24 +280,7 @@ int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2, bool replace)
     return RTNCD_FAILURE;
   }
 
-  // Validate copy scenarios - only allow like-to-like copies:
-  // PS → PS, Member → Member, PDS → PDS
-  if (info1.type == ZDS_TYPE_PS && !info2.member_name.empty())
-  {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg,
-                                  "Cannot copy sequential data set to PDS member. "
-                                  "Target must be a sequential data set.");
-    return RTNCD_FAILURE;
-  }
-
-  if (info1.type == ZDS_TYPE_MEMBER && info2.member_name.empty())
-  {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg,
-                                  "Cannot copy PDS member without specifying target member. "
-                                  "Use: zowex ds copy 'PDS(MEMBER)' 'TARGET.PDS(MEMBER)'");
-    return RTNCD_FAILURE;
-  }
-
+  // PDS -> Member is not allowed (can't copy entire PDS into a single member)
   if (info1.type == ZDS_TYPE_PDS && !info2.member_name.empty())
   {
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg,
@@ -310,32 +289,53 @@ int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2, bool replace)
     return RTNCD_FAILURE;
   }
 
-  // Handle target data set existence
   bool is_pds_full_copy = (info1.type == ZDS_TYPE_PDS && info2.member_name.empty());
+  bool target_is_member = !info2.member_name.empty();
 
   if (!info2.exists)
   {
-    // Create target if it doesn't exist using LIKE for attribute parity
+    // Create target data set
     unsigned int code = 0;
     string create_resp;
-    string parm = "ALLOC DA('" + info2.base_dsn + "') LIKE('" + info1.base_dsn + "') NEW CATALOG";
+    string parm;
+
+    if (target_is_member)
+    {
+      string like_dsn = (info1.type == ZDS_TYPE_MEMBER || info1.type == ZDS_TYPE_PDS)
+                            ? info1.base_dsn
+                            : info1.base_dsn;
+      // PS -> Member: create PDS with default attributes
+      if (info1.type == ZDS_TYPE_PS)
+      {
+        parm = "ALLOC DA('" + info2.base_dsn + "') DSORG(PO) DSNTYPE(PDS) DIRBLK(5) "
+                                               "RECFM(F,B) LRECL(80) BLKSIZE(800) SPACE(1,1) TRACKS NEW CATALOG";
+      }
+      else
+      {
+        parm = "ALLOC DA('" + info2.base_dsn + "') LIKE('" + like_dsn + "') NEW CATALOG";
+      }
+    }
+    else
+    {
+      // Use LIKE for attribute parity
+      parm = "ALLOC DA('" + info2.base_dsn + "') LIKE('" + info1.base_dsn + "') NEW CATALOG";
+    }
 
     rc = zut_bpxwdyn(parm, &code, create_resp);
     if (rc != RTNCD_SUCCESS)
     {
-      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to create target data set '%s' using LIKE('%s'): %s",
-                                    info2.base_dsn.c_str(), info1.base_dsn.c_str(), create_resp.c_str());
+      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to create target data set '%s': %s",
+                                    info2.base_dsn.c_str(), create_resp.c_str());
       return RTNCD_FAILURE;
     }
   }
   else if (!replace && !is_pds_full_copy)
   {
-    // Target exists and --replace not specified for sequential/member copy
+    // Check if target already exists (for member, check specific member not just PDS)
     bool target_actually_exists = false;
 
-    if (info2.type == ZDS_TYPE_MEMBER)
+    if (target_is_member)
     {
-      // Check if the specific member exists in the target PDS
       vector<ZDSMem> target_members;
       ZDS temp_zds = {};
       zds_list_members(&temp_zds, info2.base_dsn, target_members);
@@ -353,7 +353,6 @@ int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2, bool replace)
     }
     else
     {
-      // For sequential data sets, the base data set existing means target exists
       target_actually_exists = true;
     }
 
@@ -366,10 +365,26 @@ int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2, bool replace)
     }
   }
 
-  // Perform the copy
+  // --overwrite: delete all existing members in target PDS first
+  if (overwrite && is_pds_full_copy && info2.exists)
+  {
+    vector<ZDSMem> target_members;
+    ZDS temp_zds = {};
+    zds_list_members(&temp_zds, info2.base_dsn, target_members);
+
+    for (vector<ZDSMem>::iterator it = target_members.begin(); it != target_members.end(); ++it)
+    {
+      string mem_name = it->name;
+      zut_trim(mem_name);
+      string member_dsn = info2.base_dsn + "(" + mem_name + ")";
+      ZDS del_zds = {};
+      zds_delete_dsn(&del_zds, member_dsn);
+    }
+  }
+
   if (is_pds_full_copy)
   {
-    return copy_pds_to_pds(zds, info1, info2, replace);
+    return copy_pds_to_pds(zds, info1, info2, replace || overwrite);
   }
   else
   {

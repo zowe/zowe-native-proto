@@ -116,7 +116,7 @@ int zds_get_type_info(const std::string &dsn, ZDSTypeInfo &info);
  * @param replace if true, replace like-named members in target (for PDS copy)
  * @return int 0 for success; non zero otherwise
  */
-int zds_copy_dsn(ZDS *zds, const std::string &dsn1, const std::string &dsn2, bool replace = false);
+int zds_copy_dsn(ZDS *zds, const std::string &dsn1, const std::string &dsn2, bool replace = false, bool overwrite = false);
 
 /**
  * @brief Compress a PDS data set
