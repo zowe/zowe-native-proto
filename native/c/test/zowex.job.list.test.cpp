@@ -40,7 +40,7 @@ void zowex_job_list_tests(vector<string> &_jobs, vector<string> &_ds, vector<str
                     vector<string> lines = parse_rfc_response(response, "\n");
                     Expect(lines.size()).ToBeGreaterThan(0);
                     // Check header or first row columns
-                    // RFC format: jobid, retcode, jobname, status, correlator
+                    // RFC format: jobid, jobname, owner, status, retcode
                     vector<string> cols = parse_rfc_response(lines[0], ",");
                     Expect(cols.size()).ToBeGreaterThanOrEqualTo(5);
                   }
@@ -149,7 +149,7 @@ void zowex_job_list_tests(vector<string> &_jobs, vector<string> &_ds, vector<str
                       // Parse CSV columns
                       vector<string> columns = parse_rfc_response(line, ",");
 
-                      // RFC format: jobid, retcode, jobname, status, correlator
+                      // RFC format: jobid, jobname, owner, status, retcode
                       Expect(columns.size()).ToBeGreaterThanOrEqualTo(5);
 
                       // Validate jobid is not empty
@@ -217,6 +217,37 @@ void zowex_job_list_tests(vector<string> &_jobs, vector<string> &_ds, vector<str
                   ExpectWithContext(rc, response).ToBeGreaterThanOrEqualTo(0);
                 });
 
+             it("should validate default parameters",
+                []()
+                {
+                  int rc = 0;
+                  string response;
+                  rc = execute_command_with_output(zowex_command + " job list --rfc --max-entries 50 --no-warn", response);
+                  ExpectWithContext(rc, response).ToBe(0);
+
+                  // Verify response does not contain jobs from other users
+                  Expect(response.length()).ToBeGreaterThan(0);
+                  vector<string> lines = parse_rfc_response(response, "\n");
+                  string current_user = get_user();
+                  bool found_other_user = false;
+                  for (const auto &line : lines)
+                  {
+                    if (line.empty())
+                      continue;
+                    vector<string> parts = parse_rfc_response(line, ",");
+                    if (parts.size() >= 1)
+                    {
+                      // Check if we found our submitted job (parts[0] is jobid)
+                      if (parts[2] != current_user)
+                      {
+                        found_other_user = true;
+                        break;
+                      }
+                    }
+                  }
+                  Expect(found_other_user).ToBe(false);
+                });
+
              it("should validate owner filter actually works",
                 [&]()
                 {
@@ -237,7 +268,7 @@ void zowex_job_list_tests(vector<string> &_jobs, vector<string> &_ds, vector<str
                   rc = execute_command_with_output(zowex_command + " job list --owner " + current_user + " --rfc --max-entries 50 --no-warn", response);
                   ExpectWithContext(rc, response).ToBe(0);
 
-                  // Parse and validate we found our job (RFC format: jobid,retcode,jobname,status,correlator)
+                  // Parse and validate we found our job (RFC format: jobid,jobname,owner,status,retcode)
                   vector<string> lines = parse_rfc_response(response, "\n");
                   bool found_our_job = false;
                   for (const auto &line : lines)
@@ -279,7 +310,7 @@ void zowex_job_list_tests(vector<string> &_jobs, vector<string> &_ds, vector<str
                   rc = execute_command_with_output(zowex_command + " job list --prefix " + prefix + " --rfc --max-entries 50 --no-warn", response);
                   ExpectWithContext(rc, response).ToBe(0);
 
-                  // Parse and validate all jobs match the prefix pattern (RFC format: jobid,retcode,jobname,status,correlator)
+                  // Parse and validate all jobs match the prefix pattern (RFC format: jobid,jobname,owner,status,retcode)
                   vector<string> lines = parse_rfc_response(response, "\n");
                   Expect(lines.size()).ToBeGreaterThan(0);
 
@@ -288,13 +319,38 @@ void zowex_job_list_tests(vector<string> &_jobs, vector<string> &_ds, vector<str
                     if (line.empty())
                       continue;
                     vector<string> parts = parse_rfc_response(line, ",");
-                    if (parts.size() >= 3)
+                    if (parts.size() >= 2)
                     {
-                      string listed_job_name = parts[2];
+                      string listed_job_name = parts[1];
                       // Verify job name starts with the prefix (minus the wildcard)
                       string prefix_without_wildcard = prefix.substr(0, prefix.length() - 1);
                       bool matches = listed_job_name.substr(0, prefix_without_wildcard.length()) == prefix_without_wildcard;
                       ExpectWithContext(matches, line).ToBe(true);
+                    }
+                  }
+                });
+
+             it("should validate status filter actually works",
+                [&]()
+                {
+                  // List jobs with status filter using --rfc for easier parsing
+                  string response;
+                  int rc = execute_command_with_output(zowex_command + " job list --status ACTIVE --rfc --max-entries 50 --no-warn", response);
+                  ExpectWithContext(rc, response).ToBe(0);
+
+                  // Parse and validate all jobs match the prefix pattern (RFC format: jobid,jobname,owner,status,retcode)
+                  vector<string> lines = parse_rfc_response(response, "\n");
+                  Expect(lines.size()).ToBeGreaterThan(0);
+
+                  for (const auto &line : lines)
+                  {
+                    if (line.empty())
+                      continue;
+                    vector<string> parts = parse_rfc_response(line, ",");
+                    if (parts.size() >= 4)
+                    {
+                      string listed_job_status = parts[3];
+                      ExpectWithContext(listed_job_status == "ACTIVE", line).ToBe(true);
                     }
                   }
                 });

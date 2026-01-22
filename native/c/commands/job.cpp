@@ -54,10 +54,10 @@ int handle_job_list(InvocationContext &context)
         vector<string> fields;
         fields.reserve(5);
         fields.push_back(it->jobid);
-        fields.push_back(it->retcode);
         fields.push_back(it->jobname);
+        fields.push_back(it->owner);
         fields.push_back(it->status);
-        fields.push_back(it->correlator);
+        fields.push_back(it->retcode);
         context.output_stream() << zut_format_as_csv(fields) << endl;
       }
       else
