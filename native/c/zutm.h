@@ -28,6 +28,7 @@ extern "C"
 
 #define ALLOC_STRING_INDEX 0
 #define RTDDN_INDEX 1
+#define RTDSN_INDEX 1
 #define MSG_INDEX 2
 
 #define LAST_PARAMETER_INDEX MSG_INDEX // NOTE(Kelosky): this must be set to the last parameter index
@@ -39,7 +40,7 @@ extern "C"
     short len;
     char str[RET_ARG_MAX_LEN];
     unsigned int rtdd : 1;
-    unsigned int rtdsn : 1; // NOTE(Kelosky): not implemented yet
+    unsigned int rtdsn : 1;
   } BPXWDYN_RET_ARG;
 
   typedef BPXWDYN_RET_ARG BPXWDYN_PARM;
@@ -67,7 +68,7 @@ extern "C"
   int ZUTEDSCT();
   int ZUTSYMBP(SYMBOL_DATA *);
   int ZUTSRCH(const char *);
-  int ZUTRUN(const char *);
+  int ZUTRUN(ZDIAG *, const char *, const char *);
   void ZUTDBGMG(const char *);
   unsigned char ZUTMGKEY();
   int ZUTMLPLB(ZDIAG *, int *, PARMLIB_DSNS *);

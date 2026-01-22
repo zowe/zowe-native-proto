@@ -19,6 +19,7 @@
 #define ZUT_RTNCD_SEARCH_WARNING 6
 
 #define ZUT_RTNCD_SERVICE_FAILURE -2
+#define ZUT_RTNCD_LOAD_FAILURE -3
 
 #if (defined(__IBMCPP__) || defined(__IBMC__))
 #if defined(__clang__)
