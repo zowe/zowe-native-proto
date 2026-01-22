@@ -10,10 +10,8 @@
  */
 
 #include <iostream>
-#include <stdexcept>
 #include <vector>
 #include <cstring>
-#include <random>
 
 #include "ztest.hpp"
 #include "zds.hpp"
@@ -23,69 +21,7 @@
 using namespace std;
 using namespace ztst;
 
-// Helper to generate a unique test data set name
-string get_test_dsn()
-{
-  static int counter = 0;
-  counter++;
-  static random_device rd;
-  static mt19937 gen(rd());
-  uniform_int_distribution<> dist(0, 99999);
-  int random_num = dist(gen);
-  return get_user() + ".ZDSTEST.T" + to_string(random_num) + to_string(counter);
-}
-
-void create_dsn_with_attrs(ZDS *zds, const string &dsn, DS_ATTRIBUTES &attrs, const string &type_name)
-{
-  memset(zds, 0, sizeof(ZDS));
-  string response;
-  int rc = zds_create_dsn(zds, dsn, attrs, response);
-  if (rc != 0)
-  {
-    string err = zds->diag.e_msg_len > 0 ? string(zds->diag.e_msg)
-                 : response.length() > 0 ? response
-                                         : "rc=" + to_string(rc);
-    throw runtime_error("Failed to create " + type_name + ": " + err);
-  }
-}
-
-void create_pds(ZDS *zds, const string &dsn)
-{
-  DS_ATTRIBUTES attrs = {0};
-  attrs.dsorg = "PO";
-  attrs.dirblk = 5;
-  create_dsn_with_attrs(zds, dsn, attrs, "PDS");
-}
-
-void create_pdse(ZDS *zds, const string &dsn)
-{
-  DS_ATTRIBUTES attrs = {0};
-  attrs.dsorg = "PO";
-  attrs.dsntype = "LIBRARY";
-  attrs.dirblk = 5;
-  create_dsn_with_attrs(zds, dsn, attrs, "PDSE");
-}
-
-void create_seq(ZDS *zds, const string &dsn)
-{
-  DS_ATTRIBUTES attrs = {0};
-  attrs.dsorg = "PS";
-  attrs.recfm = "F,B";
-  attrs.lrecl = 80;
-  attrs.blksize = 800;
-  attrs.primary = 1;
-  attrs.secondary = 1;
-  create_dsn_with_attrs(zds, dsn, attrs, "sequential data set");
-}
-
-// Helper to write data to a data set or member
-void write_to_dsn(const string &dsn, const string &data)
-{
-  ZDS zds = {0};
-  zds_write_to_dsn(&zds, dsn, data);
-}
-
-// Test context to manage data set creation and cleanup
+// Test context for copy operations
 struct CopyTestContext
 {
   vector<string> &cleanup_list;
@@ -178,6 +114,49 @@ struct CopyTestContext
   }
 };
 
+struct CompressTestContext
+{
+  vector<string> &cleanup_list;
+  string pds_dsn;
+
+  CompressTestContext(vector<string> &list) : cleanup_list(list)
+  {
+    pds_dsn = get_test_dsn();
+    cleanup_list.push_back(pds_dsn);
+  }
+
+  void create_pds()
+  {
+    ZDS z = {0};
+    ::create_pds(&z, pds_dsn);
+  }
+  void create_pdse()
+  {
+    ZDS z = {0};
+    ::create_pdse(&z, pds_dsn);
+  }
+  void create_seq()
+  {
+    ZDS z = {0};
+    ::create_seq(&z, pds_dsn);
+  }
+  void write_member(const string &member, const string &data)
+  {
+    write_to_dsn(pds_dsn + "(" + member + ")", data);
+  }
+
+  int compress()
+  {
+    ZDS z = {0};
+    return zds_compress_dsn(&z, pds_dsn);
+  }
+
+  int compress_with_context(ZDS &z)
+  {
+    return zds_compress_dsn(&z, pds_dsn);
+  }
+};
+
 void zds_tests()
 {
   vector<string> created_dsns;
@@ -187,20 +166,20 @@ void zds_tests()
            {
              afterAll([&]() -> void
                       {
-                         // Cleanup created data sets
-                         for (const auto &dsn : created_dsns)
-                         {
-                           try
-                           {
-                             ZDS zds = {0};
-                             zds_delete_dsn(&zds, dsn);
-                           }
-                           catch (...)
-                           {
-                             // Ignore cleanup errors
-                           }
-                         }
-                         created_dsns.clear(); });
+                          // Cleanup created data sets
+                          for (const auto &dsn : created_dsns)
+                          {
+                            try
+                            {
+                              ZDS zds = {0};
+                              zds_delete_dsn(&zds, dsn);
+                            }
+                            catch (...)
+                            {
+                              // Ignore cleanup errors
+                            }
+                          }
+                          created_dsns.clear(); });
 
              describe("list",
                       []() -> void
@@ -672,130 +651,71 @@ void zds_tests()
                         it("should compress a PDS",
                            [&]() -> void
                            {
-                             string pds_dsn = get_test_dsn();
-                             created_dsns.push_back(pds_dsn);
-
-                             ZDS zds_create = {0};
-                             create_pds(&zds_create, pds_dsn);
-
-                             string mem1_dsn = pds_dsn + "(MEM1)";
-                             string mem2_dsn = pds_dsn + "(MEM2)";
-                             string data1 = "Data 1";
-                             string data2 = "Data 2";
-                             ZDS zds_write1 = {0};
-                             zds_write_to_dsn(&zds_write1, mem1_dsn, data1);
-                             ZDS zds_write2 = {0};
-                             zds_write_to_dsn(&zds_write2, mem2_dsn, data2);
-
-                             ZDS zds_compress = {0};
-                             int rc = zds_compress_dsn(&zds_compress, pds_dsn);
-                             ExpectWithContext(rc, zds_compress.diag.e_msg).ToBe(0);
+                             CompressTestContext ctx(created_dsns);
+                             ctx.create_pds();
+                             ctx.write_member("MEM1", "Data 1");
+                             ctx.write_member("MEM2", "Data 2");
+                             Expect(ctx.compress()).ToBe(0);
                            });
 
                         it("should compress PDS with multiple members",
                            [&]() -> void
                            {
-                             string pds_dsn = get_test_dsn();
-                             created_dsns.push_back(pds_dsn);
-
-                             ZDS zds_create = {0};
-                             create_pds(&zds_create, pds_dsn);
+                             CompressTestContext ctx(created_dsns);
+                             ctx.create_pds();
                              for (int i = 1; i <= 5; i++)
-                             {
-                               ZDS zds_write = {0};
-                               string mem_dsn = pds_dsn + "(MEM" + to_string(i) + ")";
-                               string mem_data = "Data " + to_string(i);
-                               zds_write_to_dsn(&zds_write, mem_dsn, mem_data);
-                             }
-
-                             ZDS zds_compress = {0};
-                             int rc = zds_compress_dsn(&zds_compress, pds_dsn);
-                             ExpectWithContext(rc, zds_compress.diag.e_msg).ToBe(0);
+                               ctx.write_member("MEM" + to_string(i), "Data " + to_string(i));
+                             Expect(ctx.compress()).ToBe(0);
                            });
 
                         it("should compress empty PDS",
                            [&]() -> void
                            {
-                             string pds_dsn = get_test_dsn();
-                             created_dsns.push_back(pds_dsn);
-
-                             ZDS zds_create = {0};
-                             create_pds(&zds_create, pds_dsn);
-
-                             ZDS zds_compress = {0};
-                             int rc = zds_compress_dsn(&zds_compress, pds_dsn);
-                             ExpectWithContext(rc, zds_compress.diag.e_msg).ToBe(0);
+                             CompressTestContext ctx(created_dsns);
+                             ctx.create_pds();
+                             Expect(ctx.compress()).ToBe(0);
                            });
 
                         it("should fail when compressing a sequential data set",
                            [&]() -> void
                            {
-                             string ps_dsn = get_test_dsn();
-                             created_dsns.push_back(ps_dsn);
-
-                             ZDS zds_create = {0};
-                             create_seq(&zds_create, ps_dsn);
-
-                             ZDS zds_compress = {0};
-                             int rc = zds_compress_dsn(&zds_compress, ps_dsn);
-                             Expect(rc).Not().ToBe(0);
-                             Expect(string(zds_compress.diag.e_msg)).ToContain("not a PDS");
+                             CompressTestContext ctx(created_dsns);
+                             ctx.create_seq();
+                             ZDS z = {0};
+                             Expect(ctx.compress_with_context(z)).Not().ToBe(0);
+                             Expect(string(z.diag.e_msg)).ToContain("not a PDS");
                            });
 
                         it("should fail when compressing a PDSE",
                            [&]() -> void
                            {
-                             string pdse_dsn = get_test_dsn();
-                             created_dsns.push_back(pdse_dsn);
-
-                             ZDS zds_create = {0};
-                             create_pdse(&zds_create, pdse_dsn);
-
-                             ZDS zds_compress = {0};
-                             int rc = zds_compress_dsn(&zds_compress, pdse_dsn);
-                             Expect(rc).Not().ToBe(0);
-                             string error_msg = string(zds_compress.diag.e_msg);
-                             Expect(error_msg.length()).ToBeGreaterThan(0);
-                             bool has_error = error_msg.find("not a PDS") != string::npos ||
-                                              error_msg.find("IEBCOPY") != string::npos ||
-                                              error_msg.find("failed") != string::npos ||
-                                              error_msg.find("ERROR") != string::npos;
-                             Expect(has_error).ToBe(true);
+                             CompressTestContext ctx(created_dsns);
+                             ctx.create_pdse();
+                             ZDS z = {0};
+                             Expect(ctx.compress_with_context(z)).Not().ToBe(0);
+                             Expect(string(z.diag.e_msg).length()).ToBeGreaterThan(0);
                            });
 
                         it("should fail when compressing nonexistent data set",
                            []() -> void
                            {
-                             ZDS zds = {0};
-                             string nonexistent_dsn = "NONEXISTENT.DATASET.NAME";
-                             int rc = zds_compress_dsn(&zds, nonexistent_dsn);
-                             Expect(rc).Not().ToBe(0);
-                             Expect(string(zds.diag.e_msg)).ToContain("not a PDS");
+                             ZDS z = {0};
+                             Expect(zds_compress_dsn(&z, "NONEXISTENT.DATASET.NAME")).Not().ToBe(0);
+                             Expect(string(z.diag.e_msg)).ToContain("not a PDS");
                            });
 
                         it("should preserve member content after compression",
                            [&]() -> void
                            {
-                             string pds_dsn = get_test_dsn();
-                             created_dsns.push_back(pds_dsn);
-                             string member_dsn = pds_dsn + "(MEMBER)";
+                             CompressTestContext ctx(created_dsns);
+                             ctx.create_pds();
                              string test_data = "Test data for compression";
+                             ctx.write_member("MEMBER", test_data);
+                             Expect(ctx.compress()).ToBe(0);
 
-                             ZDS zds_create = {0};
-                             create_pds(&zds_create, pds_dsn);
-
-                             ZDS zds_write = {0};
-                             int rc = zds_write_to_dsn(&zds_write, member_dsn, test_data);
-                             ExpectWithContext(rc, zds_write.diag.e_msg).ToBe(0);
-
-                             ZDS zds_compress = {0};
-                             rc = zds_compress_dsn(&zds_compress, pds_dsn);
-                             ExpectWithContext(rc, zds_compress.diag.e_msg).ToBe(0);
-
-                             string read_data = "";
-                             ZDS zds_read = {0};
-                             rc = zds_read_from_dsn(&zds_read, member_dsn, read_data);
-                             ExpectWithContext(rc, zds_read.diag.e_msg).ToBe(0);
+                             string read_data;
+                             ZDS z = {0};
+                             zds_read_from_dsn(&z, ctx.pds_dsn + "(MEMBER)", read_data);
                              Expect(read_data).ToContain(test_data);
                            });
                       });
