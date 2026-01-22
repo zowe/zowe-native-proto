@@ -687,8 +687,8 @@ int zds_open_output_bpam(ZDS *zds, std::string dsname, IO_CTRL *&ioc)
   string alloc_cmd = "ALLOC DA('" + dsname + "') SHR"; // TODO(Kelosky): log this command
   unsigned int code = 0;
   string resp = "";
-  string ddname = RTDDN; // set to empty string to request a dynamic DD name
-  int rc = zut_bpxwdyn(alloc_cmd, &code, resp, ddname);
+  string ddname = "";
+  int rc = zut_bpxwdyn_rtdd(alloc_cmd, &code, resp, ddname);
   if (0 != rc)
   {
     strcpy(zds->diag.service_name, "BPXWDYN");
