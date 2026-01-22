@@ -13,8 +13,7 @@
 #include <stdexcept>
 #include <vector>
 #include <cstring>
-#include <ctime>
-#include <cstdlib>
+#include <random>
 
 #include "ztest.hpp"
 #include "zds.hpp"
@@ -29,9 +28,11 @@ string get_test_dsn()
 {
   static int counter = 0;
   counter++;
-  // CodeQL: rand() is fine here - just generating unique test data set names, not for security
-  srand(time(nullptr) + counter);   // codeql[cpp/weak-cryptographic-algorithm]
-  int random_num = rand() % 100000; // codeql[cpp/weak-cryptographic-algorithm]
+  // Use C++ <random> for unique test data set names
+  static random_device rd;
+  static mt19937 gen(rd());
+  uniform_int_distribution<> dist(0, 99999);
+  int random_num = dist(gen);
   // Use user's HLQ from zutils, but with a simpler qualifier without #
   return get_user() + ".ZDSTEST.T" + to_string(random_num) + to_string(counter);
 }
