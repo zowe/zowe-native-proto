@@ -11,9 +11,8 @@
 
 #include "tool.hpp"
 #include "common_args.hpp"
-#include "../zcn.hpp"
-#include "../zds.hpp"
 #include "../zut.hpp"
+#include "../zds.hpp"
 #include "../zuttype.h"
 #include <unistd.h>
 
@@ -27,7 +26,6 @@ namespace tool
 int handle_tool_convert_dsect(InvocationContext &context)
 {
   int rc = 0;
-  ZCN zcn = {0};
   unsigned int code = 0;
   string resp;
 
@@ -68,6 +66,7 @@ int handle_tool_convert_dsect(InvocationContext &context)
   {
     context.error_stream() << "Error: convert failed with rc: '" << rc << "'" << endl;
     context.output_stream() << "  See '" << sysprint << "' and '" << sysout << "' for more details" << endl;
+    zut_free_dynalloc_dds(diag, dds);
     return RTNCD_FAILURE;
   }
 
@@ -241,6 +240,7 @@ int handle_tool_amblist(InvocationContext &context)
   {
     context.error_stream() << "Error: could not write to dd: '" << "sysin" << "' rc: '" << rc << "'" << endl;
     context.error_stream() << "  Details: " << zds.diag.e_msg << endl;
+    zut_free_dynalloc_dds(diag, dds);
     return RTNCD_FAILURE;
   }
 
@@ -249,6 +249,7 @@ int handle_tool_amblist(InvocationContext &context)
   if (RTNCD_SUCCESS != rc)
   {
     context.error_stream() << "Error: could not invoke AMBLIST rc: '" << rc << "'" << endl;
+    zut_free_dynalloc_dds(diag, dds);
     return RTNCD_FAILURE;
   }
 
@@ -259,6 +260,7 @@ int handle_tool_amblist(InvocationContext &context)
   {
     context.error_stream() << "Error: could not read from dd: '" << "sysprint" << "' rc: '" << rc << "'" << endl;
     context.error_stream() << "  Details: " << zds.diag.e_msg << endl;
+    zut_free_dynalloc_dds(diag, dds);
     return RTNCD_FAILURE;
   }
   context.output_stream() << output << endl;
@@ -269,40 +271,73 @@ int handle_tool_amblist(InvocationContext &context)
   return RTNCD_SUCCESS;
 }
 
+string parse_escape_chars(string &input)
+{
+  std::string result;
+  result.reserve(input.size());
+
+  size_t i = 0;
+  while (i < input.size())
+  {
+    if (input[i] == '\\' && i + 1 < input.size())
+    {
+      char next = input[i + 1];
+      switch (next)
+      {
+      case 'n':
+        result += '\n';
+        i += 2;
+        break;
+      case 't':
+        result += '\t';
+        i += 2;
+        break;
+      case '\\':
+        result += '\\';
+        i += 2;
+        break;
+      case '"':
+        result += '"';
+        i += 2;
+        break;
+      default:
+        // Unknown escape sequence, keep the backslash and the following character
+        result += input[i];
+        result += next;
+        i += 2;
+        break;
+      }
+    }
+    else
+    {
+      result += input[i];
+      ++i;
+    }
+  }
+
+  return result;
+}
+
 int handle_tool_run(InvocationContext &context)
 {
   int rc = 0;
   string program = context.get<std::string>("program", "");
-  string dynalloc_pre = context.get<std::string>("dynalloc-pre", "");
-  string dynalloc_post = context.get<std::string>("dynalloc-post", "");
+  string parms = context.get<std::string>("parms", "");
+  vector<string> dds;
 
-  // Allocate anything that was requested
-  if (dynalloc_pre.length() > 0)
+  const ArgumentMap &dynamic_args = context.dynamic_arguments();
+  for (ArgumentMap::const_iterator it = dynamic_args.begin(); it != dynamic_args.end(); ++it)
   {
-    vector<string> dds;
+    dds.push_back("alloc dd(" + it->first + ") " + it->second.get_string_value());
+  }
 
-    ifstream in(dynalloc_pre.c_str());
-    if (!in.is_open())
-    {
-      context.error_stream() << "Error: could not open '" << dynalloc_pre << "'" << endl;
-      return RTNCD_FAILURE;
-    }
-
-    string line;
-    while (getline(in, line))
-    {
-      dds.push_back(line);
-    }
-    in.close();
-
-    ZDIAG diag = {};
-    rc = zut_loop_dynalloc(diag, dds);
-    if (0 != rc)
-    {
-      context.error_stream() << "Error: allocation failed" << endl;
-      context.error_stream() << "  Details: " << diag.e_msg << endl;
-      return RTNCD_FAILURE;
-    }
+  ZDIAG diag = {};
+  rc = zut_loop_dynalloc(diag, dds);
+  if (0 != rc)
+  {
+    context.error_stream() << "Error: allocation failed" << endl;
+    context.error_stream() << "  Details: " << diag.e_msg << endl;
+    return RTNCD_FAILURE;
   }
 
   string indd = context.get<std::string>("in-dd", "");
@@ -313,11 +348,22 @@ int handle_tool_run(InvocationContext &context)
     if (!out.is_open())
     {
       context.error_stream() << "Error: could not open input '" << ddname << "'" << endl;
+      if (dds.size() > 0)
+      {
+        context.error_stream() << "  Allocations: " << endl;
+        for (vector<string>::iterator it = dds.begin(); it != dds.end(); ++it)
+        {
+          context.error_stream() << "    " << *it << endl;
+        }
+      }
+      zut_free_dynalloc_dds(diag, dds);
       return RTNCD_FAILURE;
     }
 
-    string input = context.get<std::string>("input", "");
-    if (context.has("input"))
+    string input = context.get<std::string>("in-dd-parms", "");
+    input = parse_escape_chars(input);
+
+    if (context.has("in-dd-parms"))
     {
       out << input << endl;
     }
@@ -326,13 +372,25 @@ int handle_tool_run(InvocationContext &context)
   }
 
   transform(program.begin(), program.end(), program.begin(), ::toupper);
+  parms = parse_escape_chars(parms);
 
-  rc = zut_run(program);
+  rc = zut_run(diag, program, parms);
 
   if (0 != rc)
   {
-    context.error_stream() << "Error: program '" << program << "' ended with rc: '" << rc << "'" << endl;
-    rc = RTNCD_FAILURE;
+    if (diag.e_msg_len > 0)
+    {
+      context.error_stream() << "Error: program '" << program << "' ended with rc: '" << rc << "'" << endl;
+      context.error_stream() << "  Details: " << diag.e_msg << endl;
+      if (dds.size() > 0)
+      {
+        context.error_stream() << "  Allocations: " << endl;
+        for (vector<string>::iterator it = dds.begin(); it != dds.end(); ++it)
+        {
+          context.error_stream() << "    " << *it << endl;
+        }
+      }
+    }
   }
 
   string outdd = context.get<std::string>("out-dd", "");
@@ -343,6 +401,15 @@ int handle_tool_run(InvocationContext &context)
     if (!in.is_open())
     {
       context.error_stream() << "Error: could not open output '" << ddname << "'" << endl;
+      if (dds.size() > 0)
+      {
+        context.error_stream() << "  Allocations: " << endl;
+        for (vector<string>::iterator it = dds.begin(); it != dds.end(); ++it)
+        {
+          context.error_stream() << "    " << *it << endl;
+        }
+      }
+      zut_free_dynalloc_dds(diag, dds);
       return RTNCD_FAILURE;
     }
 
@@ -354,33 +421,7 @@ int handle_tool_run(InvocationContext &context)
     in.close();
   }
 
-  // Optionally free everything that was allocated
-  if (dynalloc_post.length() > 0)
-  {
-    vector<string> dds;
-
-    ifstream in(dynalloc_post.c_str());
-    if (!in.is_open())
-    {
-      context.error_stream() << "Error: could not open '" << dynalloc_post << "'" << endl;
-    }
-
-    string line;
-    while (getline(in, line))
-    {
-      dds.push_back(line);
-    }
-    in.close();
-
-    ZDIAG diag = {};
-    rc = zut_loop_dynalloc(diag, dds);
-    if (0 != rc)
-    {
-      context.error_stream() << "Error: allocation failed" << endl;
-      context.error_stream() << "  Details: " << diag.e_msg << endl;
-      return RTNCD_FAILURE;
-    }
-  }
+  zut_free_dynalloc_dds(diag, dds);
 
   return rc;
 }
@@ -446,21 +487,19 @@ void register_commands(parser::Command &root_command)
   // Run subcommand
   auto tool_run_cmd = command_ptr(new Command("run", "run a program"));
   tool_run_cmd->add_positional_arg("program", "name of program to run", ArgType_Single, true);
-  tool_run_cmd->add_keyword_arg("dynalloc-pre",
-                                make_aliases("--dynalloc-pre", "--dp"),
-                                "dynalloc pre run statements", ArgType_Single, false);
-  tool_run_cmd->add_keyword_arg("dynalloc-post",
-                                make_aliases("--dynalloc-post", "--dt"),
-                                "dynalloc post run statements", ArgType_Single, false);
   tool_run_cmd->add_keyword_arg("in-dd",
                                 make_aliases("--in-dd", "--idd"),
                                 "input ddname", ArgType_Single, false);
-  tool_run_cmd->add_keyword_arg("input",
+  tool_run_cmd->add_keyword_arg("in-dd-parms",
                                 make_aliases("--input", "--in"),
-                                "input", ArgType_Single, false);
+                                "input parameters written to in-dd", ArgType_Single, false);
+  tool_run_cmd->add_keyword_arg("parms",
+                                make_aliases("--parms", "--p"),
+                                "parms to pass to program, PARMS=", ArgType_Single, false);
   tool_run_cmd->add_keyword_arg("out-dd",
                                 make_aliases("--out-dd", "--odd"),
                                 "output ddname", ArgType_Single, false);
+  tool_run_cmd->enable_dynamic_keywords(ArgType_Single, "dd", "ddname(s) to allocate, e.g. --sysprint \"sysout=*\" --sysut1 \"da(MY.DATA.SET) shr msg(2)\"");
   tool_run_cmd->set_handler(handle_tool_run);
   tool_cmd->add_command(tool_run_cmd);
 
