@@ -14,11 +14,9 @@
 #include <string.h>
 #include "zmetal.h"
 #include "asasymbp.h"
-#include "zattachx.h"
 #include "zstorage.h"
 #include "zutm.h"
 #include "zutm31.h"
-#include "zecb.h"
 #include "zam.h"
 #include "zuttype.h"
 
@@ -216,7 +214,7 @@ int ZUTSYMBP(SYMBOL_DATA *data)
   return rc;
 }
 
-typedef int (*ISRSUPC)() ATTRIBUTE(amode31);
+typedef int (*ISRSUPC)(void *) ATTRIBUTE(amode31);
 #pragma prolog(ZUTSRCH, " ZWEPROLG NEWDSA=(YES,4) ")
 #pragma epilog(ZUTSRCH, " ZWEEPILG ")
 
@@ -224,13 +222,13 @@ typedef struct
 {
   short len;
   char parms[100];
-} ISRSUPC_PARMS;
+} PARMS;
 
 int ZUTSRCH(const char *parms)
 {
   int rc = 0;
 
-  ISRSUPC_PARMS p = {0};
+  PARMS p = {0};
   p.len = sprintf(p.parms, "%s", parms);
 
   ISRSUPC search = (ISRSUPC)load_module31("ISRSUPC");
@@ -245,9 +243,17 @@ int ZUTSRCH(const char *parms)
 typedef int (*PGM31)(void *) ATTRIBUTE(amode31);
 typedef int (*PGM64)(void *) ATTRIBUTE(amode64);
 
-int ZUTRUN(const char *program)
+int ZUTRUN(ZDIAG *diag, const char *program, const char *parms)
 {
   int rc = 0;
+
+  PARMS pstruct = {0};
+  if (parms)
+  {
+    pstruct.len = sprintf(pstruct.parms, "%s", parms);
+  }
+
+  PARMS *pptr = &pstruct;
 
   char name_truncated[8 + 1] = {0};
   memset(name_truncated, ' ', sizeof(name_truncated) - 1);                                                                      // pad with spaces
@@ -263,17 +269,19 @@ int ZUTRUN(const char *program)
     {
       ifunction &= 0xFFFFFFFFFFFFFFFE; // clear low bit
       PGM64 p64 = (PGM64)ifunction;
-      rc = p64(NULL); // ensure no parms
+      rc = p64(pptr);
     }
     else
     {
       ifunction &= 0x000000007FFFFFFF; // clear high bit
       PGM31 p31 = (PGM31)ifunction;
-      rc = p31(NULL); // ensure no parms
+      rc = p31(pptr);
     }
   }
   else
   {
+    diag->e_msg_len = sprintf(diag->e_msg, "Load failure for program '%s', not found", name_truncated);
+    diag->detail_rc = ZUT_RTNCD_LOAD_FAILURE;
     return RTNCD_FAILURE;
   }
 
