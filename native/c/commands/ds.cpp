@@ -702,19 +702,19 @@ int handle_data_set_delete(InvocationContext &context)
 int handle_data_set_rename(InvocationContext &context)
 {
   int rc = 0;
-  string dsn_Before = context.get<string>("dsname-before", "");
-  string dsn_After = context.get<string>("dsname-after", "");
+  string dsn_before = context.get<string>("dsname-before", "");
+  string dsn_after = context.get<string>("dsname-after", "");
   ZDS zds = {};
 
-  rc = zds_rename_dsn(&zds, dsn_Before, dsn_After);
+  rc = zds_rename_dsn(&zds, dsn_before, dsn_after);
 
   if (0 != rc)
   {
-    context.error_stream() << "Error: Could not rename data set: '" << dsn_Before << "' rc: '" << rc << "'" << endl;
+    context.error_stream() << "Error: Could not rename data set: '" << dsn_before << "' rc: '" << rc << "'" << endl;
     context.error_stream() << " Details: " << zds.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
-  context.output_stream() << "Data set '" << dsn_Before << "' renamed to '" << dsn_After << "'" << endl;
+  context.output_stream() << "Data set '" << dsn_before << "' renamed to '" << dsn_after << "'" << endl;
 
   return rc;
 }
