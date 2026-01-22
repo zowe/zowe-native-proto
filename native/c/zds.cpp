@@ -170,71 +170,27 @@ static void delete_all_members(const string &pds_dsn)
   }
 }
 
-// Copy PDS to PDS using IEBCOPY
-static int copy_pds_to_pds(ZDS *zds, const ZDSTypeInfo &src, const ZDSTypeInfo &dst, bool replace)
+static int run_iebcopy(ZDS *zds, vector<string> &dds, const string &control_stmts)
 {
-  int rc = 0;
-  vector<string> dds;
-  string indd_name = "INDD";
-  string outdd_name = "OUTDD";
-  dds.push_back("alloc dd(" + indd_name + ") da('" + src.base_dsn + "') shr");
-  dds.push_back("alloc dd(" + outdd_name + ") da('" + dst.base_dsn + "') old");
-  dds.push_back("alloc dd(sysprint) lrecl(80) recfm(f,b) blksize(80)");
-  dds.push_back("alloc dd(sysin) lrecl(80) recfm(f,b) blksize(80)");
-
-  rc = zut_loop_dynalloc(zds->diag, dds);
-  if (0 != rc)
+  int rc = zut_loop_dynalloc(zds->diag, dds);
+  if (rc != 0)
   {
     zut_free_dynalloc_dds(zds->diag, dds);
     return RTNCD_FAILURE;
   }
 
-  string control_stmts;
-
-  if (replace)
-  {
-    // INDD with R option replaces like-named members
-    control_stmts = "        COPY OUTDD=" + outdd_name + ",INDD=((" + indd_name + ",R))";
-  }
-  else
-  {
-    vector<string> target_members = get_member_names(dst.base_dsn);
-    if (target_members.empty())
-    {
-      control_stmts = "        COPY OUTDD=" + outdd_name + ",INDD=" + indd_name;
-    }
-    else
-    {
-      // Exclude existing members in target
-      control_stmts = "        COPY OUTDD=" + outdd_name + ",INDD=" + indd_name + "\n";
-      control_stmts += "        EXCLUDE MEMBER=(";
-      for (size_t i = 0; i < target_members.size(); i++)
-      {
-        if (i > 0)
-          control_stmts += ",";
-        // IEBCOPY has 71 char line limit
-        if (control_stmts.length() - control_stmts.rfind('\n') > 60)
-        {
-          control_stmts += "\n               ";
-        }
-        control_stmts += target_members[i];
-      }
-      control_stmts += ")";
-    }
-  }
-
   rc = zds_write_to_dd(zds, "sysin", control_stmts);
-  if (0 != rc)
+  if (rc != 0)
   {
     zut_free_dynalloc_dds(zds->diag, dds);
     return RTNCD_FAILURE;
   }
 
   rc = zut_run("IEBCOPY");
-  if (RTNCD_SUCCESS != rc)
+  if (rc != RTNCD_SUCCESS)
   {
     string output;
-    if (0 == zds_read_from_dd(zds, "sysprint", output))
+    if (zds_read_from_dd(zds, "sysprint", output) == 0)
     {
       zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "IEBCOPY failed. SYSPRINT:\n%s", output.c_str());
     }
@@ -244,6 +200,47 @@ static int copy_pds_to_pds(ZDS *zds, const ZDSTypeInfo &src, const ZDSTypeInfo &
 
   zut_free_dynalloc_dds(zds->diag, dds);
   return RTNCD_SUCCESS;
+}
+
+static int copy_pds_to_pds(ZDS *zds, const ZDSTypeInfo &src, const ZDSTypeInfo &dst, bool replace)
+{
+  vector<string> dds;
+  dds.push_back("alloc dd(INDD) da('" + src.base_dsn + "') shr");
+  dds.push_back("alloc dd(OUTDD) da('" + dst.base_dsn + "') old");
+  dds.push_back("alloc dd(sysprint) lrecl(80) recfm(f,b) blksize(80)");
+  dds.push_back("alloc dd(sysin) lrecl(80) recfm(f,b) blksize(80)");
+
+  string control_stmts;
+  if (replace)
+  {
+    // INDD with R option replaces like-named members
+    control_stmts = "        COPY OUTDD=OUTDD,INDD=((INDD,R))";
+  }
+  else
+  {
+    vector<string> target_members = get_member_names(dst.base_dsn);
+    if (target_members.empty())
+    {
+      control_stmts = "        COPY OUTDD=OUTDD,INDD=INDD";
+    }
+    else
+    {
+      control_stmts = "        COPY OUTDD=OUTDD,INDD=INDD\n";
+      control_stmts += "        EXCLUDE MEMBER=(";
+      for (size_t i = 0; i < target_members.size(); i++)
+      {
+        if (i > 0)
+          control_stmts += ",";
+        // IEBCOPY has 71 char line limit
+        if (control_stmts.length() - control_stmts.rfind('\n') > 60)
+          control_stmts += "\n               ";
+        control_stmts += target_members[i];
+      }
+      control_stmts += ")";
+    }
+  }
+
+  return run_iebcopy(zds, dds, control_stmts);
 }
 
 // Copy sequential data set or member using record I/O
@@ -329,18 +326,11 @@ int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2, bool replace,
     string create_resp;
     string parm;
 
-    if (target_is_member)
+    if (target_is_member && info1.type == ZDS_TYPE_PS)
     {
-      if (info1.type == ZDS_TYPE_PS)
-      {
-        // PS -> Member: create PDS with default attributes
-        parm = "ALLOC DA('" + info2.base_dsn + "') DSORG(PO) DSNTYPE(PDS) DIRBLK(5) "
-                                               "RECFM(F,B) LRECL(80) BLKSIZE(800) SPACE(1,1) TRACKS NEW CATALOG";
-      }
-      else
-      {
-        parm = "ALLOC DA('" + info2.base_dsn + "') LIKE('" + info1.base_dsn + "') NEW CATALOG";
-      }
+      // PS -> Member: create PDS with default attributes
+      parm = "ALLOC DA('" + info2.base_dsn + "') DSORG(PO) DSNTYPE(PDS) DIRBLK(5) "
+                                             "RECFM(F,B) LRECL(80) BLKSIZE(800) SPACE(1,1) TRACKS NEW CATALOG";
     }
     else
     {
@@ -398,43 +388,13 @@ int zds_compress_dsn(ZDS *zds, const string &dsn)
     return RTNCD_FAILURE;
   }
 
-  // Use same pattern as original working compress: simple DD names, same blksize
   vector<string> dds;
-  dds.push_back("alloc dd(a) da('" + dsn + "') shr");
-  dds.push_back("alloc dd(b) da('" + dsn + "') shr");
+  dds.push_back("alloc dd(A) da('" + dsn + "') shr");
+  dds.push_back("alloc dd(B) da('" + dsn + "') shr");
   dds.push_back("alloc dd(sysprint) lrecl(80) recfm(f,b) blksize(80)");
   dds.push_back("alloc dd(sysin) lrecl(80) recfm(f,b) blksize(80)");
 
-  rc = zut_loop_dynalloc(zds->diag, dds);
-  if (0 != rc)
-  {
-    // Note: zut_loop_dynalloc may have partially succeeded, so we need to attempt cleanup
-    // zut_free_dynalloc_dds will fail gracefully for DDs that weren't allocated
-    zut_free_dynalloc_dds(zds->diag, dds);
-    return RTNCD_FAILURE;
-  }
-
-  rc = zds_write_to_dd(zds, "sysin", "        COPY OUTDD=B,INDD=A");
-  if (0 != rc)
-  {
-    zut_free_dynalloc_dds(zds->diag, dds);
-    return RTNCD_FAILURE;
-  }
-
-  rc = zut_run("IEBCOPY");
-  if (RTNCD_SUCCESS != rc)
-  {
-    string output;
-    if (0 == zds_read_from_dd(zds, "sysprint", output))
-    {
-      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "IEBCOPY failed. SYSPRINT:\n%s", output.c_str());
-    }
-    zut_free_dynalloc_dds(zds->diag, dds);
-    return RTNCD_FAILURE;
-  }
-
-  zut_free_dynalloc_dds(zds->diag, dds);
-  return RTNCD_SUCCESS;
+  return run_iebcopy(zds, dds, "        COPY OUTDD=B,INDD=A");
 }
 
 bool zds_dataset_exists(const string &dsn)
