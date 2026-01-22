@@ -134,39 +134,39 @@ int zds_get_type_info(const string &dsn, ZDSTypeInfo &info)
   return RTNCD_SUCCESS;
 }
 
-// Check if a specific member exists in a PDS
-static bool member_exists_in_pds(const string &pds_dsn, const string &member_name)
+static vector<string> get_member_names(const string &pds_dsn)
 {
+  vector<string> names;
   vector<ZDSMem> members;
   ZDS temp_zds = {};
   zds_list_members(&temp_zds, pds_dsn, members);
-
   for (vector<ZDSMem>::iterator it = members.begin(); it != members.end(); ++it)
   {
-    string mem_name = it->name;
-    zut_trim(mem_name);
-    if (mem_name == member_name)
-    {
+    string name = it->name;
+    zut_trim(name);
+    names.push_back(name);
+  }
+  return names;
+}
+
+static bool member_exists_in_pds(const string &pds_dsn, const string &member_name)
+{
+  vector<string> names = get_member_names(pds_dsn);
+  for (vector<string>::iterator it = names.begin(); it != names.end(); ++it)
+  {
+    if (*it == member_name)
       return true;
-    }
   }
   return false;
 }
 
-// Delete all members in a PDS
 static void delete_all_members(const string &pds_dsn)
 {
-  vector<ZDSMem> members;
-  ZDS temp_zds = {};
-  zds_list_members(&temp_zds, pds_dsn, members);
-
-  for (vector<ZDSMem>::iterator it = members.begin(); it != members.end(); ++it)
+  vector<string> names = get_member_names(pds_dsn);
+  for (vector<string>::iterator it = names.begin(); it != names.end(); ++it)
   {
-    string mem_name = it->name;
-    zut_trim(mem_name);
-    string member_dsn = pds_dsn + "(" + mem_name + ")";
     ZDS del_zds = {};
-    zds_delete_dsn(&del_zds, member_dsn);
+    zds_delete_dsn(&del_zds, pds_dsn + "(" + *it + ")");
   }
 }
 
@@ -198,20 +198,16 @@ static int copy_pds_to_pds(ZDS *zds, const ZDSTypeInfo &src, const ZDSTypeInfo &
   }
   else
   {
-    // Exclude existing members in target
-    vector<ZDSMem> target_members;
-    ZDS temp_zds = {};
-    zds_list_members(&temp_zds, dst.base_dsn, target_members);
-
+    vector<string> target_members = get_member_names(dst.base_dsn);
     if (target_members.empty())
     {
       control_stmts = "        COPY OUTDD=" + outdd_name + ",INDD=" + indd_name;
     }
     else
     {
+      // Exclude existing members in target
       control_stmts = "        COPY OUTDD=" + outdd_name + ",INDD=" + indd_name + "\n";
       control_stmts += "        EXCLUDE MEMBER=(";
-
       for (size_t i = 0; i < target_members.size(); i++)
       {
         if (i > 0)
@@ -221,7 +217,7 @@ static int copy_pds_to_pds(ZDS *zds, const ZDSTypeInfo &src, const ZDSTypeInfo &
         {
           control_stmts += "\n               ";
         }
-        control_stmts += target_members[i].name;
+        control_stmts += target_members[i];
       }
       control_stmts += ")";
     }

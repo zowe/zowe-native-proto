@@ -35,47 +35,39 @@ string get_test_dsn()
   return get_user() + ".ZDSTEST.T" + to_string(random_num) + to_string(counter);
 }
 
-// Helper to extract error message from ZDS struct or response
-string get_create_error(ZDS *zds, const string &response, int rc)
-{
-  if (zds->diag.e_msg_len > 0)
-    return string(zds->diag.e_msg);
-  if (response.length() > 0)
-    return response;
-  return "Unknown error (rc=" + to_string(rc) + ")";
-}
-
-// Helper function to create a PDS
-void create_pds(ZDS *zds, const string &dsn)
+void create_dsn_with_attrs(ZDS *zds, const string &dsn, DS_ATTRIBUTES &attrs, const string &type_name)
 {
   memset(zds, 0, sizeof(ZDS));
-  DS_ATTRIBUTES attrs = {0};
-  attrs.dsorg = "PO";
-  attrs.dirblk = 5;
   string response;
   int rc = zds_create_dsn(zds, dsn, attrs, response);
   if (rc != 0)
-    throw runtime_error("Failed to create PDS: " + get_create_error(zds, response, rc));
+  {
+    string err = zds->diag.e_msg_len > 0 ? string(zds->diag.e_msg)
+                 : response.length() > 0 ? response
+                                         : "rc=" + to_string(rc);
+    throw runtime_error("Failed to create " + type_name + ": " + err);
+  }
 }
 
-// Helper function to create a PDSE
+void create_pds(ZDS *zds, const string &dsn)
+{
+  DS_ATTRIBUTES attrs = {0};
+  attrs.dsorg = "PO";
+  attrs.dirblk = 5;
+  create_dsn_with_attrs(zds, dsn, attrs, "PDS");
+}
+
 void create_pdse(ZDS *zds, const string &dsn)
 {
-  memset(zds, 0, sizeof(ZDS));
   DS_ATTRIBUTES attrs = {0};
   attrs.dsorg = "PO";
   attrs.dsntype = "LIBRARY";
   attrs.dirblk = 5;
-  string response;
-  int rc = zds_create_dsn(zds, dsn, attrs, response);
-  if (rc != 0)
-    throw runtime_error("Failed to create PDSE: " + get_create_error(zds, response, rc));
+  create_dsn_with_attrs(zds, dsn, attrs, "PDSE");
 }
 
-// Helper function to create a sequential data set with explicit attributes
 void create_seq(ZDS *zds, const string &dsn)
 {
-  memset(zds, 0, sizeof(ZDS));
   DS_ATTRIBUTES attrs = {0};
   attrs.dsorg = "PS";
   attrs.recfm = "F,B";
@@ -83,10 +75,7 @@ void create_seq(ZDS *zds, const string &dsn)
   attrs.blksize = 800;
   attrs.primary = 1;
   attrs.secondary = 1;
-  string response;
-  int rc = zds_create_dsn(zds, dsn, attrs, response);
-  if (rc != 0)
-    throw runtime_error("Failed to create sequential data set: " + get_create_error(zds, response, rc));
+  create_dsn_with_attrs(zds, dsn, attrs, "sequential data set");
 }
 
 // Helper to write data to a data set or member
