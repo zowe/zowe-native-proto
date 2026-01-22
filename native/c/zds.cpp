@@ -378,7 +378,6 @@ int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2, bool replace,
 
 int zds_compress_dsn(ZDS *zds, const string &dsn)
 {
-  int rc = 0;
   ZDSTypeInfo info = {};
   zds_get_type_info(dsn, info);
 
