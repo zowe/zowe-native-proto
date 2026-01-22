@@ -272,7 +272,7 @@ class WatchUtils {
         if (cSourceChanged) {
             result = await this.makeTask();
         }
-        if (zowedSourceChanged || typeof result === "string") {
+        if (zowedSourceChanged || typeof result === "string" || result === 0) {
             await this.makeTask(deployDirs.zowedDir);
         }
     }

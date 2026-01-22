@@ -18,8 +18,6 @@
 #include <string>
 #include "ztype.h"
 
-#define RTDDN "        "
-
 /**
  * @struct ZConvData
  * @brief Structure holding data for character set conversion
@@ -42,6 +40,15 @@ int zut_search(std::string input);
 
 /**
  * @brief Run a specified command or operation
+ * @param diag Reference to diagnostic information structure
+ * @param input The command string to execute
+ * @param parms The parameters string to execute
+ * @return Return code (0 for success, non-zero for error)
+ */
+int zut_run(ZDIAG &diag, std::string input, std::string parms);
+
+/**
+ * @brief Run a specified command or operation
  * @param input The command string to execute
  * @return Return code (0 for success, non-zero for error)
  */
@@ -60,11 +67,40 @@ int zut_substitute_symbol(std::string symbol, std::string &result);
  * @param command The command string
  * @param code Pointer to return code (output)
  * @param resp Reference to a string where the result will be stored
- * @param ddname Reference to a string where the DD name will be stored, set to "        " to request a dynamic DD name
  * @return Return code (0 for success, non-zero for error)
  */
 int zut_bpxwdyn(std::string command, unsigned int *code, std::string &resp);
-int zut_bpxwdyn(std::string command, unsigned int *code, std::string &resp, std::string &ddname);
+
+/**
+ * @brief Invoke BPXWDYN service with the given parameters and return the DD or DS name
+ * @param command The command string
+ * @param code Pointer to return code (output)
+ * @param resp Reference to a string where the result will be stored
+ * @param ddname Reference to a string where the DD name will be stored
+ * @param dsname Reference to a string where the DS name will be stored
+ * @return Return code (0 for success, non-zero for error)
+ */
+int zut_bpxwdyn_common(std::string command, unsigned int *code, std::string &resp, std::string &ddname, std::string &dsname);
+
+/**
+ * @brief Invoke BPXWDYN service with the given parameters and return the DD name
+ * @param command The command string
+ * @param code Pointer to return code (output)
+ * @param resp Reference to a string where the result will be stored
+ * @param ddname Reference to a string where the DD name will be stored
+ * @return Return code (0 for success, non-zero for error)
+ */
+int zut_bpxwdyn_rtdd(std::string command, unsigned int *code, std::string &resp, std::string &ddname);
+
+/**
+ * @brief Invoke BPXWDYN service with the given parameters and return the DS name
+ * @param command The command string
+ * @param code Pointer to return code (output)
+ * @param resp Reference to a string where the result will be stored
+ * @param dsname Reference to a string where the DS name will be stored
+ * @return Return code (0 for success, non-zero for error)
+ */
+int zut_bpxwdyn_rtdsn(std::string command, unsigned int *code, std::string &resp, std::string &dsname);
 
 /**
  * @brief Print a hello message
