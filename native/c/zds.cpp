@@ -96,7 +96,6 @@ int zds_get_type_info(const string &dsn, ZDSTypeInfo &info)
   zut_trim(info.member_name);
   transform(info.member_name.begin(), info.member_name.end(), info.member_name.begin(), ::toupper);
 
-  // Quick check if data set exists before querying attributes
   if (!zds_dataset_exists(info.base_dsn))
   {
     return RTNCD_SUCCESS;
@@ -330,30 +329,25 @@ int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2, bool replace,
 
   if (!info2.exists)
   {
-    // Create target data set
     unsigned int code = 0;
     string create_resp;
     string parm;
 
     if (target_is_member)
     {
-      string like_dsn = (info1.type == ZDS_TYPE_MEMBER || info1.type == ZDS_TYPE_PDS)
-                            ? info1.base_dsn
-                            : info1.base_dsn;
-      // PS -> Member: create PDS with default attributes
       if (info1.type == ZDS_TYPE_PS)
       {
+        // PS -> Member: create PDS with default attributes
         parm = "ALLOC DA('" + info2.base_dsn + "') DSORG(PO) DSNTYPE(PDS) DIRBLK(5) "
                                                "RECFM(F,B) LRECL(80) BLKSIZE(800) SPACE(1,1) TRACKS NEW CATALOG";
       }
       else
       {
-        parm = "ALLOC DA('" + info2.base_dsn + "') LIKE('" + like_dsn + "') NEW CATALOG";
+        parm = "ALLOC DA('" + info2.base_dsn + "') LIKE('" + info1.base_dsn + "') NEW CATALOG";
       }
     }
     else
     {
-      // Use LIKE for attribute parity
       parm = "ALLOC DA('" + info2.base_dsn + "') LIKE('" + info1.base_dsn + "') NEW CATALOG";
     }
 
@@ -367,7 +361,6 @@ int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2, bool replace,
   }
   else if (!replace && !is_pds_full_copy)
   {
-    // Check if target already exists (for member, check specific member not just PDS)
     bool target_actually_exists = target_is_member
                                       ? member_exists_in_pds(info2.base_dsn, info2.member_name)
                                       : true;

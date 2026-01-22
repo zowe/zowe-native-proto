@@ -486,7 +486,6 @@ void zds_tests()
                              ZDS zds = {0};
                              string source_dsn = "NONEXISTENT.DATASET.NAME";
                              string target_dsn = get_test_dsn();
-                             // Add to cleanup list in case implementation changes
                              created_dsns.push_back(target_dsn);
                              int rc = zds_copy_dsn(&zds, source_dsn, target_dsn);
                              Expect(rc).Not().ToBe(0);
@@ -501,21 +500,15 @@ void zds_tests()
                              ctx.write_source("Test data");
                              Expect(ctx.copy()).ToBe(0);
 
-                             // Verify target was created and data was copied
                              vector<ZDSEntry> target_entries;
                              ZDS zds_list = {0};
                              zds_list_data_sets(&zds_list, ctx.target_dsn, target_entries, true);
                              Expect(target_entries.empty()).ToBe(false);
 
-                             // Verify content was copied correctly
                              ZDS zds_read = {0};
                              string content;
                              zds_read_from_dsn(&zds_read, ctx.target_dsn, content);
                              Expect(content.find("Test data") != string::npos).ToBe(true);
-
-                             // Note: LIKE allocation is used for attribute preservation, but SMS ACS
-                             // routines may override attributes on some systems. The key verification
-                             // is that the copy succeeded and data is intact.
                            });
 
                         it("should fail to overwrite existing sequential data set without replace flag",
@@ -555,8 +548,6 @@ void zds_tests()
                              ctx.write_target_member("MEM1", "Old target member");
 
                              Expect(ctx.copy(false)).ToBe(0);
-
-                             // Verify MEM2 was copied (MEM1 should be skipped since it exists)
                              Expect(ctx.target_has_member("MEM2")).ToBe(true);
                            });
 
@@ -667,8 +658,6 @@ void zds_tests()
                              ctx.write_target_member("MEM2", "Target data");
 
                              Expect(ctx.copy(false)).ToBe(0);
-
-                             // Verify both original and copied members exist
                              Expect(ctx.target_has_member("MEM1")).ToBe(true);
                              Expect(ctx.target_has_member("MEM2")).ToBe(true);
                            });
@@ -776,10 +765,8 @@ void zds_tests()
                              ZDS zds_compress = {0};
                              int rc = zds_compress_dsn(&zds_compress, pdse_dsn);
                              Expect(rc).Not().ToBe(0);
-                             // The error might be an IEBCOPY error, so check for failure indicators
                              string error_msg = string(zds_compress.diag.e_msg);
                              Expect(error_msg.length()).ToBeGreaterThan(0);
-                             // Check if it contains error indicators (either "not a PDS" or IEBCOPY errors)
                              bool has_error = error_msg.find("not a PDS") != string::npos ||
                                               error_msg.find("IEBCOPY") != string::npos ||
                                               error_msg.find("failed") != string::npos ||
