@@ -23,17 +23,15 @@
 using namespace std;
 using namespace ztst;
 
-// Local helper that avoids # character (which can cause BPXWDYN issues)
+// Helper to generate a unique test data set name
 string get_test_dsn()
 {
   static int counter = 0;
   counter++;
-  // Use C++ <random> for unique test data set names
   static random_device rd;
   static mt19937 gen(rd());
   uniform_int_distribution<> dist(0, 99999);
   int random_num = dist(gen);
-  // Use user's HLQ from zutils, but with a simpler qualifier without #
   return get_user() + ".ZDSTEST.T" + to_string(random_num) + to_string(counter);
 }
 
@@ -173,6 +171,21 @@ struct CopyTestContext
   {
     ZDS zds = {0};
     return zds_copy_dsn(&zds, source_dsn + "(" + src_mem + ")", target_dsn + "(" + tgt_mem + ")", replace, overwrite);
+  }
+
+  bool target_has_member(const string &member)
+  {
+    vector<ZDSMem> members;
+    ZDS zds = {0};
+    zds_list_members(&zds, target_dsn, members);
+    for (const auto &mem : members)
+    {
+      string name = mem.name;
+      zut_trim(name);
+      if (name == member)
+        return true;
+    }
+    return false;
   }
 };
 
@@ -544,16 +557,7 @@ void zds_tests()
                              Expect(ctx.copy(false)).ToBe(0);
 
                              // Verify MEM2 was copied (MEM1 should be skipped since it exists)
-                             vector<ZDSMem> members;
-                             ZDS zds_list = {0};
-                             zds_list_members(&zds_list, ctx.target_dsn, members);
-                             bool found_mem2 = false;
-                             for (const auto &mem : members)
-                             {
-                               if (mem.name == "MEM2")
-                                 found_mem2 = true;
-                             }
-                             Expect(found_mem2).ToBe(true);
+                             Expect(ctx.target_has_member("MEM2")).ToBe(true);
                            });
 
                         it("should replace existing members in PDS with replace flag",
@@ -580,22 +584,8 @@ void zds_tests()
                              int rc = zds_copy_dsn(&zds, ctx.source_dsn, ctx.target_dsn, false, true);
                              ExpectWithContext(rc, zds.diag.e_msg).ToBe(0);
 
-                             vector<ZDSMem> members;
-                             ZDS zds_list = {0};
-                             zds_list_members(&zds_list, ctx.target_dsn, members);
-                             bool found_mem1 = false;
-                             bool found_mem2 = false;
-                             for (const auto &mem : members)
-                             {
-                               string name = mem.name;
-                               zut_trim(name);
-                               if (name == "MEM1")
-                                 found_mem1 = true;
-                               if (name == "MEM2")
-                                 found_mem2 = true;
-                             }
-                             Expect(found_mem1).ToBe(true);
-                             Expect(found_mem2).ToBe(false);
+                             Expect(ctx.target_has_member("MEM1")).ToBe(true);
+                             Expect(ctx.target_has_member("MEM2")).ToBe(false);
                            });
 
                         it("should fail to overwrite existing member without replace flag",
@@ -679,20 +669,8 @@ void zds_tests()
                              Expect(ctx.copy(false)).ToBe(0);
 
                              // Verify both original and copied members exist
-                             vector<ZDSMem> members;
-                             ZDS zds_list = {0};
-                             zds_list_members(&zds_list, ctx.target_dsn, members);
-                             bool found_mem1 = false;
-                             bool found_mem2 = false;
-                             for (const auto &mem : members)
-                             {
-                               if (mem.name == "MEM1")
-                                 found_mem1 = true;
-                               if (mem.name == "MEM2")
-                                 found_mem2 = true;
-                             }
-                             Expect(found_mem1).ToBe(true);
-                             Expect(found_mem2).ToBe(true);
+                             Expect(ctx.target_has_member("MEM1")).ToBe(true);
+                             Expect(ctx.target_has_member("MEM2")).ToBe(true);
                            });
 
                         it("should copy sequential to existing PDS member with replace",
