@@ -32,7 +32,6 @@
 #include "iefzb4d2.h"
 #include "zdsm.h"
 #include <fcntl.h>
-#include <sys/stat.h>
 #include <stdlib.h>
 #include "zbase64.h"
 
@@ -256,19 +255,11 @@ static int copy_sequential(ZDS *zds, const string &src_dsn, const string &dst_ds
     return RTNCD_FAILURE;
   }
 
-  // open() with explicit permissions for CodeQL; RACF controls actual z/OS access
-  int out_fd = open(dst_path.c_str(), O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
-  if (out_fd < 0)
-  {
-    fclose(fin);
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open target '%s'", dst_dsn.c_str());
-    return RTNCD_FAILURE;
-  }
-
-  FILE *fout = fdopen(out_fd, "wb,type=record");
+  // fopen is required for z/OS data sets; open() doesn't work with //'{dsn}' paths.
+  // RACF controls actual z/OS data set access permissions.
+  FILE *fout = fopen(dst_path.c_str(), "wb,type=record");
   if (!fout)
   {
-    close(out_fd);
     fclose(fin);
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open target '%s'", dst_dsn.c_str());
     return RTNCD_FAILURE;
