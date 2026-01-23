@@ -11,9 +11,15 @@
 
 #include <cstddef>
 #include <ctime>
+#include <fcntl.h>
 #include <stdlib.h>
 #include <string>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <thread>
+#include <unistd.h>
 #include <vector>
+#include "../zbase64.h"
 #include "ztest.hpp"
 #include "zutils.hpp"
 #include "ztype.h"
@@ -1182,6 +1188,29 @@ void zowex_ds_tests()
                         describe("BPAM member writes",
                                  [&]() -> void
                                  {
+                                   it("should write and read a PDS member using BPAM",
+                                      [&]() -> void
+                                      {
+                                        string ds = _ds.back();
+                                        _create_ds(ds, "--dsorg PO --dirblk 2");
+
+                                        string response;
+                                        string command = zowex_command + " data-set create-member '" + ds + "(PDS1)'";
+                                        int rc = execute_command_with_output(command, response);
+                                        ExpectWithContext(rc, response).ToBe(0);
+                                        Expect(response).ToContain("Data set and/or member created");
+
+                                        string payload = "PDSDATA";
+                                        command = "echo " + payload + " | " + zowex_command + " data-set write '" + ds + "(PDS1)'";
+                                        rc = execute_command_with_output(command, response);
+                                        ExpectWithContext(rc, response).ToBe(0);
+                                        Expect(response).ToContain("Wrote data to '" + ds + "(PDS1)'");
+
+                                        command = zowex_command + " data-set view '" + ds + "(PDS1)'";
+                                        rc = execute_command_with_output(command, response);
+                                        ExpectWithContext(rc, response).ToBe(0);
+                                        Expect(response).ToContain(payload);
+                                      });
                                    it("should write and read a PDSE member using BPAM",
                                       [&]() -> void
                                       {
@@ -1283,6 +1312,30 @@ void zowex_ds_tests()
                         describe("ASA control characters",
                                  [&]() -> void
                                  {
+                                   it("should add ASA control characters for a PDS member",
+                                      [&]() -> void
+                                      {
+                                        string ds = _ds.back();
+                                        _create_ds(ds, "--dsorg PO --dirblk 2 --recfm FBA --lrecl 81");
+
+                                        string response;
+                                        string command = zowex_command + " data-set create-member '" + ds + "(ASA2)'";
+                                        int rc = execute_command_with_output(command, response);
+                                        ExpectWithContext(rc, response).ToBe(0);
+                                        Expect(response).ToContain("Data set and/or member created");
+
+                                        command = "printf 'AAA\\nBBB\\n' | " + zowex_command +
+                                                 " data-set write '" + ds + "(ASA2)' --local-encoding UTF-8 --encoding IBM-1047";
+                                        rc = execute_command_with_output(command, response);
+                                        ExpectWithContext(rc, response).ToBe(0);
+                                        Expect(response).ToContain("Wrote data to '" + ds + "(ASA2)'");
+
+                                        command = zowex_command + " data-set view '" + ds + "(ASA2)' --encoding binary --rfb";
+                                        rc = execute_command_with_output(command, response);
+                                        ExpectWithContext(rc, response).ToBe(0);
+                                        Expect(response).ToContain("40 c1 c1 c1");
+                                        Expect(response).ToContain("40 c2 c2 c2");
+                                      });
                                    it("should add ASA control characters for FBA data sets",
                                       [&]() -> void
                                       {
@@ -1405,7 +1458,74 @@ void zowex_ds_tests()
                                         Expect(response).ToContain("f0 c1 c2 c3");
                                         Expect(response).ToContain("f1 c4 c5 c6");
                                       });
+
+                                   it("should stream ASA conversion to a member via pipe-path",
+                                      [&]() -> void
+                                      {
+                                        string ds = _ds.back();
+                                        _create_ds(ds, "--dsorg PO --dirblk 2 --dsntype LIBRARY --recfm FBA --lrecl 81");
+
+                                        string response;
+                                        string command = zowex_command + " data-set create-member '" + ds + "(ASA3)'";
+                                        int rc = execute_command_with_output(command, response);
+                                        ExpectWithContext(rc, response).ToBe(0);
+                                        Expect(response).ToContain("Data set and/or member created");
+
+                                        const string pipe_path = "/tmp/zowex_ds_pipe_" + get_random_string(10);
+                                        mkfifo(pipe_path.c_str(), 0777);
+
+                                        const string payload = "AAA\n\nBBB\n";
+                                        const auto encoded = zbase64::encode(payload.c_str(), payload.size());
+                                        const string encoded_payload(encoded.begin(), encoded.end());
+
+                                        std::thread writer([&]() -> void
+                                                          {
+                                                            int fd = -1;
+                                                            for (int attempt = 0; attempt < 100 && fd == -1; ++attempt)
+                                                            {
+                                                              fd = open(pipe_path.c_str(), O_WRONLY | O_NONBLOCK);
+                                                              if (fd == -1)
+                                                              {
+                                                                usleep(10000);
+                                                              }
+                                                            }
+                                                            if (fd != -1)
+                                                            {
+                                                              write(fd, encoded_payload.data(), encoded_payload.size());
+                                                              close(fd);
+                                                            }
+                                                          });
+
+                                        command = zowex_command + " data-set write '" + ds + "(ASA3)' --pipe-path " + pipe_path +
+                                                 " --local-encoding UTF-8 --encoding IBM-1047";
+                                        rc = execute_command_with_output(command, response);
+                                        writer.join();
+                                        unlink(pipe_path.c_str());
+
+                                        ExpectWithContext(rc, response).ToBe(0);
+                                        Expect(response).ToContain("Wrote data to '" + ds + "(ASA3)'");
+
+                                        command = zowex_command + " data-set view '" + ds + "(ASA3)' --encoding binary --rfb";
+                                        rc = execute_command_with_output(command, response);
+                                        ExpectWithContext(rc, response).ToBe(0);
+                                        Expect(response).ToContain("40 c1 c1 c1");
+                                        Expect(response).ToContain("f0 c2 c2 c2");
+                                        Expect(response).ToContain("40 c2 c2 c2");
+                                      });
                                  });
+
+                        it("should fail to write a member in a sequential data set",
+                           [&]() -> void
+                           {
+                             string ds = _ds.back();
+                             _create_ds(ds, "--dsorg PS");
+
+                             string response;
+                             string command = "echo TESTDATA | " + zowex_command + " data-set write '" + ds + "(BAD1)'";
+                             int rc = execute_command_with_output(command, response);
+                             ExpectWithContext(rc, response).Not().ToBe(0);
+                             Expect(response).ToContain("Error: could not write to data set");
+                           });
 
                         // TODO: What do?
                         xit("should fail if the data set is deleted before the write operation is completed", []() -> void {});
