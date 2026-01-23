@@ -1179,6 +1179,189 @@ void zowex_ds_tests()
                              Expect(response).ToContain(makefile_content);
                            });
 
+                        describe("BPAM member writes",
+                                 [&]() -> void
+                                 {
+                                   it("should write and read a PDSE member using BPAM",
+                                      [&]() -> void
+                                      {
+                                        string ds = _ds.back();
+                                        _create_ds(ds, "--dsorg PO --dirblk 2 --dsntype LIBRARY");
+
+                                        string response;
+                                        string command = zowex_command + " data-set create-member '" + ds + "(MEM1)'";
+                                        int rc = execute_command_with_output(command, response);
+                                        ExpectWithContext(rc, response).ToBe(0);
+                                        Expect(response).ToContain("Data set and/or member created");
+
+                                        string payload = "MEMBERDATA";
+                                        command = "echo " + payload + " | " + zowex_command + " data-set write '" + ds + "(MEM1)'";
+                                        rc = execute_command_with_output(command, response);
+                                        ExpectWithContext(rc, response).ToBe(0);
+                                        Expect(response).ToContain("Wrote data to '" + ds + "(MEM1)'");
+
+                                        command = zowex_command + " data-set view '" + ds + "(MEM1)'";
+                                        rc = execute_command_with_output(command, response);
+                                        ExpectWithContext(rc, response).ToBe(0);
+                                        Expect(response).ToContain(payload);
+                                      });
+
+                                   it("should write multi-line content to a PDSE member",
+                                      [&]() -> void
+                                      {
+                                        string ds = _ds.back();
+                                        _create_ds(ds, "--dsorg PO --dirblk 2 --dsntype LIBRARY");
+
+                                        string response;
+                                        string command = zowex_command + " data-set create-member '" + ds + "(MEM2)'";
+                                        int rc = execute_command_with_output(command, response);
+                                        ExpectWithContext(rc, response).ToBe(0);
+                                        Expect(response).ToContain("Data set and/or member created");
+
+                                        string command_payload = "printf 'LINEA\\nLINEB\\n' | " + zowex_command + " data-set write '" + ds + "(MEM2)'";
+                                        rc = execute_command_with_output(command_payload, response);
+                                        ExpectWithContext(rc, response).ToBe(0);
+                                        Expect(response).ToContain("Wrote data to '" + ds + "(MEM2)'");
+
+                                        command = zowex_command + " data-set view '" + ds + "(MEM2)'";
+                                        rc = execute_command_with_output(command, response);
+                                        ExpectWithContext(rc, response).ToBe(0);
+                                        Expect(response).ToContain("LINEA");
+                                        Expect(response).ToContain("LINEB");
+                                      });
+
+                                   it("should overwrite a PDSE member using BPAM",
+                                      [&]() -> void
+                                      {
+                                        string ds = _ds.back();
+                                        _create_ds(ds, "--dsorg PO --dirblk 2 --dsntype LIBRARY");
+
+                                        string response;
+                                        string command = zowex_command + " data-set create-member '" + ds + "(MEM3)'";
+                                        int rc = execute_command_with_output(command, response);
+                                        ExpectWithContext(rc, response).ToBe(0);
+                                        Expect(response).ToContain("Data set and/or member created");
+
+                                        string command_payload = "echo FIRSTDATA | " + zowex_command + " data-set write '" + ds + "(MEM3)'";
+                                        rc = execute_command_with_output(command_payload, response);
+                                        ExpectWithContext(rc, response).ToBe(0);
+                                        Expect(response).ToContain("Wrote data to '" + ds + "(MEM3)'");
+
+                                        command_payload = "echo SECONDDATA | " + zowex_command + " data-set write '" + ds + "(MEM3)'";
+                                        rc = execute_command_with_output(command_payload, response);
+                                        ExpectWithContext(rc, response).ToBe(0);
+                                        Expect(response).ToContain("Wrote data to '" + ds + "(MEM3)'");
+
+                                        command = zowex_command + " data-set view '" + ds + "(MEM3)'";
+                                        rc = execute_command_with_output(command, response);
+                                        ExpectWithContext(rc, response).ToBe(0);
+                                        Expect(response).ToContain("SECONDDATA");
+                                        Expect(response).Not().ToContain("FIRSTDATA");
+                                      });
+
+                                   it("should warn when a PDSE member line exceeds LRECL",
+                                      [&]() -> void
+                                      {
+                                        string ds = _ds.back();
+                                        _create_ds(ds, "--dsorg PO --dirblk 2 --dsntype LIBRARY --lrecl 10 --blksize 80");
+
+                                        string response;
+                                        string command = zowex_command + " data-set create-member '" + ds + "(MEM4)'";
+                                        int rc = execute_command_with_output(command, response);
+                                        ExpectWithContext(rc, response).ToBe(0);
+                                        Expect(response).ToContain("Data set and/or member created");
+
+                                        string long_line = "ABCDEFGHIJKLMNOPQRST";
+                                        command = "echo " + long_line + " | " + zowex_command + " data-set write '" + ds + "(MEM4)'";
+                                        rc = execute_command_with_output(command, response);
+                                        ExpectWithContext(rc, response).ToBe(0);
+                                        Expect(response).ToContain("Warning:");
+                                        Expect(response).ToContain("truncated");
+                                      });
+                                 });
+
+                        describe("ASA control characters",
+                                 [&]() -> void
+                                 {
+                                   it("should add ASA control characters for FBA data sets",
+                                      [&]() -> void
+                                      {
+                                        string ds = _ds.back();
+                                        _create_ds(ds, "--dsorg PS --recfm FBA --lrecl 81");
+
+                                        string response;
+                                        string command = "printf 'AAA\\nBBB\\n' | " + zowex_command +
+                                                         " data-set write " + ds + " --local-encoding UTF-8 --encoding IBM-1047";
+                                        int rc = execute_command_with_output(command, response);
+                                        ExpectWithContext(rc, response).ToBe(0);
+                                        Expect(response).ToContain("Wrote data to '" + ds + "'");
+
+                                        command = zowex_command + " data-set view " + ds + " --encoding binary --rfb";
+                                        rc = execute_command_with_output(command, response);
+                                        ExpectWithContext(rc, response).ToBe(0);
+                                        Expect(response).ToContain("40 c1 c1 c1");
+                                        Expect(response).ToContain("40 c2 c2 c2");
+                                      });
+
+                                   it("should convert a single blank line into ASA double space",
+                                      [&]() -> void
+                                      {
+                                        string ds = _ds.back();
+                                        _create_ds(ds, "--dsorg PS --recfm FBA --lrecl 81");
+
+                                        string response;
+                                        string command = "printf 'AAA\\n\\nBBB\\n' | " + zowex_command +
+                                                         " data-set write " + ds + " --local-encoding UTF-8 --encoding IBM-1047";
+                                        int rc = execute_command_with_output(command, response);
+                                        ExpectWithContext(rc, response).ToBe(0);
+                                        Expect(response).ToContain("Wrote data to '" + ds + "'");
+
+                                        command = zowex_command + " data-set view " + ds + " --encoding binary --rfb";
+                                        rc = execute_command_with_output(command, response);
+                                        ExpectWithContext(rc, response).ToBe(0);
+                                        Expect(response).ToContain("f0 c2 c2 c2");
+                                      });
+
+                                   it("should handle multiple blank lines with ASA overflow",
+                                      [&]() -> void
+                                      {
+                                        string ds = _ds.back();
+                                        _create_ds(ds, "--dsorg PS --recfm FBA --lrecl 81");
+
+                                        string response;
+                                        string command = "printf 'AAA\\n\\n\\n\\nDDD\\n' | " + zowex_command +
+                                                         " data-set write " + ds + " --local-encoding UTF-8 --encoding IBM-1047";
+                                        int rc = execute_command_with_output(command, response);
+                                        ExpectWithContext(rc, response).ToBe(0);
+                                        Expect(response).ToContain("Wrote data to '" + ds + "'");
+
+                                        command = zowex_command + " data-set view " + ds + " --encoding binary --rfb";
+                                        rc = execute_command_with_output(command, response);
+                                        ExpectWithContext(rc, response).ToBe(0);
+                                        Expect(response).ToContain("60");
+                                        Expect(response).ToContain("f0 c4 c4 c4");
+                                      });
+
+                                   it("should convert form feed to ASA page break",
+                                      [&]() -> void
+                                      {
+                                        string ds = _ds.back();
+                                        _create_ds(ds, "--dsorg PS --recfm FBA --lrecl 81");
+
+                                        string response;
+                                        string command = "printf '\\fEEE\\n' | " + zowex_command +
+                                                         " data-set write " + ds + " --local-encoding UTF-8 --encoding IBM-1047";
+                                        int rc = execute_command_with_output(command, response);
+                                        ExpectWithContext(rc, response).ToBe(0);
+                                        Expect(response).ToContain("Wrote data to '" + ds + "'");
+
+                                        command = zowex_command + " data-set view " + ds + " --encoding binary --rfb";
+                                        rc = execute_command_with_output(command, response);
+                                        ExpectWithContext(rc, response).ToBe(0);
+                                        Expect(response).ToContain("f1 c5 c5 c5");
+                                      });
+                                 });
+
                         // TODO: What do?
                         xit("should fail if the data set is deleted before the write operation is completed", []() -> void {});
                         // TODO: What do?
