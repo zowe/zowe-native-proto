@@ -1360,6 +1360,51 @@ void zowex_ds_tests()
                                         ExpectWithContext(rc, response).ToBe(0);
                                         Expect(response).ToContain("f1 c5 c5 c5");
                                       });
+
+                                   it("should honor input-asa when writing ASA records",
+                                      [&]() -> void
+                                      {
+                                        string ds = _ds.back();
+                                        _create_ds(ds, "--dsorg PS --recfm FBA --lrecl 81");
+
+                                        string response;
+                                        string command = "printf '0ABC\\n1DEF\\n' | " + zowex_command +
+                                                         " data-set write " + ds + " --input-asa --local-encoding UTF-8 --encoding IBM-1047";
+                                        int rc = execute_command_with_output(command, response);
+                                        ExpectWithContext(rc, response).ToBe(0);
+                                        Expect(response).ToContain("Wrote data to '" + ds + "'");
+
+                                        command = zowex_command + " data-set view " + ds + " --encoding binary --rfb";
+                                        rc = execute_command_with_output(command, response);
+                                        ExpectWithContext(rc, response).ToBe(0);
+                                        Expect(response).ToContain("f0 c1 c2 c3");
+                                        Expect(response).ToContain("f1 c4 c5 c6");
+                                      });
+
+                                   it("should honor input-asa for a PDS member via BPAM",
+                                      [&]() -> void
+                                      {
+                                        string ds = _ds.back();
+                                        _create_ds(ds, "--dsorg PO --dirblk 2 --dsntype LIBRARY --recfm FBA --lrecl 81");
+
+                                        string response;
+                                        string command = zowex_command + " data-set create-member '" + ds + "(ASA1)'";
+                                        int rc = execute_command_with_output(command, response);
+                                        ExpectWithContext(rc, response).ToBe(0);
+                                        Expect(response).ToContain("Data set and/or member created");
+
+                                        command = "printf '0ABC\\n1DEF\\n' | " + zowex_command +
+                                                 " data-set write '" + ds + "(ASA1)' --input-asa --local-encoding UTF-8 --encoding IBM-1047";
+                                        rc = execute_command_with_output(command, response);
+                                        ExpectWithContext(rc, response).ToBe(0);
+                                        Expect(response).ToContain("Wrote data to '" + ds + "(ASA1)'");
+
+                                        command = zowex_command + " data-set view '" + ds + "(ASA1)' --encoding binary --rfb";
+                                        rc = execute_command_with_output(command, response);
+                                        ExpectWithContext(rc, response).ToBe(0);
+                                        Expect(response).ToContain("f0 c1 c2 c3");
+                                        Expect(response).ToContain("f1 c4 c5 c6");
+                                      });
                                  });
 
                         // TODO: What do?
