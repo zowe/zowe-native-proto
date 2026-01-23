@@ -305,6 +305,10 @@ export interface Job {
      * Job phase
      */
     phase: number;
+    /**
+     * Job phase name
+     */
+    phaseName: string;
 }
 
 export interface Spool {

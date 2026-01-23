@@ -84,6 +84,7 @@ int handle_job_list(InvocationContext &context)
       if (!zut_rtrim(trimmed_name).empty())
         entry->set("correlator", str(trimmed_name));
       entry->set("phase", i64(it->phase));
+      entry->set("phaseName", str(it->full_status));
       entries_array->push(entry);
     }
 
@@ -227,23 +228,38 @@ int handle_job_view_status(InvocationContext &context)
     vector<string> fields;
     fields.reserve(6);
     fields.push_back(job.jobid);
-    fields.push_back(job.retcode);
     fields.push_back(job.jobname);
+    fields.push_back(job.owner);
     fields.push_back(job.status);
-    fields.push_back(job.correlator);
+    fields.push_back(job.retcode);
     fields.push_back(job.full_status);
     context.output_stream() << zut_format_as_csv(fields) << endl;
   }
   else
   {
-    context.output_stream() << job.jobid << " " << left << setw(10) << job.retcode << " " << job.jobname << " " << job.status << endl;
+    context.output_stream() << job.jobid << " " << job.jobname << " " << job.owner << left << setw(7) << job.status << " " << left << setw(10) << job.retcode << " " << job.full_status << endl;
   }
 
   const auto result = obj();
   result->set("id", str(jobid));
-  result->set("name", str(job.jobname));
+  string trimmed_name = job.jobname;
+  result->set("name", str(zut_rtrim(trimmed_name)));
+  trimmed_name = job.subsystem;
+  if (!zut_rtrim(trimmed_name).empty())
+    result->set("subsystem", str(trimmed_name));
+  trimmed_name = job.owner;
+  result->set("owner", str(zut_rtrim(trimmed_name)));
   result->set("status", str(job.status));
-  result->set("retcode", str(job.retcode));
+  result->set("type", str(job.type));
+  trimmed_name = job.jobclass;
+  result->set("class", str(zut_rtrim(trimmed_name)));
+  if (!job.retcode.empty())
+    result->set("retcode", str(job.retcode));
+  trimmed_name = job.correlator;
+  if (!zut_rtrim(trimmed_name).empty())
+    result->set("correlator", str(trimmed_name));
+  result->set("phase", i64(job.phase));
+  result->set("phaseName", str(job.full_status));
   context.set_object(result);
 
   return 0;

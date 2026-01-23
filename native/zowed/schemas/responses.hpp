@@ -59,7 +59,8 @@ ZJSON_SCHEMA(Job,
     FIELD_REQUIRED(class, STRING),
     FIELD_OPTIONAL(retcode, STRING),
     FIELD_OPTIONAL(correlator, STRING),
-    FIELD_REQUIRED(phase, NUMBER)
+    FIELD_REQUIRED(phase, NUMBER),
+    FIELD_REQUIRED(phaseName, STRING)
 );
 
 struct Spool {};
@@ -179,7 +180,8 @@ ZJSON_SCHEMA(GetJobStatusResponse,
     FIELD_REQUIRED(class, STRING),
     FIELD_OPTIONAL(retcode, STRING),
     FIELD_OPTIONAL(correlator, STRING),
-    FIELD_REQUIRED(phase, NUMBER)
+    FIELD_REQUIRED(phase, NUMBER),
+    FIELD_REQUIRED(phaseName, STRING)
 );
 
 struct HoldJobResponse {};
