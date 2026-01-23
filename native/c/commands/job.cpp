@@ -226,18 +226,21 @@ int handle_job_view_status(InvocationContext &context)
   if (emit_csv)
   {
     vector<string> fields;
-    fields.reserve(6);
+    fields.reserve(7);
     fields.push_back(job.jobid);
     fields.push_back(job.jobname);
     fields.push_back(job.owner);
     fields.push_back(job.status);
     fields.push_back(job.retcode);
+    fields.push_back(job.correlator);
     fields.push_back(job.full_status);
     context.output_stream() << zut_format_as_csv(fields) << endl;
   }
   else
   {
-    context.output_stream() << job.jobid << " " << job.jobname << " " << job.owner << left << setw(7) << job.status << " " << left << setw(10) << job.retcode << " " << job.full_status << endl;
+    string trimmed_correlator = job.correlator;
+    zut_rtrim(trimmed_correlator);
+    context.output_stream() << job.jobid << " " << job.jobname << " " << job.owner << left << setw(7) << job.status << " " << left << setw(10) << job.retcode << " " << left << setw(33) << trimmed_correlator << " " << job.full_status << endl;
   }
 
   const auto result = obj();

@@ -1007,12 +1007,12 @@ void zowex_job_manage_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
                  // Get correlator
                  string response;
                  execute_command_with_output(zowex_command + " job view-status " + _jobid + " --rfc", response);
-                 // Parse CSV to get correlator (5th column, index 4)
+                 // Parse CSV to get correlator (6th column, index 5)
                  vector<string> lines = parse_rfc_response(response, "\n");
                  if (lines.size() > 0) {
                      vector<string> parts = parse_rfc_response(lines[0], ",");
-                     if (parts.size() >= 5) {
-                         _correlator = parts[4];
+                     if (parts.size() >= 6) {
+                         _correlator = parts[5];
                      }
                  }
                  if (_correlator.empty()) {
@@ -1132,9 +1132,9 @@ void zowex_job_manage_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
                   if (lines.size() > 0)
                   {
                     vector<string> parts = parse_rfc_response(lines[0], ",");
-                    if (parts.size() >= 5)
+                    if (parts.size() >= 6)
                     {
-                      correlator = parts[4];
+                      correlator = parts[5];
                     }
                   }
 
@@ -1172,9 +1172,9 @@ void zowex_job_manage_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
                   if (lines.size() > 0)
                   {
                     vector<string> parts = parse_rfc_response(lines[0], ",");
-                    if (parts.size() >= 5)
+                    if (parts.size() >= 6)
                     {
-                      correlator = parts[4];
+                      correlator = parts[5];
                     }
                   }
 
@@ -1220,9 +1220,9 @@ void zowex_job_manage_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
                   if (lines.size() > 0)
                   {
                     vector<string> parts = parse_rfc_response(lines[0], ",");
-                    if (parts.size() >= 5)
+                    if (parts.size() >= 6)
                     {
-                      correlator = parts[4];
+                      correlator = parts[5];
                     }
                   }
 
@@ -1350,9 +1350,9 @@ void zowex_job_manage_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
                   if (lines.size() > 0)
                   {
                     vector<string> parts = parse_rfc_response(lines[0], ",");
-                    if (parts.size() >= 5)
+                    if (parts.size() >= 6)
                     {
-                      correlator = TrimChars(parts[4]);
+                      correlator = TrimChars(parts[5]);
                     }
                   }
 
