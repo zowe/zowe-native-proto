@@ -299,11 +299,6 @@ int handle_data_set_view(InvocationContext &context)
       memcpy(zds.encoding_opts.source_codepage, source_encoding.data(), source_encoding.length() + 1);
     }
   }
-  if (context.has("input-asa"))
-  {
-    zds.input_has_asa = context.get<bool>("input-asa", false) ? 1 : 0;
-  }
-
   if (context.has("volser"))
   {
     string volser_value = context.get<string>("volser", "");
@@ -589,6 +584,10 @@ int handle_data_set_write(InvocationContext &context)
     {
       memcpy(zds.encoding_opts.source_codepage, source_encoding.data(), source_encoding.length() + 1);
     }
+  }
+  if (context.has("input-asa"))
+  {
+    zds.input_has_asa = context.get<bool>("input-asa", false) ? 1 : 0;
   }
 
   if (context.has("etag"))
@@ -935,6 +934,7 @@ void register_commands(parser::Command &root_command)
   ds_write_cmd->add_keyword_arg(LOCAL_ENCODING);
   ds_write_cmd->add_keyword_arg(ETAG);
   ds_write_cmd->add_keyword_arg(ETAG_ONLY);
+  ds_write_cmd->add_keyword_arg(INPUT_ASA);
   ds_write_cmd->add_keyword_arg(PIPE_PATH);
   ds_write_cmd->add_keyword_arg(VOLSER);
   ds_write_cmd->set_handler(handle_data_set_write);
