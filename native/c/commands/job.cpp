@@ -557,14 +557,14 @@ int handle_job_watch(InvocationContext &context)
 
   if (found_match)
   {
-    context.output_stream() << (is_regex ? "'Regex'" : "'String'") << " pattern in job spool files matched in " << total_sleep_seconds << "s on:\n"
+    context.output_stream() << (is_regex ? "'Regex'" : "'String'") << " pattern in job spool files matched in " << total_sleep_seconds << "s on:"
                             << endl;
     context.output_stream() << matched << endl;
     return RTNCD_SUCCESS;
   }
   else
   {
-    context.error_stream() << "Error: " << (is_regex ? "'Regex'" : "'String'") << " pattern " << pattern << " in job spool files not found in " << total_sleep_seconds << "s" << endl;
+    context.error_stream() << "Error: " << (is_regex ? "'Regex'" : "'String'") << " pattern " << pattern << " in job spool files was not found in " << total_sleep_seconds << "s" << endl;
     return RTNCD_FAILURE;
   }
 
@@ -815,7 +815,7 @@ void register_commands(parser::Command &root_command)
   job_watch_cmd->add_alias("wch");
   job_watch_cmd->add_positional_arg("job-dsn", "job dsn to watch (from 'job list-files')", ArgType_Single, true);
   job_watch_cmd->add_keyword_arg("until-match", make_aliases("--until-match", "--um"), "string pattern to watch for in spool files", ArgType_Single, true);
-  job_watch_cmd->add_keyword_arg("max-wait-seconds", make_aliases("--max-wait-seconds", "--mws"), "maximum number of seconds to wait for the pattern to match", ArgType_Single, false, ArgValue(15ll));
+  job_watch_cmd->add_keyword_arg("max-wait-seconds", make_aliases("--max-wait-seconds", "--mws"), "maximum number of seconds to wait for the pattern to match (max 5 minutes)", ArgType_Single, false, ArgValue(15ll));
   job_watch_cmd->set_handler(handle_job_watch);
   job_watch_cmd->add_example("Watch job spool files for a given string pattern", "zowex job watch --job-dsn IBMUSER.IEFBR14@.JOB01684.D0000002.JESMSGLG --until-match \"$HASP395 IEFBR14@ ENDED\"");
   job_watch_cmd->add_example("Watch job spool files for a given regex pattern", "zowex job watch --job-dsn IBMUSER.IEFBR14@.JOB01684D0000002.JESMSGLG --until-match \"/^.*ENDED.*$/g\"");
