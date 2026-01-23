@@ -62,7 +62,7 @@ int handle_job_list(InvocationContext &context)
       }
       else
       {
-        context.output_stream() << it->jobid << " " << left << setw(10) << it->retcode << " " << it->jobname << " " << it->status << endl;
+        context.output_stream() << it->jobid << " " << it->jobname << " " << it->owner << left << setw(7) << it->status << " " << it->retcode << endl;
       }
 
       const auto entry = obj();
