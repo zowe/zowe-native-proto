@@ -242,22 +242,20 @@ static int copy_pds_to_pds(ZDS *zds, const ZDSTypeInfo &src, const ZDSTypeInfo &
   return run_iebcopy(zds, dds, control_stmts);
 }
 
-// Copy sequential data set or member using record I/O
+// Copy sequential data set or member using binary I/O
 static int copy_sequential(ZDS *zds, const string &src_dsn, const string &dst_dsn)
 {
   string src_path = "//'" + src_dsn + "'";
   string dst_path = "//'" + dst_dsn + "'";
 
-  FILE *fin = fopen(src_path.c_str(), "rb,type=record");
+  FILE *fin = fopen(src_path.c_str(), "rb");
   if (!fin)
   {
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open source '%s'", src_dsn.c_str());
     return RTNCD_FAILURE;
   }
 
-  // fopen is required for z/OS data sets; open() doesn't work with //'{dsn}' paths.
-  // RACF controls actual z/OS data set access permissions.
-  FILE *fout = fopen(dst_path.c_str(), "wb,type=record");
+  FILE *fout = fopen(dst_path.c_str(), "wb");
   if (!fout)
   {
     fclose(fin);
@@ -313,26 +311,67 @@ int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2, bool replace,
 
   if (!info2.exists)
   {
-    unsigned int code = 0;
+    // Create the target data set
+    ZDS create_zds = {};
     string create_resp;
-    string parm;
+    DS_ATTRIBUTES attrs = {0};
 
-    if (target_is_member && info1.type == ZDS_TYPE_PS)
+    if (target_is_member)
     {
-      // PS -> Member: create PDS with default attributes
-      parm = "ALLOC DA('" + info2.base_dsn + "') DSORG(PO) DSNTYPE(PDS) DIRBLK(5) "
-                                             "RECFM(F,B) LRECL(80) BLKSIZE(800) SPACE(1,1) TRACKS NEW CATALOG";
+      // Target is a member, so we need to create a PDS
+      // Use source attributes if source is a PDS/PDSE, otherwise use defaults
+      if (info1.type == ZDS_TYPE_PDS)
+      {
+        attrs.dsorg = "PO";
+        attrs.recfm = info1.entry.recfm.c_str();
+        attrs.lrecl = info1.entry.lrecl;
+        attrs.blksize = info1.entry.blksize;
+        attrs.dirblk = 5;
+        attrs.dsntype = info1.entry.dsntype.c_str();
+      }
+      else
+      {
+        // Source is PS or member, create PDS with default attributes
+        attrs.dsorg = "PO";
+        attrs.recfm = "F,B";
+        attrs.lrecl = 80;
+        attrs.blksize = 800;
+        attrs.dirblk = 5;
+      }
+    }
+    else if (info1.type == ZDS_TYPE_MEMBER)
+    {
+      // Member -> Sequential: create a sequential data set with PDS attributes
+      attrs.dsorg = "PS";
+      attrs.recfm = info1.entry.recfm.c_str();
+      attrs.lrecl = info1.entry.lrecl;
+      attrs.blksize = info1.entry.blksize;
+    }
+    else if (info1.type == ZDS_TYPE_PDS)
+    {
+      // PDS -> PDS: copy attributes
+      attrs.dsorg = "PO";
+      attrs.recfm = info1.entry.recfm.c_str();
+      attrs.lrecl = info1.entry.lrecl;
+      attrs.blksize = info1.entry.blksize;
+      attrs.dirblk = 5;
+      attrs.dsntype = info1.entry.dsntype.c_str();
     }
     else
     {
-      parm = "ALLOC DA('" + info2.base_dsn + "') LIKE('" + info1.base_dsn + "') NEW CATALOG";
+      // PS -> PS: copy attributes
+      attrs.dsorg = "PS";
+      attrs.recfm = info1.entry.recfm.c_str();
+      attrs.lrecl = info1.entry.lrecl;
+      attrs.blksize = info1.entry.blksize;
     }
 
-    rc = zut_bpxwdyn(parm, &code, create_resp);
+    rc = zds_create_dsn(&create_zds, info2.base_dsn, attrs, create_resp);
     if (rc != RTNCD_SUCCESS)
     {
       zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to create target data set '%s': %s",
-                                    info2.base_dsn.c_str(), create_resp.c_str());
+                                    info2.base_dsn.c_str(),
+                                    create_zds.diag.e_msg_len > 0 ? create_zds.diag.e_msg : create_resp.c_str());
       return RTNCD_FAILURE;
     }
   }
