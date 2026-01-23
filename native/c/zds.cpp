@@ -218,6 +218,50 @@ int zds_read_from_dd(ZDS *zds, string ddname, string &response)
   return 0;
 }
 
+/**
+ * Helper struct to hold data set attributes from DSCB lookup.
+ */
+struct DscbAttributes
+{
+  string recfm;
+  int lrecl;
+  bool is_asa;
+
+  DscbAttributes()
+      : recfm(""), lrecl(0), is_asa(false)
+  {
+  }
+};
+
+/**
+ * Helper function to get data set attributes (RECFM, LRECL) from DSCB.
+ * Returns a DscbAttributes struct with recfm, lrecl, and is_asa flag.
+ *
+ * Uses catalog lookup and DSCB to get the actual attributes, which is more reliable
+ * than fopen/fldata (which doesn't work correctly for PDS without a member).
+ */
+static DscbAttributes zds_get_dscb_attributes(const string &dsn)
+{
+  DscbAttributes attrs;
+  const string base_dsn = dsn.find('(') != string::npos ? dsn.substr(0, dsn.find('(')) : dsn;
+
+  ZDS zds = {0};
+  vector<ZDSEntry> datasets;
+
+  // Use catalog lookup with DSCB to get the actual attributes
+  int rc = zds_list_data_sets(&zds, base_dsn, datasets, true);
+  if (rc != RTNCD_SUCCESS || datasets.empty())
+  {
+    return attrs;
+  }
+
+  attrs.recfm = datasets[0].recfm;
+  attrs.lrecl = datasets[0].lrecl;
+  attrs.is_asa = attrs.recfm.find('A') != string::npos;
+
+  return attrs;
+}
+
 int zds_read_from_dsn(ZDS *zds, const string &dsn, string &response)
 {
   string dsname = "//'" + dsn + "'";
@@ -225,7 +269,25 @@ int zds_read_from_dsn(ZDS *zds, const string &dsn, string &response)
   {
     dsname = "//DD:" + string(zds->ddname);
   }
-  const string fopen_flags = zds->encoding_opts.data_type == eDataTypeBinary ? "rb" : "r";
+
+  // Check if ASA format - use record I/O to preserve ASA control characters
+  const DscbAttributes attrs = zds_get_dscb_attributes(dsn);
+  const bool is_asa = attrs.is_asa && zds->encoding_opts.data_type != eDataTypeBinary;
+
+  string fopen_flags;
+  if (zds->encoding_opts.data_type == eDataTypeBinary)
+  {
+    fopen_flags = "rb";
+  }
+  else if (is_asa)
+  {
+    // Use record I/O to preserve ASA control characters (prevents runtime interpretation)
+    fopen_flags = "rb,type=record";
+  }
+  else
+  {
+    fopen_flags = "r";
+  }
 
   FILE *fp = fopen(dsname.c_str(), fopen_flags.c_str());
   if (!fp)
@@ -236,11 +298,51 @@ int zds_read_from_dsn(ZDS *zds, const string &dsn, string &response)
 
   size_t bytes_read = 0;
   size_t total_size = 0;
-  char buffer[4096] = {0};
-  while ((bytes_read = fread(buffer, 1, sizeof(buffer), fp)) > 0)
+
+  if (is_asa)
   {
-    total_size += bytes_read;
-    response.append(buffer, bytes_read);
+    // For ASA, read record by record and append newlines between records
+    // This preserves the ASA control character as the first byte of each line
+    const int lrecl = attrs.lrecl > 0 ? attrs.lrecl : 32760;
+    vector<char> buffer(lrecl);
+    bool first_record = true;
+
+    while ((bytes_read = fread(&buffer[0], 1, lrecl, fp)) > 0)
+    {
+      // Add newline before each record (except the first)
+      if (!first_record)
+      {
+        response.append(1, '\n');
+        total_size += 1;
+      }
+      first_record = false;
+
+      // Trim trailing spaces from the record (fixed-length records are padded)
+      size_t actual_len = bytes_read;
+      while (actual_len > 0 && buffer[actual_len - 1] == ' ')
+      {
+        actual_len--;
+      }
+
+      total_size += actual_len;
+      response.append(&buffer[0], actual_len);
+    }
+    // Add trailing newline if we read any records
+    if (!first_record)
+    {
+      response.append(1, '\n');
+      total_size += 1;
+    }
+  }
+  else
+  {
+    // Non-ASA: read in chunks as before
+    char buffer[4096] = {0};
+    while ((bytes_read = fread(buffer, 1, sizeof(buffer), fp)) > 0)
+    {
+      total_size += bytes_read;
+      response.append(buffer, bytes_read);
+    }
   }
   fclose(fp);
 
@@ -295,19 +397,7 @@ int zds_write_to_dd(ZDS *zds, string ddname, const string &data)
  */
 static string zds_get_recfm_from_dscb(const string &dsn)
 {
-  const string base_dsn = dsn.find('(') != string::npos ? dsn.substr(0, dsn.find('(')) : dsn;
-
-  ZDS zds = {0};
-  vector<ZDSEntry> datasets;
-
-  // Use catalog lookup with DSCB to get the actual RECFM
-  int rc = zds_list_data_sets(&zds, base_dsn, datasets, true);
-  if (rc != RTNCD_SUCCESS || datasets.empty())
-  {
-    return "";
-  }
-
-  return datasets[0].recfm;
+  return zds_get_dscb_attributes(dsn).recfm;
 }
 
 /**
@@ -553,8 +643,6 @@ static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
 
   // Check if ASA format from DCB after open
   const bool is_asa = (ioc->dcb.dcbrecfm & dcbrecca) != 0;
-  const bool input_has_asa = zds->input_has_asa != 0;
-  const bool do_asa_conversion = is_asa && !input_has_asa;
 
   // Determine source encoding for line splitting
   const auto source_encoding = strlen(zds->encoding_opts.source_codepage) > 0 ? string(zds->encoding_opts.source_codepage) : "UTF-8";
@@ -587,7 +675,7 @@ static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
       }
 
       bool has_formfeed = false;
-      if (do_asa_conversion)
+      if (is_asa)
       {
         // Check for form feed at start of line
         has_formfeed = (!line.empty() && line[0] == ff_char);
@@ -636,7 +724,7 @@ static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
       }
 
       // Prepend EBCDIC ASA control character AFTER encoding
-      if (do_asa_conversion)
+      if (is_asa)
       {
         char asa_char = EBCDIC_ASA_SPACE; // default: single-space
         if (has_formfeed)
@@ -689,7 +777,7 @@ static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
       }
 
       bool has_formfeed = false;
-      if (do_asa_conversion)
+      if (is_asa)
       {
         has_formfeed = (!line.empty() && line[0] == ff_char);
         if (has_formfeed)
@@ -698,10 +786,10 @@ static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
         }
       }
 
-      if (!do_asa_conversion || !line.empty() || has_formfeed)
+      if (!is_asa || !line.empty() || has_formfeed)
       {
         // Flush overflow blank lines as empty '-' records
-        if (do_asa_conversion)
+        if (is_asa)
         {
           while (blank_count >= 3)
           {
@@ -732,7 +820,7 @@ static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
           }
         }
 
-        if (do_asa_conversion)
+        if (is_asa)
         {
           char asa_char = EBCDIC_ASA_SPACE;
           if (has_formfeed)
@@ -2335,7 +2423,26 @@ int zds_read_from_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, 
   {
     dsname = "//DD:" + string(zds->ddname);
   }
-  const string fopen_flags = zds->encoding_opts.data_type == eDataTypeBinary ? "rb" : "r";
+
+  // Check if ASA format - use record I/O to preserve ASA control characters
+  const DscbAttributes attrs = zds_get_dscb_attributes(dsn);
+  const bool is_asa = attrs.is_asa && zds->encoding_opts.data_type != eDataTypeBinary;
+
+  string fopen_flags;
+  if (zds->encoding_opts.data_type == eDataTypeBinary)
+  {
+    fopen_flags = "rb";
+  }
+  else if (is_asa)
+  {
+    // Use record I/O to preserve ASA control characters (prevents runtime interpretation)
+    fopen_flags = "rb,type=record";
+  }
+  else
+  {
+    fopen_flags = "r";
+  }
+
   FileGuard fin(dsname.c_str(), fopen_flags.c_str());
   if (!fin)
   {
@@ -2355,37 +2462,124 @@ int zds_read_from_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, 
   const auto hasEncoding = zds->encoding_opts.data_type == eDataTypeText && strlen(zds->encoding_opts.codepage) > 0;
   const auto codepage = string(zds->encoding_opts.codepage);
 
-  const size_t chunk_size = FIFO_CHUNK_SIZE * 3 / 4;
-  std::vector<char> buf(chunk_size);
-  size_t bytes_read;
   std::vector<char> temp_encoded;
   std::vector<char> left_over;
 
-  while ((bytes_read = fread(&buf[0], 1, chunk_size, fin)) > 0)
+  if (is_asa)
   {
-    int chunk_len = bytes_read;
-    const char *chunk = &buf[0];
+    // For ASA, read record by record and append newlines between records
+    // This preserves the ASA control character as the first byte of each line
+    const int lrecl = attrs.lrecl > 0 ? attrs.lrecl : 32760;
+    std::vector<char> buf(lrecl);
+    size_t bytes_read;
+    bool first_record = true;
 
-    if (hasEncoding)
+    while ((bytes_read = fread(&buf[0], 1, lrecl, fin)) > 0)
     {
-      const auto source_encoding = strlen(zds->encoding_opts.source_codepage) > 0 ? string(zds->encoding_opts.source_codepage) : "UTF-8";
-      try
+      // Add newline before each record (except the first)
+      string record_data;
+      if (!first_record)
       {
-        temp_encoded = zut_encode(chunk, chunk_len, codepage, source_encoding, zds->diag);
-        chunk = &temp_encoded[0];
-        chunk_len = temp_encoded.size();
+        record_data.append(1, '\n');
       }
-      catch (std::exception &e)
+      first_record = false;
+
+      // Trim trailing spaces from the record (fixed-length records are padded)
+      size_t actual_len = bytes_read;
+      while (actual_len > 0 && buf[actual_len - 1] == ' ')
       {
-        zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from %s to %s", codepage.c_str(), source_encoding.c_str());
-        return RTNCD_FAILURE;
+        actual_len--;
       }
+
+      record_data.append(&buf[0], actual_len);
+
+      const char *chunk = record_data.c_str();
+      int chunk_len = record_data.length();
+
+      if (hasEncoding)
+      {
+        const auto source_encoding = strlen(zds->encoding_opts.source_codepage) > 0 ? string(zds->encoding_opts.source_codepage) : "UTF-8";
+        try
+        {
+          temp_encoded = zut_encode(chunk, chunk_len, codepage, source_encoding, zds->diag);
+          chunk = &temp_encoded[0];
+          chunk_len = temp_encoded.size();
+        }
+        catch (std::exception &e)
+        {
+          zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from %s to %s", codepage.c_str(), source_encoding.c_str());
+          return RTNCD_FAILURE;
+        }
+      }
+
+      *content_len += chunk_len;
+      temp_encoded = zbase64::encode(chunk, chunk_len, &left_over);
+      fwrite(&temp_encoded[0], 1, temp_encoded.size(), fout);
+      temp_encoded.clear();
     }
 
-    *content_len += chunk_len;
-    temp_encoded = zbase64::encode(chunk, chunk_len, &left_over);
-    fwrite(&temp_encoded[0], 1, temp_encoded.size(), fout);
-    temp_encoded.clear();
+    // Add trailing newline if we read any records
+    if (!first_record)
+    {
+      const char newline = '\n';
+      const char *chunk = &newline;
+      int chunk_len = 1;
+
+      if (hasEncoding)
+      {
+        const auto source_encoding = strlen(zds->encoding_opts.source_codepage) > 0 ? string(zds->encoding_opts.source_codepage) : "UTF-8";
+        try
+        {
+          temp_encoded = zut_encode(chunk, chunk_len, codepage, source_encoding, zds->diag);
+          chunk = &temp_encoded[0];
+          chunk_len = temp_encoded.size();
+        }
+        catch (std::exception &e)
+        {
+          zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from %s to %s", codepage.c_str(), source_encoding.c_str());
+          return RTNCD_FAILURE;
+        }
+      }
+
+      *content_len += chunk_len;
+      temp_encoded = zbase64::encode(chunk, chunk_len, &left_over);
+      fwrite(&temp_encoded[0], 1, temp_encoded.size(), fout);
+      temp_encoded.clear();
+    }
+  }
+  else
+  {
+    // Non-ASA: read in chunks as before
+    const size_t chunk_size = FIFO_CHUNK_SIZE * 3 / 4;
+    std::vector<char> buf(chunk_size);
+    size_t bytes_read;
+
+    while ((bytes_read = fread(&buf[0], 1, chunk_size, fin)) > 0)
+    {
+      int chunk_len = bytes_read;
+      const char *chunk = &buf[0];
+
+      if (hasEncoding)
+      {
+        const auto source_encoding = strlen(zds->encoding_opts.source_codepage) > 0 ? string(zds->encoding_opts.source_codepage) : "UTF-8";
+        try
+        {
+          temp_encoded = zut_encode(chunk, chunk_len, codepage, source_encoding, zds->diag);
+          chunk = &temp_encoded[0];
+          chunk_len = temp_encoded.size();
+        }
+        catch (std::exception &e)
+        {
+          zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from %s to %s", codepage.c_str(), source_encoding.c_str());
+          return RTNCD_FAILURE;
+        }
+      }
+
+      *content_len += chunk_len;
+      temp_encoded = zbase64::encode(chunk, chunk_len, &left_over);
+      fwrite(&temp_encoded[0], 1, temp_encoded.size(), fout);
+      temp_encoded.clear();
+    }
   }
 
   if (!left_over.empty())
@@ -2415,9 +2609,6 @@ static int zds_write_sequential_streamed(ZDS *zds, const string &dsn, const stri
 
   // Get recfm from DSCB for fopen flags
   const string recfm = zds_get_recfm_from_dscb(dsn);
-
-  // Check if ASA format before opening
-  const bool is_asa = recfm.find('A') != string::npos;
 
   // Build fopen flags with actual recfm from DSCB
   // Use text mode - the C runtime handles ASA control characters and record boundaries
@@ -2521,8 +2712,6 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const string &dsn, const str
 
   // Check if ASA format from DCB after open
   const bool is_asa = (ioc->dcb.dcbrecfm & dcbrecca) != 0;
-  const bool input_has_asa = zds->input_has_asa != 0;
-  const bool do_asa_conversion = is_asa && !input_has_asa;
 
   // Open the input pipe
   int fifo_fd = open(pipe.c_str(), O_RDONLY);
@@ -2584,7 +2773,7 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const string &dsn, const str
       // Process ASA: determine control char, skip blank lines
       char asa_char = '\0';
       bool has_formfeed = false;
-      if (do_asa_conversion)
+      if (is_asa)
       {
         char line_type = asa_state.process_line(line);
         if (line_type == '\0')
@@ -2628,7 +2817,7 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const string &dsn, const str
       }
 
       // Prepend EBCDIC ASA control character AFTER encoding
-      if (do_asa_conversion)
+      if (is_asa)
       {
         char ebcdic_asa = EBCDIC_ASA_SPACE;
         if (asa_char == '1')
@@ -2683,7 +2872,7 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const string &dsn, const str
     {
       // Process ASA: determine control char
       char asa_char = '\0';
-      if (do_asa_conversion)
+      if (is_asa)
       {
         char line_type = asa_state.process_line(line_buffer);
         if (line_type == '\0')
@@ -2730,7 +2919,7 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const string &dsn, const str
         }
 
         // Prepend EBCDIC ASA control character AFTER encoding
-        if (do_asa_conversion && asa_char != '\0')
+        if (is_asa && asa_char != '\0')
         {
           char ebcdic_asa = EBCDIC_ASA_SPACE;
           if (asa_char == '1')

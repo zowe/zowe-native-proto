@@ -74,12 +74,6 @@ export const UploadFileToDataSetDefinition: ICommandDefinition = {
             type: "string",
         },
         {
-            name: "input-asa",
-            aliases: ["ia"],
-            description: "Treat input as ASA-formatted (skip ASA conversion).",
-            type: "boolean",
-        },
-        {
             name: "volume-serial",
             aliases: ["vs", "volser"],
             description: "The volume serial (VOLSER) where the data set resides.",

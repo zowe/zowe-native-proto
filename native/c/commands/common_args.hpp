@@ -130,15 +130,6 @@ const ArgTemplate PIPE_PATH = {
     ArgValue(),
     make_aliases(), true};
 
-const ArgTemplate INPUT_ASA = {
-    "input-asa",
-    make_aliases("--input-asa"),
-    "input already includes ASA control characters",
-    ArgType_Flag,
-    false,
-    ArgValue(false),
-    make_aliases()};
-
 const ArgTemplate VOLSER = {
     "volser",
     make_aliases("--volser", "--vs"),
