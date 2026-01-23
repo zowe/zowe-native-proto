@@ -104,7 +104,7 @@ void register_job_commands(CommandDispatcher &dispatcher)
                               create_job_builder(job::handle_job_list_files)
                                   .validate<ListSpoolsRequest, ListSpoolsResponse>());
   dispatcher.register_command("readSpool",
-                              create_job_builder(job::handle_job_view_file)
+                              create_job_builder(job::handle_job_view_file_by_id)
                                   .validate<ReadSpoolRequest, ReadSpoolResponse>()
                                   .rename_arg("spool-id", "key")
                                   .set_default("encoding", "IBM-1047")

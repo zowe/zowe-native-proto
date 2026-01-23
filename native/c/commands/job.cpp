@@ -251,6 +251,7 @@ int handle_job_view_status(InvocationContext &context)
 
 int handle_job_view_file(InvocationContext &context)
 {
+  // Note: Middleware doesn't use this command - it lists jobs by ID instead of DSN
   int rc = 0;
   ZJB zjb = {};
   string dsn = context.get<std::string>("dsn", "");
