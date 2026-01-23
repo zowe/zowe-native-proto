@@ -796,6 +796,7 @@ static int deq_data_set(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
 int close_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
 {
   int rc = 0;
+  int first_rc = 0;
 
   //
   // Write any remaining bytes in the buffer
@@ -803,7 +804,8 @@ int close_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
   rc = write_flush(diag, ioc);
   if (0 != rc)
   {
-    // return rc; // TODO(Kelosky): handle when this fails... continue or return?
+    if (0 == first_rc)
+      first_rc = rc;
   }
 
   //
@@ -812,7 +814,8 @@ int close_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
   rc = update_ispf_statistics(diag, ioc);
   if (0 != rc)
   {
-    return rc; // TODO(Kelosky): handle when this fails... continue or return?
+    if (0 == first_rc)
+      first_rc = rc;
   }
 
   //
@@ -823,7 +826,8 @@ int close_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
     rc = stow_data_set(diag, ioc);
     if (0 != rc)
     {
-      // return rc; // TODO(Kelosky): handle when this fails... continue or return?
+      if (0 == first_rc)
+        first_rc = rc;
     }
   }
 
@@ -833,7 +837,8 @@ int close_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
   rc = close_data_set(diag, ioc);
   if (0 != rc)
   {
-    return rc;
+    if (0 == first_rc)
+      first_rc = rc;
   }
 
   //
@@ -852,7 +857,8 @@ int close_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
   rc = deq_reserve_data_set(diag, ioc);
   if (0 != rc)
   {
-    return rc;
+    if (0 == first_rc)
+      first_rc = rc;
   }
 
   //
@@ -861,10 +867,11 @@ int close_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
   rc = deq_data_set(diag, ioc);
   if (0 != rc)
   {
-    return rc;
+    if (0 == first_rc)
+      first_rc = rc;
   }
 
-  return rc;
+  return first_rc;
 }
 
 IO_CTRL *open_output_assert(char *ddname, int lrecl, int blkSize, unsigned char recfm)
