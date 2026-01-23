@@ -479,6 +479,7 @@ static int zds_write_sequential(ZDS *zds, const string &dsn, string &data)
 
   // Check if ASA format before opening
   const bool is_asa = zds_is_recfm_asa(dsn);
+  const bool input_has_asa = zds->input_has_asa != 0;
 
   // Determine source encoding for line splitting
   const auto source_encoding = strlen(zds->encoding_opts.source_codepage) > 0 ? string(zds->encoding_opts.source_codepage) : "UTF-8";
@@ -509,119 +510,19 @@ static int zds_write_sequential(ZDS *zds, const string &dsn, string &data)
     {
       if (is_asa)
       {
-        // ASA mode: parse lines, encode each, then prepend EBCDIC ASA char
-        int blank_count = 0;
-        size_t pos = 0;
-        size_t newline_pos;
-
-        while ((newline_pos = data.find(newline_char, pos)) != string::npos)
+        if (input_has_asa)
         {
-          string line = data.substr(pos, newline_pos - pos);
+          // ASA input already provided: write records as-is (no ASA conversion)
+          size_t pos = 0;
+          size_t newline_pos;
 
-          if (!line.empty() && line[line.size() - 1] == cr_char)
+          while ((newline_pos = data.find(newline_char, pos)) != string::npos)
           {
-            line.erase(line.size() - 1);
-          }
+            string line = data.substr(pos, newline_pos - pos);
 
-          bool has_formfeed = (!line.empty() && line[0] == ff_char);
-          if (has_formfeed)
-          {
-            line = line.substr(1);
-          }
-
-          // Track blank lines, skip writing them
-          if (line.empty() && !has_formfeed)
-          {
-            blank_count++;
-            pos = newline_pos + 1;
-            continue;
-          }
-
-          // For 3+ blank lines, write empty '-' records for overflow
-          // Each '-' consumes 2 blank lines worth of spacing
-          while (blank_count >= 3)
-          {
-            string empty_record(1, EBCDIC_ASA_MINUS);
-            size_t bytes_written = fwrite(empty_record.c_str(), 1, empty_record.length(), fp);
-            if (bytes_written != empty_record.length())
+            if (!line.empty() && line[line.size() - 1] == cr_char)
             {
-              zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to write to '%s' (possibly out of space)", dsname.c_str());
-              return RTNCD_FAILURE;
-            }
-            blank_count -= 3; // '-' represents triple-space (consumes 3 blank lines)
-          }
-
-          // Encode line content
-          if (hasEncoding)
-          {
-            try
-            {
-              line = zut_encode(line, source_encoding, codepage, zds->diag);
-            }
-            catch (exception &e)
-            {
-              zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from %s to %s", source_encoding.c_str(), codepage.c_str());
-              return RTNCD_FAILURE;
-            }
-          }
-
-          // Prepend EBCDIC ASA control character AFTER encoding
-          // At this point blank_count is 0, 1, or 2
-          char asa_char = EBCDIC_ASA_SPACE;
-          if (has_formfeed)
-          {
-            asa_char = EBCDIC_ASA_ONE;
-          }
-          else if (blank_count == 1)
-          {
-            asa_char = EBCDIC_ASA_ZERO;
-          }
-          else if (blank_count == 2)
-          {
-            asa_char = EBCDIC_ASA_MINUS;
-          }
-          line = string(1, asa_char) + line;
-          blank_count = 0;
-
-          size_t bytes_written = fwrite(line.c_str(), 1, line.length(), fp);
-          if (bytes_written != line.length())
-          {
-            zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to write to '%s' (possibly out of space)", dsname.c_str());
-            return RTNCD_FAILURE;
-          }
-
-          pos = newline_pos + 1;
-        }
-
-        // Handle remaining content after last newline
-        if (pos < data.size())
-        {
-          string line = data.substr(pos);
-
-          if (!line.empty() && line[line.size() - 1] == cr_char)
-          {
-            line.erase(line.size() - 1);
-          }
-
-          bool has_formfeed = (!line.empty() && line[0] == ff_char);
-          if (has_formfeed)
-          {
-            line = line.substr(1);
-          }
-
-          if (!line.empty() || has_formfeed)
-          {
-            // Flush overflow blank lines as empty '-' records
-            while (blank_count >= 3)
-            {
-              string empty_record(1, EBCDIC_ASA_MINUS);
-              size_t bytes_written = fwrite(empty_record.c_str(), 1, empty_record.length(), fp);
-              if (bytes_written != empty_record.length())
-              {
-                zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to write to '%s' (possibly out of space)", dsname.c_str());
-                return RTNCD_FAILURE;
-              }
-              blank_count -= 3;
+              line.erase(line.size() - 1);
             }
 
             if (hasEncoding)
@@ -637,6 +538,103 @@ static int zds_write_sequential(ZDS *zds, const string &dsn, string &data)
               }
             }
 
+            size_t bytes_written = fwrite(line.c_str(), 1, line.length(), fp);
+            if (bytes_written != line.length())
+            {
+              zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to write to '%s' (possibly out of space)", dsname.c_str());
+              return RTNCD_FAILURE;
+            }
+
+            pos = newline_pos + 1;
+          }
+
+          if (pos < data.size())
+          {
+            string line = data.substr(pos);
+            if (!line.empty() && line[line.size() - 1] == cr_char)
+            {
+              line.erase(line.size() - 1);
+            }
+            if (hasEncoding)
+            {
+              try
+              {
+                line = zut_encode(line, source_encoding, codepage, zds->diag);
+              }
+              catch (exception &e)
+              {
+                zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from %s to %s", source_encoding.c_str(), codepage.c_str());
+                return RTNCD_FAILURE;
+              }
+            }
+            size_t bytes_written = fwrite(line.c_str(), 1, line.length(), fp);
+            if (bytes_written != line.length())
+            {
+              zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to write to '%s' (possibly out of space)", dsname.c_str());
+              return RTNCD_FAILURE;
+            }
+          }
+        }
+        else
+        {
+          // ASA mode: parse lines, encode each, then prepend EBCDIC ASA char
+          int blank_count = 0;
+          size_t pos = 0;
+          size_t newline_pos;
+
+          while ((newline_pos = data.find(newline_char, pos)) != string::npos)
+          {
+            string line = data.substr(pos, newline_pos - pos);
+
+            if (!line.empty() && line[line.size() - 1] == cr_char)
+            {
+              line.erase(line.size() - 1);
+            }
+
+            bool has_formfeed = (!line.empty() && line[0] == ff_char);
+            if (has_formfeed)
+            {
+              line = line.substr(1);
+            }
+
+            // Track blank lines, skip writing them
+            if (line.empty() && !has_formfeed)
+            {
+              blank_count++;
+              pos = newline_pos + 1;
+              continue;
+            }
+
+            // For 3+ blank lines, write empty '-' records for overflow
+            // Each '-' consumes 2 blank lines worth of spacing
+            while (blank_count >= 3)
+            {
+              string empty_record(1, EBCDIC_ASA_MINUS);
+              size_t bytes_written = fwrite(empty_record.c_str(), 1, empty_record.length(), fp);
+              if (bytes_written != empty_record.length())
+              {
+                zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to write to '%s' (possibly out of space)", dsname.c_str());
+                return RTNCD_FAILURE;
+              }
+              blank_count -= 3; // '-' represents triple-space (consumes 3 blank lines)
+            }
+
+            // Encode line content
+            if (hasEncoding)
+            {
+              try
+              {
+                line = zut_encode(line, source_encoding, codepage, zds->diag);
+              }
+              catch (exception &e)
+              {
+                zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from %s to %s", source_encoding.c_str(), codepage.c_str());
+                return RTNCD_FAILURE;
+              }
+            }
+
+            // Prepend EBCDIC ASA control character AFTER encoding
+            // At this point blank_count is 0, 1, or 2
             char asa_char = EBCDIC_ASA_SPACE;
             if (has_formfeed)
             {
@@ -651,12 +649,83 @@ static int zds_write_sequential(ZDS *zds, const string &dsn, string &data)
               asa_char = EBCDIC_ASA_MINUS;
             }
             line = string(1, asa_char) + line;
+            blank_count = 0;
 
             size_t bytes_written = fwrite(line.c_str(), 1, line.length(), fp);
             if (bytes_written != line.length())
             {
               zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to write to '%s' (possibly out of space)", dsname.c_str());
               return RTNCD_FAILURE;
+            }
+
+            pos = newline_pos + 1;
+          }
+
+          // Handle remaining content after last newline
+          if (pos < data.size())
+          {
+            string line = data.substr(pos);
+
+            if (!line.empty() && line[line.size() - 1] == cr_char)
+            {
+              line.erase(line.size() - 1);
+            }
+
+            bool has_formfeed = (!line.empty() && line[0] == ff_char);
+            if (has_formfeed)
+            {
+              line = line.substr(1);
+            }
+
+            if (!line.empty() || has_formfeed)
+            {
+              // Flush overflow blank lines as empty '-' records
+              while (blank_count >= 3)
+              {
+                string empty_record(1, EBCDIC_ASA_MINUS);
+                size_t bytes_written = fwrite(empty_record.c_str(), 1, empty_record.length(), fp);
+                if (bytes_written != empty_record.length())
+                {
+                  zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to write to '%s' (possibly out of space)", dsname.c_str());
+                  return RTNCD_FAILURE;
+                }
+                blank_count -= 3;
+              }
+
+              if (hasEncoding)
+              {
+                try
+                {
+                  line = zut_encode(line, source_encoding, codepage, zds->diag);
+                }
+                catch (exception &e)
+                {
+                  zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from %s to %s", source_encoding.c_str(), codepage.c_str());
+                  return RTNCD_FAILURE;
+                }
+              }
+
+              char asa_char = EBCDIC_ASA_SPACE;
+              if (has_formfeed)
+              {
+                asa_char = EBCDIC_ASA_ONE;
+              }
+              else if (blank_count == 1)
+              {
+                asa_char = EBCDIC_ASA_ZERO;
+              }
+              else if (blank_count == 2)
+              {
+                asa_char = EBCDIC_ASA_MINUS;
+              }
+              line = string(1, asa_char) + line;
+
+              size_t bytes_written = fwrite(line.c_str(), 1, line.length(), fp);
+              if (bytes_written != line.length())
+              {
+                zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to write to '%s' (possibly out of space)", dsname.c_str());
+                return RTNCD_FAILURE;
+              }
             }
           }
         }
@@ -711,6 +780,8 @@ static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
 
   // Check if ASA format from DCB after open
   const bool is_asa = (ioc->dcb.dcbrecfm & dcbrecca) != 0;
+  const bool input_has_asa = zds->input_has_asa != 0;
+  const bool do_asa_conversion = is_asa && !input_has_asa;
 
   // Determine source encoding for line splitting
   const auto source_encoding = strlen(zds->encoding_opts.source_codepage) > 0 ? string(zds->encoding_opts.source_codepage) : "UTF-8";
@@ -723,7 +794,7 @@ static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
   int line_num = 0;
   const int max_len = get_effective_lrecl(ioc);
 
-  // ASA state tracking
+  // ASA state tracking (only used when converting to ASA)
   int blank_count = 0;
 
   // Parse and write data line by line
@@ -742,16 +813,17 @@ static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
         line.erase(line.size() - 1);
       }
 
-      // Check for form feed at start of line
-      bool has_formfeed = (!line.empty() && line[0] == ff_char);
-      if (has_formfeed)
+      bool has_formfeed = false;
+      if (do_asa_conversion)
       {
-        line = line.substr(1);
-      }
+        // Check for form feed at start of line
+        has_formfeed = (!line.empty() && line[0] == ff_char);
+        if (has_formfeed)
+        {
+          line = line.substr(1);
+        }
 
-      // Handle ASA: track blank lines, skip writing them
-      if (is_asa)
-      {
+        // Handle ASA: track blank lines, skip writing them
         if (line.empty() && !has_formfeed)
         {
           blank_count++;
@@ -791,7 +863,7 @@ static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
       }
 
       // Prepend EBCDIC ASA control character AFTER encoding
-      if (is_asa)
+      if (do_asa_conversion)
       {
         char asa_char = EBCDIC_ASA_SPACE; // default: single-space
         if (has_formfeed)
@@ -843,16 +915,20 @@ static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
         line.erase(line.size() - 1);
       }
 
-      bool has_formfeed = (!line.empty() && line[0] == ff_char);
-      if (has_formfeed)
+      bool has_formfeed = false;
+      if (do_asa_conversion)
       {
-        line = line.substr(1);
+        has_formfeed = (!line.empty() && line[0] == ff_char);
+        if (has_formfeed)
+        {
+          line = line.substr(1);
+        }
       }
 
-      if (!line.empty() || has_formfeed)
+      if (!do_asa_conversion || !line.empty() || has_formfeed)
       {
         // Flush overflow blank lines as empty '-' records
-        if (is_asa)
+        if (do_asa_conversion)
         {
           while (blank_count >= 3)
           {
@@ -883,7 +959,7 @@ static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
           }
         }
 
-        if (is_asa)
+        if (do_asa_conversion)
         {
           char asa_char = EBCDIC_ASA_SPACE;
           if (has_formfeed)
@@ -2608,55 +2684,28 @@ static int zds_write_sequential_streamed(ZDS *zds, const string &dsn, const stri
 
     if (is_asa)
     {
-      // ASA mode: process line by line with ASA conversion
-      AsaStreamState asa_state(source_encoding);
-      string line_buffer;
-
-      while ((bytes_read = fread(&buf[0], 1, FIFO_CHUNK_SIZE, fin)) > 0)
+      if (input_has_asa)
       {
-        temp_encoded = zbase64::decode(&buf[0], bytes_read, &left_over);
-        *content_len += temp_encoded.size();
-
-        // Append chunk to line buffer
-        line_buffer.append(temp_encoded.begin(), temp_encoded.end());
-
-        // Process complete lines using source encoding's newline character
-        size_t pos = 0;
-        size_t newline_pos;
-        while ((newline_pos = line_buffer.find(newline_char, pos)) != string::npos)
+        // ASA input already provided: write records as-is (no ASA conversion)
+        string line_buffer;
+        while ((bytes_read = fread(&buf[0], 1, FIFO_CHUNK_SIZE, fin)) > 0)
         {
-          string line = line_buffer.substr(pos, newline_pos - pos);
+          temp_encoded = zbase64::decode(&buf[0], bytes_read, &left_over);
+          *content_len += temp_encoded.size();
 
-          // Remove trailing CR if present (Windows line endings)
-          if (!line.empty() && line[line.size() - 1] == cr_char)
+          line_buffer.append(temp_encoded.begin(), temp_encoded.end());
+
+          size_t pos = 0;
+          size_t newline_pos;
+          while ((newline_pos = line_buffer.find(newline_char, pos)) != string::npos)
           {
-            line.erase(line.size() - 1);
-          }
+            string line = line_buffer.substr(pos, newline_pos - pos);
 
-          // Process line for ASA conversion - check if should write
-          char line_type = asa_state.process_line(line);
-          if (line_type != '\0')
-          {
-            bool has_formfeed = (line_type == '1');
-
-            // Flush overflow blank lines as empty '-' records (for 3+ blank lines)
-            while (asa_state.has_overflow_blanks())
+            if (!line.empty() && line[line.size() - 1] == cr_char)
             {
-              string empty_record(1, EBCDIC_ASA_MINUS);
-              size_t bytes_written = fwrite(empty_record.c_str(), 1, empty_record.length(), fout);
-              if (bytes_written != empty_record.length())
-              {
-                truncated = true;
-                break;
-              }
+              line.erase(line.size() - 1);
             }
-            if (truncated)
-              break;
 
-            // Get the ASA char and reset blank count
-            char asa_char = asa_state.get_asa_char_and_reset(has_formfeed);
-
-            // Encode line content FIRST (before adding ASA char)
             if (hasEncoding)
             {
               try
@@ -2670,74 +2719,106 @@ static int zds_write_sequential_streamed(ZDS *zds, const string &dsn, const stri
               }
             }
 
-            // Prepend EBCDIC ASA control character AFTER encoding
-            char ebcdic_asa = EBCDIC_ASA_SPACE;
-            if (asa_char == '1')
-              ebcdic_asa = EBCDIC_ASA_ONE;
-            else if (asa_char == '0')
-              ebcdic_asa = EBCDIC_ASA_ZERO;
-            else if (asa_char == '-')
-              ebcdic_asa = EBCDIC_ASA_MINUS;
-            line = string(1, ebcdic_asa) + line;
-
-            // Write record
             size_t bytes_written = fwrite(line.c_str(), 1, line.length(), fout);
             if (bytes_written != line.length())
             {
               truncated = true;
               break;
             }
+
+            pos = newline_pos + 1;
           }
 
-          pos = newline_pos + 1;
+          if (truncated)
+            break;
+
+          line_buffer = line_buffer.substr(pos);
+          temp_encoded.clear();
         }
 
-        if (truncated)
-          break;
-
-        // Keep remaining partial line
-        line_buffer = line_buffer.substr(pos);
-        temp_encoded.clear();
-      }
-
-      // Handle remaining content
-      if (!truncated && !line_buffer.empty())
-      {
-        // Remove trailing CR if present
-        if (line_buffer[line_buffer.size() - 1] == cr_char)
+        if (!truncated && !line_buffer.empty())
         {
-          line_buffer.erase(line_buffer.size() - 1);
-        }
-
-        if (!line_buffer.empty())
-        {
-          char line_type = asa_state.process_line(line_buffer);
-          if (line_type != '\0')
+          if (line_buffer[line_buffer.size() - 1] == cr_char)
           {
-            bool has_formfeed = (line_type == '1');
+            line_buffer.erase(line_buffer.size() - 1);
+          }
 
-            // Flush overflow blank lines as empty '-' records
-            while (asa_state.has_overflow_blanks())
+          if (hasEncoding)
+          {
+            try
             {
-              string empty_record(1, EBCDIC_ASA_MINUS);
-              size_t bytes_written = fwrite(empty_record.c_str(), 1, empty_record.length(), fout);
-              if (bytes_written != empty_record.length())
-              {
-                truncated = true;
-                break;
-              }
+              line_buffer = zut_encode(line_buffer, source_encoding, codepage, zds->diag);
+            }
+            catch (std::exception &e)
+            {
+              zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from %s to %s", source_encoding.c_str(), codepage.c_str());
+              return RTNCD_FAILURE;
+            }
+          }
+
+          size_t bytes_written = fwrite(line_buffer.c_str(), 1, line_buffer.length(), fout);
+          if (bytes_written != line_buffer.length())
+          {
+            truncated = true;
+          }
+        }
+      }
+      else
+      {
+        // ASA mode: process line by line with ASA conversion
+        AsaStreamState asa_state(source_encoding);
+        string line_buffer;
+
+        while ((bytes_read = fread(&buf[0], 1, FIFO_CHUNK_SIZE, fin)) > 0)
+        {
+          temp_encoded = zbase64::decode(&buf[0], bytes_read, &left_over);
+          *content_len += temp_encoded.size();
+
+          // Append chunk to line buffer
+          line_buffer.append(temp_encoded.begin(), temp_encoded.end());
+
+          // Process complete lines using source encoding's newline character
+          size_t pos = 0;
+          size_t newline_pos;
+          while ((newline_pos = line_buffer.find(newline_char, pos)) != string::npos)
+          {
+            string line = line_buffer.substr(pos, newline_pos - pos);
+
+            // Remove trailing CR if present (Windows line endings)
+            if (!line.empty() && line[line.size() - 1] == cr_char)
+            {
+              line.erase(line.size() - 1);
             }
 
-            if (!truncated)
+            // Process line for ASA conversion - check if should write
+            char line_type = asa_state.process_line(line);
+            if (line_type != '\0')
             {
+              bool has_formfeed = (line_type == '1');
+
+              // Flush overflow blank lines as empty '-' records (for 3+ blank lines)
+              while (asa_state.has_overflow_blanks())
+              {
+                string empty_record(1, EBCDIC_ASA_MINUS);
+                size_t bytes_written = fwrite(empty_record.c_str(), 1, empty_record.length(), fout);
+                if (bytes_written != empty_record.length())
+                {
+                  truncated = true;
+                  break;
+                }
+              }
+              if (truncated)
+                break;
+
+              // Get the ASA char and reset blank count
               char asa_char = asa_state.get_asa_char_and_reset(has_formfeed);
 
-              // Encode line content FIRST
+              // Encode line content FIRST (before adding ASA char)
               if (hasEncoding)
               {
                 try
                 {
-                  line_buffer = zut_encode(line_buffer, source_encoding, codepage, zds->diag);
+                  line = zut_encode(line, source_encoding, codepage, zds->diag);
                 }
                 catch (std::exception &e)
                 {
@@ -2754,12 +2835,89 @@ static int zds_write_sequential_streamed(ZDS *zds, const string &dsn, const stri
                 ebcdic_asa = EBCDIC_ASA_ZERO;
               else if (asa_char == '-')
                 ebcdic_asa = EBCDIC_ASA_MINUS;
-              line_buffer = string(1, ebcdic_asa) + line_buffer;
+              line = string(1, ebcdic_asa) + line;
 
-              size_t bytes_written = fwrite(line_buffer.c_str(), 1, line_buffer.length(), fout);
-              if (bytes_written != line_buffer.length())
+              // Write record
+              size_t bytes_written = fwrite(line.c_str(), 1, line.length(), fout);
+              if (bytes_written != line.length())
               {
                 truncated = true;
+                break;
+              }
+            }
+
+            pos = newline_pos + 1;
+          }
+
+          if (truncated)
+            break;
+
+          // Keep remaining partial line
+          line_buffer = line_buffer.substr(pos);
+          temp_encoded.clear();
+        }
+
+        // Handle remaining content
+        if (!truncated && !line_buffer.empty())
+        {
+          // Remove trailing CR if present
+          if (line_buffer[line_buffer.size() - 1] == cr_char)
+          {
+            line_buffer.erase(line_buffer.size() - 1);
+          }
+
+          if (!line_buffer.empty())
+          {
+            char line_type = asa_state.process_line(line_buffer);
+            if (line_type != '\0')
+            {
+              bool has_formfeed = (line_type == '1');
+
+              // Flush overflow blank lines as empty '-' records
+              while (asa_state.has_overflow_blanks())
+              {
+                string empty_record(1, EBCDIC_ASA_MINUS);
+                size_t bytes_written = fwrite(empty_record.c_str(), 1, empty_record.length(), fout);
+                if (bytes_written != empty_record.length())
+                {
+                  truncated = true;
+                  break;
+                }
+              }
+
+              if (!truncated)
+              {
+                char asa_char = asa_state.get_asa_char_and_reset(has_formfeed);
+
+                // Encode line content FIRST
+                if (hasEncoding)
+                {
+                  try
+                  {
+                    line_buffer = zut_encode(line_buffer, source_encoding, codepage, zds->diag);
+                  }
+                  catch (std::exception &e)
+                  {
+                    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from %s to %s", source_encoding.c_str(), codepage.c_str());
+                    return RTNCD_FAILURE;
+                  }
+                }
+
+                // Prepend EBCDIC ASA control character AFTER encoding
+                char ebcdic_asa = EBCDIC_ASA_SPACE;
+                if (asa_char == '1')
+                  ebcdic_asa = EBCDIC_ASA_ONE;
+                else if (asa_char == '0')
+                  ebcdic_asa = EBCDIC_ASA_ZERO;
+                else if (asa_char == '-')
+                  ebcdic_asa = EBCDIC_ASA_MINUS;
+                line_buffer = string(1, ebcdic_asa) + line_buffer;
+
+                size_t bytes_written = fwrite(line_buffer.c_str(), 1, line_buffer.length(), fout);
+                if (bytes_written != line_buffer.length())
+                {
+                  truncated = true;
+                }
               }
             }
           }
@@ -2893,7 +3051,7 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const string &dsn, const str
       // Process ASA: determine control char, skip blank lines
       char asa_char = '\0';
       bool has_formfeed = false;
-      if (is_asa)
+      if (do_asa_conversion)
       {
         char line_type = asa_state.process_line(line);
         if (line_type == '\0')
@@ -2937,7 +3095,7 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const string &dsn, const str
       }
 
       // Prepend EBCDIC ASA control character AFTER encoding
-      if (is_asa)
+      if (do_asa_conversion)
       {
         char ebcdic_asa = EBCDIC_ASA_SPACE;
         if (asa_char == '1')
@@ -2992,7 +3150,7 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const string &dsn, const str
     {
       // Process ASA: determine control char
       char asa_char = '\0';
-      if (is_asa)
+      if (do_asa_conversion)
       {
         char line_type = asa_state.process_line(line_buffer);
         if (line_type == '\0')
@@ -3039,7 +3197,7 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const string &dsn, const str
         }
 
         // Prepend EBCDIC ASA control character AFTER encoding
-        if (is_asa && asa_char != '\0')
+        if (do_asa_conversion && asa_char != '\0')
         {
           char ebcdic_asa = EBCDIC_ASA_SPACE;
           if (asa_char == '1')

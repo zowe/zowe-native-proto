@@ -108,6 +108,7 @@ ZJSON_SCHEMA(WriteDatasetRequest,
     FIELD_OPTIONAL(etag, STRING),
     FIELD_OPTIONAL(volume, STRING),
     FIELD_REQUIRED(dsname, STRING),
+    FIELD_OPTIONAL(inputAsa, BOOL),
     FIELD_OPTIONAL(data, STRING),
     FIELD_OPTIONAL(stream, ANY)
 );

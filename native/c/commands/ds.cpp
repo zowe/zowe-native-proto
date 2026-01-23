@@ -299,6 +299,10 @@ int handle_data_set_view(InvocationContext &context)
       memcpy(zds.encoding_opts.source_codepage, source_encoding.data(), source_encoding.length() + 1);
     }
   }
+  if (context.has("input-asa"))
+  {
+    zds.input_has_asa = context.get<bool>("input-asa", false) ? 1 : 0;
+  }
 
   if (context.has("volser"))
   {

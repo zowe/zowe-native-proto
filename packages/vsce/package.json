@@ -88,6 +88,11 @@
           "default": 30000,
           "minimum": 1000,
           "maximum": 120000
+        },
+        "zowe-native-proto-vsce.uploadInputAsa": {
+          "type": "boolean",
+          "default": false,
+          "description": "Treat uploads to ASA data sets as already ASA-formatted (skip ASA conversion)."
         }
       }
     }

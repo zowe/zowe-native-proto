@@ -22,6 +22,7 @@ import {
     type MainframeInteraction,
 } from "@zowe/zowe-explorer-api";
 import { B64String, type Dataset, type DatasetAttributes, type ds } from "zowe-native-proto-sdk";
+import { getVsceConfig } from "../Utilities";
 import { SshCommonApi } from "./SshCommonApi";
 
 class SshAttributesProvider implements IAttributesProvider {
@@ -159,9 +160,11 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
     ): Promise<zosfiles.IZosFilesResponse> {
         let response: ds.WriteDatasetResponse;
         try {
+            const uploadInputAsa = getVsceConfig().get<boolean>("uploadInputAsa");
             response = await (await this.client).ds.writeDataset({
                 dsname: dataSetName,
                 encoding: options?.binary ? "binary" : options?.encoding,
+                inputAsa: uploadInputAsa,
                 data: B64String.encode(buffer),
                 etag: options?.etag,
             });
@@ -179,9 +182,11 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
         dataSetName: string,
         options?: zosfiles.IUploadOptions,
     ): Promise<zosfiles.IZosFilesResponse> {
+        const uploadInputAsa = getVsceConfig().get<boolean>("uploadInputAsa");
         const response = await (await this.client).ds.writeDataset({
             dsname: dataSetName,
             encoding: options?.encoding,
+            inputAsa: uploadInputAsa,
             stream: createReadStream(inputFilePath),
             etag: options?.etag,
         });

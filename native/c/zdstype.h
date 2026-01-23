@@ -104,7 +104,8 @@ typedef struct
 
   void *PTR64 csi;
 
-  unsigned int dynalloc : 1; // indicates that the data set was dynamically allocated
+  unsigned int dynalloc : 1;      // indicates that the data set was dynamically allocated
+  unsigned int input_has_asa : 1; // input lines already include ASA control character
   unsigned char reserve[20];
 
   ZDIAG diag;
