@@ -262,6 +262,79 @@ static DscbAttributes zds_get_dscb_attributes(const string &dsn)
   return attrs;
 }
 
+/**
+ * Get the effective LRECL for writing from DSCB attributes, accounting for RDW
+ * in variable records and ASA control character in ASA-formatted data sets.
+ */
+static int get_effective_lrecl_from_attrs(const DscbAttributes &attrs)
+{
+  int lrecl = attrs.lrecl;
+  // For variable records, subtract RDW size (4 bytes)
+  if (attrs.recfm.find('V') != string::npos)
+  {
+    lrecl -= 4;
+  }
+  // For ASA control characters, subtract 1 byte
+  if (attrs.is_asa)
+  {
+    lrecl -= 1;
+  }
+  return lrecl;
+}
+
+/**
+ * Scan data for lines that exceed the maximum record length.
+ * Populates the TruncationTracker with line numbers of truncated lines.
+ *
+ * @param data The data to scan
+ * @param max_len The maximum allowed line length (effective LRECL)
+ * @param newline_char The newline character to use for line splitting
+ * @param truncation The TruncationTracker to populate
+ */
+static void scan_for_truncated_lines(const string &data, int max_len,
+                                      char newline_char, TruncationTracker &truncation)
+{
+  const char cr_char = '\x0D';
+  int line_num = 0;
+  size_t pos = 0;
+  size_t newline_pos;
+
+  while ((newline_pos = data.find(newline_char, pos)) != string::npos)
+  {
+    line_num++;
+    size_t line_len = newline_pos - pos;
+
+    // Account for CR if present (Windows line endings)
+    if (line_len > 0 && data[newline_pos - 1] == cr_char)
+    {
+      line_len--;
+    }
+
+    if (static_cast<int>(line_len) > max_len)
+    {
+      truncation.add_line(line_num);
+    }
+    pos = newline_pos + 1;
+  }
+
+  // Check final line (no trailing newline)
+  if (pos < data.length())
+  {
+    line_num++;
+    size_t line_len = data.length() - pos;
+    if (line_len > 0 && data[data.length() - 1] == cr_char)
+    {
+      line_len--;
+    }
+    if (static_cast<int>(line_len) > max_len)
+    {
+      truncation.add_line(line_num);
+    }
+  }
+
+  truncation.flush_range();
+}
+
 int zds_read_from_dsn(ZDS *zds, const string &dsn, string &response)
 {
   string dsname = "//'" + dsn + "'";
@@ -566,12 +639,22 @@ static int zds_write_sequential(ZDS *zds, const string &dsn, string &data)
 {
   const auto hasEncoding = zds->encoding_opts.data_type == eDataTypeText && strlen(zds->encoding_opts.codepage) > 0;
   const auto codepage = string(zds->encoding_opts.codepage);
+  const bool isTextMode = zds->encoding_opts.data_type != eDataTypeBinary;
 
-  // Get recfm from DSCB for fopen flags
-  const string recfm = zds_get_recfm_from_dscb(dsn);
+  // Get attributes from DSCB for fopen flags and truncation checking
+  const DscbAttributes attrs = zds_get_dscb_attributes(dsn);
 
   // Determine source encoding for encoding conversion
   const auto source_encoding = strlen(zds->encoding_opts.source_codepage) > 0 ? string(zds->encoding_opts.source_codepage) : "UTF-8";
+
+  // Track truncated lines for text mode
+  TruncationTracker truncation;
+  if (isTextMode && attrs.lrecl > 0 && !data.empty())
+  {
+    const int max_len = get_effective_lrecl_from_attrs(attrs);
+    const char newline_char = get_newline_char(source_encoding);
+    scan_for_truncated_lines(data, max_len, newline_char, truncation);
+  }
 
   string dsname = "//'" + dsn + "'";
   if (strlen(zds->ddname) > 0)
@@ -581,7 +664,7 @@ static int zds_write_sequential(ZDS *zds, const string &dsn, string &data)
 
   // Build fopen flags with actual recfm from DSCB
   // Use text mode - the C runtime handles ASA control characters and record boundaries
-  const string recfm_flag = recfm.empty() ? "*" : recfm;
+  const string recfm_flag = attrs.recfm.empty() ? "*" : attrs.recfm;
   const string fopen_flags = zds->encoding_opts.data_type == eDataTypeBinary
                                  ? "wb"
                                  : "w,recfm=" + recfm_flag;
@@ -618,6 +701,15 @@ static int zds_write_sequential(ZDS *zds, const string &dsn, string &data)
         return RTNCD_FAILURE;
       }
     }
+  }
+
+  // Report truncation warning if lines were truncated and write succeeded
+  if (truncation.count > 0)
+  {
+    const auto warning_msg = truncation.get_warning_message();
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "%s", warning_msg.c_str());
+    zds->diag.detail_rc = ZDS_RSNCD_TRUNCATION_WARNING;
+    return RTNCD_WARNING;
   }
 
   return RTNCD_SUCCESS;
@@ -2606,16 +2698,28 @@ static int zds_write_sequential_streamed(ZDS *zds, const string &dsn, const stri
 
   const auto hasEncoding = zds->encoding_opts.data_type == eDataTypeText && strlen(zds->encoding_opts.codepage) > 0;
   const auto codepage = string(zds->encoding_opts.codepage);
+  const bool isTextMode = zds->encoding_opts.data_type != eDataTypeBinary;
 
-  // Get recfm from DSCB for fopen flags
-  const string recfm = zds_get_recfm_from_dscb(dsn);
+  // Get attributes from DSCB for fopen flags and truncation checking
+  const DscbAttributes attrs = zds_get_dscb_attributes(dsn);
+  const int max_len = get_effective_lrecl_from_attrs(attrs);
 
   // Build fopen flags with actual recfm from DSCB
   // Use text mode - the C runtime handles ASA control characters and record boundaries
-  const string recfm_flag = recfm.empty() ? "*" : recfm;
+  const string recfm_flag = attrs.recfm.empty() ? "*" : attrs.recfm;
   const string fopen_flags = zds->encoding_opts.data_type == eDataTypeBinary
                                  ? "wb"
                                  : "w,recfm=" + recfm_flag;
+
+  // Track truncated lines for text mode
+  TruncationTracker truncation;
+  int line_num = 0;
+  string line_buffer;
+
+  // Determine source encoding for encoding conversion and newline detection
+  const auto source_encoding = strlen(zds->encoding_opts.source_codepage) > 0 ? string(zds->encoding_opts.source_codepage) : "UTF-8";
+  const char newline_char = get_newline_char(source_encoding);
+  const char cr_char = '\x0D';
 
   {
     FileGuard fout(dsname.c_str(), fopen_flags.c_str());
@@ -2644,10 +2748,7 @@ static int zds_write_sequential_streamed(ZDS *zds, const string &dsn, const stri
     size_t bytes_read;
     std::vector<char> temp_encoded;
     std::vector<char> left_over;
-    bool truncated = false;
-
-    // Determine source encoding for encoding conversion
-    const auto source_encoding = strlen(zds->encoding_opts.source_codepage) > 0 ? string(zds->encoding_opts.source_codepage) : "UTF-8";
+    bool write_failed = false;
 
     // Write chunks directly - the C runtime handles ASA and record boundaries in text mode
     while ((bytes_read = fread(&buf[0], 1, FIFO_CHUNK_SIZE, fin)) > 0)
@@ -2656,6 +2757,35 @@ static int zds_write_sequential_streamed(ZDS *zds, const string &dsn, const stri
       const char *chunk = &temp_encoded[0];
       int chunk_len = temp_encoded.size();
       *content_len += chunk_len;
+
+      // Check for truncated lines in text mode before encoding
+      if (isTextMode && attrs.lrecl > 0)
+      {
+        line_buffer.append(temp_encoded.begin(), temp_encoded.end());
+
+        size_t pos = 0;
+        size_t newline_pos;
+        while ((newline_pos = line_buffer.find(newline_char, pos)) != string::npos)
+        {
+          line_num++;
+          size_t line_len = newline_pos - pos;
+
+          // Account for CR if present (Windows line endings)
+          if (line_len > 0 && line_buffer[newline_pos - 1] == cr_char)
+          {
+            line_len--;
+          }
+
+          if (static_cast<int>(line_len) > max_len)
+          {
+            truncation.add_line(line_num);
+          }
+          pos = newline_pos + 1;
+        }
+
+        // Keep remaining partial line in buffer
+        line_buffer = line_buffer.substr(pos);
+      }
 
       if (hasEncoding)
       {
@@ -2675,18 +2805,44 @@ static int zds_write_sequential_streamed(ZDS *zds, const string &dsn, const stri
       size_t bytes_written = fwrite(chunk, 1, chunk_len, fout);
       if (bytes_written != chunk_len)
       {
-        truncated = true;
+        write_failed = true;
         break;
       }
       temp_encoded.clear();
     }
 
+    // Check any remaining partial line (no trailing newline)
+    if (isTextMode && attrs.lrecl > 0 && !line_buffer.empty())
+    {
+      line_num++;
+      size_t line_len = line_buffer.length();
+      if (line_len > 0 && line_buffer[line_len - 1] == cr_char)
+      {
+        line_len--;
+      }
+      if (static_cast<int>(line_len) > max_len)
+      {
+        truncation.add_line(line_num);
+      }
+    }
+
+    truncation.flush_range();
+
     const int flush_rc = fflush(fout);
-    if (truncated || flush_rc != 0)
+    if (write_failed || flush_rc != 0)
     {
       zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to write to '%s' (possibly out of space)", dsname.c_str());
       return RTNCD_FAILURE;
     }
+  }
+
+  // Report truncation warning if lines were truncated and write succeeded
+  if (truncation.count > 0)
+  {
+    const auto warning_msg = truncation.get_warning_message();
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "%s", warning_msg.c_str());
+    zds->diag.detail_rc = ZDS_RSNCD_TRUNCATION_WARNING;
+    return RTNCD_WARNING;
   }
 
   return RTNCD_SUCCESS;
