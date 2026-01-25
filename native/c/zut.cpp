@@ -170,21 +170,12 @@ int zut_get_current_user(string &struser)
   int rc = 0;
   char user[9] = {0};
 
-  // NOTE(TAJ): Metal C method doesn't work on all systems so use LE method instead
-  // rc = ZUTMGUSR(user);
   rc = __getuserid(user, sizeof(user));
   if (0 != rc)
     return rc;
 
-  for (int i = sizeof(user) - 1; i >= 0; i--)
-  {
-    if (user[i] == ' ' || user[i] == 0x00)
-      user[i] = 0x00;
-    else
-      break;
-  }
-
   struser = string(user);
+  zut_rtrim(struser);
   return rc;
 }
 

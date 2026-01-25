@@ -62,7 +62,7 @@ int handle_job_list(InvocationContext &context)
       }
       else
       {
-        context.output_stream() << it->jobid << " " << it->jobname << " " << it->owner << left << setw(7) << it->status << " " << it->retcode << endl;
+        context.output_stream() << it->jobid << " " << it->jobname << " " << it->owner << " " << left << setw(7) << it->status << " " << it->retcode << endl;
       }
 
       const auto entry = obj();
@@ -240,7 +240,7 @@ int handle_job_view_status(InvocationContext &context)
   {
     string trimmed_correlator = job.correlator;
     zut_rtrim(trimmed_correlator);
-    context.output_stream() << job.jobid << " " << job.jobname << " " << job.owner << left << setw(7) << job.status << " " << left << setw(10) << job.retcode << " " << left << setw(33) << trimmed_correlator << " " << job.full_status << endl;
+    context.output_stream() << job.jobid << " " << job.jobname << " " << job.owner << " " << left << setw(7) << job.status << " " << left << setw(10) << job.retcode << " " << left << setw(33) << trimmed_correlator << " " << job.full_status << endl;
   }
 
   const auto result = obj();

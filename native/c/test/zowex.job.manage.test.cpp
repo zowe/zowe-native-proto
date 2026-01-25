@@ -95,8 +95,8 @@ void zowex_job_manage_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
                   Expect(lines.size()).ToBeGreaterThan(0);
 
                   vector<string> columns = parse_rfc_response(lines[0], ",");
-                  // RFC format: jobid, retcode, jobname, status, correlator, full_status
-                  Expect(columns.size()).ToBeGreaterThanOrEqualTo(6);
+                  // RFC format: jobid, jobname, owner, status, retcode, correlator, full_status
+                  Expect(columns.size()).ToBeGreaterThanOrEqualTo(7);
 
                   // Validate full_status field (7th field, index 6)
                   // full_status should not be empty for a completed job
