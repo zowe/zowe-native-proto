@@ -148,5 +148,8 @@
   "files.eol": "\n",
   "[swig]": {
     "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd",
+  },
+  "files.readonlyInclude": {
+    "**/schemas/*.hpp": true
   }
 }
