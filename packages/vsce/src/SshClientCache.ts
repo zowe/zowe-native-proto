@@ -63,7 +63,7 @@ export class SshClientCache extends vscode.Disposable {
             using _lock = this.acquireProfileLock(clientId);
             const session = ZSshUtils.buildSession(profile.profile!);
             const serverPath = ConfigUtils.getServerPath(profile.profile);
-            const localDir = path.join(this.mContext.extensionPath, "bin");
+            const checksumsFile = path.join(this.mContext.extensionPath, "bin", "checksums.asc");
             const vsceConfig = getVsceConfig();
             const keepAliveInterval = vsceConfig.get<number>("keepAliveInterval");
             const numWorkers = vsceConfig.get<number>("workerCount");
@@ -81,7 +81,7 @@ export class SshClientCache extends vscode.Disposable {
                 imperative.Logger.getAppLogger().debug(
                     `Server checksums: ${JSON.stringify(newClient.serverChecksums)}`,
                 );
-                if (await ZSshUtils.checkIfOutdated(path.join(localDir, "checksums.asc"), newClient.serverChecksums)) {
+                if (await ZSshUtils.checkIfOutdated(checksumsFile, newClient.serverChecksums)) {
                     if (autoUpdate) {
                         imperative.Logger.getAppLogger().info(`Server is out of date, deploying to ${profile.name}`);
                         newClient = undefined;
@@ -99,7 +99,7 @@ export class SshClientCache extends vscode.Disposable {
                 }
             }
             if (newClient == null) {
-                await deployWithProgress(session, serverPath, localDir);
+                await deployWithProgress(session, serverPath);
                 newClient = await this.buildClient(session, clientId, {
                     serverPath,
                     keepAliveInterval,

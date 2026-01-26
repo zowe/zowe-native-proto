@@ -86,13 +86,9 @@ export class ZSshUtils {
         }
     }
 
-    public static async installServer(
-        session: SshSession,
-        serverPath: string,
-        localDir: string,
-        options?: ISshCallbacks,
-    ): Promise<void> {
+    public static async installServer(session: SshSession, serverPath: string, options?: ISshCallbacks): Promise<void> {
         Logger.getAppLogger().debug(`Installing server to ${session.ISshSession.hostname} at path: ${serverPath}`);
+        const localDir = ZSshUtils.getBinDir(__dirname);
         const remoteDir = serverPath.replace(/^~/, ".");
 
         return ZSshUtils.sftp(session, async (sftp, ssh) => {
@@ -129,7 +125,7 @@ export class ZSshUtils {
                     if (!shouldRetry) {
                         throw new Error(errMsg);
                     }
-                    return ZSshUtils.installServer(session, serverPath, localDir, options);
+                    return ZSshUtils.installServer(session, serverPath, options);
                 } else {
                     throw new Error(errMsg);
                 }
@@ -206,6 +202,17 @@ export class ZSshUtils {
             localChecksums[file] = checksum;
         }
         return JSON.stringify(localChecksums) !== JSON.stringify(remoteChecksums);
+    }
+
+    private static getBinDir(dir?: string): string {
+        if (!dir || fs.existsSync(path.join(dir, "package.json"))) {
+            return path.join(dir, "bin");
+        }
+
+        const dirUp = path.normalize(path.join(dir, ".."));
+        if (path.parse(dirUp).base.length > 0) {
+            return ZSshUtils.getBinDir(dirUp);
+        }
     }
 
     private static async sftp<T>(

@@ -34,7 +34,7 @@ export default class ServerInstallHandler implements ICommandHandler {
 
         params.response.progress.startBar({ task });
         try {
-            await ZSshUtils.installServer(session, serverPath, Constants.ZSSH_BIN_DIR, {
+            await ZSshUtils.installServer(session, serverPath, {
                 onProgress: (progressIncrement) => {
                     task.percentComplete += progressIncrement;
                 },
