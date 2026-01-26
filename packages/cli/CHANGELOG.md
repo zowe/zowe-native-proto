@@ -4,6 +4,10 @@ All notable changes to the Client code for "zowe-native-proto-cli" are documente
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## Recent Changes
+
+- Updated the `zssh server install` command to locate server PAX bundled in the SDK package. [#760](https://github.com/zowe/zowe-native-proto/pull/760)
+
 ## `0.2.1`
 
 - When listing data sets with attributes, a comprehensive set is now retrieved that is similar to what ISPF displays. [#629](https://github.com/zowe/zowe-native-proto/issues/629)

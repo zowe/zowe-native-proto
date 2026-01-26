@@ -18,7 +18,6 @@ import {
 } from "@zowe/imperative";
 import { ZSshClient, ZSshUtils } from "zowe-native-proto-sdk";
 import { translateCliError } from "../../CliErrorUtils";
-import { Constants } from "../../Constants";
 import { SshBaseHandler } from "../../SshBaseHandler";
 
 export default class ServerInstallHandler implements ICommandHandler {
