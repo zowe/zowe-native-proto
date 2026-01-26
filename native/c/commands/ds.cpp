@@ -635,10 +635,15 @@ int handle_data_set_write(InvocationContext &context)
     }
     else
     {
+      bool first_line = true;
       while (getline(context.input_stream(), line))
       {
+        if (!first_line)
+        {
+          data.push_back('\n');
+        }
+        first_line = false;
         data += line;
-        data.push_back('\n');
       }
     }
 

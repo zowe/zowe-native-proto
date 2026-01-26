@@ -197,8 +197,11 @@ int zds_read_from_dd(ZDS *zds, string ddname, string &response)
   {
     if (index > 0 || line.size() > 0)
     {
+      if (index > 0)
+      {
+        response.push_back('\n');
+      }
       response += line;
-      response.push_back('\n');
       index++;
     }
   }
