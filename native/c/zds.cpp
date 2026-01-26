@@ -41,6 +41,15 @@ const size_t MAX_DS_LENGTH = 44u;
 using namespace std;
 
 /**
+ * Helper function to check if codepage encoding should be used.
+ * Returns true if text mode is enabled and a codepage is specified.
+ */
+static inline bool zds_use_codepage(const ZDS *zds)
+{
+  return zds->encoding_opts.data_type == eDataTypeText && strlen(zds->encoding_opts.codepage) > 0;
+}
+
+/**
  * Helper struct to track truncated lines with range compression.
  * Consecutive lines are compressed into ranges (e.g., "5-8, 12, 45-46").
  */
@@ -54,6 +63,7 @@ struct TruncationTracker
   TruncationTracker()
       : count(0), range_start(-1), range_end(-1), lines_str("")
   {
+    lines_str.reserve(128);
   }
 
   void flush_range()
@@ -292,7 +302,7 @@ static int get_effective_lrecl_from_attrs(const DscbAttributes &attrs)
  * @param truncation The TruncationTracker to populate
  */
 static void scan_for_truncated_lines(const string &data, int max_len,
-                                      char newline_char, TruncationTracker &truncation)
+                                     char newline_char, TruncationTracker &truncation)
 {
   const char cr_char = '\x0D';
   int line_num = 0;
@@ -419,9 +429,9 @@ int zds_read_from_dsn(ZDS *zds, const string &dsn, string &response)
   }
   fclose(fp);
 
-  const auto encodingProvided = zds->encoding_opts.data_type == eDataTypeText && strlen(zds->encoding_opts.codepage) > 0;
+  const auto encoding_provided = zds_use_codepage(zds);
 
-  if (total_size > 0 && encodingProvided)
+  if (total_size > 0 && encoding_provided)
   {
     string temp = response;
     const auto source_encoding = strlen(zds->encoding_opts.source_codepage) > 0 ? string(zds->encoding_opts.source_codepage) : "UTF-8";
@@ -635,26 +645,14 @@ static string zds_get_base_dsn(const string &dsn)
 /**
  * Internal function to write to a sequential data set using fopen/fwrite
  */
-static int zds_write_sequential(ZDS *zds, const string &dsn, string &data)
+static int zds_write_sequential(ZDS *zds, const string &dsn, string &data, const DscbAttributes &attrs)
 {
-  const auto hasEncoding = zds->encoding_opts.data_type == eDataTypeText && strlen(zds->encoding_opts.codepage) > 0;
+  const auto has_encoding = zds_use_codepage(zds);
   const auto codepage = string(zds->encoding_opts.codepage);
   const bool isTextMode = zds->encoding_opts.data_type != eDataTypeBinary;
 
-  // Get attributes from DSCB for fopen flags and truncation checking
-  const DscbAttributes attrs = zds_get_dscb_attributes(dsn);
-
   // Determine source encoding for encoding conversion
   const auto source_encoding = strlen(zds->encoding_opts.source_codepage) > 0 ? string(zds->encoding_opts.source_codepage) : "UTF-8";
-
-  // Track truncated lines for text mode
-  TruncationTracker truncation;
-  if (isTextMode && attrs.lrecl > 0 && !data.empty())
-  {
-    const int max_len = get_effective_lrecl_from_attrs(attrs);
-    const char newline_char = get_newline_char(source_encoding);
-    scan_for_truncated_lines(data, max_len, newline_char, truncation);
-  }
 
   string dsname = "//'" + dsn + "'";
   if (strlen(zds->ddname) > 0)
@@ -662,6 +660,7 @@ static int zds_write_sequential(ZDS *zds, const string &dsn, string &data)
     dsname = "//DD:" + string(zds->ddname);
   }
 
+  TruncationTracker truncation;
   // Build fopen flags with actual recfm from DSCB
   // Use text mode - the C runtime handles ASA control characters and record boundaries
   const string recfm_flag = attrs.recfm.empty() ? "*" : attrs.recfm;
@@ -681,7 +680,7 @@ static int zds_write_sequential(ZDS *zds, const string &dsn, string &data)
     {
       // Encode entire buffer and write - the C runtime handles ASA and record boundaries in text mode
       string temp = data;
-      if (hasEncoding)
+      if (has_encoding)
       {
         try
         {
@@ -692,6 +691,14 @@ static int zds_write_sequential(ZDS *zds, const string &dsn, string &data)
           zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from %s to %s", source_encoding.c_str(), codepage.c_str());
           return RTNCD_FAILURE;
         }
+      }
+
+      // Track truncated lines for text mode
+      if (isTextMode && attrs.lrecl > 0 && !data.empty())
+      {
+        const int max_len = get_effective_lrecl_from_attrs(attrs);
+        const char newline_char = get_newline_char(source_encoding);
+        scan_for_truncated_lines(data, max_len, newline_char, truncation);
       }
 
       size_t bytes_written = fwrite(temp.c_str(), 1u, temp.length(), fp);
@@ -723,7 +730,7 @@ static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
   int rc = 0;
   IO_CTRL *ioc = nullptr;
 
-  const auto hasEncoding = zds->encoding_opts.data_type == eDataTypeText && strlen(zds->encoding_opts.codepage) > 0;
+  const auto has_encoding = zds_use_codepage(zds);
   const auto codepage = string(zds->encoding_opts.codepage);
 
   // Open the member for BPAM output
@@ -801,7 +808,7 @@ static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
       line_num++;
 
       // Encode line if needed (before adding ASA char)
-      if (hasEncoding)
+      if (has_encoding)
       {
         try
         {
@@ -898,7 +905,7 @@ static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
 
         line_num++;
 
-        if (hasEncoding)
+        if (has_encoding)
         {
           try
           {
@@ -978,20 +985,22 @@ int zds_write_to_dsn(ZDS *zds, const string &dsn, string &data)
     return RTNCD_FAILURE;
   }
 
-  if (zds_is_recfm_u(dsn))
+  const DscbAttributes attrs = zds_get_dscb_attributes(dsn);
+
+  if (attrs.recfm == ZDS_RECFM_U)
   {
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Writing to RECFM=U data sets is not supported");
     zds->diag.detail_rc = ZDS_RTNCD_UNSUPPORTED_RECFM;
     return RTNCD_FAILURE;
   }
 
-  const auto hasEncoding = zds->encoding_opts.data_type == eDataTypeText && strlen(zds->encoding_opts.codepage) > 0;
+  const auto has_encoding = zds_use_codepage(zds);
 
   if (strlen(zds->etag) > 0)
   {
     ZDS read_ds = {0};
     string current_contents = "";
-    if (hasEncoding)
+    if (has_encoding)
     {
       memcpy(&read_ds.encoding_opts, &zds->encoding_opts, sizeof(ZEncode));
     }
@@ -1030,7 +1039,7 @@ int zds_write_to_dsn(ZDS *zds, const string &dsn, string &data)
   }
   else
   {
-    rc = zds_write_sequential(zds, dsn, data);
+    rc = zds_write_sequential(zds, dsn, data, attrs);
   }
 
   if (rc != RTNCD_SUCCESS)
@@ -2551,7 +2560,7 @@ int zds_read_from_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, 
     return RTNCD_FAILURE;
   }
 
-  const auto hasEncoding = zds->encoding_opts.data_type == eDataTypeText && strlen(zds->encoding_opts.codepage) > 0;
+  const auto has_encoding = zds_use_codepage(zds);
   const auto codepage = string(zds->encoding_opts.codepage);
 
   std::vector<char> temp_encoded;
@@ -2588,7 +2597,7 @@ int zds_read_from_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, 
       const char *chunk = record_data.c_str();
       int chunk_len = record_data.length();
 
-      if (hasEncoding)
+      if (has_encoding)
       {
         const auto source_encoding = strlen(zds->encoding_opts.source_codepage) > 0 ? string(zds->encoding_opts.source_codepage) : "UTF-8";
         try
@@ -2617,7 +2626,7 @@ int zds_read_from_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, 
       const char *chunk = &newline;
       int chunk_len = 1;
 
-      if (hasEncoding)
+      if (has_encoding)
       {
         const auto source_encoding = strlen(zds->encoding_opts.source_codepage) > 0 ? string(zds->encoding_opts.source_codepage) : "UTF-8";
         try
@@ -2651,7 +2660,7 @@ int zds_read_from_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, 
       int chunk_len = bytes_read;
       const char *chunk = &buf[0];
 
-      if (hasEncoding)
+      if (has_encoding)
       {
         const auto source_encoding = strlen(zds->encoding_opts.source_codepage) > 0 ? string(zds->encoding_opts.source_codepage) : "UTF-8";
         try
@@ -2688,7 +2697,7 @@ int zds_read_from_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, 
 /**
  * Internal function to write to a sequential data set in streaming mode using fopen/fwrite
  */
-static int zds_write_sequential_streamed(ZDS *zds, const string &dsn, const string &pipe, size_t *content_len)
+static int zds_write_sequential_streamed(ZDS *zds, const string &dsn, const string &pipe, size_t *content_len, const DscbAttributes &attrs)
 {
   string dsname = "//'" + dsn + "'";
   if (strlen(zds->ddname) > 0)
@@ -2696,12 +2705,10 @@ static int zds_write_sequential_streamed(ZDS *zds, const string &dsn, const stri
     dsname = "//DD:" + string(zds->ddname);
   }
 
-  const auto hasEncoding = zds->encoding_opts.data_type == eDataTypeText && strlen(zds->encoding_opts.codepage) > 0;
+  const auto has_encoding = zds_use_codepage(zds);
   const auto codepage = string(zds->encoding_opts.codepage);
   const bool isTextMode = zds->encoding_opts.data_type != eDataTypeBinary;
 
-  // Get attributes from DSCB for fopen flags and truncation checking
-  const DscbAttributes attrs = zds_get_dscb_attributes(dsn);
   const int max_len = get_effective_lrecl_from_attrs(attrs);
 
   // Build fopen flags with actual recfm from DSCB
@@ -2787,7 +2794,7 @@ static int zds_write_sequential_streamed(ZDS *zds, const string &dsn, const stri
         line_buffer = line_buffer.substr(pos);
       }
 
-      if (hasEncoding)
+      if (has_encoding)
       {
         try
         {
@@ -2856,7 +2863,7 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const string &dsn, const str
   int rc = 0;
   IO_CTRL *ioc = nullptr;
 
-  const auto hasEncoding = zds->encoding_opts.data_type == eDataTypeText && strlen(zds->encoding_opts.codepage) > 0;
+  const auto has_encoding = zds_use_codepage(zds);
   const auto codepage = string(zds->encoding_opts.codepage);
 
   // Open the member for BPAM output
@@ -2958,7 +2965,7 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const string &dsn, const str
       line_num++;
 
       // Encode line content FIRST (before adding ASA char)
-      if (hasEncoding)
+      if (has_encoding)
       {
         try
         {
@@ -3060,7 +3067,7 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const string &dsn, const str
         line_num++;
 
         // Encode line content FIRST (before adding ASA char)
-        if (hasEncoding)
+        if (has_encoding)
         {
           try
           {
@@ -3151,21 +3158,23 @@ int zds_write_to_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, s
     return RTNCD_FAILURE;
   }
 
-  if (zds_is_recfm_u(dsn))
+  const DscbAttributes attrs = zds_get_dscb_attributes(dsn);
+
+  if (attrs.recfm == ZDS_RECFM_U)
   {
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Writing to RECFM=U data sets is not supported");
     zds->diag.detail_rc = ZDS_RTNCD_UNSUPPORTED_RECFM;
     return RTNCD_FAILURE;
   }
 
-  const auto hasEncoding = zds->encoding_opts.data_type == eDataTypeText && strlen(zds->encoding_opts.codepage) > 0;
+  const auto has_encoding = zds_use_codepage(zds);
 
   if (strlen(zds->etag) > 0)
   {
     // Get current data set content for etag check
     ZDS read_ds = {0};
     string current_contents = "";
-    if (hasEncoding)
+    if (has_encoding)
     {
       memcpy(&read_ds.encoding_opts, &zds->encoding_opts, sizeof(ZEncode));
     }
@@ -3204,7 +3213,7 @@ int zds_write_to_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, s
   }
   else
   {
-    rc = zds_write_sequential_streamed(zds, dsn, pipe, content_len);
+    rc = zds_write_sequential_streamed(zds, dsn, pipe, content_len, attrs);
   }
 
   if (rc != RTNCD_SUCCESS)
