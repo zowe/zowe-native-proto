@@ -204,7 +204,7 @@ export class ZSshUtils {
         return JSON.stringify(localChecksums) !== JSON.stringify(remoteChecksums);
     }
 
-    private static getBinDir(dir?: string): string {
+    private static getBinDir(dir: string): string {
         if (!dir || fs.existsSync(path.join(dir, "package.json"))) {
             return path.join(dir, "bin");
         }
