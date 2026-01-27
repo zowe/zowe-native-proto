@@ -627,7 +627,7 @@ int handle_data_set_write(InvocationContext &context)
     string data;
     string line;
 
-    if (!isatty(fileno(stdout)))
+    if (!isatty(fileno(stdin)))
     {
       istreambuf_iterator<char> begin(context.input_stream());
       istreambuf_iterator<char> end;

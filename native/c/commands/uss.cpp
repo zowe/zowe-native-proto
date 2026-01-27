@@ -336,7 +336,7 @@ int handle_uss_write(InvocationContext &context)
     string data = "";
     string line = "";
 
-    if (!isatty(fileno(stdout)))
+    if (!isatty(fileno(stdin)))
     {
       std::istreambuf_iterator<char> begin(context.input_stream());
       std::istreambuf_iterator<char> end;

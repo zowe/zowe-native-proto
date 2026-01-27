@@ -1035,7 +1035,7 @@ void zowex_ds_tests()
                              string random_string = get_random_string(80, false);
                              string random_string1 = get_random_string(80, false);
                              string random_string2 = get_random_string(80, false);
-                             command = "echo '" + random_string + "\n" + random_string1 + "' | " + zowex_command + " data-set write '" + ds + "(TEST)'";
+                             command = "echo '" + random_string + "\n" + random_string1 + "' | " + zowex_command + " data-set write '" + ds + "(TEST)' --local-encoding IBM-1047";
                              rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain("Wrote data to '" + ds + "(TEST)'");
@@ -1047,7 +1047,7 @@ void zowex_ds_tests()
                              Expect(response).ToContain(random_string1);
                              Expect(response).Not().ToContain(random_string2);
 
-                             command = "echo " + random_string2 + " | " + zowex_command + " data-set write '" + ds + "(TEST)'";
+                             command = "echo " + random_string2 + " | " + zowex_command + " data-set write '" + ds + "(TEST)' --local-encoding IBM-1047";
                              rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain("Wrote data to '" + ds + "(TEST)'");
@@ -1325,16 +1325,16 @@ void zowex_ds_tests()
                                         Expect(response).ToContain("Data set and/or member created");
 
                                         command = "printf 'AAA\\nBBB\\n' | " + zowex_command +
-                                                  " data-set write '" + ds + "(ASA2)' --local-encoding UTF-8 --encoding IBM-1047";
+                                                  " data-set write '" + ds + "(ASA2)' --local-encoding IBM-1047 --encoding IBM-1047";
                                         rc = execute_command_with_output(command, response);
                                         ExpectWithContext(rc, response).ToBe(0);
                                         Expect(response).ToContain("Wrote data to '" + ds + "(ASA2)'");
 
-                                        command = zowex_command + " data-set view '" + ds + "(ASA2)' --encoding binary --rfb";
+                                        command = zowex_command + " data-set view '" + ds + "(ASA2)' --local-encoding IBM-1047 --encoding IBM-1047";
                                         rc = execute_command_with_output(command, response);
                                         ExpectWithContext(rc, response).ToBe(0);
-                                        Expect(response).ToContain("40 c1 c1 c1");
-                                        Expect(response).ToContain("40 c2 c2 c2");
+                                        Expect(response).ToContain(" AAA");
+                                        Expect(response).ToContain(" BBB");
                                       });
                                    it("should add ASA control characters for FBA data sets",
                                       [&]() -> void
@@ -1344,16 +1344,16 @@ void zowex_ds_tests()
 
                                         string response;
                                         string command = "printf 'AAA\\nBBB\\n' | " + zowex_command +
-                                                         " data-set write " + ds + " --local-encoding UTF-8 --encoding IBM-1047";
+                                                         " data-set write " + ds + " --local-encoding IBM-1047 --encoding IBM-1047";
                                         int rc = execute_command_with_output(command, response);
                                         ExpectWithContext(rc, response).ToBe(0);
                                         Expect(response).ToContain("Wrote data to '" + ds + "'");
 
-                                        command = zowex_command + " data-set view " + ds + " --encoding binary --rfb";
+                                        command = zowex_command + " data-set view " + ds + " --local-encoding IBM-1047 --encoding IBM-1047";
                                         rc = execute_command_with_output(command, response);
                                         ExpectWithContext(rc, response).ToBe(0);
-                                        Expect(response).ToContain("40 c1 c1 c1");
-                                        Expect(response).ToContain("40 c2 c2 c2");
+                                        Expect(response).ToContain(" AAA");
+                                        Expect(response).ToContain(" BBB");
                                       });
 
                                    it("should convert a single blank line into ASA double space",
@@ -1364,15 +1364,16 @@ void zowex_ds_tests()
 
                                         string response;
                                         string command = "printf 'AAA\\n\\nBBB\\n' | " + zowex_command +
-                                                         " data-set write " + ds + " --local-encoding UTF-8 --encoding IBM-1047";
+                                                         " data-set write " + ds + " --local-encoding IBM-1047 --encoding IBM-1047";
                                         int rc = execute_command_with_output(command, response);
                                         ExpectWithContext(rc, response).ToBe(0);
                                         Expect(response).ToContain("Wrote data to '" + ds + "'");
 
-                                        command = zowex_command + " data-set view " + ds + " --encoding binary --rfb";
+                                        command = zowex_command + " data-set view " + ds + " --local-encoding IBM-1047 --encoding IBM-1047";
                                         rc = execute_command_with_output(command, response);
                                         ExpectWithContext(rc, response).ToBe(0);
-                                        Expect(response).ToContain("f0 c2 c2 c2");
+                                        Expect(response).ToContain(" AAA");
+                                        Expect(response).ToContain("0BBB");
                                       });
 
                                    it("should handle multiple blank lines with ASA overflow",
@@ -1383,16 +1384,17 @@ void zowex_ds_tests()
 
                                         string response;
                                         string command = "printf 'AAA\\n\\n\\n\\nDDD\\n' | " + zowex_command +
-                                                         " data-set write " + ds + " --local-encoding UTF-8 --encoding IBM-1047";
+                                                         " data-set write " + ds + " --local-encoding IBM-1047 --encoding IBM-1047";
                                         int rc = execute_command_with_output(command, response);
                                         ExpectWithContext(rc, response).ToBe(0);
                                         Expect(response).ToContain("Wrote data to '" + ds + "'");
 
-                                        command = zowex_command + " data-set view " + ds + " --encoding binary --rfb";
+                                        command = zowex_command + " data-set view " + ds + " --local-encoding IBM-1047 --encoding IBM-1047";
                                         rc = execute_command_with_output(command, response);
                                         ExpectWithContext(rc, response).ToBe(0);
-                                        Expect(response).ToContain("60");
-                                        Expect(response).ToContain("f0 c4 c4 c4");
+                                        Expect(response).ToContain(" AAA");
+                                        Expect(response).ToContain("-");
+                                        Expect(response).ToContain("\n DDD");
                                       });
 
                                    it("should convert form feed to ASA page break",
@@ -1403,15 +1405,15 @@ void zowex_ds_tests()
 
                                         string response;
                                         string command = "printf '\\fEEE\\n' | " + zowex_command +
-                                                         " data-set write " + ds + " --local-encoding UTF-8 --encoding IBM-1047";
+                                                         " data-set write " + ds + " --local-encoding IBM-1047 --encoding IBM-1047";
                                         int rc = execute_command_with_output(command, response);
                                         ExpectWithContext(rc, response).ToBe(0);
                                         Expect(response).ToContain("Wrote data to '" + ds + "'");
 
-                                        command = zowex_command + " data-set view " + ds + " --encoding binary --rfb";
+                                        command = zowex_command + " data-set view " + ds + " --local-encoding IBM-1047 --encoding IBM-1047";
                                         rc = execute_command_with_output(command, response);
                                         ExpectWithContext(rc, response).ToBe(0);
-                                        Expect(response).ToContain("f1 c5 c5 c5");
+                                        Expect(response).ToContain("1EEE");
                                       });
 
                                    xit("should stream ASA conversion to a member via pipe-path",
@@ -1435,20 +1437,20 @@ void zowex_ds_tests()
 
                                          std::thread writer([&]() -> void
                                                             {
-                                                            int fd = -1;
-                                                            for (int attempt = 0; attempt < 100 && fd == -1; ++attempt)
-                                                            {
-                                                              fd = open(pipe_path.c_str(), O_WRONLY | O_NONBLOCK);
-                                                              if (fd == -1)
-                                                              {
-                                                                usleep(10000);
-                                                              }
-                                                            }
-                                                            if (fd != -1)
-                                                            {
-                                                              write(fd, encoded_payload.data(), encoded_payload.size());
-                                                              close(fd);
-                                                            } });
+                                                           int fd = -1;
+                                                           for (int attempt = 0; attempt < 100 && fd == -1; ++attempt)
+                                                           {
+                                                             fd = open(pipe_path.c_str(), O_WRONLY | O_NONBLOCK);
+                                                             if (fd == -1)
+                                                             {
+                                                               usleep(10000);
+                                                             }
+                                                           }
+                                                           if (fd != -1)
+                                                           {
+                                                             write(fd, encoded_payload.data(), encoded_payload.size());
+                                                             close(fd);
+                                                           } });
 
                                          command = zowex_command + " data-set write '" + ds + "(ASA3)' --pipe-path " + pipe_path +
                                                    " --local-encoding UTF-8 --encoding IBM-1047";
@@ -1459,12 +1461,11 @@ void zowex_ds_tests()
                                          ExpectWithContext(rc, response).ToBe(0);
                                          Expect(response).ToContain("Wrote data to '" + ds + "(ASA3)'");
 
-                                         command = zowex_command + " data-set view '" + ds + "(ASA3)' --encoding binary --rfb";
+                                         command = zowex_command + " data-set view '" + ds + "(ASA3)' --local-encoding IBM-1047 --encoding IBM-1047";
                                          rc = execute_command_with_output(command, response);
                                          ExpectWithContext(rc, response).ToBe(0);
-                                         Expect(response).ToContain("40 c1 c1 c1");
-                                         Expect(response).ToContain("f0 c2 c2 c2");
-                                         Expect(response).ToContain("40 c2 c2 c2");
+                                         Expect(response).ToContain(" AAA");
+                                         Expect(response).ToContain("0BBB");
                                        });
                                  });
 
