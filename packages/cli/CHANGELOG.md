@@ -6,6 +6,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Recent Changes
 
+- Added the rename data set command to the CLI. [#376] (https://github.com/zowe/zowe-native-proto/issues/376).
 - Added `owner` field to the table returned by the `zssh list jobs` and `zssh view job-status` commands. [#749](https://github.com/zowe/zowe-native-proto/pull/749)
 
 ## `0.2.1`
