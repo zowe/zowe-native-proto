@@ -1453,7 +1453,7 @@ void zowex_ds_tests()
                                                            } });
 
                                          command = zowex_command + " data-set write '" + ds + "(ASA3)' --pipe-path " + pipe_path +
-                                                   " --local-encoding UTF-8 --encoding IBM-1047";
+                                                   " --local-encoding IBM-1047 --encoding IBM-1047";
                                          rc = execute_command_with_output(command, response);
                                          writer.join();
                                          unlink(pipe_path.c_str());

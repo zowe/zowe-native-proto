@@ -526,14 +526,6 @@ static char get_newline_char(const string &encoding)
 }
 
 /**
- * EBCDIC ASA control characters (to be prepended AFTER encoding to EBCDIC)
- */
-static const char EBCDIC_ASA_SPACE = '\x40'; // Single space (advance 1 line)
-static const char EBCDIC_ASA_ZERO = '\xF0';  // Double space (advance 2 lines)
-static const char EBCDIC_ASA_MINUS = '\x60'; // Triple space (advance 3 lines)
-static const char EBCDIC_ASA_ONE = '\xF1';   // Form feed (advance to next page)
-
-/**
  * Helper struct to track ASA conversion state across streaming chunks.
  * Tracks blank line counts to determine the appropriate ASA control character.
  */
@@ -570,24 +562,25 @@ struct AsaStreamState
   }
 
   /**
-   * Get the EBCDIC ASA character to prepend, and reset blank_count.
+   * Get the ASA control character to prepend, and reset blank_count.
    * Call this AFTER flushing overflow blanks with has_overflow_blanks().
    * At this point blank_count should be 0, 1, or 2.
+   * Returns the EBCDIC ASA character
    */
   char get_asa_char_and_reset(bool has_formfeed)
   {
-    char asa_char = ' '; // default: single-space
+    char asa_char = ' '; // EBCDIC 0x40: single-space (advance 1 line)
     if (has_formfeed)
     {
-      asa_char = '1'; // page break
+      asa_char = '1'; // EBCDIC 0xF1: form feed (advance to next page)
     }
     else if (blank_count == 1)
     {
-      asa_char = '0'; // double-space
+      asa_char = '0'; // EBCDIC 0xF0: double-space (advance 2 lines)
     }
     else if (blank_count == 2)
     {
-      asa_char = '-'; // triple-space
+      asa_char = '-'; // EBCDIC 0x60: triple-space (advance 3 lines)
     }
     blank_count = 0;
     is_first_line = false;
@@ -750,7 +743,6 @@ static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
   const auto source_encoding = strlen(zds->encoding_opts.source_codepage) > 0 ? string(zds->encoding_opts.source_codepage) : "UTF-8";
   const char newline_char = get_newline_char(source_encoding);
   const char cr_char = '\x0D';
-  const char ff_char = '\x0C';
 
   // Track truncated lines
   TruncationTracker truncation;
@@ -758,7 +750,7 @@ static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
   const int max_len = get_effective_lrecl(ioc);
 
   // ASA state tracking (only used when converting to ASA)
-  int blank_count = 0;
+  AsaStreamState asa_state(source_encoding);
 
   // Parse and write data line by line
   if (!data.empty())
@@ -776,36 +768,33 @@ static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
         line.erase(line.size() - 1);
       }
 
+      // Process ASA: determine control char, skip blank lines
+      char asa_char = '\0';
       bool has_formfeed = false;
       if (is_asa)
       {
-        // Check for form feed at start of line
-        has_formfeed = (!line.empty() && line[0] == ff_char);
-        if (has_formfeed)
+        char line_type = asa_state.process_line(line);
+        if (line_type == '\0')
         {
-          line = line.substr(1);
-        }
-
-        // Handle ASA: track blank lines, skip writing them
-        if (line.empty() && !has_formfeed)
-        {
-          blank_count++;
+          // Skip blank lines for ASA
           pos = newline_pos + 1;
           continue;
         }
+        has_formfeed = (line_type == '1');
 
         // Flush overflow blank lines as empty '-' records (for 3+ blank lines)
-        while (blank_count >= 3)
+        while (asa_state.has_overflow_blanks())
         {
-          string empty_record(1, EBCDIC_ASA_MINUS);
+          string empty_record(1, '-');
           rc = zds_write_output_bpam(zds, ioc, empty_record);
           if (rc != RTNCD_SUCCESS)
           {
             zds_close_output_bpam(zds, ioc);
             return rc;
           }
-          blank_count -= 3;
         }
+
+        asa_char = asa_state.get_asa_char_and_reset(has_formfeed);
       }
 
       line_num++;
@@ -828,21 +817,7 @@ static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
       // Prepend EBCDIC ASA control character AFTER encoding
       if (is_asa)
       {
-        char asa_char = EBCDIC_ASA_SPACE; // default: single-space
-        if (has_formfeed)
-        {
-          asa_char = EBCDIC_ASA_ONE; // form feed
-        }
-        else if (blank_count == 1)
-        {
-          asa_char = EBCDIC_ASA_ZERO; // double-space
-        }
-        else if (blank_count == 2)
-        {
-          asa_char = EBCDIC_ASA_MINUS; // triple-space
-        }
         line = string(1, asa_char) + line;
-        blank_count = 0;
       }
 
       // Check if line will be truncated
@@ -873,90 +848,85 @@ static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
     {
       string line = data.substr(pos);
 
+      // Remove trailing carriage return if present
       if (!line.empty() && line[line.size() - 1] == cr_char)
       {
         line.erase(line.size() - 1);
       }
 
-      bool has_formfeed = false;
-      if (is_asa)
+      if (!line.empty())
       {
-        has_formfeed = (!line.empty() && line[0] == ff_char);
-        if (has_formfeed)
-        {
-          line = line.substr(1);
-        }
-      }
-
-      if (!is_asa || !line.empty() || has_formfeed)
-      {
-        // Flush overflow blank lines as empty '-' records
+        // Process ASA: determine control char
+        char asa_char = '\0';
         if (is_asa)
         {
-          while (blank_count >= 3)
+          char line_type = asa_state.process_line(line);
+          if (line_type == '\0')
           {
-            string empty_record(1, EBCDIC_ASA_MINUS);
-            rc = zds_write_output_bpam(zds, ioc, empty_record);
-            if (rc != RTNCD_SUCCESS)
+            line.clear(); // Skip if it's a blank line
+          }
+          else
+          {
+            bool has_formfeed = (line_type == '1');
+
+            // Flush overflow blank lines as empty '-' records
+            while (asa_state.has_overflow_blanks())
             {
-              zds_close_output_bpam(zds, ioc);
-              return rc;
+              string empty_record(1, '-');
+              rc = zds_write_output_bpam(zds, ioc, empty_record);
+              if (rc != RTNCD_SUCCESS)
+              {
+                zds_close_output_bpam(zds, ioc);
+                return rc;
+              }
             }
-            blank_count -= 3;
+
+            asa_char = asa_state.get_asa_char_and_reset(has_formfeed);
           }
         }
 
-        line_num++;
-
-        if (has_encoding)
+        if (!line.empty())
         {
-          try
+          line_num++;
+
+          if (has_encoding)
           {
-            line = zut_encode(line, source_encoding, codepage, zds->diag);
+            try
+            {
+              line = zut_encode(line, source_encoding, codepage, zds->diag);
+            }
+            catch (exception &e)
+            {
+              zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from %s to %s", source_encoding.c_str(), codepage.c_str());
+              zds_close_output_bpam(zds, ioc);
+              return RTNCD_FAILURE;
+            }
           }
-          catch (exception &e)
+
+          // Prepend EBCDIC ASA control character AFTER encoding
+          if (is_asa && asa_char != '\0')
           {
-            zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from %s to %s", source_encoding.c_str(), codepage.c_str());
+            line = string(1, asa_char) + line;
+          }
+
+          if (static_cast<int>(line.length()) > max_len)
+          {
+            truncation.add_line(line_num);
+          }
+
+          rc = zds_write_output_bpam(zds, ioc, line);
+          if (rc != RTNCD_SUCCESS)
+          {
+            char saved_msg[sizeof(zds->diag.e_msg)];
+            int saved_msg_len = zds->diag.e_msg_len;
+            memcpy(saved_msg, zds->diag.e_msg, sizeof(saved_msg));
+
             zds_close_output_bpam(zds, ioc);
-            return RTNCD_FAILURE;
+
+            memcpy(zds->diag.e_msg, saved_msg, sizeof(saved_msg));
+            zds->diag.e_msg_len = saved_msg_len;
+            return rc;
           }
-        }
-
-        if (is_asa)
-        {
-          char asa_char = EBCDIC_ASA_SPACE;
-          if (has_formfeed)
-          {
-            asa_char = EBCDIC_ASA_ONE;
-          }
-          else if (blank_count == 1)
-          {
-            asa_char = EBCDIC_ASA_ZERO;
-          }
-          else if (blank_count == 2)
-          {
-            asa_char = EBCDIC_ASA_MINUS;
-          }
-          line = string(1, asa_char) + line;
-        }
-
-        if (static_cast<int>(line.length()) > max_len)
-        {
-          truncation.add_line(line_num);
-        }
-
-        rc = zds_write_output_bpam(zds, ioc, line);
-        if (rc != RTNCD_SUCCESS)
-        {
-          char saved_msg[sizeof(zds->diag.e_msg)];
-          int saved_msg_len = zds->diag.e_msg_len;
-          memcpy(saved_msg, zds->diag.e_msg, sizeof(saved_msg));
-
-          zds_close_output_bpam(zds, ioc);
-
-          memcpy(zds->diag.e_msg, saved_msg, sizeof(saved_msg));
-          zds->diag.e_msg_len = saved_msg_len;
-          return rc;
         }
       }
     }
@@ -2953,7 +2923,7 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const string &dsn, const str
         // Flush overflow blank lines as empty '-' records (for 3+ blank lines)
         while (asa_state.has_overflow_blanks())
         {
-          string empty_record(1, EBCDIC_ASA_MINUS);
+          string empty_record(1, '-');
           rc = zds_write_output_bpam(zds, ioc, empty_record);
           if (rc != RTNCD_SUCCESS)
           {
@@ -2985,14 +2955,7 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const string &dsn, const str
       // Prepend EBCDIC ASA control character AFTER encoding
       if (is_asa)
       {
-        char ebcdic_asa = EBCDIC_ASA_SPACE;
-        if (asa_char == '1')
-          ebcdic_asa = EBCDIC_ASA_ONE;
-        else if (asa_char == '0')
-          ebcdic_asa = EBCDIC_ASA_ZERO;
-        else if (asa_char == '-')
-          ebcdic_asa = EBCDIC_ASA_MINUS;
-        line = string(1, ebcdic_asa) + line;
+        line = string(1, asa_char) + line;
       }
 
       // Check if line will be truncated
@@ -3052,7 +3015,7 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const string &dsn, const str
           // Flush overflow blank lines as empty '-' records
           while (asa_state.has_overflow_blanks())
           {
-            string empty_record(1, EBCDIC_ASA_MINUS);
+            string empty_record(1, '-');
             rc = zds_write_output_bpam(zds, ioc, empty_record);
             if (rc != RTNCD_SUCCESS)
             {
@@ -3087,14 +3050,7 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const string &dsn, const str
         // Prepend EBCDIC ASA control character AFTER encoding
         if (is_asa && asa_char != '\0')
         {
-          char ebcdic_asa = EBCDIC_ASA_SPACE;
-          if (asa_char == '1')
-            ebcdic_asa = EBCDIC_ASA_ONE;
-          else if (asa_char == '0')
-            ebcdic_asa = EBCDIC_ASA_ZERO;
-          else if (asa_char == '-')
-            ebcdic_asa = EBCDIC_ASA_MINUS;
-          line_buffer = string(1, ebcdic_asa) + line_buffer;
+          line_buffer = string(1, asa_char) + line_buffer;
         }
 
         // Check if line will be truncated
