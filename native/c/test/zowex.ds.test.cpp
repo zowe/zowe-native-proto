@@ -10,6 +10,7 @@
  */
 
 #include <cstddef>
+#include <cstdio>
 #include <ctime>
 #include <fcntl.h>
 #include <stdlib.h>
@@ -25,6 +26,7 @@
 #include "ztype.h"
 #include "zowex.test.hpp"
 #include "zowex.ds.test.hpp"
+#include "../zusf.hpp"
 
 using namespace std;
 using namespace ztst;
@@ -1158,31 +1160,29 @@ void zowex_ds_tests()
                              string ds = _ds.back();
                              _create_ds(ds, "--dsorg PS --lrecl 120 --blksize 18480");
                              string response;
-                             string file = "./makefile";
-                             string get_uss_file_command = zowex_command + " uss view '" + file + "'";
+
+                             // Create a temporary USS file
+                             string temp_file = "/tmp/zowex_test_uss_" + get_random_string(8, false);
+                             string content = "This is a test content for USS file write.";
+
+                             ZUSF zusf = {};
+                             string write_content = content;
+                             int write_rc = zusf_write_to_uss_file(&zusf, temp_file, write_content);
+                             Expect(write_rc).ToBe(RTNCD_SUCCESS);
+
+                             string get_uss_file_command = zowex_command + " uss view '" + temp_file + "'";
                              string command = get_uss_file_command + " | " + zowex_command + " data-set write " + ds;
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain("Wrote data to '" + ds + "'");
 
-                             ifstream in(file.c_str(), ifstream::in);
-                             Expect(in.is_open()).ToBe(true);
-
-                             in.seekg(0, ios::end);
-                             size_t size = in.tellg();
-                             in.seekg(0, ios::beg);
-
-                             vector<char> raw_data(size);
-                             in.read(&raw_data[0], size);
-                             in.close();
-
-                             string makefile_content;
-                             makefile_content.assign(raw_data.begin(), raw_data.end());
-
                              command = zowex_command + " data-set view " + ds;
                              rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
-                             Expect(response).ToContain(makefile_content);
+                             Expect(response).ToContain(content);
+
+                             // Cleanup
+                             remove(temp_file.c_str());
                            });
 
                         describe("BPAM member writes",
