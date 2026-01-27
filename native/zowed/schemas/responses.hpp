@@ -110,6 +110,11 @@ ZJSON_SCHEMA(DeleteDatasetResponse,
     FIELD_REQUIRED(success, BOOL)
 );
 
+struct RenameDatasetResponse {};
+ZJSON_SCHEMA(RenameDatasetResponse,
+    FIELD_REQUIRED(success, BOOL)
+);
+
 struct ListDatasetsResponse {};
 ZJSON_SCHEMA(ListDatasetsResponse,
     FIELD_REQUIRED(success, BOOL),

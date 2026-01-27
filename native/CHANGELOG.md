@@ -6,6 +6,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Recent Changes
 
+- Added the rename dataset functionality to the backend. [#376] (https://github.com/zowe/zowe-native-proto/issues/376)
 - `c`: Imlement `zut_bpxwdyn_rtdsn` to obtain and return a system allocated data set name.
 - `c`: Implement command `zowex job view-file` to print contents of a job output data set.
 - The `zowex job submit-jcl` command now displays the submitted job in the following format: `JobName(JobId)` [#733](https://github.com/zowe/zowe-native-proto/issues/733)
