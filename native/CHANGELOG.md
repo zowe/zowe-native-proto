@@ -11,6 +11,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - `c`: You can now access dynamic arguments from a command handler through its `InvocationContext` parameter. [#715](https://github.com/zowe/zowe-native-proto/pull/715)
 - `c`: Fixed an issue where writing to a `RECFM=U` data set could exhibit undefined behavior. Now, writing to a `RECFM=U` data set results in an explicit error as the record format is supported as read-only.
 - `c`: Fixed issue where BPAM write operations would accidentally wipe the contents of a data set if one of the lines exceeded the record length. Now, the line is truncated according to the max record length of the data set, and the user is warned about line ranges that exceed the record length.
+- `c`: PDS and PDSE members are now edited using a partitioned access method to preserve and update ISPF statistics. The following record formats are explicitly marked as unsupported: `U` (undefined), `A` (ASA control characters, unblocked), and any record format containing `S` (Standard).
 
 ## `0.2.1`
 

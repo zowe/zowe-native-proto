@@ -475,42 +475,6 @@ int zds_write_to_dd(ZDS *zds, string ddname, const string &data)
 }
 
 /**
- * Helper function to get the RECFM string from a data set's DSCB.
- * Returns the recfm string (e.g., "FB", "VB", "U") or empty string on failure.
- *
- * Uses catalog lookup and DSCB to get the actual RECFM, which is more reliable
- * than fopen/fldata (which doesn't work correctly for PDS without a member).
- */
-static string zds_get_recfm_from_dscb(const string &dsn)
-{
-  return zds_get_dscb_attributes(dsn).recfm;
-}
-
-/**
- * Helper function to check if a data set has RECFM=U (undefined record format)
- * Returns true if the data set is RECFM=U, false otherwise
- *
- * Uses catalog lookup and DSCB to get the actual RECFM, which is more reliable
- * than fopen/fldata (which doesn't work correctly for PDS without a member).
- */
-static bool zds_is_recfm_u(const string &dsn)
-{
-  return zds_get_recfm_from_dscb(dsn) == ZDS_RECFM_U;
-}
-
-/**
- * Helper function to check if a data set has ASA control characters (RECFM contains 'A')
- * Returns true if the data set has ASA format, false otherwise
- *
- * Uses catalog lookup and DSCB to get the actual RECFM.
- */
-static bool zds_is_recfm_asa(const string &dsn)
-{
-  const string recfm = zds_get_recfm_from_dscb(dsn);
-  return recfm.find('A') != string::npos;
-}
-
-/**
  * Determine the newline character for a given encoding.
  * ASCII/UTF-8 uses 0x0A (LF), EBCDIC uses 0x15 (NL).
  */
@@ -950,6 +914,51 @@ static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
   return rc;
 }
 
+/**
+ * Checks if a record format is unsupported for writing.
+ * @param recfm The record format to check.
+ * @param include_standard Whether to include "S" record formats in the check (for members only as BPAM does not support it).
+ * @return true if the record format is unsupported, false otherwise.
+ */
+static bool zds_write_recfm_unsupported(const string &recfm, const bool include_standard = false)
+{
+  return recfm == ZDS_RECFM_U || recfm == ZDS_RECFM_A || (include_standard && recfm.find(ZDS_RECFM_S) != std::string::npos);
+}
+
+int zds_validate_etag(ZDS *zds, const string &dsn, bool has_encoding)
+{
+  ZDS read_ds = {0};
+  string current_contents = "";
+  if (has_encoding)
+  {
+    memcpy(&read_ds.encoding_opts, &zds->encoding_opts, sizeof(ZEncode));
+  }
+  const auto read_rc = zds_read_from_dsn(&read_ds, dsn, current_contents);
+  if (0 != read_rc)
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to read contents of data set for e-tag comparison: %s", read_ds.diag.e_msg);
+    return RTNCD_FAILURE;
+  }
+
+  const auto given_etag = strtoul(zds->etag, nullptr, 16);
+  const auto new_etag = zut_calc_adler32_checksum(current_contents);
+
+  if (given_etag != new_etag)
+  {
+    ostringstream ss;
+    ss << "Etag mismatch: expected ";
+    ss << hex << given_etag << dec;
+    ss << ", actual ";
+    ss << hex << new_etag << dec;
+
+    const auto error_msg = ss.str();
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "%s", error_msg.c_str());
+    return RTNCD_FAILURE;
+  }
+
+  return RTNCD_SUCCESS;
+}
+
 int zds_write_to_dsn(ZDS *zds, const string &dsn, string &data)
 {
   if (!zds_dataset_exists(dsn))
@@ -959,52 +968,26 @@ int zds_write_to_dsn(ZDS *zds, const string &dsn, string &data)
   }
 
   const DscbAttributes attrs = zds_get_dscb_attributes(dsn);
+  const auto is_member = zds_has_member(dsn);
 
-  if (attrs.recfm == ZDS_RECFM_U)
+  if (zds_write_recfm_unsupported(attrs.recfm, is_member))
   {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Writing to RECFM=U data sets is not supported");
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Writing to RECFM=%s data sets is not supported", attrs.recfm.c_str());
     zds->diag.detail_rc = ZDS_RTNCD_UNSUPPORTED_RECFM;
     return RTNCD_FAILURE;
   }
 
   const auto has_encoding = zds_use_codepage(zds);
 
-  if (strlen(zds->etag) > 0)
+  if (strlen(zds->etag) > 0 && 0 != zds_validate_etag(zds, dsn, has_encoding))
   {
-    ZDS read_ds = {0};
-    string current_contents = "";
-    if (has_encoding)
-    {
-      memcpy(&read_ds.encoding_opts, &zds->encoding_opts, sizeof(ZEncode));
-    }
-    const auto read_rc = zds_read_from_dsn(&read_ds, dsn, current_contents);
-    if (0 != read_rc)
-    {
-      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to read contents of data set for e-tag comparison: %s", read_ds.diag.e_msg);
-      return RTNCD_FAILURE;
-    }
-
-    const auto given_etag = strtoul(zds->etag, nullptr, 16);
-    const auto new_etag = zut_calc_adler32_checksum(current_contents);
-
-    if (given_etag != new_etag)
-    {
-      ostringstream ss;
-      ss << "Etag mismatch: expected ";
-      ss << hex << given_etag << dec;
-      ss << ", actual ";
-      ss << hex << new_etag << dec;
-
-      const auto error_msg = ss.str();
-      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "%s", error_msg.c_str());
-      return RTNCD_FAILURE;
-    }
+    return RTNCD_FAILURE;
   }
 
   int rc = 0;
 
   // Use BPAM path for PDS/PDSE members (updates ISPF stats), fopen/fwrite for sequential
-  if (zds_has_member(dsn))
+  if (is_member)
   {
     rc = zds_write_member_bpam(zds, dsn, data);
     // Clear ddname after BPAM close since the DD was freed
@@ -3118,53 +3101,26 @@ int zds_write_to_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, s
   }
 
   const DscbAttributes attrs = zds_get_dscb_attributes(dsn);
+  const auto is_member = zds_has_member(dsn);
 
-  if (attrs.recfm == ZDS_RECFM_U)
+  if (zds_write_recfm_unsupported(attrs.recfm, is_member))
   {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Writing to RECFM=U data sets is not supported");
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Writing to RECFM=%s data sets is not supported", attrs.recfm.c_str());
     zds->diag.detail_rc = ZDS_RTNCD_UNSUPPORTED_RECFM;
     return RTNCD_FAILURE;
   }
 
   const auto has_encoding = zds_use_codepage(zds);
 
-  if (strlen(zds->etag) > 0)
+  if (strlen(zds->etag) > 0 && 0 != zds_validate_etag(zds, dsn, has_encoding))
   {
-    // Get current data set content for etag check
-    ZDS read_ds = {0};
-    string current_contents = "";
-    if (has_encoding)
-    {
-      memcpy(&read_ds.encoding_opts, &zds->encoding_opts, sizeof(ZEncode));
-    }
-    const auto read_rc = zds_read_from_dsn(&read_ds, dsn, current_contents);
-    if (0 != read_rc)
-    {
-      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to read contents of data set for e-tag comparison: %s", read_ds.diag.e_msg);
-      return RTNCD_FAILURE;
-    }
-
-    const auto given_etag = strtoul(zds->etag, nullptr, 16);
-    const auto new_etag = zut_calc_adler32_checksum(current_contents);
-
-    if (given_etag != new_etag)
-    {
-      ostringstream ss;
-      ss << "Etag mismatch: expected ";
-      ss << std::hex << given_etag << std::dec;
-      ss << ", actual ";
-      ss << std::hex << new_etag << std::dec;
-
-      const auto error_msg = ss.str();
-      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "%s", error_msg.c_str());
-      return RTNCD_FAILURE;
-    }
+    return RTNCD_FAILURE;
   }
 
   int rc = 0;
 
   // Use BPAM path for PDS/PDSE members (updates ISPF stats), fopen/fwrite for sequential
-  if (zds_has_member(dsn))
+  if (is_member)
   {
     rc = zds_write_member_bpam_streamed(zds, dsn, pipe, content_len);
     // Clear ddname after BPAM close since the DD was freed

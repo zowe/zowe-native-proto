@@ -72,8 +72,10 @@
 #define ZDS_RECFM_VB "VB"   // Variable Blocked
 #define ZDS_RECFM_V "V"     // Variable
 #define ZDS_RECFM_U "U"     // Undefined
-#define ZDS_RECFM_FBS "FBS" // Fixed Blocked Spanned
-#define ZDS_RECFM_VBS "VBS" // Variable Blocked Spanned
+#define ZDS_RECFM_A "A"     // American National Standard (ASA) Control
+#define ZDS_RECFM_S "S"     // Standard
+#define ZDS_RECFM_FBS "FBS" // Fixed Blocked Standard
+#define ZDS_RECFM_VBS "VBS" // Variable Blocked Standard
 
 // Device type codes (last byte of UCB device type)
 #define ZDS_DEVTYPE_3380 0x0E

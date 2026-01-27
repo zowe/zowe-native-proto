@@ -988,6 +988,46 @@ void zowex_ds_tests()
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain(random_string);
                            });
+
+                        it("should fail to write to a RECFM=U data set",
+                           [&]() -> void
+                           {
+                             string ds = get_random_ds();
+                             _ds.push_back(ds);
+                             _create_ds(ds, "--dsorg PO --dirblk 2 --recfm U --lrecl 0 --blksize 32760");
+
+                             string response;
+                             string command = "echo 'test' | " + zowex_command + " data-set write '" + ds + "(TEST)'";
+                             int rc = execute_command_with_output(command, response);
+                             ExpectWithContext(rc, response).Not().ToBe(0);
+                             Expect(response).ToContain("Writing to RECFM=U data sets is not supported");
+                           });
+                        it("should fail to write to a RECFM=A data set",
+                           [&]() -> void
+                           {
+                             string ds = get_random_ds();
+                             _ds.push_back(ds);
+                             _create_ds(ds, "--dsorg PS --recfm A --lrecl 80 --blksize 800");
+
+                             string response;
+                             string command = "echo 'test' | " + zowex_command + " data-set write " + ds;
+                             int rc = execute_command_with_output(command, response);
+                             ExpectWithContext(rc, response).Not().ToBe(0);
+                             Expect(response).ToContain("Writing to RECFM=A data sets is not supported");
+                           });
+                        it("should fail to write to a member in a RECFM=FS partitioned data set",
+                           [&]() -> void
+                           {
+                             string ds = get_random_ds();
+                             _ds.push_back(ds);
+                             _create_ds(ds, "--dsorg PO-E --dirblk 2 --recfm FS --lrecl 80 --blksize 800");
+
+                             string response;
+                             string command = "echo 'test' | " + zowex_command + " data-set write '" + ds + "(TEST)'";
+                             int rc = execute_command_with_output(command, response);
+                             ExpectWithContext(rc, response).Not().ToBe(0);
+                             Expect(response).ToContain("Writing to RECFM=FS data sets is not supported");
+                           });
                         it("should overwrite content in a sequential data set",
                            [&]() -> void
                            {
