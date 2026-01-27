@@ -239,19 +239,18 @@ private:
     sigaction(SIGILL, &sa, NULL);
   }
 
-  static void setup_timeout_handler(struct sigaction &sa)
+  static void setup_timeout_handler(struct sigaction &sa, struct sigaction &old_sa)
   {
     memset(&sa, 0, sizeof(struct sigaction));
     sa.sa_handler = timeout_handler;
     sa.sa_flags = 0;
-    sigaction(SIGALRM, &sa, NULL);
+    sigaction(SIGALRM, &sa, &old_sa); // Save old handler
   }
 
-  static void reset_timeout_handler(struct sigaction &sa)
+  static void reset_timeout_handler(struct sigaction &old_sa)
   {
-    alarm(0); // Cancel any pending alarm
-    sa.sa_handler = SIG_DFL;
-    sigaction(SIGALRM, &sa, NULL);
+    alarm(0);                          // Cancel any pending alarm
+    sigaction(SIGALRM, &old_sa, NULL); // Restore old handler
   }
 
   template <typename Callable>
@@ -456,24 +455,33 @@ public:
   // Execute a vector of hooks, catching and reporting any errors
   void execute_hooks(const std::vector<hook_callback> &hooks, const std::string &hook_type, std::string &error_message, unsigned int timeout_seconds)
   {
-    struct sigaction timeout_sa;
-    setup_timeout_handler(timeout_sa);
+    struct sigaction timeout_sa, old_timeout_sa;
+    setup_timeout_handler(timeout_sa, old_timeout_sa);
 
     for (const auto &hook : hooks)
     {
       timeout_occurred = false;
-      alarm(timeout_seconds);
 
       if (0 != setjmp(get_jmp_buf()))
       {
         // Jumped back from signal handler
         if (timeout_occurred)
         {
-          reset_timeout_handler(timeout_sa);
+          reset_timeout_handler(old_timeout_sa);
           error_message = hook_type + " hook timed out after " + std::to_string(timeout_seconds) + " seconds";
           throw std::runtime_error(error_message);
         }
+        else
+        {
+          // Non-timeout signal caused longjmp
+          reset_timeout_handler(old_timeout_sa);
+          error_message = hook_type + " hook interrupted by unexpected signal";
+          throw std::runtime_error(error_message);
+        }
       }
+
+      // Set alarm AFTER setjmp to avoid race condition
+      alarm(timeout_seconds);
 
       try
       {
@@ -483,20 +491,20 @@ public:
       catch (const std::exception &e)
       {
         alarm(0); // Cancel alarm on exception
-        reset_timeout_handler(timeout_sa);
+        reset_timeout_handler(old_timeout_sa);
         error_message = hook_type + " hook failed: " + std::string(e.what());
         throw std::runtime_error(error_message);
       }
       catch (...)
       {
         alarm(0); // Cancel alarm on exception
-        reset_timeout_handler(timeout_sa);
+        reset_timeout_handler(old_timeout_sa);
         error_message = hook_type + " hook failed with unknown error";
         throw std::runtime_error(error_message);
       }
     }
 
-    reset_timeout_handler(timeout_sa);
+    reset_timeout_handler(old_timeout_sa);
   }
 
   // Collect beforeEach hooks from current suite and all parent suites (parent -> child order)
@@ -651,7 +659,7 @@ public:
     bool abend = false;
     bool timeout = false;
     struct sigaction sa;
-    struct sigaction timeout_sa;
+    struct sigaction timeout_sa, old_timeout_sa;
 
     if (!opts.remove_signal_handling)
     {
@@ -659,9 +667,8 @@ public:
     }
 
     // Setup timeout handler
-    setup_timeout_handler(timeout_sa);
+    setup_timeout_handler(timeout_sa, old_timeout_sa);
     timeout_occurred = false;
-    alarm(timeout_seconds);
 
     tc.start_time = std::chrono::high_resolution_clock::now();
 
@@ -677,6 +684,9 @@ public:
       }
     }
 
+    // Set alarm AFTER setjmp to avoid race condition
+    alarm(timeout_seconds);
+
     if (!abend && !timeout)
     {
       execute_test(test, tc, abend);
@@ -686,7 +696,7 @@ public:
 
     // Cancel alarm and reset timeout handler
     alarm(0);
-    reset_timeout_handler(timeout_sa);
+    reset_timeout_handler(old_timeout_sa);
 
     if (!opts.remove_signal_handling)
     {
@@ -701,7 +711,7 @@ public:
     else if (abend)
     {
       tc.success = false;
-      tc.fail_message = "unexpected ABEND occured. Add `TEST_OPTIONS.remove_signal_handling = false` to `it(...)` to capture abend dump";
+      tc.fail_message = "unexpected ABEND occurred. Add `TEST_OPTIONS.remove_signal_handling = false` to `it(...)` to capture abend dump";
     }
 
     // Execute afterEach hooks (always run, even if test failed)
