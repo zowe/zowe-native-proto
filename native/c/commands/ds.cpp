@@ -666,7 +666,7 @@ int handle_data_set_write(InvocationContext &context)
   {
     context.error_stream() << "Warning: " << zds.diag.e_msg << endl;
     result->set("truncationWarning", str(zds.diag.e_msg));
-    // Continue to output success message - operation succeeded with warning
+    // Continues w/ logic below to output success RC - operation succeeded with warning
   }
   else if (0 != rc)
   {
@@ -689,7 +689,6 @@ int handle_data_set_write(InvocationContext &context)
   result->set("etag", str(zds.etag));
   context.set_object(result);
 
-  // Return success even for truncation warning - data was written
   return RTNCD_SUCCESS;
 }
 

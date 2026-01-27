@@ -1442,6 +1442,28 @@ void zowex_ds_tests()
                                         ExpectWithContext(rc, response).ToBe(0);
                                         Expect(response).ToContain("1EEE");
                                       });
+                                   it("should read ASA VBA without RDW bytes",
+                                      [&]() -> void
+                                      {
+                                        string ds = _ds.back();
+                                        _create_ds(ds, "--dsorg PS --recfm VBA --lrecl 81 --blksize 810");
+
+                                        string response;
+                                        string command = "printf ' ABC\\n' | " + zowex_command +
+                                                         " data-set write " + ds + " --local-encoding IBM-1047 --encoding IBM-1047";
+                                        int rc = execute_command_with_output(command, response);
+                                        ExpectWithContext(rc, response).ToBe(0);
+                                        Expect(response).ToContain("Wrote data to '" + ds + "'");
+
+                                        command = zowex_command + " data-set view " + ds + " --rfb --local-encoding IBM-1047 --encoding IBM-1047";
+                                        rc = execute_command_with_output(command, response);
+                                        ExpectWithContext(rc, response).ToBe(0);
+
+                                        const size_t first_byte_pos = response.find_first_not_of(" \r\n\t");
+                                        ExpectWithContext(first_byte_pos != string::npos, response).ToBe(true);
+                                        const string first_byte = response.substr(first_byte_pos, 2);
+                                        Expect(first_byte).ToBe("40");
+                                      });
 
                                    it("should stream ASA conversion to a member via pipe-path",
                                       [&]() -> void
