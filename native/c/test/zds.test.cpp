@@ -573,6 +573,37 @@ void zds_tests()
                              Expect(tc.copy_member("MEM", "MEM", true)).ToBe(0);
                            });
 
+                        it("should copy member to another member in the same PDS",
+                           [&]() -> void
+                           {
+                             CopyTestContext tc(created_dsns);
+                             tc.create_source_pds();
+                             tc.write_source_member("SRC", "Source member data");
+
+                             // Copy within same PDS
+                             ZDS zds = {0};
+                             int rc = zds_copy_dsn(&zds, tc.source_dsn + "(SRC)", tc.source_dsn + "(DST)", false);
+                             ExpectWithContext(rc, zds.diag.e_msg).ToBe(0);
+
+                             // Verify both members exist
+                             Expect(tc.source_has_member("SRC")).ToBe(true);
+                             Expect(tc.source_has_member("DST")).ToBe(true);
+                           });
+
+                        it("should copy and rename member in the same PDS with replace",
+                           [&]() -> void
+                           {
+                             CopyTestContext tc(created_dsns);
+                             tc.create_source_pds();
+                             tc.write_source_member("ORIG", "Original data");
+                             tc.write_source_member("COPY", "Old copy data");
+
+                             // Copy and replace within same PDS
+                             ZDS zds = {0};
+                             int rc = zds_copy_dsn(&zds, tc.source_dsn + "(ORIG)", tc.source_dsn + "(COPY)", true);
+                             ExpectWithContext(rc, zds.diag.e_msg).ToBe(0);
+                           });
+
                         it("should copy empty PDS",
                            [&]() -> void
                            {

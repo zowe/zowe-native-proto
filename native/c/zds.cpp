@@ -402,6 +402,25 @@ int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2, bool replace,
   }
   else
   {
+    // Check if source and target are in the same PDS - need special handling
+    bool same_pds = (info1.type == ZDS_TYPE_MEMBER && target_is_member &&
+                     info1.base_dsn == info2.base_dsn);
+
+    if (same_pds)
+    {
+      // Use IEBCOPY for same-PDS member copy to avoid file locking issues
+      vector<string> dds;
+      dds.push_back("alloc dd(INDD) da('" + info1.base_dsn + "') shr");
+      dds.push_back("alloc dd(OUTDD) da('" + info2.base_dsn + "') old");
+      dds.push_back("alloc dd(sysprint) lrecl(80) recfm(f,b) blksize(80)");
+      dds.push_back("alloc dd(sysin) lrecl(80) recfm(f,b) blksize(80)");
+
+      string control_stmts = "        COPY OUTDD=OUTDD,INDD=INDD\n";
+      control_stmts += "        SELECT MEMBER=((" + info1.member_name + "," + info2.member_name + ",R))";
+
+      return run_iebcopy(zds, dds, control_stmts);
+    }
+
     return copy_sequential(zds, dsn1, dsn2);
   }
 }
