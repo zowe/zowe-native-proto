@@ -17,25 +17,24 @@
 | _Read data set_          | ✅              | ✅  | ✅              | ✅         | ✅  | ✅  | ✅   |
 | _Read data set member_   | ✅              | ✅  | ✅              | ✅         | ✅  | ✅  | ✅   |
 | _Write data set_         | ✅              | ✅  | 🚧 <sup>2</sup> | ✅         | ✅  | ✅  | ✅   |
-| _Write data set member_  | ✅              | ✅  | 🚧 <sup>3</sup> | ✅         | ✅  | ✅  | ✅   |
+| _Write data set member_  | ✅              | ✅  | ✅              | ✅         | ✅  | ✅  | ✅   |
 | _Create data set_        | ✅              | ✅  | ✅              | ✅         | ✅  | ✅  | ✅   |
-| _Create data set member_ | ✅              | ✅  | 🚧 <sup>4</sup> | ✅         | ✅  | ✅  | ✅   |
+| _Create data set member_ | ✅              | ✅  | 🚧 <sup>3</sup> | ✅         | ✅  | ✅  | ✅   |
 | _Delete data set_        | ✅              | ✅  | ✅              | ✅         | ✅  | ✅  | ✅   |
 | _Delete data set member_ | ✅              | ✅  | ✅              | ✅         | ✅  | ✅  | ✅   |
-| Recall data set          | 🚧 <sup>5</sup> | ❌  | ✅              | ✅         | ✅  | ✅  | ✅   |
+| Recall data set          | 🚧 <sup>4</sup> | ❌  | ✅              | ✅         | ✅  | ✅  | ✅   |
 | Migrate data set         | ✅              | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
 | Delete migrated data set | ✅              | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
 | Rename data set          | ✅              | ✅  | ❌              | ❌         | ❌  | ❌  | ❌   |
 | Copy data set            | ✅              | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
-| Search data sets         | 🚧 <sup>6</sup> | ❌  | 🚧 <sup>6</sup> | ❌         | ❌  | ❌  | ❌   |
+| Search data sets         | 🚧 <sup>5</sup> | ❌  | 🚧 <sup>5</sup> | ❌         | ❌  | ❌  | ❌   |
 | Invoke AMS (VSAM)        | ✅              | ❌  | ❌              | ❌         | ❌  | ❌  | ➖   |
 
 1. Not all attributes are retrieved.
-2. RECFM=U (undefined record format) and RECFM=A data sets are read-only; write attempts return an error.
-3. Record formats containing "S" (Standard) are read-only; write attempts return an error.
-4. If the member already exists, this operation causes member contents to be overwritten.
-5. Does not support some migration utilities like CA Disk.
-6. Limited options compared to ISPF `srchfor`.
+2. RECFM=U (undefined record format) data sets are read-only; write attempts return an error.
+3. If the member already exists, this operation causes member contents to be overwritten.
+4. Does not support some migration utilities like CA Disk.
+5. Limited options compared to ISPF `srchfor`.
 
 ## USS Files
 

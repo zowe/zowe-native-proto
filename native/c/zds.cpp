@@ -917,12 +917,12 @@ static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
 /**
  * Checks if a record format is unsupported for writing.
  * @param recfm The record format to check.
- * @param include_standard Whether to include "S" record formats in the check (for members only as BPAM does not support it).
+ * @param include_standard Whether to include "S" record formats in the check (minor logic optimization for members as its only supported for sequential).
  * @return true if the record format is unsupported, false otherwise.
  */
 static bool zds_write_recfm_unsupported(const string &recfm, const bool include_standard = false)
 {
-  return recfm == ZDS_RECFM_U || recfm == ZDS_RECFM_A || (include_standard && recfm.find(ZDS_RECFM_S) != std::string::npos);
+  return recfm == ZDS_RECFM_U || (include_standard && recfm.find(ZDS_RECFM_S) != std::string::npos);
 }
 
 int zds_validate_etag(ZDS *zds, const string &dsn, bool has_encoding)
@@ -970,7 +970,7 @@ int zds_write_to_dsn(ZDS *zds, const string &dsn, string &data)
   const DscbAttributes attrs = zds_get_dscb_attributes(dsn);
   const auto is_member = zds_has_member(dsn);
 
-  if (zds_write_recfm_unsupported(attrs.recfm, is_member))
+  if (zds_write_recfm_unsupported(attrs.recfm, !is_member))
   {
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Writing to RECFM=%s data sets is not supported", attrs.recfm.c_str());
     zds->diag.detail_rc = ZDS_RTNCD_UNSUPPORTED_RECFM;
@@ -3103,7 +3103,7 @@ int zds_write_to_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, s
   const DscbAttributes attrs = zds_get_dscb_attributes(dsn);
   const auto is_member = zds_has_member(dsn);
 
-  if (zds_write_recfm_unsupported(attrs.recfm, is_member))
+  if (zds_write_recfm_unsupported(attrs.recfm, !is_member))
   {
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Writing to RECFM=%s data sets is not supported", attrs.recfm.c_str());
     zds->diag.detail_rc = ZDS_RTNCD_UNSUPPORTED_RECFM;

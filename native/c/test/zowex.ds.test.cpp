@@ -1002,7 +1002,7 @@ void zowex_ds_tests()
                              ExpectWithContext(rc, response).Not().ToBe(0);
                              Expect(response).ToContain("Writing to RECFM=U data sets is not supported");
                            });
-                        it("should fail to write to a RECFM=A data set",
+                        it("should be able to write to a RECFM=A data set",
                            [&]() -> void
                            {
                              string ds = get_random_ds();
@@ -1012,21 +1012,8 @@ void zowex_ds_tests()
                              string response;
                              string command = "echo 'test' | " + zowex_command + " data-set write " + ds;
                              int rc = execute_command_with_output(command, response);
-                             ExpectWithContext(rc, response).Not().ToBe(0);
-                             Expect(response).ToContain("Writing to RECFM=A data sets is not supported");
-                           });
-                        it("should fail to write to a member in a RECFM=FS partitioned data set",
-                           [&]() -> void
-                           {
-                             string ds = get_random_ds();
-                             _ds.push_back(ds);
-                             _create_ds(ds, "--dsorg PO-E --dirblk 2 --recfm FS --lrecl 80 --blksize 800");
-
-                             string response;
-                             string command = "echo 'test' | " + zowex_command + " data-set write '" + ds + "(TEST)'";
-                             int rc = execute_command_with_output(command, response);
-                             ExpectWithContext(rc, response).Not().ToBe(0);
-                             Expect(response).ToContain("Writing to RECFM=FS data sets is not supported");
+                             ExpectWithContext(rc, response).ToBe(0);
+                             Expect(response).ToContain("Wrote data to '" + ds + "'");
                            });
                         it("should overwrite content in a sequential data set",
                            [&]() -> void
@@ -1456,27 +1443,27 @@ void zowex_ds_tests()
                                         Expect(response).ToContain("1EEE");
                                       });
 
-                                   xit("should stream ASA conversion to a member via pipe-path",
-                                       [&]() -> void
-                                       {
-                                         string ds = _ds.back();
-                                         _create_ds(ds, "--dsorg PO --dirblk 2 --dsntype LIBRARY --recfm FBA --lrecl 81 --blksize 810");
+                                   it("should stream ASA conversion to a member via pipe-path",
+                                      [&]() -> void
+                                      {
+                                        string ds = _ds.back();
+                                        _create_ds(ds, "--dsorg PO --dirblk 2 --dsntype LIBRARY --recfm FBA --lrecl 81 --blksize 810");
 
-                                         string response;
-                                         string command = zowex_command + " data-set create-member '" + ds + "(ASA3)'";
-                                         int rc = execute_command_with_output(command, response);
-                                         ExpectWithContext(rc, response).ToBe(0);
-                                         Expect(response).ToContain("Data set and/or member created");
+                                        string response;
+                                        string command = zowex_command + " data-set create-member '" + ds + "(ASA3)'";
+                                        int rc = execute_command_with_output(command, response);
+                                        ExpectWithContext(rc, response).ToBe(0);
+                                        Expect(response).ToContain("Data set and/or member created");
 
-                                         const string pipe_path = "/tmp/zowex_ds_pipe_" + get_random_string(10);
-                                         mkfifo(pipe_path.c_str(), 0777);
+                                        const string pipe_path = "/tmp/zowex_ds_pipe_" + get_random_string(10);
+                                        mkfifo(pipe_path.c_str(), 0777);
 
-                                         const string payload = "AAA\n\nBBB\n";
-                                         const auto encoded = zbase64::encode(payload.c_str(), payload.size());
-                                         const string encoded_payload(encoded.begin(), encoded.end());
+                                        const string payload = "AAA\n\nBBB\n";
+                                        const auto encoded = zbase64::encode(payload.c_str(), payload.size());
+                                        const string encoded_payload(encoded.begin(), encoded.end());
 
-                                         std::thread writer([&]() -> void
-                                                            {
+                                        std::thread writer([&]() -> void
+                                                           {
                                                            int fd = -1;
                                                            for (int attempt = 0; attempt < 100 && fd == -1; ++attempt)
                                                            {
@@ -1492,21 +1479,21 @@ void zowex_ds_tests()
                                                              close(fd);
                                                            } });
 
-                                         command = zowex_command + " data-set write '" + ds + "(ASA3)' --pipe-path " + pipe_path +
-                                                   " --local-encoding IBM-1047 --encoding IBM-1047";
-                                         rc = execute_command_with_output(command, response);
-                                         writer.join();
-                                         unlink(pipe_path.c_str());
+                                        command = zowex_command + " data-set write '" + ds + "(ASA3)' --pipe-path " + pipe_path +
+                                                  " --local-encoding IBM-1047 --encoding IBM-1047";
+                                        rc = execute_command_with_output(command, response);
+                                        writer.join();
+                                        unlink(pipe_path.c_str());
 
-                                         ExpectWithContext(rc, response).ToBe(0);
-                                         Expect(response).ToContain("Wrote data to '" + ds + "(ASA3)'");
+                                        ExpectWithContext(rc, response).ToBe(0);
+                                        Expect(response).ToContain("Wrote data to '" + ds + "(ASA3)'");
 
-                                         command = zowex_command + " data-set view '" + ds + "(ASA3)' --local-encoding IBM-1047 --encoding IBM-1047";
-                                         rc = execute_command_with_output(command, response);
-                                         ExpectWithContext(rc, response).ToBe(0);
-                                         Expect(response).ToContain(" AAA");
-                                         Expect(response).ToContain("0BBB");
-                                       });
+                                        command = zowex_command + " data-set view '" + ds + "(ASA3)' --local-encoding IBM-1047 --encoding IBM-1047";
+                                        rc = execute_command_with_output(command, response);
+                                        ExpectWithContext(rc, response).ToBe(0);
+                                        Expect(response).ToContain(" AAA");
+                                        Expect(response).ToContain("0BBB");
+                                      });
                                  });
 
                         // TODO: What do?

@@ -9,9 +9,10 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - `c`: Fixed an issue where `--wait ACTIVE` on `zowex job` commands would wait indefinitely if the job was fast enough to reach the `OUTPUT` phase before polling its status. [#700](https://github.com/zowe/zowe-native-proto/pull/700)
 - `zowed`: Fixed `message` property of `error` object in the JSON response to contain valuable details about errors thrown by `zowex`. [#712](https://github.com/zowe/zowe-native-proto/pull/712)
 - `c`: You can now access dynamic arguments from a command handler through its `InvocationContext` parameter. [#715](https://github.com/zowe/zowe-native-proto/pull/715)
-- `c`: Fixed an issue where writing to a `RECFM=U` data set could exhibit undefined behavior. Now, writing to a `RECFM=U` data set results in an explicit error as the record format is supported as read-only.
-- `c`: Fixed issue where BPAM write operations would accidentally wipe the contents of a data set if one of the lines exceeded the record length. Now, the line is truncated according to the max record length of the data set, and the user is warned about line ranges that exceed the record length.
-- `c`: PDS and PDSE members are now edited using a partitioned access method to preserve and update ISPF statistics. The following record formats are explicitly marked as unsupported: `U` (undefined), `A` (ASA control characters, unblocked), and any record format containing `S` (Standard).
+- `c`: Fixed an issue where writing to a `RECFM=U` data set could exhibit undefined behavior. Now, writing to a `RECFM=U` data set results in an explicit error as the record format is supported as read-only. [#751](https://github.com/zowe/zowe-native-proto/pull/751)
+- `c`: Fixed issue where BPAM write operations would accidentally wipe the contents of a data set if one of the lines exceeded the record length. Now, the line is truncated according to the max record length of the data set, and the user is warned about line ranges that exceed the record length. [#587](https://github.com/zowe/zowe-native-proto/issues/587)
+- `c`: PDS and PDSE members are now edited using a partitioned access method to preserve and update ISPF statistics. [#587](https://github.com/zowe/zowe-native-proto/issues/587)
+- `c`: Added support for handling ASA control characters when writing to sequential and partitioned data sets. [#751](https://github.com/zowe/zowe-native-proto/pull/751)
 
 ## `0.2.1`
 
