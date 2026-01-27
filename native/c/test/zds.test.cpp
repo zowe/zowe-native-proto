@@ -8,7 +8,6 @@
  * Copyright Contributors to the Zowe Project.
  *
  */
-
 #include <iostream>
 #include <stdexcept>
 #include <vector>
@@ -16,6 +15,7 @@
 #include "ztest.hpp"
 #include "zds.hpp"
 #include "zut.hpp"
+#include "zutils.hpp"
 // #include "zstorage.metal.test.h"
 
 using namespace std;
@@ -229,21 +229,6 @@ void zds_tests()
              describe("rename",
                       []() -> void
                       {
-                        beforeEach([]() -> void
-                                   {
-                          ZDS zds = {0};
-                          zds_delete_dsn(&zds, "USER.TEST");
-                          zds_delete_dsn(&zds, "USER.EXISTING");
-                          zds_delete_dsn(&zds, "USER.TEST.BEFORE");
-                          zds_delete_dsn(&zds, "USER.TEST.AFTER"); });
-
-                        afterEach([]() -> void
-                                  {
-                          ZDS zds = {0};
-                          zds_delete_dsn(&zds, "USER.TEST");
-                          zds_delete_dsn(&zds, "USER.EXISTING");
-                          zds_delete_dsn(&zds, "USER.TEST.BEFORE");
-                          zds_delete_dsn(&zds, "USER.TEST.AFTER"); });
                         it("should fail if source or target data sets are empty",
                            []() -> void
                            {
@@ -272,7 +257,8 @@ void zds_tests()
                            []() -> void
                            {
                              ZDS zds = {0};
-                             int rc = zds_rename_dsn(&zds, "USER.NONEXISTENT", "USER.TEST");
+                             string target = get_random_ds(3);
+                             int rc = zds_rename_dsn(&zds, "USER.NONEXISTENT", target);
                              Expect(rc).ToBe(RTNCD_FAILURE);
                              Expect(string(zds.diag.e_msg)).ToContain("Source data set does not exist");
                            });
@@ -292,10 +278,13 @@ void zds_tests()
                              attr.secondary = 1;
                              attr.dirblk = 0;
 
+                             string source = get_random_ds(3);
+                             string target = get_random_ds(3);
+
                              string response;
-                             int rc = zds_create_dsn(&zds, "USER.TEST", attr, response);
-                             rc = zds_create_dsn(&zds, "USER.EXISTING", attr, response);
-                             rc = zds_rename_dsn(&zds, "USER.TEST", "USER.EXISTING");
+                             int rc = zds_create_dsn(&zds, source, attr, response);
+                             rc = zds_create_dsn(&zds, target, attr, response);
+                             rc = zds_rename_dsn(&zds, source, target);
                              Expect(rc).ToBe(RTNCD_FAILURE);
                              Expect(string(zds.diag.e_msg)).ToContain("Target data set name already exists");
                            });
@@ -314,10 +303,12 @@ void zds_tests()
                              attr.primary = 1;
                              attr.secondary = 1;
                              attr.dirblk = 0;
+                             string before = get_random_ds(3);
+                             string after = get_random_ds(3);
 
                              string response;
-                             int rc = zds_create_dsn(&zds, "USER.TEST.BEFORE", attr, response);
-                             rc = zds_rename_dsn(&zds, "USER.TEST.BEFORE", "USER.TEST.AFTER");
+                             int rc = zds_create_dsn(&zds, before, attr, response);
+                             rc = zds_rename_dsn(&zds, before, after);
                              ExpectWithContext(rc, zds.diag.e_msg).ToBe(0);
                            });
                       });

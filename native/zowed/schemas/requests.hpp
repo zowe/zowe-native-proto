@@ -16,271 +16,238 @@
 
 #include "../validator.hpp"
 
-struct DatasetAttributes
-{
-};
+struct DatasetAttributes {};
 ZJSON_SCHEMA(DatasetAttributes,
-             FIELD_OPTIONAL(alcunit, STRING),
-             FIELD_OPTIONAL(blksize, NUMBER),
-             FIELD_OPTIONAL(dirblk, NUMBER),
-             FIELD_OPTIONAL(dsorg, STRING),
-             FIELD_REQUIRED(primary, NUMBER),
-             FIELD_OPTIONAL(recfm, STRING),
-             FIELD_REQUIRED(lrecl, NUMBER),
-             FIELD_OPTIONAL(dataclass, STRING),
-             FIELD_OPTIONAL(unit, STRING),
-             FIELD_OPTIONAL(dsntype, STRING),
-             FIELD_OPTIONAL(mgntclass, STRING),
-             FIELD_OPTIONAL(dsname, STRING),
-             FIELD_OPTIONAL(avgblk, NUMBER),
-             FIELD_OPTIONAL(secondary, NUMBER),
-             FIELD_OPTIONAL(size, STRING),
-             FIELD_OPTIONAL(storclass, STRING),
-             FIELD_OPTIONAL(vol, STRING));
+    FIELD_OPTIONAL(alcunit, STRING),
+    FIELD_OPTIONAL(blksize, NUMBER),
+    FIELD_OPTIONAL(dirblk, NUMBER),
+    FIELD_OPTIONAL(dsorg, STRING),
+    FIELD_REQUIRED(primary, NUMBER),
+    FIELD_OPTIONAL(recfm, STRING),
+    FIELD_REQUIRED(lrecl, NUMBER),
+    FIELD_OPTIONAL(dataclass, STRING),
+    FIELD_OPTIONAL(unit, STRING),
+    FIELD_OPTIONAL(dsntype, STRING),
+    FIELD_OPTIONAL(mgntclass, STRING),
+    FIELD_OPTIONAL(dsname, STRING),
+    FIELD_OPTIONAL(avgblk, NUMBER),
+    FIELD_OPTIONAL(secondary, NUMBER),
+    FIELD_OPTIONAL(size, STRING),
+    FIELD_OPTIONAL(storclass, STRING),
+    FIELD_OPTIONAL(vol, STRING)
+);
 
-struct IssueConsoleRequest
-{
-};
+struct IssueConsoleRequest {};
 ZJSON_SCHEMA(IssueConsoleRequest,
-             FIELD_REQUIRED(commandText, STRING),
-             FIELD_OPTIONAL(consoleName, STRING));
+    FIELD_REQUIRED(commandText, STRING),
+    FIELD_OPTIONAL(consoleName, STRING)
+);
 
-struct IssueTsoRequest
-{
-};
+struct IssueTsoRequest {};
 ZJSON_SCHEMA(IssueTsoRequest,
-             FIELD_REQUIRED(commandText, STRING));
+    FIELD_REQUIRED(commandText, STRING)
+);
 
-struct IssueUnixRequest
-{
-};
+struct IssueUnixRequest {};
 ZJSON_SCHEMA(IssueUnixRequest,
-             FIELD_REQUIRED(commandText, STRING));
+    FIELD_REQUIRED(commandText, STRING)
+);
 
-struct CreateDatasetRequest
-{
-};
+struct CreateDatasetRequest {};
 ZJSON_SCHEMA(CreateDatasetRequest,
-             FIELD_REQUIRED(dsname, STRING),
-             FIELD_REQUIRED_OBJECT(attributes, DatasetAttributes));
+    FIELD_REQUIRED(dsname, STRING),
+    FIELD_REQUIRED_OBJECT(attributes, DatasetAttributes)
+);
 
-struct CreateMemberRequest
-{
-};
+struct CreateMemberRequest {};
 ZJSON_SCHEMA(CreateMemberRequest,
-             FIELD_REQUIRED(dsname, STRING));
+    FIELD_REQUIRED(dsname, STRING)
+);
 
-struct DeleteDatasetRequest
-{
-};
+struct DeleteDatasetRequest {};
 ZJSON_SCHEMA(DeleteDatasetRequest,
-             FIELD_REQUIRED(dsname, STRING));
+    FIELD_REQUIRED(dsname, STRING)
+);
 
-struct RenameDatasetRequest
-{
-};
+struct RenameDatasetRequest {};
 ZJSON_SCHEMA(RenameDatasetRequest,
-             FIELD_REQUIRED(dsnameBefore, STRING),
-             FIELD_REQUIRED(dsnameAfter, STRING));
+    FIELD_REQUIRED(dsnameBefore, STRING),
+    FIELD_REQUIRED(dsnameAfter, STRING)
+);
 
-struct ListDatasetsRequest
-{
-};
+struct ListDatasetsRequest {};
 ZJSON_SCHEMA(ListDatasetsRequest,
-             FIELD_OPTIONAL(maxItems, NUMBER),
-             FIELD_OPTIONAL(responseTimeout, NUMBER),
-             FIELD_OPTIONAL(start, STRING),
-             FIELD_REQUIRED(pattern, STRING),
-             FIELD_OPTIONAL(attributes, BOOL));
+    FIELD_OPTIONAL(maxItems, NUMBER),
+    FIELD_OPTIONAL(responseTimeout, NUMBER),
+    FIELD_OPTIONAL(start, STRING),
+    FIELD_REQUIRED(pattern, STRING),
+    FIELD_OPTIONAL(attributes, BOOL)
+);
 
-struct ListDsMembersRequest
-{
-};
+struct ListDsMembersRequest {};
 ZJSON_SCHEMA(ListDsMembersRequest,
-             FIELD_OPTIONAL(maxItems, NUMBER),
-             FIELD_OPTIONAL(responseTimeout, NUMBER),
-             FIELD_OPTIONAL(start, STRING),
-             FIELD_REQUIRED(dsname, STRING),
-             FIELD_OPTIONAL(attributes, BOOL));
+    FIELD_OPTIONAL(maxItems, NUMBER),
+    FIELD_OPTIONAL(responseTimeout, NUMBER),
+    FIELD_OPTIONAL(start, STRING),
+    FIELD_REQUIRED(dsname, STRING),
+    FIELD_OPTIONAL(attributes, BOOL)
+);
 
-struct ReadDatasetRequest
-{
-};
+struct ReadDatasetRequest {};
 ZJSON_SCHEMA(ReadDatasetRequest,
-             FIELD_OPTIONAL(encoding, STRING),
-             FIELD_OPTIONAL(localEncoding, STRING),
-             FIELD_OPTIONAL(volume, STRING),
-             FIELD_REQUIRED(dsname, STRING),
-             FIELD_OPTIONAL(stream, ANY));
+    FIELD_OPTIONAL(encoding, STRING),
+    FIELD_OPTIONAL(localEncoding, STRING),
+    FIELD_OPTIONAL(volume, STRING),
+    FIELD_REQUIRED(dsname, STRING),
+    FIELD_OPTIONAL(stream, ANY)
+);
 
-struct RestoreDatasetRequest
-{
-};
+struct RestoreDatasetRequest {};
 ZJSON_SCHEMA(RestoreDatasetRequest,
-             FIELD_REQUIRED(dsname, STRING));
+    FIELD_REQUIRED(dsname, STRING)
+);
 
-struct WriteDatasetRequest
-{
-};
+struct WriteDatasetRequest {};
 ZJSON_SCHEMA(WriteDatasetRequest,
-             FIELD_OPTIONAL(encoding, STRING),
-             FIELD_OPTIONAL(localEncoding, STRING),
-             FIELD_OPTIONAL(etag, STRING),
-             FIELD_OPTIONAL(volume, STRING),
-             FIELD_REQUIRED(dsname, STRING),
-             FIELD_OPTIONAL(data, STRING),
-             FIELD_OPTIONAL(stream, ANY));
+    FIELD_OPTIONAL(encoding, STRING),
+    FIELD_OPTIONAL(localEncoding, STRING),
+    FIELD_OPTIONAL(etag, STRING),
+    FIELD_OPTIONAL(volume, STRING),
+    FIELD_REQUIRED(dsname, STRING),
+    FIELD_OPTIONAL(data, STRING),
+    FIELD_OPTIONAL(stream, ANY)
+);
 
-struct CancelJobRequest
-{
-};
+struct CancelJobRequest {};
 ZJSON_SCHEMA(CancelJobRequest,
-             FIELD_REQUIRED(jobId, STRING));
+    FIELD_REQUIRED(jobId, STRING)
+);
 
-struct DeleteJobRequest
-{
-};
+struct DeleteJobRequest {};
 ZJSON_SCHEMA(DeleteJobRequest,
-             FIELD_REQUIRED(jobId, STRING));
+    FIELD_REQUIRED(jobId, STRING)
+);
 
-struct GetJclRequest
-{
-};
+struct GetJclRequest {};
 ZJSON_SCHEMA(GetJclRequest,
-             FIELD_REQUIRED(jobId, STRING));
+    FIELD_REQUIRED(jobId, STRING)
+);
 
-struct GetJobStatusRequest
-{
-};
+struct GetJobStatusRequest {};
 ZJSON_SCHEMA(GetJobStatusRequest,
-             FIELD_REQUIRED(jobId, STRING));
+    FIELD_REQUIRED(jobId, STRING)
+);
 
-struct HoldJobRequest
-{
-};
+struct HoldJobRequest {};
 ZJSON_SCHEMA(HoldJobRequest,
-             FIELD_REQUIRED(jobId, STRING));
+    FIELD_REQUIRED(jobId, STRING)
+);
 
-struct ListJobsRequest
-{
-};
+struct ListJobsRequest {};
 ZJSON_SCHEMA(ListJobsRequest,
-             FIELD_OPTIONAL(maxItems, NUMBER),
-             FIELD_OPTIONAL(responseTimeout, NUMBER),
-             FIELD_OPTIONAL(owner, STRING),
-             FIELD_OPTIONAL(prefix, STRING),
-             FIELD_OPTIONAL(status, STRING));
+    FIELD_OPTIONAL(maxItems, NUMBER),
+    FIELD_OPTIONAL(responseTimeout, NUMBER),
+    FIELD_OPTIONAL(owner, STRING),
+    FIELD_OPTIONAL(prefix, STRING),
+    FIELD_OPTIONAL(status, STRING)
+);
 
-struct ListSpoolsRequest
-{
-};
+struct ListSpoolsRequest {};
 ZJSON_SCHEMA(ListSpoolsRequest,
-             FIELD_REQUIRED(jobId, STRING));
+    FIELD_REQUIRED(jobId, STRING)
+);
 
-struct ReadSpoolRequest
-{
-};
+struct ReadSpoolRequest {};
 ZJSON_SCHEMA(ReadSpoolRequest,
-             FIELD_OPTIONAL(encoding, STRING),
-             FIELD_OPTIONAL(localEncoding, STRING),
-             FIELD_REQUIRED(spoolId, NUMBER),
-             FIELD_REQUIRED(jobId, STRING));
+    FIELD_OPTIONAL(encoding, STRING),
+    FIELD_OPTIONAL(localEncoding, STRING),
+    FIELD_REQUIRED(spoolId, NUMBER),
+    FIELD_REQUIRED(jobId, STRING)
+);
 
-struct ReleaseJobRequest
-{
-};
+struct ReleaseJobRequest {};
 ZJSON_SCHEMA(ReleaseJobRequest,
-             FIELD_REQUIRED(jobId, STRING));
+    FIELD_REQUIRED(jobId, STRING)
+);
 
-struct SubmitJclRequest
-{
-};
+struct SubmitJclRequest {};
 ZJSON_SCHEMA(SubmitJclRequest,
-             FIELD_OPTIONAL(encoding, STRING),
-             FIELD_OPTIONAL(localEncoding, STRING),
-             FIELD_REQUIRED(jcl, STRING));
+    FIELD_OPTIONAL(encoding, STRING),
+    FIELD_OPTIONAL(localEncoding, STRING),
+    FIELD_REQUIRED(jcl, STRING)
+);
 
-struct SubmitJobRequest
-{
-};
+struct SubmitJobRequest {};
 ZJSON_SCHEMA(SubmitJobRequest,
-             FIELD_REQUIRED(dsname, STRING));
+    FIELD_REQUIRED(dsname, STRING)
+);
 
-struct SubmitUssRequest
-{
-};
+struct SubmitUssRequest {};
 ZJSON_SCHEMA(SubmitUssRequest,
-             FIELD_REQUIRED(fspath, STRING));
+    FIELD_REQUIRED(fspath, STRING)
+);
 
-struct ChmodFileRequest
-{
-};
+struct ChmodFileRequest {};
 ZJSON_SCHEMA(ChmodFileRequest,
-             FIELD_REQUIRED(mode, STRING),
-             FIELD_REQUIRED(fspath, STRING),
-             FIELD_REQUIRED(recursive, BOOL));
+    FIELD_REQUIRED(mode, STRING),
+    FIELD_REQUIRED(fspath, STRING),
+    FIELD_REQUIRED(recursive, BOOL)
+);
 
-struct ChownFileRequest
-{
-};
+struct ChownFileRequest {};
 ZJSON_SCHEMA(ChownFileRequest,
-             FIELD_REQUIRED(owner, STRING),
-             FIELD_REQUIRED(fspath, STRING),
-             FIELD_REQUIRED(recursive, BOOL));
+    FIELD_REQUIRED(owner, STRING),
+    FIELD_REQUIRED(fspath, STRING),
+    FIELD_REQUIRED(recursive, BOOL)
+);
 
-struct ChtagFileRequest
-{
-};
+struct ChtagFileRequest {};
 ZJSON_SCHEMA(ChtagFileRequest,
-             FIELD_REQUIRED(fspath, STRING),
-             FIELD_REQUIRED(tag, STRING),
-             FIELD_REQUIRED(recursive, BOOL));
+    FIELD_REQUIRED(fspath, STRING),
+    FIELD_REQUIRED(tag, STRING),
+    FIELD_REQUIRED(recursive, BOOL)
+);
 
-struct CreateFileRequest
-{
-};
+struct CreateFileRequest {};
 ZJSON_SCHEMA(CreateFileRequest,
-             FIELD_OPTIONAL(permissions, STRING),
-             FIELD_REQUIRED(fspath, STRING),
-             FIELD_OPTIONAL(isDir, BOOL));
+    FIELD_OPTIONAL(permissions, STRING),
+    FIELD_REQUIRED(fspath, STRING),
+    FIELD_OPTIONAL(isDir, BOOL)
+);
 
-struct DeleteFileRequest
-{
-};
+struct DeleteFileRequest {};
 ZJSON_SCHEMA(DeleteFileRequest,
-             FIELD_REQUIRED(fspath, STRING),
-             FIELD_REQUIRED(recursive, BOOL));
+    FIELD_REQUIRED(fspath, STRING),
+    FIELD_REQUIRED(recursive, BOOL)
+);
 
-struct ListFilesRequest
-{
-};
+struct ListFilesRequest {};
 ZJSON_SCHEMA(ListFilesRequest,
-             FIELD_OPTIONAL(maxItems, NUMBER),
-             FIELD_OPTIONAL(responseTimeout, NUMBER),
-             FIELD_REQUIRED(fspath, STRING),
-             FIELD_OPTIONAL(all, BOOL),
-             FIELD_OPTIONAL(long, BOOL),
-             FIELD_OPTIONAL(depth, NUMBER));
+    FIELD_OPTIONAL(maxItems, NUMBER),
+    FIELD_OPTIONAL(responseTimeout, NUMBER),
+    FIELD_REQUIRED(fspath, STRING),
+    FIELD_OPTIONAL(all, BOOL),
+    FIELD_OPTIONAL(long, BOOL),
+    FIELD_OPTIONAL(depth, NUMBER)
+);
 
-struct ReadFileRequest
-{
-};
+struct ReadFileRequest {};
 ZJSON_SCHEMA(ReadFileRequest,
-             FIELD_OPTIONAL(encoding, STRING),
-             FIELD_OPTIONAL(localEncoding, STRING),
-             FIELD_REQUIRED(fspath, STRING),
-             FIELD_OPTIONAL(stream, ANY));
+    FIELD_OPTIONAL(encoding, STRING),
+    FIELD_OPTIONAL(localEncoding, STRING),
+    FIELD_REQUIRED(fspath, STRING),
+    FIELD_OPTIONAL(stream, ANY)
+);
 
-struct WriteFileRequest
-{
-};
+struct WriteFileRequest {};
 ZJSON_SCHEMA(WriteFileRequest,
-             FIELD_OPTIONAL(encoding, STRING),
-             FIELD_OPTIONAL(localEncoding, STRING),
-             FIELD_OPTIONAL(etag, STRING),
-             FIELD_REQUIRED(fspath, STRING),
-             FIELD_OPTIONAL(data, STRING),
-             FIELD_OPTIONAL(stream, ANY),
-             FIELD_OPTIONAL(contentLen, NUMBER));
+    FIELD_OPTIONAL(encoding, STRING),
+    FIELD_OPTIONAL(localEncoding, STRING),
+    FIELD_OPTIONAL(etag, STRING),
+    FIELD_REQUIRED(fspath, STRING),
+    FIELD_OPTIONAL(data, STRING),
+    FIELD_OPTIONAL(stream, ANY),
+    FIELD_OPTIONAL(contentLen, NUMBER)
+);
 
 #endif
