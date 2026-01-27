@@ -338,10 +338,16 @@ int ZJBMLIST(ZJB *zjb, ZJB_JOB_INFO **PTR64 job_info, int *entries)
     memcpy(stat.statjobn, zjb->prefix_name, sizeof((stat.statjobn)));
   }
 
+  if (0 == strcmp(zjb->status_name, "ACTIVE  "))
+  {
+    stat.statphaz = stat___onmain;
+    stat.statsel3 |= statsphz;
+  }
+
   return ZJBMTCOM(zjb, &stat, job_info, entries);
 }
 
-int ZJBMGJQ(ZJB *zjb, SSOB *ssobp, STAT *statp, STATJQ *PTR32 *PTR32 statjqp)
+int ZJBMGJQ(ZJB *zjb, SSOB *ssobp, STAT *statp, STATJQ * PTR32 * PTR32 statjqp)
 {
   int rc = 0;
 
@@ -455,6 +461,9 @@ int ZJBMTCOM(ZJB *zjb, STAT *PTR64 stat, ZJB_JOB_INFO **PTR64 job_info, int *ent
         storage_free64(statjqtrsp);
         return RTNCD_FAILURE;
       }
+
+      memset(statjqtrsp->subsystem, 0x00, sizeof(statjqtrsp->subsystem));
+      strncpy(statjqtrsp->subsystem, (char *)statjqp->stjqoss, sizeof(statjqp->stjqoss));
 
       statjqtrsp++;
     }
