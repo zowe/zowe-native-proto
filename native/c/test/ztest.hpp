@@ -53,9 +53,13 @@ namespace ztst
 // Forward declarations
 class Globals;
 
+// Default timeout for individual tests and hooks (in seconds)
+constexpr unsigned int DEFAULT_TEST_TIMEOUT_SECONDS = 10;
+
 struct TEST_OPTIONS
 {
   bool remove_signal_handling;
+  unsigned int timeout_sec; // Timeout in seconds (0 = use default)
 };
 
 inline std::string get_indent(int level)
@@ -63,8 +67,9 @@ inline std::string get_indent(int level)
   return std::string(level * 2, ' ');
 }
 
-// Forward declaration of signal handler
+// Forward declaration of signal handlers
 inline void signal_handler(int code, siginfo_t *info, void *context);
+inline void timeout_handler(int sig);
 
 // ANSI color codes
 struct Colors
@@ -199,6 +204,7 @@ private:
   std::string matcher = "";
   std::vector<int> suite_stack;
   std::string znp_test_log = "";
+  bool timeout_occurred = false;
 
   Globals()
   {
@@ -231,6 +237,21 @@ private:
 #endif
     sigaction(SIGABRT, &sa, NULL);
     sigaction(SIGILL, &sa, NULL);
+  }
+
+  static void setup_timeout_handler(struct sigaction &sa)
+  {
+    memset(&sa, 0, sizeof(struct sigaction));
+    sa.sa_handler = timeout_handler;
+    sa.sa_flags = 0;
+    sigaction(SIGALRM, &sa, NULL);
+  }
+
+  static void reset_timeout_handler(struct sigaction &sa)
+  {
+    alarm(0); // Cancel any pending alarm
+    sa.sa_handler = SIG_DFL;
+    sigaction(SIGALRM, &sa, NULL);
   }
 
   template <typename Callable>
@@ -381,6 +402,14 @@ public:
   {
     return jump_buf;
   }
+  void set_timeout_occurred(bool value)
+  {
+    timeout_occurred = value;
+  }
+  bool get_timeout_occurred()
+  {
+    return timeout_occurred;
+  }
   void increment_nesting()
   {
     current_nesting++;
@@ -425,25 +454,49 @@ public:
   }
 
   // Execute a vector of hooks, catching and reporting any errors
-  void execute_hooks(const std::vector<hook_callback> &hooks, const std::string &hook_type, std::string &error_message)
+  void execute_hooks(const std::vector<hook_callback> &hooks, const std::string &hook_type, std::string &error_message, unsigned int timeout_seconds)
   {
+    struct sigaction timeout_sa;
+    setup_timeout_handler(timeout_sa);
+
     for (const auto &hook : hooks)
     {
+      timeout_occurred = false;
+      alarm(timeout_seconds);
+
+      if (0 != setjmp(get_jmp_buf()))
+      {
+        // Jumped back from signal handler
+        if (timeout_occurred)
+        {
+          reset_timeout_handler(timeout_sa);
+          error_message = hook_type + " hook timed out after " + std::to_string(timeout_seconds) + " seconds";
+          throw std::runtime_error(error_message);
+        }
+      }
+
       try
       {
         hook();
+        alarm(0); // Cancel alarm if hook completes successfully
       }
       catch (const std::exception &e)
       {
+        alarm(0); // Cancel alarm on exception
+        reset_timeout_handler(timeout_sa);
         error_message = hook_type + " hook failed: " + std::string(e.what());
         throw std::runtime_error(error_message);
       }
       catch (...)
       {
+        alarm(0); // Cancel alarm on exception
+        reset_timeout_handler(timeout_sa);
         error_message = hook_type + " hook failed with unknown error";
         throw std::runtime_error(error_message);
       }
     }
+
+    reset_timeout_handler(timeout_sa);
   }
 
   // Collect beforeEach hooks from current suite and all parent suites (parent -> child order)
@@ -490,6 +543,9 @@ public:
     TEST_CASE tc = {0};
     tc.description = description;
 
+    // Determine timeout to use (0 means use default)
+    unsigned int timeout_seconds = opts.timeout_sec > 0 ? opts.timeout_sec : DEFAULT_TEST_TIMEOUT_SECONDS;
+
     int current_nesting = get_nesting();
 
     if (get_matcher() != "")
@@ -531,7 +587,7 @@ public:
         std::string error_message;
         try
         {
-          execute_hooks(suite.before_all_hooks, "beforeAll", error_message);
+          execute_hooks(suite.before_all_hooks, "beforeAll", error_message, timeout_seconds);
         }
         catch (const std::exception &)
         {
@@ -562,7 +618,7 @@ public:
       std::string error_message;
       try
       {
-        execute_hooks(before_each_hooks, "beforeEach", error_message);
+        execute_hooks(before_each_hooks, "beforeEach", error_message, timeout_seconds);
       }
       catch (const std::exception &)
       {
@@ -576,7 +632,7 @@ public:
           std::string after_error;
           try
           {
-            execute_hooks(after_each_hooks, "afterEach", after_error);
+            execute_hooks(after_each_hooks, "afterEach", after_error, timeout_seconds);
           }
           catch (const std::exception &)
           {
@@ -593,33 +649,56 @@ public:
     }
 
     bool abend = false;
+    bool timeout = false;
     struct sigaction sa;
+    struct sigaction timeout_sa;
 
     if (!opts.remove_signal_handling)
     {
       setup_signal_handlers(sa);
     }
 
+    // Setup timeout handler
+    setup_timeout_handler(timeout_sa);
+    timeout_occurred = false;
+    alarm(timeout_seconds);
+
     tc.start_time = std::chrono::high_resolution_clock::now();
 
     if (0 != setjmp(get_jmp_buf()))
     {
-      abend = true;
+      if (timeout_occurred)
+      {
+        timeout = true;
+      }
+      else
+      {
+        abend = true;
+      }
     }
 
-    if (!abend)
+    if (!abend && !timeout)
     {
       execute_test(test, tc, abend);
     }
 
     tc.end_time = std::chrono::high_resolution_clock::now();
 
+    // Cancel alarm and reset timeout handler
+    alarm(0);
+    reset_timeout_handler(timeout_sa);
+
     if (!opts.remove_signal_handling)
     {
       reset_signal_handlers(sa);
     }
 
-    if (abend)
+    if (timeout)
+    {
+      tc.success = false;
+      tc.fail_message = "test timed out after " + std::to_string(timeout_seconds) + " seconds";
+    }
+    else if (abend)
     {
       tc.success = false;
       tc.fail_message = "unexpected ABEND occured. Add `TEST_OPTIONS.remove_signal_handling = false` to `it(...)` to capture abend dump";
@@ -632,7 +711,7 @@ public:
       std::string error_message;
       try
       {
-        execute_hooks(after_each_hooks, "afterEach", error_message);
+        execute_hooks(after_each_hooks, "afterEach", error_message, timeout_seconds);
       }
       catch (const std::exception &)
       {
@@ -657,10 +736,17 @@ public:
   }
 };
 
-// Signal handler needs to be after Globals class definition
+// Signal handlers need to be after Globals class definition
 inline void signal_handler(int code, siginfo_t *info, void *context)
 {
   Globals &g = Globals::get_instance();
+  longjmp(g.get_jmp_buf(), 1);
+}
+
+inline void timeout_handler(int sig)
+{
+  Globals &g = Globals::get_instance();
+  g.set_timeout_occurred(true);
   longjmp(g.get_jmp_buf(), 1);
 }
 
@@ -983,7 +1069,7 @@ void describe(const std::string &description, Callable suite)
       std::string error_message;
       try
       {
-        g.execute_hooks(after_all_hooks, "afterAll", error_message);
+        g.execute_hooks(after_all_hooks, "afterAll", error_message, DEFAULT_TEST_TIMEOUT_SECONDS);
       }
       catch (const std::exception &)
       {
@@ -1025,7 +1111,7 @@ template <typename Callable,
               std::is_same<void, decltype(std::declval<Callable>()())>::value>::type>
 void it(const std::string &description, Callable test)
 {
-  TEST_OPTIONS opts = {0};
+  TEST_OPTIONS opts = {false, 0};
   it(description, test, opts);
 }
 
