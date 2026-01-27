@@ -233,7 +233,8 @@ void zds_tests()
                            []() -> void
                            {
                              ZDS zds = {0};
-                             int rc = zds_rename_dsn(&zds, "", "USER.TEST");
+                             string target = get_random_ds(3);
+                             int rc = zds_rename_dsn(&zds, "", target);
                              Expect(rc).ToBe(RTNCD_FAILURE);
                              Expect(string(zds.diag.e_msg)).ToContain("Data set names must be valid");
 
@@ -248,7 +249,8 @@ void zds_tests()
                            {
                              ZDS zds = {0};
                              string longName = "USER.TEST.TEST.TEST.TEST.TEST.TEST.TEST.TEST.TEST.TEST.TEST.TEST";
-                             int rc = zds_rename_dsn(&zds, "USER.TEST", longName);
+                             string source = get_random_ds(3);
+                             int rc = zds_rename_dsn(&zds, source, longName);
                              Expect(rc).ToBe(RTNCD_FAILURE);
                              Expect(string(zds.diag.e_msg)).ToContain("Target data set name exceeds max character length of 44");
                            });
@@ -258,7 +260,8 @@ void zds_tests()
                            {
                              ZDS zds = {0};
                              string target = get_random_ds(3);
-                             int rc = zds_rename_dsn(&zds, "USER.NONEXISTENT", target);
+                             string source = get_random_ds(3);
+                             int rc = zds_rename_dsn(&zds, source, target);
                              Expect(rc).ToBe(RTNCD_FAILURE);
                              Expect(string(zds.diag.e_msg)).ToContain("Source data set does not exist");
                            });
