@@ -483,6 +483,11 @@ int handle_job_delete(InvocationContext &context)
   return RTNCD_SUCCESS;
 }
 
+bool case_insensitive_match(const char a, const char b)
+{
+  return tolower(a) == tolower(b);
+}
+
 int handle_job_watch(InvocationContext &context)
 {
   int rc = 0;
@@ -490,6 +495,7 @@ int handle_job_watch(InvocationContext &context)
   string job_dsn = context.get<std::string>("job-dsn", "");
   string until_match = context.get<std::string>("until-match", "");
   long long max_sleep_seconds = context.get<long long>("max-wait-seconds");
+  bool any_case = context.get<bool>("any-case", false);
 
 #define MAX_WAIT_SECONDS 60ll * 5ll
 
@@ -507,6 +513,12 @@ int handle_job_watch(InvocationContext &context)
 
   string pattern;
   bool is_regex = parse_regex_pattern(until_match, pattern);
+
+  if (any_case && is_regex)
+  {
+    context.error_stream() << "Error: any-case is not supported for regex patterns" << endl;
+    return RTNCD_FAILURE;
+  }
 
   bool found_match = false;
   string matched;
@@ -544,11 +556,22 @@ int handle_job_watch(InvocationContext &context)
     }
     else
     {
-      // Use string to search for the pattern in the response
-      if (response.find(pattern) != string::npos)
+      if (any_case)
       {
-        matched = pattern;
-        found_match = true;
+        auto it = search(response.begin(), response.end(), pattern.begin(), pattern.end(), case_insensitive_match);
+        if (it != response.end())
+        {
+          matched = response.substr(it - response.begin(), pattern.length());
+          found_match = true;
+        }
+      }
+      else
+      {
+        if (response.find(pattern) != string::npos)
+        {
+          matched = pattern;
+          found_match = true;
+        }
       }
     }
 
@@ -822,6 +845,7 @@ void register_commands(parser::Command &root_command)
   job_watch_cmd->add_positional_arg("job-dsn", "job dsn to watch (from 'job list-files')", ArgType_Single, true);
   job_watch_cmd->add_keyword_arg("until-match", make_aliases("--until-match", "--um"), "string pattern to watch for in spool files", ArgType_Single, true);
   job_watch_cmd->add_keyword_arg("max-wait-seconds", make_aliases("--max-wait-seconds", "--mws"), "maximum number of seconds to wait for the pattern to match (max 300 seconds)", ArgType_Single, false, ArgValue(15ll));
+  job_watch_cmd->add_keyword_arg("any-case", make_aliases("--any-case", "--ac"), "match string in any case", ArgType_Flag, false, ArgValue(false));
   job_watch_cmd->set_handler(handle_job_watch);
   job_watch_cmd->add_example("Watch job spool files for a given string pattern", "zowex job watch --job-dsn IBMUSER.IEFBR14@.JOB01684.D0000002.JESMSGLG --until-match \"$HASP395 IEFBR14@ ENDED\"");
   job_watch_cmd->add_example("Watch job spool files for a given regex pattern", "zowex job watch --job-dsn IBMUSER.IEFBR14@.JOB01684D0000002.JESMSGLG --until-match \"/^.*ENDED.*$/g\"");
