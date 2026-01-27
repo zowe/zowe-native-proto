@@ -191,11 +191,12 @@ export class ZSshUtils {
         });
     }
 
-    public static async checkIfOutdated(localFile: string, remoteChecksums?: Record<string, string>): Promise<boolean> {
+    public static async checkIfOutdated(remoteChecksums?: Record<string, string>): Promise<boolean> {
         if (remoteChecksums == null) {
             Logger.getAppLogger().warn("Checksums not found, could not verify server");
             return false;
         }
+        const localFile = path.join(ZSshUtils.getBinDir(__dirname), "checksums.asc");
         const localChecksums: Record<string, string> = {};
         for (const line of fs.readFileSync(localFile, "utf-8").trimEnd().split("\n")) {
             const [checksum, file] = line.split(/\s+/);
@@ -213,6 +214,8 @@ export class ZSshUtils {
         if (path.parse(dirUp).base.length > 0) {
             return ZSshUtils.getBinDir(dirUp);
         }
+
+        throw new Error(`Failed to find bin directory in path ${dir}`);
     }
 
     private static async sftp<T>(

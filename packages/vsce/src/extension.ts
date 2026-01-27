@@ -29,7 +29,7 @@ export function activate(context: vscode.ExtensionContext) {
     }
 
     context.subscriptions.push(...registerCommands(context));
-    context.subscriptions.push(SshClientCache.initialize(context));
+    context.subscriptions.push(SshClientCache.inst);
     zoweExplorerApi.registerMvsApi(new SshMvsApi(zoweExplorerApi.getDataSetAttrProvider?.()));
     zoweExplorerApi.registerUssApi(new SshUssApi());
     zoweExplorerApi.registerJesApi(new SshJesApi());

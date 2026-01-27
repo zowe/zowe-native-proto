@@ -9,7 +9,6 @@
  *
  */
 
-import * as path from "node:path";
 import type { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import { imperative } from "@zowe/zowe-explorer-api";
 import * as vscode from "vscode";
@@ -33,7 +32,7 @@ export class SshClientCache extends vscode.Disposable {
     private mClientMap: Map<string, ZSshClient> = new Map();
     private mMutexMap: Map<string, AsyncMutex> = new Map();
 
-    private constructor(private mContext: vscode.ExtensionContext) {
+    private constructor() {
         super(() => this.dispose());
     }
 
@@ -43,12 +42,10 @@ export class SshClientCache extends vscode.Disposable {
         }
     }
 
-    public static initialize(context: vscode.ExtensionContext): SshClientCache {
-        SshClientCache.mInstance = new SshClientCache(context);
-        return SshClientCache.mInstance;
-    }
-
     public static get inst(): SshClientCache {
+        if (SshClientCache.mInstance == null) {
+            SshClientCache.mInstance = new SshClientCache();
+        }
         return SshClientCache.mInstance;
     }
 
@@ -63,7 +60,6 @@ export class SshClientCache extends vscode.Disposable {
             using _lock = this.acquireProfileLock(clientId);
             const session = ZSshUtils.buildSession(profile.profile!);
             const serverPath = ConfigUtils.getServerPath(profile.profile);
-            const checksumsFile = path.join(this.mContext.extensionPath, "bin", "checksums.asc");
             const vsceConfig = getVsceConfig();
             const keepAliveInterval = vsceConfig.get<number>("keepAliveInterval");
             const numWorkers = vsceConfig.get<number>("workerCount");
@@ -81,7 +77,7 @@ export class SshClientCache extends vscode.Disposable {
                 imperative.Logger.getAppLogger().debug(
                     `Server checksums: ${JSON.stringify(newClient.serverChecksums)}`,
                 );
-                if (await ZSshUtils.checkIfOutdated(checksumsFile, newClient.serverChecksums)) {
+                if (await ZSshUtils.checkIfOutdated(newClient.serverChecksums)) {
                     if (autoUpdate) {
                         imperative.Logger.getAppLogger().info(`Server is out of date, deploying to ${profile.name}`);
                         newClient = undefined;
