@@ -52,8 +52,15 @@ struct Job {};
 ZJSON_SCHEMA(Job,
     FIELD_REQUIRED(id, STRING),
     FIELD_REQUIRED(name, STRING),
+    FIELD_OPTIONAL(subsystem, STRING),
+    FIELD_REQUIRED(owner, STRING),
     FIELD_REQUIRED(status, STRING),
-    FIELD_REQUIRED(retcode, STRING)
+    FIELD_REQUIRED(type, STRING),
+    FIELD_REQUIRED(class, STRING),
+    FIELD_OPTIONAL(retcode, STRING),
+    FIELD_OPTIONAL(correlator, STRING),
+    FIELD_REQUIRED(phase, NUMBER),
+    FIELD_REQUIRED(phaseName, STRING)
 );
 
 struct Spool {};
@@ -107,6 +114,11 @@ ZJSON_SCHEMA(CreateMemberResponse,
 
 struct DeleteDatasetResponse {};
 ZJSON_SCHEMA(DeleteDatasetResponse,
+    FIELD_REQUIRED(success, BOOL)
+);
+
+struct RenameDatasetResponse {};
+ZJSON_SCHEMA(RenameDatasetResponse,
     FIELD_REQUIRED(success, BOOL)
 );
 
@@ -166,8 +178,15 @@ ZJSON_SCHEMA(GetJobStatusResponse,
     FIELD_REQUIRED(success, BOOL),
     FIELD_REQUIRED(id, STRING),
     FIELD_REQUIRED(name, STRING),
+    FIELD_OPTIONAL(subsystem, STRING),
+    FIELD_REQUIRED(owner, STRING),
     FIELD_REQUIRED(status, STRING),
-    FIELD_REQUIRED(retcode, STRING)
+    FIELD_REQUIRED(type, STRING),
+    FIELD_REQUIRED(class, STRING),
+    FIELD_OPTIONAL(retcode, STRING),
+    FIELD_OPTIONAL(correlator, STRING),
+    FIELD_REQUIRED(phase, NUMBER),
+    FIELD_REQUIRED(phaseName, STRING)
 );
 
 struct HoldJobResponse {};

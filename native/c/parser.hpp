@@ -322,7 +322,7 @@ public:
 
   Command(std::string name, std::string help)
       : m_name(name), m_help(help), m_handler(nullptr),
-        m_allow_dynamic_keywords(false)
+        m_allow_dynamic_keywords(false), m_allow_passthrough(false)
   {
     ensure_help_argument();
   }
@@ -378,6 +378,23 @@ public:
   ArgType get_dynamic_keyword_type() const
   {
     return m_dynamic.keyword_type;
+  }
+
+  Command &enable_passthrough(const std::string &description = "Arguments to pass through")
+  {
+    m_allow_passthrough = true;
+    m_passthrough_description = description;
+    return *this;
+  }
+
+  bool allow_passthrough() const
+  {
+    return m_allow_passthrough;
+  }
+
+  const std::string &get_passthrough_description() const
+  {
+    return m_passthrough_description;
   }
 
   // add a keyword/option argument (e.g., --file, -f)
@@ -633,6 +650,9 @@ public:
     if (!kw_args.empty() || m_allow_dynamic_keywords)
       os << " [options]";
 
+    if (m_allow_passthrough)
+      os << " [-- <passthrough_args>...]";
+
     os << "\n\n";
 
     if (!m_help.empty())
@@ -702,6 +722,14 @@ public:
            << m_dynamic.description << "\n";
       }
       os << "\n";
+    }
+
+    // passthrough arguments info
+    if (m_allow_passthrough)
+    {
+      os << "Passthrough:\n";
+      os << "  --                    " << m_passthrough_description << "\n";
+      os << "                        All arguments after -- are passed through without parsing.\n\n";
     }
 
     // available subcommands
@@ -775,6 +803,9 @@ public:
 
 private:
   bool m_allow_dynamic_keywords;
+  bool m_allow_passthrough;
+  std::string m_passthrough_description;
+
   // helper to check if the token at the given index is a flag/option token
   bool is_flag_token(const std::vector<lexer::Token> &tokens,
                      size_t index) const
@@ -1038,6 +1069,9 @@ public:
   std::map<std::string, ArgValue> m_values;
   std::map<std::string, ArgValue> m_dynamic_values;
 
+  // passthrough arguments (after -- delimiter)
+  std::vector<std::string> m_passthrough_args;
+
   // pointer to the command definition for default value lookup
   const Command *m_command;
 
@@ -1079,6 +1113,18 @@ public:
   const std::map<std::string, ArgValue> &get_dynamic_values() const
   {
     return m_dynamic_values;
+  }
+
+  // check if passthrough arguments were provided (after --)
+  bool has_passthrough() const
+  {
+    return !m_passthrough_args.empty();
+  }
+
+  // get the passthrough arguments (arguments after -- delimiter)
+  const std::vector<std::string> &get_passthrough_args() const
+  {
+    return m_passthrough_args;
   }
 
   // get the value, or a default if missing/wrong type
@@ -1186,6 +1232,34 @@ Command::parse(const std::vector<lexer::Token> &tokens,
 
     ZLOG_TRACE("Processing token[%zu]: kind=%d, current_pos_arg_index=%zu",
                current_token_index, (int)kind, current_positional_arg_index);
+
+    // check for passthrough delimiter (--)
+    if (kind == lexer::TokDoubleMinus)
+    {
+      if (!m_allow_passthrough)
+      {
+        result.status = ParseResult::ParserStatus_ParseError;
+        result.error_message = "unexpected delimiter '--'. This command does not accept passthrough arguments.";
+        std::cerr << "Error: " << result.error_message << "\n\n";
+        generate_help(std::cerr, command_path_prefix);
+        result.exit_code = 1;
+        return result;
+      }
+
+      ZLOG_TRACE("Passthrough delimiter found, collecting remaining tokens");
+      current_token_index++; // consume the -- token
+
+      // collect all remaining tokens as passthrough arguments
+      while (current_token_index < tokens.size())
+      {
+        const lexer::Token &pass_token = tokens[current_token_index];
+        std::ostringstream ss;
+        pass_token.print(ss);
+        result.m_passthrough_args.push_back(ss.str());
+        current_token_index++;
+      }
+      break; // exit the main parsing loop
+    }
 
     // check for keyword arguments/flags (TokFlagShort, TokFlagLong)
     if (kind == lexer::TokFlagShort || kind == lexer::TokFlagLong)
@@ -1851,7 +1925,8 @@ Command::parse(const std::vector<lexer::Token> &tokens,
       invocation_args[it->first] = it->second;
     }
 
-    plugin::InvocationContext context(result.command_path, invocation_args);
+    plugin::ContextArgs context_args(result.command_path, invocation_args, result.m_passthrough_args);
+    plugin::InvocationContext context(context_args);
     result.exit_code = m_handler(context);
     ZLOG_TRACE("Handler returned exit code: %d", result.exit_code);
   }
@@ -1946,10 +2021,28 @@ public:
     std::vector<lexer::Token> tokens;
     ZLOG_TRACE("Converting %zu arguments to tokens", args.size());
     size_t pos = 0;
+    bool passthrough_mode = false;
     for (size_t i = 0; i < args.size(); ++i)
     {
       const std::string &arg = args[i];
       lexer::Span span(pos, pos + arg.size());
+
+      // After --, treat all arguments as raw strings (passthrough mode)
+      if (passthrough_mode)
+      {
+        tokens.push_back(lexer::Token::make_id(arg.c_str(), arg.size(), span));
+        pos += arg.size() + 1;
+        continue;
+      }
+
+      // Check for passthrough delimiter --
+      if (arg == "--")
+      {
+        tokens.push_back(lexer::Token(lexer::TokDoubleMinus, span));
+        passthrough_mode = true;
+        pos += arg.size() + 1;
+        continue;
+      }
 
       if (arg.size() > 2 && arg[0] == '-' && arg[1] == '-')
       {

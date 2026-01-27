@@ -20,6 +20,7 @@ int handle_job_list_files(InvocationContext &result);
 int handle_job_list_proclib(InvocationContext &result);
 int handle_job_view_status(InvocationContext &result);
 int handle_job_view_file(InvocationContext &result);
+int handle_job_view_file_by_id(InvocationContext &result);
 int handle_job_view_jcl(InvocationContext &result);
 int handle_job_submit(InvocationContext &result);
 int handle_job_submit_jcl(InvocationContext &result);

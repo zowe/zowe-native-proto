@@ -6,14 +6,21 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Recent Changes
 
-- `c`: Imlement `zut_bpxwdyn_rtdsn` to obtain and return a system allocated data set name.
+- `c`: Implement `zut_bpxwdyn_rtdsn` to obtain and return a system allocated data set name.
 - `c`: Implement command `zowex job view-file` to print contents of a job output data set.
 - The `zowex job submit-jcl` command now displays the submitted job in the following format: `JobName(JobId)` [#733](https://github.com/zowe/zowe-native-proto/issues/733)
 - `c`: Rename command `zowex job view-file` to `zowex job view-file-by-id` so that `view-file` can be used to print a specific file (data set) name. [#740](https://github.com/zowe/zowe-native-proto/issues/740)
+- `c`: Rename command `zowex job view-file` to `zowex job view-file-by-id` so that `view-file` can be used to print a specific file (data set) name. [#740](https://github.com/zowe/zowe-native-proto/issues/740)
+- `c`: The zowex CLI parser now supports enabling passthrough arguments for commands. When enabled, arguments passed after a double-dash (`--`) are passed directly to the command as raw input. [#729](https://github.com/zowe/zowe-native-proto/pull/729)
+- `c`: Fixed results being truncated when listing all jobs on a system. [#735](https://github.com/zowe/zowe-native-proto/issues/735)
+- `c`: Fixed default behavior of `zowex job list` command to list jobs for only the current user. [#739](https://github.com/zowe/zowe-native-proto/issues/739)
+- `c`: Added `--status` argument to `zowex job list` command that supports filtering by job status. [#743](https://github.com/zowe/zowe-native-proto/issues/743)
+- `zowed`: Fixed `maxItems` property being ignored when listing data sets and jobs. [#745](https://github.com/zowe/zowe-native-proto/issues/745)
+- Added the rename dataset functionality to the backend. [#376] (https://github.com/zowe/zowe-native-proto/issues/376)
 
 ## `0.2.2`
 
-- `c`: Renable `zowex ds compress` and correct 0C4 abend. [#640](https://github.com/zowe/zowe-native-proto/issues/640)
+- `c`: Re-enable `zowex ds compress` and correct 0C4 abend. [#640](https://github.com/zowe/zowe-native-proto/issues/640)
 - `c`: Fixed an issue where `--wait ACTIVE` on `zowex job` commands would wait indefinitely if the job was fast enough to reach the `OUTPUT` phase before polling its status. [#700](https://github.com/zowe/zowe-native-proto/pull/700)
 - `zowed`: Fixed `message` property of `error` object in the JSON response to contain valuable details about errors thrown by `zowex`. [#712](https://github.com/zowe/zowe-native-proto/pull/712)
 - `c`: You can now access dynamic arguments from a command handler through its `InvocationContext` parameter. [#715](https://github.com/zowe/zowe-native-proto/pull/715)

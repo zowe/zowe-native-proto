@@ -144,8 +144,7 @@ const ast::Node build_ds_object(const ZDSEntry &entry, bool attributes)
 {
   const auto obj_entry = obj();
   string trimmed_name = entry.name;
-  zut_rtrim(trimmed_name);
-  obj_entry->set("name", str(trimmed_name));
+  obj_entry->set("name", str(zut_rtrim(trimmed_name)));
 
   if (!attributes)
     return obj_entry;
@@ -538,8 +537,7 @@ int handle_data_set_list_members(InvocationContext &context)
       context.output_stream() << left << setw(12) << it->name << endl;
       const auto entry = obj();
       string trimmed_name = it->name;
-      zut_rtrim(trimmed_name);
-      entry->set("name", str(trimmed_name));
+      entry->set("name", str(zut_rtrim(trimmed_name)));
       entries_array->push(entry);
     }
     const auto result = obj();
@@ -695,6 +693,26 @@ int handle_data_set_delete(InvocationContext &context)
     return RTNCD_FAILURE;
   }
   context.output_stream() << "Data set '" << dsn << "' deleted" << endl;
+
+  return rc;
+}
+
+int handle_data_set_rename(InvocationContext &context)
+{
+  int rc = 0;
+  string dsn_before = context.get<string>("dsname-before", "");
+  string dsn_after = context.get<string>("dsname-after", "");
+  ZDS zds = {};
+
+  rc = zds_rename_dsn(&zds, dsn_before, dsn_after);
+
+  if (0 != rc)
+  {
+    context.error_stream() << "Error: Could not rename data set: '" << dsn_before << "' rc: '" << rc << "'" << endl;
+    context.error_stream() << " Details: " << zds.diag.e_msg << endl;
+    return RTNCD_FAILURE;
+  }
+  context.output_stream() << "Data set '" << dsn_before << "' renamed to '" << dsn_after << "'" << endl;
 
   return rc;
 }
@@ -941,6 +959,13 @@ void register_commands(parser::Command &root_command)
   ds_restore_cmd->add_positional_arg(DSN);
   ds_restore_cmd->set_handler(handle_data_set_restore);
   data_set_cmd->add_command(ds_restore_cmd);
+
+  // Rename subcommand
+  auto ds_rename_cmd = command_ptr(new Command("rename", "rename data set"));
+  ds_rename_cmd->add_positional_arg("dsname-before", "data set to rename", ArgType_Single, true);
+  ds_rename_cmd->add_positional_arg("dsname-after", "new data set name", ArgType_Single, true);
+  ds_rename_cmd->set_handler(handle_data_set_rename);
+  data_set_cmd->add_command(ds_rename_cmd);
 
   // Compress subcommand
   auto ds_compress_cmd = command_ptr(new Command("compress", "compress data set"));

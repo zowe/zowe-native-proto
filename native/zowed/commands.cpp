@@ -50,10 +50,12 @@ void register_ds_commands(CommandDispatcher &dispatcher)
                               CommandBuilder(ds::handle_data_set_list)
                                   .validate<ListDatasetsRequest, ListDatasetsResponse>()
                                   .rename_arg("pattern", "dsn")
+                                  .rename_arg("maxItems", "max-entries")
                                   .set_default("warn", false));
   dispatcher.register_command("listDsMembers",
                               create_ds_builder(ds::handle_data_set_list_members)
                                   .validate<ListDsMembersRequest, ListDsMembersResponse>()
+                                  .rename_arg("maxItems", "max-entries")
                                   .set_default("warn", false));
   dispatcher.register_command("readDataset",
                               create_ds_builder(ds::handle_data_set_view)
@@ -73,6 +75,7 @@ void register_ds_commands(CommandDispatcher &dispatcher)
                                   .set_default("encoding", "IBM-1047")
                                   .write_stdin("data", true)
                                   .handle_fifo("stream", "pipe-path", FifoMode::PUT));
+  dispatcher.register_command("renameDataset", create_ds_builder(ds::handle_data_set_rename).validate<RenameDatasetRequest, RenameDatasetResponse>());
 }
 
 void register_job_commands(CommandDispatcher &dispatcher)
@@ -96,12 +99,13 @@ void register_job_commands(CommandDispatcher &dispatcher)
   dispatcher.register_command("listJobs",
                               CommandBuilder(job::handle_job_list)
                                   .validate<ListJobsRequest, ListJobsResponse>()
+                                  .rename_arg("maxItems", "max-entries")
                                   .set_default("warn", false));
   dispatcher.register_command("listSpools",
                               create_job_builder(job::handle_job_list_files)
                                   .validate<ListSpoolsRequest, ListSpoolsResponse>());
   dispatcher.register_command("readSpool",
-                              create_job_builder(job::handle_job_view_file)
+                              create_job_builder(job::handle_job_view_file_by_id)
                                   .validate<ReadSpoolRequest, ReadSpoolResponse>()
                                   .rename_arg("spool-id", "key")
                                   .set_default("encoding", "IBM-1047")

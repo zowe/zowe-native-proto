@@ -64,20 +64,23 @@ void zowex_job_manage_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
                   // Parse the first line (should contain job status)
                   vector<string> columns = parse_rfc_response(lines[0], ",");
 
-                  // RFC format: jobid, retcode, jobname, status, correlator, ...
-                  Expect(columns.size()).ToBeGreaterThanOrEqualTo(5);
+                  // RFC format: jobid, jobname, owner, status, retcode, correlator, ...
+                  Expect(columns.size()).ToBeGreaterThanOrEqualTo(6);
 
                   // Validate jobid matches
                   Expect(columns[0]).ToBe(_jobid);
 
-                  // Validate retcode is not empty
+                  // Validate jobname is not empty
                   Expect(columns[1]).Not().ToBe("");
 
-                  // Validate jobname is not empty
+                  // Validate owner is not empty
                   Expect(columns[2]).Not().ToBe("");
 
                   // Validate status field exists (should be OUTPUT for completed job)
                   Expect(columns[3]).Not().ToBe("");
+
+                  // Validate retcode is not empty
+                  Expect(columns[4]).Not().ToBe("");
                 });
 
              it("should include full_status field in CSV format",
@@ -92,12 +95,12 @@ void zowex_job_manage_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
                   Expect(lines.size()).ToBeGreaterThan(0);
 
                   vector<string> columns = parse_rfc_response(lines[0], ",");
-                  // RFC format: jobid, retcode, jobname, status, correlator, full_status
-                  Expect(columns.size()).ToBeGreaterThanOrEqualTo(6);
+                  // RFC format: jobid, jobname, owner, status, retcode, correlator, full_status
+                  Expect(columns.size()).ToBeGreaterThanOrEqualTo(7);
 
-                  // Validate full_status field (6th field, index 5)
+                  // Validate full_status field (7th field, index 6)
                   // full_status should not be empty for a completed job
-                  Expect(columns[5]).Not().ToBe("");
+                  Expect(columns[6]).Not().ToBe("");
                 });
 
              it("should view job JCL",
@@ -1007,12 +1010,12 @@ void zowex_job_manage_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
                  // Get correlator
                  string response;
                  execute_command_with_output(zowex_command + " job view-status " + _jobid + " --rfc", response);
-                 // Parse CSV to get correlator (5th column, index 4)
+                 // Parse CSV to get correlator (6th column, index 5)
                  vector<string> lines = parse_rfc_response(response, "\n");
                  if (lines.size() > 0) {
                      vector<string> parts = parse_rfc_response(lines[0], ",");
-                     if (parts.size() >= 5) {
-                         _correlator = parts[4];
+                     if (parts.size() >= 6) {
+                         _correlator = parts[5];
                      }
                  }
                  if (_correlator.empty()) {
@@ -1132,9 +1135,9 @@ void zowex_job_manage_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
                   if (lines.size() > 0)
                   {
                     vector<string> parts = parse_rfc_response(lines[0], ",");
-                    if (parts.size() >= 5)
+                    if (parts.size() >= 6)
                     {
-                      correlator = parts[4];
+                      correlator = parts[5];
                     }
                   }
 
@@ -1172,9 +1175,9 @@ void zowex_job_manage_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
                   if (lines.size() > 0)
                   {
                     vector<string> parts = parse_rfc_response(lines[0], ",");
-                    if (parts.size() >= 5)
+                    if (parts.size() >= 6)
                     {
-                      correlator = parts[4];
+                      correlator = parts[5];
                     }
                   }
 
@@ -1220,9 +1223,9 @@ void zowex_job_manage_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
                   if (lines.size() > 0)
                   {
                     vector<string> parts = parse_rfc_response(lines[0], ",");
-                    if (parts.size() >= 5)
+                    if (parts.size() >= 6)
                     {
-                      correlator = parts[4];
+                      correlator = parts[5];
                     }
                   }
 
@@ -1350,9 +1353,9 @@ void zowex_job_manage_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
                   if (lines.size() > 0)
                   {
                     vector<string> parts = parse_rfc_response(lines[0], ",");
-                    if (parts.size() >= 5)
+                    if (parts.size() >= 6)
                     {
-                      correlator = TrimChars(parts[4]);
+                      correlator = TrimChars(parts[5]);
                     }
                   }
 

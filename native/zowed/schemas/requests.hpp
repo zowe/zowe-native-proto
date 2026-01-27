@@ -69,6 +69,12 @@ ZJSON_SCHEMA(DeleteDatasetRequest,
     FIELD_REQUIRED(dsname, STRING)
 );
 
+struct RenameDatasetRequest {};
+ZJSON_SCHEMA(RenameDatasetRequest,
+    FIELD_REQUIRED(dsnameBefore, STRING),
+    FIELD_REQUIRED(dsnameAfter, STRING)
+);
+
 struct ListDatasetsRequest {};
 ZJSON_SCHEMA(ListDatasetsRequest,
     FIELD_OPTIONAL(maxItems, NUMBER),
