@@ -50,6 +50,33 @@ static inline bool zds_use_codepage(const ZDS *zds)
 }
 
 /**
+ * RAII helper class to preserve diagnostic message across operations that may overwrite it.
+ * Saves the current e_msg on construction and restores it on destruction.
+ */
+class DiagMsgGuard
+{
+  ZDS *zds_;
+  char saved_msg_[256];
+  int saved_msg_len_;
+
+public:
+  explicit DiagMsgGuard(ZDS *zds) : zds_(zds), saved_msg_len_(zds->diag.e_msg_len)
+  {
+    memcpy(saved_msg_, zds->diag.e_msg, sizeof(saved_msg_));
+  }
+
+  ~DiagMsgGuard()
+  {
+    memcpy(zds_->diag.e_msg, saved_msg_, sizeof(saved_msg_));
+    zds_->diag.e_msg_len = saved_msg_len_;
+  }
+
+  // Non-copyable
+  DiagMsgGuard(const DiagMsgGuard &) = delete;
+  DiagMsgGuard &operator=(const DiagMsgGuard &) = delete;
+};
+
+/**
  * Helper struct to track truncated lines with range compression.
  * Consecutive lines are compressed into ranges (e.g., "5-8, 12, 45-46").
  */
@@ -830,14 +857,8 @@ static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
       rc = zds_write_output_bpam(zds, ioc, line);
       if (rc != RTNCD_SUCCESS)
       {
-        char saved_msg[sizeof(zds->diag.e_msg)];
-        int saved_msg_len = zds->diag.e_msg_len;
-        memcpy(saved_msg, zds->diag.e_msg, sizeof(saved_msg));
-
+        DiagMsgGuard guard(zds);
         zds_close_output_bpam(zds, ioc);
-
-        memcpy(zds->diag.e_msg, saved_msg, sizeof(saved_msg));
-        zds->diag.e_msg_len = saved_msg_len;
         return rc;
       }
 
@@ -916,14 +937,8 @@ static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
           rc = zds_write_output_bpam(zds, ioc, line);
           if (rc != RTNCD_SUCCESS)
           {
-            char saved_msg[sizeof(zds->diag.e_msg)];
-            int saved_msg_len = zds->diag.e_msg_len;
-            memcpy(saved_msg, zds->diag.e_msg, sizeof(saved_msg));
-
+            DiagMsgGuard guard(zds);
             zds_close_output_bpam(zds, ioc);
-
-            memcpy(zds->diag.e_msg, saved_msg, sizeof(saved_msg));
-            zds->diag.e_msg_len = saved_msg_len;
             return rc;
           }
         }
@@ -3128,17 +3143,9 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const string &dsn, const str
       rc = zds_write_output_bpam(zds, ioc, line);
       if (rc != RTNCD_SUCCESS)
       {
-        // Save error message before close overwrites it
-        char saved_msg[sizeof(zds->diag.e_msg)];
-        int saved_msg_len = zds->diag.e_msg_len;
-        memcpy(saved_msg, zds->diag.e_msg, sizeof(saved_msg));
-
+        DiagMsgGuard guard(zds);
         if (cd != (iconv_t)(-1)) iconv_close(cd);
         zds_close_output_bpam(zds, ioc);
-
-        // Restore original error message
-        memcpy(zds->diag.e_msg, saved_msg, sizeof(saved_msg));
-        zds->diag.e_msg_len = saved_msg_len;
         return rc;
       }
 
@@ -3223,15 +3230,9 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const string &dsn, const str
         rc = zds_write_output_bpam(zds, ioc, line_buffer);
         if (rc != RTNCD_SUCCESS)
         {
-          char saved_msg[sizeof(zds->diag.e_msg)];
-          int saved_msg_len = zds->diag.e_msg_len;
-          memcpy(saved_msg, zds->diag.e_msg, sizeof(saved_msg));
-
+          DiagMsgGuard guard(zds);
           if (cd != (iconv_t)(-1)) iconv_close(cd);
           zds_close_output_bpam(zds, ioc);
-
-          memcpy(zds->diag.e_msg, saved_msg, sizeof(saved_msg));
-          zds->diag.e_msg_len = saved_msg_len;
           return rc;
         }
       }
