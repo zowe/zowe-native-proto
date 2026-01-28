@@ -37,9 +37,9 @@
 #include "zdsm.h"
 
 const size_t MAX_DS_LENGTH = 44u;
-// CR is 0x0D in both ASCII and EBCDIC
+// carriage return character, used for detecting CRLF line endings
 const char CR_CHAR = '\x0D';
-// Form feed is 0x0C in both ASCII and EBCDIC
+// form feed character, used for stripping off lines in ASA mode
 const char FF_CHAR = '\x0C';
 
 using namespace std;
