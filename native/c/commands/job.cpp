@@ -17,6 +17,7 @@
 #include "../zut.hpp"
 #include <unistd.h>
 #include <regex.h>
+#include <cstring>
 
 using namespace ast;
 using namespace parser;
@@ -29,7 +30,8 @@ namespace job
 /**
  * @brief Parse a string to determine if it's a regex pattern
  *
- * Detects regex patterns in the format: /pattern/ or /pattern/g
+ * Detects regex patterns in the format: /pattern/
+ * Note: POSIX regex doesn't support flags like 'g' or 'i' in the pattern itself
  *
  * @param input The input string to check
  * @param pattern Output parameter for the extracted pattern
@@ -39,22 +41,11 @@ bool parse_regex_pattern(const string &input, string &pattern)
 {
   pattern = input;
 
-  if (input.size() >= 2 && input[0] == '/')
+  // Check for /pattern/ format
+  if (input.size() >= 2 && input[0] == '/' && input[input.size() - 1] == '/')
   {
-    // Check for /pattern/
-    if (input[input.size() - 1] == '/')
-    {
-      pattern = input.substr(1, input.size() - 2);
-      return true;
-    }
-    // Check for /pattern/g
-    else if (input.size() >= 3 &&
-             input[input.size() - 2] == '/' &&
-             input[input.size() - 1] == 'g')
-    {
-      pattern = input.substr(1, input.size() - 3);
-      return true;
-    }
+    pattern = input.substr(1, input.size() - 2);
+    return true;
   }
 
   return false;
@@ -566,20 +557,63 @@ int handle_job_watch(InvocationContext &context)
     if (is_regex)
     {
       regex_t re;
-      int ret = regcomp(&re, pattern.c_str(), REG_EXTENDED);
+      // Use REG_EXTENDED for extended regex syntax
+      // Use REG_NEWLINE so ^ and $ match line boundaries (not just start/end of string)
+      int ret = regcomp(&re, pattern.c_str(), REG_EXTENDED | REG_NEWLINE);
       if (ret == 0)
       {
         regmatch_t match[1];
-        if (regexec(&re, response.c_str(), 1, match, 0) == 0)
+        memset(match, 0, sizeof(match));
+
+        int exec_ret = regexec(&re, response.c_str(), 1, match, 0);
+
+        if (exec_ret == 0)
         {
-          matched = response.substr(match[0].rm_so, match[0].rm_eo - match[0].rm_so);
-          found_match = true;
+          // On z/OS, rm_eo may not be set correctly by regexec
+          // Use rm_so as the start position - it appears to be reliable
+          if (match[0].rm_so >= 0)
+          {
+            size_t start = static_cast<size_t>(match[0].rm_so);
+
+            // Find the line containing the match
+            // Search backwards for start of line
+            size_t line_start = start;
+            while (line_start > 0 && response[line_start - 1] != '\n')
+            {
+              line_start--;
+            }
+
+            // Search forwards for end of line
+            size_t line_end = start;
+            while (line_end < response.length() && response[line_end] != '\n')
+            {
+              line_end++;
+            }
+
+            if (line_start <= response.length() && line_end <= response.length())
+            {
+              matched = response.substr(line_start, line_end - line_start);
+              found_match = true;
+            }
+          }
+        }
+        else if (exec_ret == REG_NOMATCH)
+        {
+          // No match found, continue loop
+        }
+        else
+        {
+          char errbuf[256];
+          regerror(exec_ret, &re, errbuf, sizeof(errbuf));
+          context.error_stream() << "Debug: regexec error: " << errbuf << endl;
         }
         regfree(&re);
       }
       else
       {
-        context.error_stream() << "Error: invalid regex pattern: '" << pattern << "'" << endl;
+        char errbuf[256];
+        regerror(ret, &re, errbuf, sizeof(errbuf));
+        context.error_stream() << "Error: invalid regex pattern: '" << pattern << "' - " << errbuf << endl;
       }
     }
     else
@@ -609,19 +643,18 @@ int handle_job_watch(InvocationContext &context)
     }
     total_sleep_seconds++;
     sleep(1);
-
   } while (total_sleep_seconds < max_sleep_seconds);
 
   if (found_match)
   {
-    context.output_stream() << (is_regex ? "'Regex'" : "'String'") << " pattern in job spool files matched in " << total_sleep_seconds << "s on:"
+    context.output_stream() << (is_regex ? "'Regex'" : "'String'") << " pattern '" << pattern << "' in job spool files matched in " << total_sleep_seconds << "s on:"
                             << endl;
     context.output_stream() << matched << endl;
     return RTNCD_SUCCESS;
   }
   else
   {
-    context.error_stream() << "Error: " << (is_regex ? "'Regex'" : "'String'") << " pattern " << pattern << " in job spool files was not found in " << total_sleep_seconds << "s" << endl;
+    context.error_stream() << "Error: " << (is_regex ? "'Regex'" : "'String'") << " pattern '" << pattern << "' in job spool files was not found in " << total_sleep_seconds << "s" << endl;
     return RTNCD_FAILURE;
   }
 
@@ -876,8 +909,8 @@ void register_commands(parser::Command &root_command)
   job_watch_cmd->add_keyword_arg("max-wait-seconds", make_aliases("--max-wait-seconds", "--mws"), "maximum number of seconds to wait for the pattern to match (max 300 seconds)", ArgType_Single, false, ArgValue(15ll));
   job_watch_cmd->add_keyword_arg("any-case", make_aliases("--any-case", "--ac"), "match string in any case", ArgType_Flag, false, ArgValue(false));
   job_watch_cmd->set_handler(handle_job_watch);
-  job_watch_cmd->add_example("Watch job spool files for a given string pattern", "zowex job watch --job-dsn IBMUSER.IEFBR14@.JOB01684.D0000002.JESMSGLG --until-match \"$HASP395 IEFBR14@ ENDED\"");
-  job_watch_cmd->add_example("Watch job spool files for a given regex pattern", "zowex job watch --job-dsn IBMUSER.IEFBR14@.JOB01684D0000002.JESMSGLG --until-match \"/^.*ENDED.*$/g\"");
+  job_watch_cmd->add_example("Watch job spool files for a given string pattern", "zowex job watch IBMUSER.IEFBR14@.JOB01684.D0000002.JESMSGLG --until-match \"$HASP395 IEFBR14@ ENDED\"");
+  job_watch_cmd->add_example("Watch job spool files for a given regex pattern", "zowex job watch IBMUSER.IEFBR14@.JOB01684D0000002.JESMSGLG --until-match \"/^.*ENDED.*$/g\"");
   job_group->add_command(job_watch_cmd);
 
   // Cancel subcommand
