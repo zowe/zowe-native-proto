@@ -441,6 +441,7 @@ interface TaskState {
     name: string;
     status: TaskStatus;
     error?: string;
+    errorLogPath?: string;
 }
 
 class WatchUI {
@@ -474,6 +475,15 @@ class WatchUI {
         if (task) {
             task.status = status;
             task.error = error;
+            // Write full error to log file if present
+            if (error) {
+                const errorLogDir = path.resolve(__dirname, "../.cache/build-errors");
+                fs.mkdirSync(errorLogDir, { recursive: true });
+                const logPath = path.join(errorLogDir, `${name}.log`);
+                const logContent = `Build error log for [${name}]\nTimestamp: ${this.timestamp.toLocaleString()}\n${"─".repeat(50)}\n\n${error}`;
+                fs.writeFileSync(logPath, logContent);
+                task.errorLogPath = `.cache/build-errors/${name}.log`;
+            }
         }
     }
 
@@ -556,14 +566,38 @@ class WatchUI {
                     lines.push(this.padLine("", 0));
                     const errorHeader = `${ANSI.RED}error (${task.name}):${ANSI.RESET}`;
                     lines.push(this.padLine(`  ${errorHeader}`, `  error (${task.name}):`.length));
-                    // Split error into lines and indent
-                    const errorLines = task.error.split("\n").slice(0, 5); // Limit to 5 lines
-                    for (const errLine of errorLines) {
+
+                    // Split error into lines and show first few
+                    const allErrorLines = task.error.split("\n").filter((line) => line.trim().length > 0);
+                    const maxLines = 3;
+                    const visibleLines = allErrorLines.slice(0, maxLines);
+                    const remainingCount = allErrorLines.length - maxLines;
+
+                    for (const errLine of visibleLines) {
                         const truncated =
                             errLine.length > this.boxWidth - 10
                                 ? `${errLine.slice(0, this.boxWidth - 13)}...`
                                 : errLine;
                         lines.push(this.padLine(`    ${ANSI.DIM}${truncated}${ANSI.RESET}`, truncated.length + 4));
+                    }
+
+                    // Show "N more lines" indicator if truncated
+                    if (remainingCount > 0) {
+                        const moreText = `↓ ${remainingCount} more line${remainingCount > 1 ? "s" : ""}`;
+                        const padding = this.boxWidth - 6 - moreText.length;
+                        lines.push(
+                            this.padLine(
+                                `${" ".repeat(padding)}${ANSI.DIM}${moreText}${ANSI.RESET}`,
+                                this.boxWidth - 6,
+                            ),
+                        );
+                    }
+
+                    // Show log file path
+                    if (task.errorLogPath) {
+                        lines.push(this.padLine("", 0));
+                        const logText = `full log: ${task.errorLogPath}`;
+                        lines.push(this.padLine(`  ${ANSI.DIM}${logText}${ANSI.RESET}`, logText.length + 2));
                     }
                 }
             }
