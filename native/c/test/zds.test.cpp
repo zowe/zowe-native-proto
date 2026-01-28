@@ -112,6 +112,21 @@ struct CopyTestContext
     }
     return false;
   }
+
+  bool source_has_member(const string &member)
+  {
+    vector<ZDSMem> members;
+    ZDS zds = {0};
+    zds_list_members(&zds, source_dsn, members);
+    for (const auto &mem : members)
+    {
+      string name = mem.name;
+      zut_trim(name);
+      if (name == member)
+        return true;
+    }
+    return false;
+  }
 };
 
 struct CompressTestContext
@@ -167,19 +182,19 @@ void zds_tests()
              afterAll([&]() -> void
                       {
                           // Cleanup created data sets
-                          for (const auto &dsn : created_dsns)
-                          {
-                            try
-                            {
-                              ZDS zds = {0};
-                              zds_delete_dsn(&zds, dsn);
-                            }
-                            catch (...)
-                            {
-                              // Ignore cleanup errors
-                            }
-                          }
-                          created_dsns.clear(); });
+                         for (const auto &dsn : created_dsns)
+                         {
+                           try
+                           {
+                             ZDS zds = {0};
+                             zds_delete_dsn(&zds, dsn);
+                           }
+                           catch (...)
+                           {
+                             // Ignore cleanup errors
+                           }
+                         }
+                         created_dsns.clear(); });
 
              describe("list",
                       []() -> void
