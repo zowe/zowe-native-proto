@@ -64,7 +64,8 @@ class DiagMsgGuard
   int saved_msg_len_;
 
 public:
-  explicit DiagMsgGuard(ZDS *zds) : zds_(zds), saved_msg_len_(zds->diag.e_msg_len)
+  explicit DiagMsgGuard(ZDS *zds)
+      : zds_(zds), saved_msg_len_(zds->diag.e_msg_len)
   {
     memcpy(saved_msg_, zds->diag.e_msg, sizeof(saved_msg_));
   }
@@ -747,6 +748,24 @@ static int zds_write_sequential(ZDS *zds, const string &dsn, string &data, const
 }
 
 /**
+ * Write ASA overflow records (empty '-' records) for handling 3+ consecutive blank lines.
+ * Returns RTNCD_SUCCESS on success, or the error code on failure.
+ */
+static int write_asa_overflow_records(ZDS *zds, IO_CTRL *ioc, int overflow_count)
+{
+  for (int i = 0; i < overflow_count; i++)
+  {
+    string empty_record(1, '-');
+    int rc = zds_write_output_bpam(zds, ioc, empty_record);
+    if (rc != RTNCD_SUCCESS)
+    {
+      return rc;
+    }
+  }
+  return RTNCD_SUCCESS;
+}
+
+/**
  * Internal function to write to a PDS/PDSE member using BPAM (updates ISPF stats)
  */
 static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
@@ -807,15 +826,11 @@ static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
         }
 
         // Flush overflow blank lines as empty '-' records (for 3+ blank lines)
-        for (int i = 0; i < asa_result.overflow_records; i++)
+        rc = write_asa_overflow_records(zds, ioc, asa_result.overflow_records);
+        if (rc != RTNCD_SUCCESS)
         {
-          string empty_record(1, '-');
-          rc = zds_write_output_bpam(zds, ioc, empty_record);
-          if (rc != RTNCD_SUCCESS)
-          {
-            zds_close_output_bpam(zds, ioc);
-            return rc;
-          }
+          zds_close_output_bpam(zds, ioc);
+          return rc;
         }
 
         asa_char = asa_result.asa_char;
@@ -886,15 +901,11 @@ static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
           else
           {
             // Flush overflow blank lines as empty '-' records
-            for (int i = 0; i < asa_result.overflow_records; i++)
+            rc = write_asa_overflow_records(zds, ioc, asa_result.overflow_records);
+            if (rc != RTNCD_SUCCESS)
             {
-              string empty_record(1, '-');
-              rc = zds_write_output_bpam(zds, ioc, empty_record);
-              if (rc != RTNCD_SUCCESS)
-              {
-                zds_close_output_bpam(zds, ioc);
-                return rc;
-              }
+              zds_close_output_bpam(zds, ioc);
+              return rc;
             }
 
             asa_char = asa_result.asa_char;
@@ -3091,15 +3102,11 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const string &dsn, const str
         }
 
         // Flush overflow blank lines as empty '-' records (for 3+ blank lines)
-        for (int i = 0; i < asa_result.overflow_records; i++)
+        rc = write_asa_overflow_records(zds, ioc, asa_result.overflow_records);
+        if (rc != RTNCD_SUCCESS)
         {
-          string empty_record(1, '-');
-          rc = zds_write_output_bpam(zds, ioc, empty_record);
-          if (rc != RTNCD_SUCCESS)
-          {
-            zds_close_output_bpam(zds, ioc);
-            return rc;
-          }
+          zds_close_output_bpam(zds, ioc);
+          return rc;
         }
 
         asa_char = asa_result.asa_char;
@@ -3177,15 +3184,11 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const string &dsn, const str
         else
         {
           // Flush overflow blank lines as empty '-' records
-          for (int i = 0; i < asa_result.overflow_records; i++)
+          rc = write_asa_overflow_records(zds, ioc, asa_result.overflow_records);
+          if (rc != RTNCD_SUCCESS)
           {
-            string empty_record(1, '-');
-            rc = zds_write_output_bpam(zds, ioc, empty_record);
-            if (rc != RTNCD_SUCCESS)
-            {
-              zds_close_output_bpam(zds, ioc);
-              return rc;
-            }
+            zds_close_output_bpam(zds, ioc);
+            return rc;
           }
 
           asa_char = asa_result.asa_char;
