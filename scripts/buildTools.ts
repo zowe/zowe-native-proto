@@ -701,10 +701,14 @@ function startSpinner(text = "Loading...") {
     const BRAILLE_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
     let frameIndex = 0;
 
+    // Truncate text to fit terminal width (leave room for spinner and padding)
+    const maxWidth = (process.stdout.columns || 80) - 4;
+    const displayText = text.length > maxWidth ? `${text.slice(0, maxWidth - 3)}...` : text;
+
     // Hide cursor
     process.stdout.write("\x1b[?25l");
     return setInterval(() => {
-        process.stdout.write(`\r${BRAILLE_FRAMES[frameIndex]} ${text}`);
+        process.stdout.write(`\r${BRAILLE_FRAMES[frameIndex]} ${displayText}`);
         frameIndex = (frameIndex + 1) % BRAILLE_FRAMES.length;
     }, 80);
 }
