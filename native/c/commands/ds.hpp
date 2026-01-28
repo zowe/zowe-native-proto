@@ -27,5 +27,6 @@ int handle_data_set_delete(InvocationContext &result);
 int handle_data_set_restore(InvocationContext &result);
 int handle_data_set_compress(InvocationContext &result);
 int handle_data_set_create_member(InvocationContext &result);
+int handle_data_set_rename(InvocationContext &result);
 void register_commands(parser::Command &root_command);
 } // namespace ds

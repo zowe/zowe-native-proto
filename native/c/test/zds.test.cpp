@@ -8,7 +8,6 @@
  * Copyright Contributors to the Zowe Project.
  *
  */
-
 #include <iostream>
 #include <vector>
 #include <cstring>
@@ -17,6 +16,7 @@
 #include "zds.hpp"
 #include "zut.hpp"
 #include "zutils.hpp"
+// #include "zstorage.metal.test.h"
 
 using namespace std;
 using namespace ztst;
@@ -371,7 +371,6 @@ void zds_tests()
                              }
                            });
                       });
-
              describe("copy",
                       [&]() -> void
                       {
@@ -751,6 +750,94 @@ void zds_tests()
                              ZDS z = {0};
                              zds_read_from_dsn(&z, tc.pds_dsn + "(MEMBER)", read_data);
                              Expect(read_data).ToContain(test_data);
+                           });
+             describe("rename",
+                      []() -> void
+                      {
+                        it("should fail if source or target data sets are empty",
+                           []() -> void
+                           {
+                             ZDS zds = {0};
+                             string target = get_random_ds(3);
+                             int rc = zds_rename_dsn(&zds, "", target);
+                             Expect(rc).ToBe(RTNCD_FAILURE);
+                             Expect(string(zds.diag.e_msg)).ToContain("Data set names must be valid");
+
+                             ZDS zds2 = {0};
+                             rc = zds_rename_dsn(&zds2, "USER.TEST", "");
+                             Expect(rc).ToBe(RTNCD_FAILURE);
+                             Expect(string(zds2.diag.e_msg)).ToContain("Data set names must be valid");
+                           });
+
+                        it("should fail if target data set name exceeds max length",
+                           []() -> void
+                           {
+                             ZDS zds = {0};
+                             string longName = "USER.TEST.TEST.TEST.TEST.TEST.TEST.TEST.TEST.TEST.TEST.TEST.TEST";
+                             string source = get_random_ds(3);
+                             int rc = zds_rename_dsn(&zds, source, longName);
+                             Expect(rc).ToBe(RTNCD_FAILURE);
+                             Expect(string(zds.diag.e_msg)).ToContain("Target data set name exceeds max character length of 44");
+                           });
+
+                        it("should fail if source data set does not exist",
+                           []() -> void
+                           {
+                             ZDS zds = {0};
+                             string target = get_random_ds(3);
+                             string source = get_random_ds(3);
+                             int rc = zds_rename_dsn(&zds, source, target);
+                             Expect(rc).ToBe(RTNCD_FAILURE);
+                             Expect(string(zds.diag.e_msg)).ToContain("Source data set does not exist");
+                           });
+
+                        it("should fail if target data set already exists",
+                           []() -> void
+                           {
+                             ZDS zds = {0};
+                             DS_ATTRIBUTES attr = {0};
+
+                             attr.dsorg = "PS";
+                             attr.recfm = "FB";
+                             attr.lrecl = 80;
+                             attr.blksize = 0;
+                             attr.alcunit = "TRACKS";
+                             attr.primary = 1;
+                             attr.secondary = 1;
+                             attr.dirblk = 0;
+
+                             string source = get_random_ds(3);
+                             string target = get_random_ds(3);
+
+                             string response;
+                             int rc = zds_create_dsn(&zds, source, attr, response);
+                             rc = zds_create_dsn(&zds, target, attr, response);
+                             rc = zds_rename_dsn(&zds, source, target);
+                             Expect(rc).ToBe(RTNCD_FAILURE);
+                             Expect(string(zds.diag.e_msg)).ToContain("Target data set name already exists");
+                           });
+
+                        it("should rename dataset successfully when valid",
+                           []() -> void
+                           {
+                             ZDS zds = {0};
+                             DS_ATTRIBUTES attr = {0};
+
+                             attr.dsorg = "PS";
+                             attr.recfm = "FB";
+                             attr.lrecl = 80;
+                             attr.blksize = 0;
+                             attr.alcunit = "TRACKS";
+                             attr.primary = 1;
+                             attr.secondary = 1;
+                             attr.dirblk = 0;
+                             string before = get_random_ds(3);
+                             string after = get_random_ds(3);
+
+                             string response;
+                             int rc = zds_create_dsn(&zds, before, attr, response);
+                             rc = zds_rename_dsn(&zds, before, after);
+                             ExpectWithContext(rc, zds.diag.e_msg).ToBe(0);
                            });
                       });
            });

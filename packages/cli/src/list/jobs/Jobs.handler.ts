@@ -24,7 +24,7 @@ export default class ListJobsHandler extends SshBaseHandler {
         params.response.format.output({
             output: response.items,
             format: "table",
-            fields: ["id", "name", "status", "retcode"],
+            fields: ["id", "name", "owner", "status", "retcode"],
         });
         return response;
     }

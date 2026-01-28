@@ -15,6 +15,9 @@
 #ifndef _POSIX_SOURCE
 #define _POSIX_SOURCE
 #endif
+#include "ztype.h"
+#include <cerrno>
+#include <cstdio>
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -960,6 +963,49 @@ int zds_delete_dsn(ZDS *zds, string dsn)
     strcpy(zds->diag.service_name, "remove");
     zds->diag.service_rc = rc;
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not delete data set '%s', rc: '%d'", dsn.c_str(), rc);
+    zds->diag.detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
+    return RTNCD_FAILURE;
+  }
+
+  return 0;
+}
+
+int zds_rename_dsn(ZDS *zds, string dsn_before, string dsn_after)
+{
+  int rc = 0;
+  if (dsn_before.empty() || dsn_after.empty())
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Data set names must be valid");
+    return RTNCD_FAILURE;
+  }
+  if (dsn_after.length() > 44)
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Target data set name exceeds max character length of 44");
+    return RTNCD_FAILURE;
+  }
+  if (!zds_dataset_exists(dsn_before))
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Source data set does not exist '%s'", dsn_before.c_str());
+    return RTNCD_FAILURE;
+  }
+  if (zds_dataset_exists(dsn_after))
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Target data set name already exists '%s'", dsn_after.c_str());
+    return RTNCD_FAILURE;
+  }
+
+  dsn_before = "//'" + dsn_before + "'";
+  dsn_after = "//'" + dsn_after + "'";
+
+  errno = 0;
+  rc = rename(dsn_before.c_str(), dsn_after.c_str());
+
+  if (rc != 0)
+  {
+    int err = errno;
+    strcpy(zds->diag.service_name, "rename");
+    zds->diag.service_rc = rc;
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not rename data set '%s', errno: '%d'", dsn_before.c_str(), err);
     zds->diag.detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
     return RTNCD_FAILURE;
   }
