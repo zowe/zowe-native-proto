@@ -509,6 +509,7 @@ struct AsaStreamState
     cr_char = '\x0D';
   }
 
+private:
   /**
    * Check if there are overflow blank lines that need to be flushed as empty '-' records.
    * Call this AFTER process_line() returns non-'\0', BEFORE writing the actual line.
@@ -557,25 +558,64 @@ struct AsaStreamState
    * For non-empty lines, returns ' ' to indicate it should be written.
    * After this returns non-'\0', call has_overflow_blanks() then get_asa_char_and_reset().
    */
-  char process_line(string &line)
+  char process_line_internal(string &line, bool &has_formfeed_out)
   {
     // Check for form feed at start of line
-    bool has_formfeed = (!line.empty() && line[0] == ff_char);
-    if (has_formfeed)
+    has_formfeed_out = (!line.empty() && line[0] == ff_char);
+    if (has_formfeed_out)
     {
       line = line.substr(1); // remove form feed from content
     }
 
     // Empty lines (without form feed) increment blank count
-    if (line.empty() && !has_formfeed)
+    if (line.empty() && !has_formfeed_out)
     {
       blank_count++;
       return '\0'; // Signal to skip this line
     }
 
     // Return indicator that line should be written
-    // Caller should then call has_overflow_blanks() and get_asa_char_and_reset()
-    return has_formfeed ? '1' : ' ';
+    return has_formfeed_out ? '1' : ' ';
+  }
+
+public:
+  /**
+   * Result of preparing a line for ASA output.
+   */
+  struct PrepareResult
+  {
+    bool skip_line;        // If true, skip this line entirely (it's a blank that increments counter)
+    int overflow_records;  // Number of empty '-' records to write before this line
+    char asa_char;         // ASA control character to prepend to the line (if !skip_line)
+  };
+
+  /**
+   * Prepare a line for ASA output. This combines the process_line, has_overflow_blanks,
+   * and get_asa_char_and_reset logic into a single call.
+   *
+   * @param line The line content (may be modified to strip formfeed character)
+   * @return PrepareResult indicating whether to skip, overflow records to write, and ASA char
+   */
+  PrepareResult prepare_line(string &line)
+  {
+    PrepareResult result = {false, 0, '\0'};
+
+    bool has_formfeed = false;
+    char line_type = process_line_internal(line, has_formfeed);
+    if (line_type == '\0')
+    {
+      result.skip_line = true;
+      return result;
+    }
+
+    // Count overflow blank records (each '-' record consumes 3 blank lines)
+    while (has_overflow_blanks())
+    {
+      result.overflow_records++;
+    }
+
+    result.asa_char = get_asa_char_and_reset(has_formfeed);
+    return result;
   }
 };
 
@@ -734,20 +774,17 @@ static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
 
       // Process ASA: determine control char, skip blank lines
       char asa_char = '\0';
-      bool has_formfeed = false;
       if (is_asa)
       {
-        char line_type = asa_state.process_line(line);
-        if (line_type == '\0')
+        auto asa_result = asa_state.prepare_line(line);
+        if (asa_result.skip_line)
         {
-          // Skip blank lines for ASA
           pos = newline_pos + 1;
           continue;
         }
-        has_formfeed = (line_type == '1');
 
         // Flush overflow blank lines as empty '-' records (for 3+ blank lines)
-        while (asa_state.has_overflow_blanks())
+        for (int i = 0; i < asa_result.overflow_records; i++)
         {
           string empty_record(1, '-');
           rc = zds_write_output_bpam(zds, ioc, empty_record);
@@ -758,7 +795,7 @@ static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
           }
         }
 
-        asa_char = asa_state.get_asa_char_and_reset(has_formfeed);
+        asa_char = asa_result.asa_char;
       }
 
       line_num++;
@@ -824,17 +861,15 @@ static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
         char asa_char = '\0';
         if (is_asa)
         {
-          char line_type = asa_state.process_line(line);
-          if (line_type == '\0')
+          auto asa_result = asa_state.prepare_line(line);
+          if (asa_result.skip_line)
           {
             line.clear(); // Skip if it's a blank line
           }
           else
           {
-            bool has_formfeed = (line_type == '1');
-
             // Flush overflow blank lines as empty '-' records
-            while (asa_state.has_overflow_blanks())
+            for (int i = 0; i < asa_result.overflow_records; i++)
             {
               string empty_record(1, '-');
               rc = zds_write_output_bpam(zds, ioc, empty_record);
@@ -845,7 +880,7 @@ static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
               }
             }
 
-            asa_char = asa_state.get_asa_char_and_reset(has_formfeed);
+            asa_char = asa_result.asa_char;
           }
         }
 
@@ -3036,20 +3071,17 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const string &dsn, const str
 
       // Process ASA: determine control char, skip blank lines
       char asa_char = '\0';
-      bool has_formfeed = false;
       if (is_asa)
       {
-        char line_type = asa_state.process_line(line);
-        if (line_type == '\0')
+        auto asa_result = asa_state.prepare_line(line);
+        if (asa_result.skip_line)
         {
-          // Skip blank lines for ASA
           pos = newline_pos + 1;
           continue;
         }
-        has_formfeed = (line_type == '1');
 
         // Flush overflow blank lines as empty '-' records (for 3+ blank lines)
-        while (asa_state.has_overflow_blanks())
+        for (int i = 0; i < asa_result.overflow_records; i++)
         {
           string empty_record(1, '-');
           rc = zds_write_output_bpam(zds, ioc, empty_record);
@@ -3060,7 +3092,7 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const string &dsn, const str
           }
         }
 
-        asa_char = asa_state.get_asa_char_and_reset(has_formfeed);
+        asa_char = asa_result.asa_char;
       }
 
       line_num++;
@@ -3133,17 +3165,15 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const string &dsn, const str
       char asa_char = '\0';
       if (is_asa)
       {
-        char line_type = asa_state.process_line(line_buffer);
-        if (line_type == '\0')
+        auto asa_result = asa_state.prepare_line(line_buffer);
+        if (asa_result.skip_line)
         {
           line_buffer.clear(); // Skip if it's a blank line
         }
         else
         {
-          bool has_formfeed = (line_type == '1');
-
           // Flush overflow blank lines as empty '-' records
-          while (asa_state.has_overflow_blanks())
+          for (int i = 0; i < asa_result.overflow_records; i++)
           {
             string empty_record(1, '-');
             rc = zds_write_output_bpam(zds, ioc, empty_record);
@@ -3154,7 +3184,7 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const string &dsn, const str
             }
           }
 
-          asa_char = asa_state.get_asa_char_and_reset(has_formfeed);
+          asa_char = asa_result.asa_char;
         }
       }
 
