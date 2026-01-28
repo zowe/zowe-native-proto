@@ -181,10 +181,6 @@ export interface WriteDatasetRequest extends common.CommandRequest<"writeDataset
      */
     dsname: string;
     /**
-     * Input already includes ASA control characters (skip ASA conversion)
-     */
-    inputAsa?: boolean;
-    /**
      * Dataset contents
      */
     data?: B64String;
