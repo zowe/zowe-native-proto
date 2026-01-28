@@ -121,6 +121,8 @@ int zds_get_type_info(const string &dsn, ZDSTypeInfo &info)
       if (!info.member_name.empty())
       {
         info.type = ZDS_TYPE_MEMBER;
+        // For members, verify the member actually exists in the PDS
+        info.exists = member_exists_in_pds(info.base_dsn, info.member_name);
       }
       else
       {
