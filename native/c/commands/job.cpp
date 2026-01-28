@@ -28,8 +28,9 @@ int handle_job_list(InvocationContext &context)
 {
   int rc = 0;
   ZJB zjb = {};
-  string owner_name = context.get<string>("owner", "*");
+  string owner_name = context.get<string>("owner", "");
   string prefix_name = context.get<string>("prefix", "*");
+  string status_name = context.get<string>("status", "*");
   long long max_entries = context.get<long long>("max-entries", 0);
   bool warn = context.get<bool>("warn", true);
 
@@ -39,7 +40,7 @@ int handle_job_list(InvocationContext &context)
   }
 
   vector<ZJob> jobs;
-  rc = zjb_list_by_owner(&zjb, owner_name, prefix_name, jobs);
+  rc = zjb_list_by_owner(&zjb, owner_name, prefix_name, status_name, jobs);
 
   if (RTNCD_SUCCESS == rc || RTNCD_WARNING == rc)
   {
@@ -53,24 +54,37 @@ int handle_job_list(InvocationContext &context)
         vector<string> fields;
         fields.reserve(5);
         fields.push_back(it->jobid);
-        fields.push_back(it->retcode);
         fields.push_back(it->jobname);
+        fields.push_back(it->owner);
         fields.push_back(it->status);
-        fields.push_back(it->correlator);
+        fields.push_back(it->retcode);
         context.output_stream() << zut_format_as_csv(fields) << endl;
       }
       else
       {
-        context.output_stream() << it->jobid << " " << left << setw(10) << it->retcode << " " << it->jobname << " " << it->status << endl;
+        context.output_stream() << it->jobid << " " << it->jobname << " " << it->owner << " " << left << setw(7) << it->status << " " << it->retcode << endl;
       }
 
       const auto entry = obj();
       entry->set("id", str(it->jobid));
       string trimmed_name = it->jobname;
-      zut_rtrim(trimmed_name);
-      entry->set("name", str(trimmed_name));
-      entry->set("retcode", str(it->retcode));
+      entry->set("name", str(zut_rtrim(trimmed_name)));
+      trimmed_name = it->subsystem;
+      if (!zut_rtrim(trimmed_name).empty())
+        entry->set("subsystem", str(trimmed_name));
+      trimmed_name = it->owner;
+      entry->set("owner", str(zut_rtrim(trimmed_name)));
       entry->set("status", str(it->status));
+      entry->set("type", str(it->type));
+      trimmed_name = it->jobclass;
+      entry->set("class", str(zut_rtrim(trimmed_name)));
+      if (!it->retcode.empty())
+        entry->set("retcode", str(it->retcode));
+      trimmed_name = it->correlator;
+      if (!zut_rtrim(trimmed_name).empty())
+        entry->set("correlator", str(trimmed_name));
+      entry->set("phase", i64(it->phase));
+      entry->set("phaseName", str(it->full_status));
       entries_array->push(entry);
     }
 
@@ -135,19 +149,14 @@ int handle_job_list_files(InvocationContext &context)
 
       const auto entry = obj();
       string trimmed_name = it->ddn;
-      trimmed_name = it->ddn;
-      zut_rtrim(trimmed_name);
-      entry->set("ddname", str(trimmed_name));
+      entry->set("ddname", str(zut_rtrim(trimmed_name)));
       trimmed_name = it->dsn;
-      zut_rtrim(trimmed_name);
-      entry->set("dsname", str(trimmed_name));
+      entry->set("dsname", str(zut_rtrim(trimmed_name)));
       entry->set("id", i64(it->key));
       trimmed_name = it->stepname;
-      zut_rtrim(trimmed_name);
-      entry->set("stepname", str(trimmed_name));
+      entry->set("stepname", str(zut_rtrim(trimmed_name)));
       trimmed_name = it->procstep;
-      zut_rtrim(trimmed_name);
-      entry->set("procstep", str(trimmed_name));
+      entry->set("procstep", str(zut_rtrim(trimmed_name)));
       entries_array->push(entry);
     }
 
@@ -217,31 +226,94 @@ int handle_job_view_status(InvocationContext &context)
   if (emit_csv)
   {
     vector<string> fields;
-    fields.reserve(6);
+    fields.reserve(7);
     fields.push_back(job.jobid);
-    fields.push_back(job.retcode);
     fields.push_back(job.jobname);
+    fields.push_back(job.owner);
     fields.push_back(job.status);
+    fields.push_back(job.retcode);
     fields.push_back(job.correlator);
     fields.push_back(job.full_status);
     context.output_stream() << zut_format_as_csv(fields) << endl;
   }
   else
   {
-    context.output_stream() << job.jobid << " " << left << setw(10) << job.retcode << " " << job.jobname << " " << job.status << endl;
+    string trimmed_correlator = job.correlator;
+    zut_rtrim(trimmed_correlator);
+    context.output_stream() << job.jobid << " " << job.jobname << " " << job.owner << " " << left << setw(7) << job.status << " " << left << setw(10) << job.retcode << " " << left << setw(33) << trimmed_correlator << " " << job.full_status << endl;
   }
 
   const auto result = obj();
   result->set("id", str(jobid));
-  result->set("name", str(job.jobname));
+  string trimmed_name = job.jobname;
+  result->set("name", str(zut_rtrim(trimmed_name)));
+  trimmed_name = job.subsystem;
+  if (!zut_rtrim(trimmed_name).empty())
+    result->set("subsystem", str(trimmed_name));
+  trimmed_name = job.owner;
+  result->set("owner", str(zut_rtrim(trimmed_name)));
   result->set("status", str(job.status));
-  result->set("retcode", str(job.retcode));
+  result->set("type", str(job.type));
+  trimmed_name = job.jobclass;
+  result->set("class", str(zut_rtrim(trimmed_name)));
+  if (!job.retcode.empty())
+    result->set("retcode", str(job.retcode));
+  trimmed_name = job.correlator;
+  if (!zut_rtrim(trimmed_name).empty())
+    result->set("correlator", str(trimmed_name));
+  result->set("phase", i64(job.phase));
+  result->set("phaseName", str(job.full_status));
   context.set_object(result);
 
   return 0;
 }
 
 int handle_job_view_file(InvocationContext &context)
+{
+  // Note: Middleware doesn't use this command - it lists jobs by ID instead of DSN
+  int rc = 0;
+  ZJB zjb = {};
+  string dsn = context.get<std::string>("dsn", "");
+
+  if (context.has("encoding"))
+  {
+    zut_prepare_encoding(context.get<std::string>("encoding", ""), &zjb.encoding_opts);
+  }
+  if (context.has("local-encoding"))
+  {
+    const auto source_encoding = context.get<std::string>("local-encoding", "");
+    if (!source_encoding.empty() && source_encoding.size() < sizeof(zjb.encoding_opts.source_codepage))
+    {
+      memcpy(zjb.encoding_opts.source_codepage, source_encoding.data(), source_encoding.length() + 1);
+    }
+  }
+
+  string resp;
+  rc = zjb_read_job_content_by_dsn(&zjb, dsn, resp);
+
+  if (0 != rc)
+  {
+    context.error_stream() << "Error: could not view job file for: '" << dsn << "' rc: '" << rc << "'" << endl;
+    context.error_stream() << "  Details: " << zjb.diag.e_msg << endl;
+    return RTNCD_FAILURE;
+  }
+
+  bool has_encoding = context.has("encoding");
+  bool response_format_bytes = context.get<bool>("response-format-bytes", false);
+
+  if (has_encoding && response_format_bytes)
+  {
+    zut_print_string_as_bytes(resp, &context.output_stream());
+  }
+  else
+  {
+    context.output_stream() << resp;
+  }
+
+  return RTNCD_SUCCESS;
+}
+
+int handle_job_view_file_by_id(InvocationContext &context)
 {
   int rc = 0;
   ZJB zjb = {};
@@ -483,6 +555,15 @@ int job_submit_common(InvocationContext &context, string jcl, string &jobid, str
     return RTNCD_FAILURE;
   }
 
+  ZJob job = {};
+  rc = zjb_view(&zjb, string(zjb.correlator, sizeof(zjb.correlator)), job);
+  if (0 != rc)
+  {
+    context.error_stream() << "Error: could not get job status for: '" << jobid << "' rc: '" << rc << "'" << endl;
+    context.error_stream() << "  Details: " << zjb.diag.e_msg << endl;
+    return RTNCD_FAILURE;
+  }
+
   bool only_jobid = context.get<bool>("only-jobid", false);
   bool only_correlator = context.get<bool>("only-correlator", false);
   string wait = context.get<std::string>("wait", "");
@@ -493,7 +574,7 @@ int job_submit_common(InvocationContext &context, string jcl, string &jobid, str
   else if (only_correlator)
     context.output_stream() << string(zjb.correlator, sizeof(zjb.correlator)) << endl;
   else
-    context.output_stream() << "Submitted " << identifier << ", " << jobid << endl;
+    context.output_stream() << "Submitted " << identifier << ", " << job.jobname << "(" << jobid << ")" << endl;
 
 #define JOB_STATUS_OUTPUT "OUTPUT"
 #define JOB_STATUS_INPUT "ACTIVE"
@@ -516,6 +597,7 @@ int job_submit_common(InvocationContext &context, string jcl, string &jobid, str
 
   const auto result = obj();
   result->set("jobId", str(jobid));
+  result->set("jobName", str(job.jobname));
   context.set_object(result);
 
   return rc;
@@ -536,6 +618,7 @@ void register_commands(parser::Command &root_command)
   job_list_cmd->add_alias("ls");
   job_list_cmd->add_keyword_arg("owner", make_aliases("--owner", "-o"), "filter by owner", ArgType_Single, false);
   job_list_cmd->add_keyword_arg("prefix", make_aliases("--prefix", "-p"), "filter by prefix", ArgType_Single, false);
+  job_list_cmd->add_keyword_arg("status", make_aliases("--status", "-s"), "filter by status", ArgType_Single, false);
   job_list_cmd->add_keyword_arg(MAX_ENTRIES);
   job_list_cmd->add_keyword_arg(WARN);
   job_list_cmd->add_keyword_arg(RESPONSE_FORMAT_CSV);
@@ -569,13 +652,23 @@ void register_commands(parser::Command &root_command)
   // View-file subcommand
   auto job_view_file_cmd = command_ptr(new Command("view-file", "view job file output"));
   job_view_file_cmd->add_alias("vf");
-  job_view_file_cmd->add_positional_arg(JOB_ID);
-  job_view_file_cmd->add_positional_arg("key", "valid job dsn key via 'job list-files'", ArgType_Single, true);
+  job_view_file_cmd->add_positional_arg("dsn", "job dsn via 'job list-files'", ArgType_Single, true);
   job_view_file_cmd->add_keyword_arg(ENCODING);
   job_view_file_cmd->add_keyword_arg(LOCAL_ENCODING);
   job_view_file_cmd->add_keyword_arg(RESPONSE_FORMAT_BYTES);
   job_view_file_cmd->set_handler(handle_job_view_file);
   job_group->add_command(job_view_file_cmd);
+
+  // View-file-by-id subcommand
+  auto job_view_file_by_id_cmd = command_ptr(new Command("view-file-by-id", "view job file output by id"));
+  job_view_file_by_id_cmd->add_alias("vfbi");
+  job_view_file_by_id_cmd->add_positional_arg(JOB_ID);
+  job_view_file_by_id_cmd->add_positional_arg("key", "valid job dsn key via 'job list-files'", ArgType_Single, true);
+  job_view_file_by_id_cmd->add_keyword_arg(ENCODING);
+  job_view_file_by_id_cmd->add_keyword_arg(LOCAL_ENCODING);
+  job_view_file_by_id_cmd->add_keyword_arg(RESPONSE_FORMAT_BYTES);
+  job_view_file_by_id_cmd->set_handler(handle_job_view_file_by_id);
+  job_group->add_command(job_view_file_by_id_cmd);
 
   // View-jcl subcommand
   auto job_view_jcl_cmd = command_ptr(new Command("view-jcl", "view job jcl from input jobid"));

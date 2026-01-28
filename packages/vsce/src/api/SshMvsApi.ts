@@ -74,45 +74,35 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
     }
 
     public async dataSet(filter: string, options?: zosfiles.IListOptions): Promise<zosfiles.IZosFilesResponse> {
-        try {
-            const response = await (await this.client).ds.listDatasets({
-                pattern: filter,
-                attributes: options?.attributes,
-            });
-            // Cache attributes for first data set to work around ZE issue
-            // See https://github.com/zowe/zowe-explorer-vscode/issues/3927
-            this.attrProvider.cachedAttrs = response.items[0];
-            return this.buildZosFilesResponse({
-                items: response.items.map((item) => {
-                    const entry: Record<string, unknown> = { dsname: item.name };
-                    if (options?.attributes) {
-                        entry.blksz = item.blksize;
-                        entry.cdate = item.cdate;
-                        entry.dev = item.devtype;
-                        entry.dsntp = item.dsntype;
-                        entry.dsorg = item.dsorg;
-                        entry.edate = item.edate;
-                        entry.lrecl = item.lrecl;
-                        entry.migr = item.migrated ? "YES" : "NO";
-                        entry.rdate = item.rdate;
-                        entry.recfm = item.recfm;
-                        entry.spacu = item.spacu;
-                        entry.used = item.usedp != null ? `${item.usedp}%` : undefined;
-                        entry.vols = item.volser;
-                    }
-                    return entry;
-                }),
-                returnedRows: response.returnedRows,
-            });
-        } catch (_err) {
-            return this.buildZosFilesResponse(
-                {
-                    items: [],
-                    returnedRows: 0,
-                },
-                false,
-            );
-        }
+        const response = await (await this.client).ds.listDatasets({
+            pattern: filter,
+            attributes: options?.attributes,
+        });
+        // Cache attributes for first data set to work around ZE issue
+        // See https://github.com/zowe/zowe-explorer-vscode/issues/3927
+        this.attrProvider.cachedAttrs = response.items[0];
+        return this.buildZosFilesResponse({
+            items: response.items.map((item) => {
+                const entry: Record<string, unknown> = { dsname: item.name };
+                if (options?.attributes) {
+                    entry.blksz = item.blksize;
+                    entry.cdate = item.cdate;
+                    entry.dev = item.devtype;
+                    entry.dsntp = item.dsntype;
+                    entry.dsorg = item.dsorg;
+                    entry.edate = item.edate;
+                    entry.lrecl = item.lrecl;
+                    entry.migr = item.migrated ? "YES" : "NO";
+                    entry.rdate = item.rdate;
+                    entry.recfm = item.recfm;
+                    entry.spacu = item.spacu;
+                    entry.used = item.usedp != null ? `${item.usedp}%` : undefined;
+                    entry.vols = item.volser;
+                }
+                return entry;
+            }),
+            returnedRows: response.returnedRows,
+        });
     }
 
     public async allMembers(
@@ -253,10 +243,16 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
     }
 
     public async renameDataSet(
-        _currentDataSetName: string,
-        _newDataSetName: string,
+        currentDataSetName: string,
+        newDataSetName: string,
     ): Promise<zosfiles.IZosFilesResponse> {
-        throw new Error("Not yet implemented");
+        const response = await (await this.client).ds.renameDataset({
+            dsnameBefore: currentDataSetName,
+            dsnameAfter: newDataSetName,
+        });
+        return this.buildZosFilesResponse({
+            success: response.success,
+        });
     }
 
     public async renameDataSetMember(

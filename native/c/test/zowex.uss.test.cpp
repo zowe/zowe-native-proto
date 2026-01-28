@@ -534,6 +534,20 @@ void zowex_uss_tests()
                                  .ToBe(0);
                              Expect(view_response_hex_dump.length()).ToBe(expected_ascii_text.length());
                            });
+                        it("should write content to a USS file with multibyte encoding",
+                           [&]() -> void
+                           {
+                             string response;
+                             string command = "echo '\xe3\x81\x93\xe3\x82\x93\xe3\x81\xab\xe3\x81\xa1\xe3\x81\xaf' | " + zowex_command + " uss write " + uss_path + " --encoding IBM-939";
+                             int rc = execute_command_with_output(command, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+                             Expect(response).ToContain("Wrote data to '" + uss_path + "'");
+
+                             command = zowex_command + " uss view " + uss_path + " --rfb --ec binary";
+                             rc = execute_command_with_output(command, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+                             Expect(response).ToContain("0e 44 8a 44 bd 44 97 44 92 44 9d 0f");
+                           });
                         it("should handle write and view for a FIFO pipe",
                            [&]() -> void
                            {

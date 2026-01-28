@@ -18,8 +18,6 @@
 #include <string>
 #include "ztype.h"
 
-#define RTDDN "        "
-
 /**
  * @struct ZConvData
  * @brief Structure holding data for character set conversion
@@ -42,17 +40,19 @@ int zut_search(std::string input);
 
 /**
  * @brief Run a specified command or operation
+ * @param diag Reference to diagnostic information structure
+ * @param input The command string to execute
+ * @param parms The parameters string to execute
+ * @return Return code (0 for success, non-zero for error)
+ */
+int zut_run(ZDIAG &diag, std::string input, std::string parms);
+
+/**
+ * @brief Run a specified command or operation
  * @param input The command string to execute
  * @return Return code (0 for success, non-zero for error)
  */
 int zut_run(std::string input);
-
-/**
- * @brief Run a specified command or operation in 24-bit mode
- * @param input The command string to execute
- * @return Return code (0 for success, non-zero for error)
- */
-int zut_run24(std::string input);
 
 /**
  * @brief Substitute a symbol in a string
@@ -67,11 +67,40 @@ int zut_substitute_symbol(std::string symbol, std::string &result);
  * @param command The command string
  * @param code Pointer to return code (output)
  * @param resp Reference to a string where the result will be stored
- * @param ddname Reference to a string where the DD name will be stored, set to "        " to request a dynamic DD name
  * @return Return code (0 for success, non-zero for error)
  */
 int zut_bpxwdyn(std::string command, unsigned int *code, std::string &resp);
-int zut_bpxwdyn(std::string command, unsigned int *code, std::string &resp, std::string &ddname);
+
+/**
+ * @brief Invoke BPXWDYN service with the given parameters and return the DD or DS name
+ * @param command The command string
+ * @param code Pointer to return code (output)
+ * @param resp Reference to a string where the result will be stored
+ * @param ddname Reference to a string where the DD name will be stored
+ * @param dsname Reference to a string where the DS name will be stored
+ * @return Return code (0 for success, non-zero for error)
+ */
+int zut_bpxwdyn_common(std::string command, unsigned int *code, std::string &resp, std::string &ddname, std::string &dsname);
+
+/**
+ * @brief Invoke BPXWDYN service with the given parameters and return the DD name
+ * @param command The command string
+ * @param code Pointer to return code (output)
+ * @param resp Reference to a string where the result will be stored
+ * @param ddname Reference to a string where the DD name will be stored
+ * @return Return code (0 for success, non-zero for error)
+ */
+int zut_bpxwdyn_rtdd(std::string command, unsigned int *code, std::string &resp, std::string &ddname);
+
+/**
+ * @brief Invoke BPXWDYN service with the given parameters and return the DS name
+ * @param command The command string
+ * @param code Pointer to return code (output)
+ * @param resp Reference to a string where the result will be stored
+ * @param dsname Reference to a string where the DS name will be stored
+ * @return Return code (0 for success, non-zero for error)
+ */
+int zut_bpxwdyn_rtdsn(std::string command, unsigned int *code, std::string &resp, std::string &dsname);
 
 /**
  * @brief Print a hello message
@@ -142,9 +171,18 @@ uint32_t zut_calc_adler32_checksum(const std::string &input);
  * @param cd iconv conversion descriptor
  * @param data Reference to ZConvData containing buffers and sizes
  * @param diag Reference to diagnostic information structure
+ * @param flush_state If true, flush the shift state for stateful encodings (e.g., IBM-939). Set to true on the last chunk.
  * @return Number of bytes converted or error code
  */
-size_t zut_iconv(iconv_t cd, ZConvData &data, ZDIAG &diag);
+size_t zut_iconv(iconv_t cd, ZConvData &data, ZDIAG &diag, bool flush_state = true);
+
+/**
+ * @brief Flush the shift state for stateful encodings (e.g., IBM-939) - simplified version
+ * @param cd iconv conversion descriptor
+ * @param diag Reference to diagnostic information structure
+ * @return Vector containing the flushed bytes (empty on error)
+ */
+std::vector<char> zut_iconv_flush(iconv_t cd, ZDIAG &diag);
 
 /**
  * @brief Build an ETag string from file modification time and size
@@ -164,7 +202,18 @@ std::string zut_build_etag(const size_t mtime, const size_t byte_size);
  */
 std::string zut_encode(const std::string &input_str, const std::string &from_encoding, const std::string &to_encoding, ZDIAG &diag);
 
-std::vector<char> zut_encode(const char *input_str, size_t input_size, const std::string &from_encoding, const std::string &to_encoding, ZDIAG &diag);
+std::vector<char> zut_encode(const char *input_str, const size_t input_size, const std::string &from_encoding, const std::string &to_encoding, ZDIAG &diag);
+
+/**
+ * @brief Encode a string using an existing iconv descriptor
+ * @param input_str The input string
+ * @param cd iconv descriptor (caller manages opening, flushing, and closing)
+ * @param diag Reference to diagnostic information structure
+ * @return The encoded string
+ */
+std::string zut_encode(const std::string &input_str, iconv_t cd, ZDIAG &diag);
+
+std::vector<char> zut_encode(const char *input_str, const size_t input_size, iconv_t cd, ZDIAG &diag);
 
 /**
  * @brief Format a vector of strings as a CSV line

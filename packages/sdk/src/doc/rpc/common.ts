@@ -274,13 +274,41 @@ export interface Job {
      */
     name: string;
     /**
-     * Job status
+     * JES subsystem (undefined if job was processed by the primary subsystem)
+     */
+    subsystem?: string;
+    /**
+     * Job owner
+     */
+    owner: string;
+    /**
+     * Job status - INPUT, ACTIVE, OUTPUT
      */
     status: string;
     /**
-     * Job return code
+     * Job type - JOB, STC, TSU
      */
-    retcode: string;
+    type: string;
+    /**
+     * Job execution class
+     */
+    class: string;
+    /**
+     * Job return code (undefined if job is not complete)
+     */
+    retcode?: string;
+    /**
+     * Job correlator (undefined for JES3 jobs)
+     */
+    correlator?: string;
+    /**
+     * Job phase
+     */
+    phase: number;
+    /**
+     * Job phase name
+     */
+    phaseName: string;
 }
 
 export interface Spool {

@@ -1023,8 +1023,8 @@ int zds_open_output_bpam(ZDS *zds, std::string dsname, IO_CTRL *&ioc)
   string alloc_cmd = "ALLOC DA('" + dsname + "') SHR"; // TODO(Kelosky): log this command
   unsigned int code = 0;
   string resp = "";
-  string ddname = RTDDN; // set to empty string to request a dynamic DD name
-  int rc = zut_bpxwdyn(alloc_cmd, &code, resp, ddname);
+  string ddname = "";
+  int rc = zut_bpxwdyn_rtdd(alloc_cmd, &code, resp, ddname);
   if (0 != rc)
   {
     strcpy(zds->diag.service_name, "BPXWDYN");
@@ -1307,6 +1307,49 @@ int zds_delete_dsn(ZDS *zds, string dsn)
     strcpy(zds->diag.service_name, "remove");
     zds->diag.service_rc = rc;
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not delete data set '%s', rc: '%d'", dsn.c_str(), rc);
+    zds->diag.detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
+    return RTNCD_FAILURE;
+  }
+
+  return 0;
+}
+
+int zds_rename_dsn(ZDS *zds, string dsn_before, string dsn_after)
+{
+  int rc = 0;
+  if (dsn_before.empty() || dsn_after.empty())
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Data set names must be valid");
+    return RTNCD_FAILURE;
+  }
+  if (dsn_after.length() > 44)
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Target data set name exceeds max character length of 44");
+    return RTNCD_FAILURE;
+  }
+  if (!zds_dataset_exists(dsn_before))
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Source data set does not exist '%s'", dsn_before.c_str());
+    return RTNCD_FAILURE;
+  }
+  if (zds_dataset_exists(dsn_after))
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Target data set name already exists '%s'", dsn_after.c_str());
+    return RTNCD_FAILURE;
+  }
+
+  dsn_before = "//'" + dsn_before + "'";
+  dsn_after = "//'" + dsn_after + "'";
+
+  errno = 0;
+  rc = rename(dsn_before.c_str(), dsn_after.c_str());
+
+  if (rc != 0)
+  {
+    int err = errno;
+    strcpy(zds->diag.service_name, "rename");
+    zds->diag.service_rc = rc;
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not rename data set '%s', errno: '%d'", dsn_before.c_str(), err);
     zds->diag.detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
     return RTNCD_FAILURE;
   }
@@ -2522,6 +2565,20 @@ int zds_read_from_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, 
   std::vector<char> temp_encoded;
   std::vector<char> left_over;
 
+  // Open iconv descriptor once for all chunks (for stateful encodings like IBM-939)
+  iconv_t cd = (iconv_t)(-1);
+  string source_encoding;
+  if (has_encoding)
+  {
+    source_encoding = strlen(zds->encoding_opts.source_codepage) > 0 ? string(zds->encoding_opts.source_codepage) : "UTF-8";
+    cd = iconv_open(source_encoding.c_str(), codepage.c_str());
+    if (cd == (iconv_t)(-1))
+    {
+      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Cannot open converter from %s to %s", codepage.c_str(), source_encoding.c_str());
+      return RTNCD_FAILURE;
+    }
+  }
+
   if (is_asa)
   {
     // For ASA, read record by record and append newlines between records
@@ -2555,15 +2612,15 @@ int zds_read_from_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, 
 
       if (has_encoding)
       {
-        const auto source_encoding = strlen(zds->encoding_opts.source_codepage) > 0 ? string(zds->encoding_opts.source_codepage) : "UTF-8";
         try
         {
-          temp_encoded = zut_encode(chunk, chunk_len, codepage, source_encoding, zds->diag);
+          temp_encoded = zut_encode(chunk, chunk_len, cd, zds->diag);
           chunk = &temp_encoded[0];
           chunk_len = temp_encoded.size();
         }
         catch (std::exception &e)
         {
+          iconv_close(cd);
           zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from %s to %s", codepage.c_str(), source_encoding.c_str());
           return RTNCD_FAILURE;
         }
@@ -2584,15 +2641,15 @@ int zds_read_from_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, 
 
       if (has_encoding)
       {
-        const auto source_encoding = strlen(zds->encoding_opts.source_codepage) > 0 ? string(zds->encoding_opts.source_codepage) : "UTF-8";
         try
         {
-          temp_encoded = zut_encode(chunk, chunk_len, codepage, source_encoding, zds->diag);
+          temp_encoded = zut_encode(chunk, chunk_len, cd, zds->diag);
           chunk = &temp_encoded[0];
           chunk_len = temp_encoded.size();
         }
         catch (std::exception &e)
         {
+          iconv_close(cd);
           zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from %s to %s", codepage.c_str(), source_encoding.c_str());
           return RTNCD_FAILURE;
         }
@@ -2618,15 +2675,15 @@ int zds_read_from_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, 
 
       if (has_encoding)
       {
-        const auto source_encoding = strlen(zds->encoding_opts.source_codepage) > 0 ? string(zds->encoding_opts.source_codepage) : "UTF-8";
         try
         {
-          temp_encoded = zut_encode(chunk, chunk_len, codepage, source_encoding, zds->diag);
+          temp_encoded = zut_encode(chunk, chunk_len, cd, zds->diag);
           chunk = &temp_encoded[0];
           chunk_len = temp_encoded.size();
         }
         catch (std::exception &e)
         {
+          iconv_close(cd);
           zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from %s to %s", codepage.c_str(), source_encoding.c_str());
           return RTNCD_FAILURE;
         }
@@ -2637,6 +2694,36 @@ int zds_read_from_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, 
       fwrite(&temp_encoded[0], 1, temp_encoded.size(), fout);
       temp_encoded.clear();
     }
+  }
+
+  // Flush the shift state for stateful encodings after all chunks are processed
+  if (has_encoding && cd != (iconv_t)(-1))
+  {
+    try
+    {
+      std::vector<char> flush_buffer = zut_iconv_flush(cd, zds->diag);
+      if (flush_buffer.empty() && zds->diag.e_msg_len > 0)
+      {
+        iconv_close(cd);
+        return RTNCD_FAILURE;
+      }
+
+      // Write any shift sequence bytes that were generated
+      if (!flush_buffer.empty())
+      {
+        *content_len += flush_buffer.size();
+        temp_encoded = zbase64::encode(&flush_buffer[0], flush_buffer.size(), &left_over);
+        fwrite(&temp_encoded[0], 1, temp_encoded.size(), fout);
+      }
+    }
+    catch (std::exception &e)
+    {
+      iconv_close(cd);
+      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to flush encoding state");
+      return RTNCD_FAILURE;
+    }
+
+    iconv_close(cd);
   }
 
   if (!left_over.empty())
@@ -2713,6 +2800,18 @@ static int zds_write_sequential_streamed(ZDS *zds, const string &dsn, const stri
     std::vector<char> left_over;
     bool write_failed = false;
 
+    // Open iconv descriptor once for all chunks (for stateful encodings like IBM-939)
+    iconv_t cd = (iconv_t)(-1);
+    if (has_encoding)
+    {
+      cd = iconv_open(codepage.c_str(), source_encoding.c_str());
+      if (cd == (iconv_t)(-1))
+      {
+        zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Cannot open converter from %s to %s", source_encoding.c_str(), codepage.c_str());
+        return RTNCD_FAILURE;
+      }
+    }
+
     // Write chunks directly - the C runtime handles ASA and record boundaries in text mode
     while ((bytes_read = fread(&buf[0], 1, FIFO_CHUNK_SIZE, fin)) > 0)
     {
@@ -2754,12 +2853,13 @@ static int zds_write_sequential_streamed(ZDS *zds, const string &dsn, const stri
       {
         try
         {
-          temp_encoded = zut_encode(chunk, chunk_len, source_encoding, codepage, zds->diag);
+          temp_encoded = zut_encode(chunk, chunk_len, cd, zds->diag);
           chunk = &temp_encoded[0];
           chunk_len = temp_encoded.size();
         }
         catch (std::exception &e)
         {
+          iconv_close(cd);
           zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from %s to %s", source_encoding.c_str(), codepage.c_str());
           return RTNCD_FAILURE;
         }
@@ -2790,6 +2890,38 @@ static int zds_write_sequential_streamed(ZDS *zds, const string &dsn, const stri
     }
 
     truncation.flush_range();
+
+    // Flush the shift state for stateful encodings after all chunks are processed
+    if (has_encoding && cd != (iconv_t)(-1))
+    {
+      try
+      {
+        std::vector<char> flush_buffer = zut_iconv_flush(cd, zds->diag);
+        if (flush_buffer.empty() && zds->diag.e_msg_len > 0)
+        {
+          iconv_close(cd);
+          return RTNCD_FAILURE;
+        }
+
+        // Write any shift sequence bytes that were generated
+        if (!flush_buffer.empty())
+        {
+          size_t bytes_written = fwrite(&flush_buffer[0], 1, flush_buffer.size(), fout);
+          if (bytes_written != flush_buffer.size())
+          {
+            write_failed = true;
+          }
+        }
+      }
+      catch (std::exception &e)
+      {
+        iconv_close(cd);
+        zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to flush encoding state");
+        return RTNCD_FAILURE;
+      }
+
+      iconv_close(cd);
+    }
 
     const int flush_rc = fflush(fout);
     if (write_failed || flush_rc != 0)
@@ -2869,6 +3001,19 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const string &dsn, const str
   std::vector<char> left_over;
   string line_buffer; // Buffer for accumulating partial lines across chunks
 
+  // Open iconv descriptor once for all lines (for stateful encodings like IBM-939)
+  iconv_t cd = (iconv_t)(-1);
+  if (has_encoding)
+  {
+    cd = iconv_open(codepage.c_str(), source_encoding.c_str());
+    if (cd == (iconv_t)(-1))
+    {
+      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Cannot open converter from %s to %s", source_encoding.c_str(), codepage.c_str());
+      zds_close_output_bpam(zds, ioc);
+      return RTNCD_FAILURE;
+    }
+  }
+
   while ((bytes_read = fread(&buf[0], 1, FIFO_CHUNK_SIZE, fin)) > 0)
   {
     temp_encoded = zbase64::decode(&buf[0], bytes_read, &left_over);
@@ -2925,10 +3070,11 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const string &dsn, const str
       {
         try
         {
-          line = zut_encode(line, source_encoding, codepage, zds->diag);
+          line = zut_encode(line, cd, zds->diag);
         }
         catch (std::exception &e)
         {
+          if (cd != (iconv_t)(-1)) iconv_close(cd);
           zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from %s to %s", source_encoding.c_str(), codepage.c_str());
           zds_close_output_bpam(zds, ioc);
           return RTNCD_FAILURE;
@@ -2955,6 +3101,7 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const string &dsn, const str
         int saved_msg_len = zds->diag.e_msg_len;
         memcpy(saved_msg, zds->diag.e_msg, sizeof(saved_msg));
 
+        if (cd != (iconv_t)(-1)) iconv_close(cd);
         zds_close_output_bpam(zds, ioc);
 
         // Restore original error message
@@ -3020,10 +3167,11 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const string &dsn, const str
         {
           try
           {
-            line_buffer = zut_encode(line_buffer, source_encoding, codepage, zds->diag);
+            line_buffer = zut_encode(line_buffer, cd, zds->diag);
           }
           catch (std::exception &e)
           {
+            if (cd != (iconv_t)(-1)) iconv_close(cd);
             zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from %s to %s", source_encoding.c_str(), codepage.c_str());
             zds_close_output_bpam(zds, ioc);
             return RTNCD_FAILURE;
@@ -3049,6 +3197,7 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const string &dsn, const str
           int saved_msg_len = zds->diag.e_msg_len;
           memcpy(saved_msg, zds->diag.e_msg, sizeof(saved_msg));
 
+          if (cd != (iconv_t)(-1)) iconv_close(cd);
           zds_close_output_bpam(zds, ioc);
 
           memcpy(zds->diag.e_msg, saved_msg, sizeof(saved_msg));
@@ -3057,6 +3206,32 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const string &dsn, const str
         }
       }
     }
+  }
+
+  // Flush the shift state for stateful encodings after all lines are processed
+  if (has_encoding && cd != (iconv_t)(-1))
+  {
+    try
+    {
+      std::vector<char> flush_buffer = zut_iconv_flush(cd, zds->diag);
+      if (flush_buffer.empty() && zds->diag.e_msg_len > 0)
+      {
+        iconv_close(cd);
+        zds_close_output_bpam(zds, ioc);
+        return RTNCD_FAILURE;
+      }
+      // Note: For BPAM record writes, any trailing shift sequence bytes are typically
+      // not written as a separate record since each record should be self-contained
+    }
+    catch (std::exception &e)
+    {
+      iconv_close(cd);
+      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to flush encoding state");
+      zds_close_output_bpam(zds, ioc);
+      return RTNCD_FAILURE;
+    }
+
+    iconv_close(cd);
   }
 
   // Finalize any pending range
