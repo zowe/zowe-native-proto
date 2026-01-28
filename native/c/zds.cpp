@@ -798,6 +798,19 @@ static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
   // ASA state tracking (only used when converting to ASA)
   AsaStreamState asa_state;
 
+  // Open iconv descriptor once for all lines (for stateful encodings like IBM-939)
+  iconv_t cd = (iconv_t)(-1);
+  if (has_encoding)
+  {
+    cd = iconv_open(codepage.c_str(), source_encoding.c_str());
+    if (cd == (iconv_t)(-1))
+    {
+      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Cannot open converter from %s to %s", source_encoding.c_str(), codepage.c_str());
+      zds_close_output_bpam(zds, ioc);
+      return RTNCD_FAILURE;
+    }
+  }
+
   // Parse and write data line by line
   if (!data.empty())
   {
@@ -829,6 +842,8 @@ static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
         rc = write_asa_overflow_records(zds, ioc, asa_result.overflow_records);
         if (rc != RTNCD_SUCCESS)
         {
+          if (cd != (iconv_t)(-1))
+            iconv_close(cd);
           zds_close_output_bpam(zds, ioc);
           return rc;
         }
@@ -843,10 +858,12 @@ static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
       {
         try
         {
-          line = zut_encode(line, source_encoding, codepage, zds->diag);
+          line = zut_encode(line, cd, zds->diag);
         }
         catch (exception &e)
         {
+          if (cd != (iconv_t)(-1))
+            iconv_close(cd);
           zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from %s to %s", source_encoding.c_str(), codepage.c_str());
           zds_close_output_bpam(zds, ioc);
           return RTNCD_FAILURE;
@@ -863,6 +880,8 @@ static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
       if (rc != RTNCD_SUCCESS)
       {
         DiagMsgGuard guard(zds);
+        if (cd != (iconv_t)(-1))
+          iconv_close(cd);
         zds_close_output_bpam(zds, ioc);
         return rc;
       }
@@ -898,6 +917,8 @@ static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
             rc = write_asa_overflow_records(zds, ioc, asa_result.overflow_records);
             if (rc != RTNCD_SUCCESS)
             {
+              if (cd != (iconv_t)(-1))
+                iconv_close(cd);
               zds_close_output_bpam(zds, ioc);
               return rc;
             }
@@ -914,10 +935,12 @@ static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
           {
             try
             {
-              line = zut_encode(line, source_encoding, codepage, zds->diag);
+              line = zut_encode(line, cd, zds->diag);
             }
             catch (exception &e)
             {
+              if (cd != (iconv_t)(-1))
+                iconv_close(cd);
               zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from %s to %s", source_encoding.c_str(), codepage.c_str());
               zds_close_output_bpam(zds, ioc);
               return RTNCD_FAILURE;
@@ -934,12 +957,40 @@ static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
           if (rc != RTNCD_SUCCESS)
           {
             DiagMsgGuard guard(zds);
+            if (cd != (iconv_t)(-1))
+              iconv_close(cd);
             zds_close_output_bpam(zds, ioc);
             return rc;
           }
         }
       }
     }
+  }
+
+  // Flush the shift state for stateful encodings after all lines are processed
+  if (has_encoding && cd != (iconv_t)(-1))
+  {
+    try
+    {
+      std::vector<char> flush_buffer = zut_iconv_flush(cd, zds->diag);
+      if (flush_buffer.empty() && zds->diag.e_msg_len > 0)
+      {
+        iconv_close(cd);
+        zds_close_output_bpam(zds, ioc);
+        return RTNCD_FAILURE;
+      }
+      // Note: For BPAM record writes, any trailing shift sequence bytes are typically
+      // not written as a separate record since each record should be self-contained
+    }
+    catch (std::exception &e)
+    {
+      iconv_close(cd);
+      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to flush encoding state");
+      zds_close_output_bpam(zds, ioc);
+      return RTNCD_FAILURE;
+    }
+
+    iconv_close(cd);
   }
 
   // Finalize any pending range
