@@ -762,7 +762,7 @@ public:
     else if (abend)
     {
       tc.success = false;
-      tc.fail_message = "unexpected ABEND occurred. Add `TEST_OPTIONS.remove_signal_handling = false` to `it(...)` to capture abend dump";
+      tc.fail_message = "unexpected ABEND occurred. Add `TEST_OPTIONS.remove_signal_handling = true` to `it(...)` to capture abend dump";
     }
 
     // Execute afterEach hooks (always run, even if test failed)

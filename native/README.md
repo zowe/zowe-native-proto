@@ -162,7 +162,7 @@ Tests:      : 13 passed, 1 failed, 14 total
 By default, LE or Metal C abends will signal for program termination. When this occurs, a message may appear:
 
 ```txt
-    unexpected ABEND occurred.  Add `TEST_OPTIONS.remove_signal_handling = false` to `it(...)` to capture abend dump
+    unexpected ABEND occurred.  Add `TEST_OPTIONS.remove_signal_handling = true` to `it(...)` to capture abend dump
 ```
 
 In this situation, no CEEDUMP is captured. To disable this behavior, disable signal handling by passing a `TEST_OPTIONS` object as a parameter to `it()`, e.g.:
