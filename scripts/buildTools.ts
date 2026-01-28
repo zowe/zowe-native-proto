@@ -121,7 +121,6 @@ class WatchUtils {
     private readonly pendingChanges: Map<string, { kind: "+" | "~" | "-"; mtime: Date }> = new Map();
     private rootDir: string;
     private sftp: SFTPWrapper | null = null;
-    private readonly spinnerFrames = ["-", "\\", "|", "/"];
     private watcher: chokidar.FSWatcher;
 
     constructor(
@@ -167,8 +166,7 @@ class WatchUtils {
         const changedFiles = getAllServerFiles().filter(
             (filePath) =>
                 !path.basename(filePath).startsWith(".") &&
-                fs.statSync(path.join(this.rootDir, filePath)).mtimeMs >
-                    (this.cache[toPosixPath(filePath)] ?? 0),
+                fs.statSync(path.join(this.rootDir, filePath)).mtimeMs > (this.cache[toPosixPath(filePath)] ?? 0),
         );
         for (const filePath of changedFiles) {
             const absLocalPath = path.resolve(__dirname, `${localDeployDir}/${filePath}`);
@@ -334,21 +332,20 @@ class WatchUtils {
                 const cwd = inDir ?? deployDirs.cDir;
                 const cmd = `cd ${cwd}\nmake\nexit $?\n`;
                 stream.write(cmd);
-                const prefix = `\t[tasks -> ${path.basename(cwd)}] make`;
-                const spinner = this.startSpinner(prefix);
+                const prefix = `[tasks -> ${path.basename(cwd)}] make`;
+                const spinner = startSpinner(prefix);
 
                 let outText = "";
                 let errText = "";
                 stream
                     .on("exit", (code: number) => {
-                        this.stopSpinner(spinner);
                         if (errText.length > 0) {
                             const status = code > 0 ? `failed (rc=${code}) ✘` : `succeeded with warnings !`;
-                            console.log(`${prefix} ${status}\nerror: \n${errText}`);
+                            stopSpinner(spinner, `${prefix} ${status}\nerror: \n${errText}`);
                             resolve(code);
                         } else {
                             const status = outText.length > 0 ? "succeeded ✔" : "detected no changes —";
-                            console.log(`${prefix} ${status}`);
+                            stopSpinner(spinner, `${prefix} ${status}`);
                             resolve(outText);
                         }
                     })
@@ -366,19 +363,6 @@ class WatchUtils {
             });
         });
     }
-
-    private startSpinner(prefix: string) {
-        let spinnerIndex = 0;
-        return setInterval(() => {
-            process.stdout.write(`\r${prefix} ${this.spinnerFrames[spinnerIndex]}`);
-            spinnerIndex = (spinnerIndex + 1) % this.spinnerFrames.length;
-        }, 100);
-    }
-
-    private stopSpinner(spinner: NodeJS.Timeout | null) {
-        spinner && clearInterval(spinner);
-        process.stdout.write("\r");
-    }
 }
 
 function DEBUG_MODE() {
@@ -390,15 +374,16 @@ function startSpinner(text = "Loading...") {
         console.log(text);
         return null;
     }
-    console.log(text);
-    let progressIndex = 0;
 
-    const PROGRESS_BAR_FRAMES = ["▏", "▎", "▍", "▌", "▋", "▊", "▉", "▊", "▋", "▌", "▍", "▎"];
+    const BRAILLE_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+    let frameIndex = 0;
+
+    // Hide cursor
+    process.stdout.write("\x1b[?25l");
     return setInterval(() => {
-        const progressBar = PROGRESS_BAR_FRAMES.map((_, i) => (i === progressIndex ? "█" : " ")).join("");
-        process.stdout.write(`\rRunning... █${progressBar}`);
-        progressIndex = (progressIndex + 1) % PROGRESS_BAR_FRAMES.length;
-    }, 100);
+        process.stdout.write(`\r${BRAILLE_FRAMES[frameIndex]} ${text}`);
+        frameIndex = (frameIndex + 1) % BRAILLE_FRAMES.length;
+    }, 80);
 }
 
 function stopSpinner(spinner: NodeJS.Timeout | null, text = "Done!") {
@@ -406,6 +391,8 @@ function stopSpinner(spinner: NodeJS.Timeout | null, text = "Done!") {
         return;
     }
     spinner && clearInterval(spinner);
+    // Restore cursor
+    process.stdout.write(`\x1b[?25h`);
     process.stdout.write(`\x1b[2K\r${text}\n`);
 }
 
