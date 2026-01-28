@@ -22,7 +22,6 @@ import {
     type MainframeInteraction,
 } from "@zowe/zowe-explorer-api";
 import { B64String, type Dataset, type DatasetAttributes, type ds } from "zowe-native-proto-sdk";
-import { getVsceConfig } from "../Utilities";
 import { SshCommonApi } from "./SshCommonApi";
 
 class SshAttributesProvider implements IAttributesProvider {
