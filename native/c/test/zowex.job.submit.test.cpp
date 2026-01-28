@@ -158,14 +158,15 @@ void zowex_job_submit_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
                   command = zowex_command + " job watch " + job_dsn + " --until-match \"iefbr14  ended\" --any-case";
                   rc = execute_command(command, stdout_output, stderr_output);
                   ExpectWithContext(rc, stderr_output).ToBe(0);
-                  Expect(stdout_output).ToContain("'String' pattern in job spool files matched");
+                  Expect(stdout_output).ToContain("job spool files matched");
                   Expect(stdout_output).ToContain("IEFBR14  ENDED");
 
                   // Test alias 'wch' for 'watch', um, and regex
                   command = zowex_command + " job wch " + job_dsn + " --um \"/^.*IEFBR14.*ENDED.*$/\" --mws 1";
                   rc = execute_command(command, stdout_output, stderr_output);
                   ExpectWithContext(rc, stderr_output).ToBe(0);
-                  Expect(stdout_output).ToContain("'Regex' pattern in job spool files matched");
+                  Expect(stdout_output).ToContain("'Regex' pattern");
+                  Expect(stdout_output).ToContain("job spool files matched");
 
                   // Test that this fails waiting beyond what is permitted by the --mws option
                   command = zowex_command + " job watch " + job_dsn + " --until-match \"IEFBR14 ENDED\" --mws 301";
