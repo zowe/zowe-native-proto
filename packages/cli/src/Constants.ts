@@ -9,7 +9,6 @@
  *
  */
 
-import * as path from "node:path";
 import type { ICommandOptionDefinition } from "@zowe/imperative";
 import { ZSshClient } from "zowe-native-proto-sdk";
 
@@ -22,6 +21,4 @@ export class Constants {
         type: "string",
         required: false,
     };
-
-    public static readonly ZSSH_BIN_DIR = path.join(__dirname, "..", "bin");
 }

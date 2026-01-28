@@ -104,7 +104,7 @@
     "test": "vitest run --coverage",
     "test:ui": "vitest --ui --coverage",
     "test:watch": "vitest --watch",
-    "vscode:prepublish": "rspack --mode production --devtool=hidden-source-map",
+    "vscode:prepublish": "rspack --mode production",
     "watch": "rspack --mode development --watch"
   },
   "dependencies": {
