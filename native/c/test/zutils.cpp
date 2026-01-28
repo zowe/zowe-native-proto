@@ -235,6 +235,9 @@ void create_pds(ZDS *zds, const string &dsn)
 {
   DS_ATTRIBUTES attrs = {0};
   attrs.dsorg = "PO";
+  attrs.recfm = "F,B";
+  attrs.lrecl = 80;
+  attrs.blksize = 800;
   attrs.dirblk = 5;
   create_dsn_with_attrs(zds, dsn, attrs, "PDS");
 }
@@ -244,6 +247,9 @@ void create_pdse(ZDS *zds, const string &dsn)
   DS_ATTRIBUTES attrs = {0};
   attrs.dsorg = "PO";
   attrs.dsntype = "LIBRARY";
+  attrs.recfm = "F,B";
+  attrs.lrecl = 80;
+  attrs.blksize = 800;
   attrs.dirblk = 5;
   create_dsn_with_attrs(zds, dsn, attrs, "PDSE");
 }
