@@ -173,15 +173,22 @@ struct TEST_CASE
 };
 
 using hook_callback = std::function<void()>;
+
+struct HOOK_WITH_OPTIONS
+{
+  hook_callback callback;
+  TEST_OPTIONS options;
+};
+
 struct TEST_SUITE
 {
   std::string description;
   std::vector<TEST_CASE> tests;
   int nesting_level;
-  std::vector<hook_callback> before_all_hooks;
-  std::vector<hook_callback> before_each_hooks;
-  std::vector<hook_callback> after_each_hooks;
-  std::vector<hook_callback> after_all_hooks;
+  std::vector<HOOK_WITH_OPTIONS> before_all_hooks;
+  std::vector<HOOK_WITH_OPTIONS> before_each_hooks;
+  std::vector<HOOK_WITH_OPTIONS> after_each_hooks;
+  std::vector<HOOK_WITH_OPTIONS> after_all_hooks;
   bool before_all_executed = false;
 };
 
@@ -453,64 +460,101 @@ public:
   }
 
   // Execute a vector of hooks, catching and reporting any errors
-  void execute_hooks(const std::vector<hook_callback> &hooks, const std::string &hook_type, std::string &error_message, unsigned int timeout_seconds)
+  void execute_hooks(const std::vector<HOOK_WITH_OPTIONS> &hooks, const std::string &hook_type, std::string &error_message)
   {
-    struct sigaction timeout_sa, old_timeout_sa;
-    setup_timeout_handler(timeout_sa, old_timeout_sa);
-
     for (const auto &hook : hooks)
     {
+      // Use hook's timeout if specified (non-zero), otherwise use default
+      unsigned int timeout_seconds = hook.options.timeout_sec > 0 ? hook.options.timeout_sec : DEFAULT_TEST_TIMEOUT_SECONDS;
+      
+      bool abend = false;
+      bool timeout = false;
+      struct sigaction sa, timeout_sa, old_timeout_sa;
+
+      // Initialize timeout flag before setjmp
       timeout_occurred = false;
 
+      // Call setjmp FIRST before setting up any signal handlers
       if (0 != setjmp(get_jmp_buf()))
       {
         // Jumped back from signal handler
         if (timeout_occurred)
         {
-          reset_timeout_handler(old_timeout_sa);
-          error_message = hook_type + " hook timed out after " + std::to_string(timeout_seconds) + " seconds";
-          throw std::runtime_error(error_message);
+          timeout = true;
         }
         else
         {
-          // Non-timeout signal caused longjmp
+          abend = true;
+        }
+      }
+
+      // Setup signal handlers AFTER setjmp to avoid race condition
+      if (!hook.options.remove_signal_handling)
+      {
+        setup_signal_handlers(sa);
+      }
+
+      // Setup timeout handler (always active)
+      setup_timeout_handler(timeout_sa, old_timeout_sa);
+
+      // Set alarm AFTER both setjmp and signal handler setup
+      alarm(timeout_seconds);
+
+      if (!abend && !timeout)
+      {
+        try
+        {
+          hook.callback();
+        }
+        catch (const std::exception &e)
+        {
+          alarm(0);
           reset_timeout_handler(old_timeout_sa);
-          error_message = hook_type + " hook interrupted by unexpected signal";
+          if (!hook.options.remove_signal_handling)
+          {
+            reset_signal_handlers(sa);
+          }
+          error_message = hook_type + " hook failed: " + std::string(e.what());
+          throw std::runtime_error(error_message);
+        }
+        catch (...)
+        {
+          alarm(0);
+          reset_timeout_handler(old_timeout_sa);
+          if (!hook.options.remove_signal_handling)
+          {
+            reset_signal_handlers(sa);
+          }
+          error_message = hook_type + " hook failed with unknown error";
           throw std::runtime_error(error_message);
         }
       }
 
-      // Set alarm AFTER setjmp to avoid race condition
-      alarm(timeout_seconds);
-
-      try
+      // Cancel alarm and reset handlers
+      alarm(0);
+      reset_timeout_handler(old_timeout_sa);
+      if (!hook.options.remove_signal_handling)
       {
-        hook();
-        alarm(0); // Cancel alarm if hook completes successfully
+        reset_signal_handlers(sa);
       }
-      catch (const std::exception &e)
+
+      if (timeout)
       {
-        alarm(0); // Cancel alarm on exception
-        reset_timeout_handler(old_timeout_sa);
-        error_message = hook_type + " hook failed: " + std::string(e.what());
+        error_message = hook_type + " hook timed out after " + std::to_string(timeout_seconds) + " seconds";
         throw std::runtime_error(error_message);
       }
-      catch (...)
+      else if (abend)
       {
-        alarm(0); // Cancel alarm on exception
-        reset_timeout_handler(old_timeout_sa);
-        error_message = hook_type + " hook failed with unknown error";
+        error_message = hook_type + " hook failed with ABEND";
         throw std::runtime_error(error_message);
       }
     }
-
-    reset_timeout_handler(old_timeout_sa);
   }
 
   // Collect beforeEach hooks from current suite and all parent suites (parent -> child order)
-  std::vector<hook_callback> collect_before_each_hooks()
+  std::vector<HOOK_WITH_OPTIONS> collect_before_each_hooks()
   {
-    std::vector<hook_callback> hooks;
+    std::vector<HOOK_WITH_OPTIONS> hooks;
     if (suite_stack.empty())
     {
       return hooks;
@@ -526,9 +570,9 @@ public:
   }
 
   // Collect afterEach hooks from current suite and all parent suites (child -> parent order)
-  std::vector<hook_callback> collect_after_each_hooks()
+  std::vector<HOOK_WITH_OPTIONS> collect_after_each_hooks()
   {
-    std::vector<hook_callback> hooks;
+    std::vector<HOOK_WITH_OPTIONS> hooks;
     if (suite_stack.empty())
     {
       return hooks;
@@ -595,7 +639,7 @@ public:
         std::string error_message;
         try
         {
-          execute_hooks(suite.before_all_hooks, "beforeAll", error_message, timeout_seconds);
+          execute_hooks(suite.before_all_hooks, "beforeAll", error_message);
         }
         catch (const std::exception &)
         {
@@ -620,13 +664,13 @@ public:
     }
 
     // Collect and execute beforeEach hooks
-    std::vector<hook_callback> before_each_hooks = collect_before_each_hooks();
+    std::vector<HOOK_WITH_OPTIONS> before_each_hooks = collect_before_each_hooks();
     if (!before_each_hooks.empty())
     {
       std::string error_message;
       try
       {
-        execute_hooks(before_each_hooks, "beforeEach", error_message, timeout_seconds);
+        execute_hooks(before_each_hooks, "beforeEach", error_message);
       }
       catch (const std::exception &)
       {
@@ -634,13 +678,13 @@ public:
         tc.fail_message = error_message;
 
         // Still run afterEach hooks even if beforeEach failed
-        std::vector<hook_callback> after_each_hooks = collect_after_each_hooks();
+        std::vector<HOOK_WITH_OPTIONS> after_each_hooks = collect_after_each_hooks();
         if (!after_each_hooks.empty())
         {
           std::string after_error;
           try
           {
-            execute_hooks(after_each_hooks, "afterEach", after_error, timeout_seconds);
+            execute_hooks(after_each_hooks, "afterEach", after_error);
           }
           catch (const std::exception &)
           {
@@ -661,17 +705,12 @@ public:
     struct sigaction sa;
     struct sigaction timeout_sa, old_timeout_sa;
 
-    if (!opts.remove_signal_handling)
-    {
-      setup_signal_handlers(sa);
-    }
-
-    // Setup timeout handler
-    setup_timeout_handler(timeout_sa, old_timeout_sa);
+    // Initialize timeout flag before setjmp
     timeout_occurred = false;
 
     tc.start_time = std::chrono::high_resolution_clock::now();
 
+    // Call setjmp FIRST before setting up any signal handlers
     if (0 != setjmp(get_jmp_buf()))
     {
       if (timeout_occurred)
@@ -684,7 +723,16 @@ public:
       }
     }
 
-    // Set alarm AFTER setjmp to avoid race condition
+    // Setup signal handlers AFTER setjmp to avoid race condition
+    if (!opts.remove_signal_handling)
+    {
+      setup_signal_handlers(sa);
+    }
+
+    // Setup timeout handler (always active)
+    setup_timeout_handler(timeout_sa, old_timeout_sa);
+
+    // Set alarm AFTER both setjmp and signal handler setup
     alarm(timeout_seconds);
 
     if (!abend && !timeout)
@@ -715,13 +763,13 @@ public:
     }
 
     // Execute afterEach hooks (always run, even if test failed)
-    std::vector<hook_callback> after_each_hooks = collect_after_each_hooks();
+    std::vector<HOOK_WITH_OPTIONS> after_each_hooks = collect_after_each_hooks();
     if (!after_each_hooks.empty())
     {
       std::string error_message;
       try
       {
-        execute_hooks(after_each_hooks, "afterEach", error_message, timeout_seconds);
+        execute_hooks(after_each_hooks, "afterEach", error_message);
       }
       catch (const std::exception &)
       {
@@ -1073,13 +1121,13 @@ void describe(const std::string &description, Callable suite)
   if (current_suite_idx >= 0 && current_suite_idx < static_cast<int>(g.get_suites().size()))
   {
     TEST_SUITE &current_suite = g.get_suites()[current_suite_idx];
-    const std::vector<hook_callback> &after_all_hooks = current_suite.after_all_hooks;
+    const std::vector<HOOK_WITH_OPTIONS> &after_all_hooks = current_suite.after_all_hooks;
     if (!after_all_hooks.empty())
     {
       std::string error_message;
       try
       {
-        g.execute_hooks(after_all_hooks, "afterAll", error_message, DEFAULT_TEST_TIMEOUT_SECONDS);
+        g.execute_hooks(after_all_hooks, "afterAll", error_message);
       }
       catch (const std::exception &)
       {
@@ -1149,11 +1197,21 @@ template <typename Callable,
               std::is_same<void, decltype(std::declval<Callable>()())>::value>::type>
 void beforeAll(Callable hook)
 {
+  TEST_OPTIONS opts = {false, 0};
+  beforeAll(hook, opts);
+}
+
+template <typename Callable,
+          typename = typename std::enable_if<
+              std::is_same<void, decltype(std::declval<Callable>()())>::value>::type>
+void beforeAll(Callable hook, TEST_OPTIONS &opts)
+{
   Globals &g = Globals::get_instance();
   int suite_idx = g.get_suite_index();
   if (suite_idx >= 0 && suite_idx < static_cast<int>(g.get_suites().size()))
   {
-    g.get_suites()[suite_idx].before_all_hooks.push_back(hook);
+    HOOK_WITH_OPTIONS hook_with_opts = {hook, opts};
+    g.get_suites()[suite_idx].before_all_hooks.push_back(hook_with_opts);
   }
 }
 
@@ -1162,11 +1220,21 @@ template <typename Callable,
               std::is_same<void, decltype(std::declval<Callable>()())>::value>::type>
 void beforeEach(Callable hook)
 {
+  TEST_OPTIONS opts = {false, 0};
+  beforeEach(hook, opts);
+}
+
+template <typename Callable,
+          typename = typename std::enable_if<
+              std::is_same<void, decltype(std::declval<Callable>()())>::value>::type>
+void beforeEach(Callable hook, TEST_OPTIONS &opts)
+{
   Globals &g = Globals::get_instance();
   int suite_idx = g.get_suite_index();
   if (suite_idx >= 0 && suite_idx < static_cast<int>(g.get_suites().size()))
   {
-    g.get_suites()[suite_idx].before_each_hooks.push_back(hook);
+    HOOK_WITH_OPTIONS hook_with_opts = {hook, opts};
+    g.get_suites()[suite_idx].before_each_hooks.push_back(hook_with_opts);
   }
 }
 
@@ -1175,11 +1243,21 @@ template <typename Callable,
               std::is_same<void, decltype(std::declval<Callable>()())>::value>::type>
 void afterEach(Callable hook)
 {
+  TEST_OPTIONS opts = {false, 0};
+  afterEach(hook, opts);
+}
+
+template <typename Callable,
+          typename = typename std::enable_if<
+              std::is_same<void, decltype(std::declval<Callable>()())>::value>::type>
+void afterEach(Callable hook, TEST_OPTIONS &opts)
+{
   Globals &g = Globals::get_instance();
   int suite_idx = g.get_suite_index();
   if (suite_idx >= 0 && suite_idx < static_cast<int>(g.get_suites().size()))
   {
-    g.get_suites()[suite_idx].after_each_hooks.push_back(hook);
+    HOOK_WITH_OPTIONS hook_with_opts = {hook, opts};
+    g.get_suites()[suite_idx].after_each_hooks.push_back(hook_with_opts);
   }
 }
 
@@ -1188,11 +1266,21 @@ template <typename Callable,
               std::is_same<void, decltype(std::declval<Callable>()())>::value>::type>
 void afterAll(Callable hook)
 {
+  TEST_OPTIONS opts = {false, 0};
+  afterAll(hook, opts);
+}
+
+template <typename Callable,
+          typename = typename std::enable_if<
+              std::is_same<void, decltype(std::declval<Callable>()())>::value>::type>
+void afterAll(Callable hook, TEST_OPTIONS &opts)
+{
   Globals &g = Globals::get_instance();
   int suite_idx = g.get_suite_index();
   if (suite_idx >= 0 && suite_idx < static_cast<int>(g.get_suites().size()))
   {
-    g.get_suites()[suite_idx].after_all_hooks.push_back(hook);
+    HOOK_WITH_OPTIONS hook_with_opts = {hook, opts};
+    g.get_suites()[suite_idx].after_all_hooks.push_back(hook_with_opts);
   }
 }
 
