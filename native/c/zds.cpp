@@ -202,7 +202,7 @@ static int run_iebcopy(ZDS *zds, vector<string> &dds, const string &control_stmt
       string truncated = output.length() > max_output_len
                              ? output.substr(0, max_output_len) + "..."
                              : output;
-      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, sizeof(zds->diag.e_msg),
+      zds->diag.e_msg_len = sprintf(zds->diag.e_msg,
                                     "IEBCOPY failed. SYSPRINT:\n%s", truncated.c_str());
     }
     zut_free_dynalloc_dds(zds->diag, dds);
