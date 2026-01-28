@@ -280,9 +280,6 @@ struct DscbAttributes
 /**
  * Helper function to get data set attributes (RECFM, LRECL) from DSCB.
  * Returns a DscbAttributes struct with recfm, lrecl, and is_asa flag.
- *
- * Uses catalog lookup and DSCB to get the actual attributes, which is more reliable
- * than fopen/fldata (which doesn't work correctly for PDS without a member).
  */
 static DscbAttributes zds_get_dscb_attributes(const string &dsn)
 {
@@ -540,7 +537,7 @@ private:
   /**
    * Check if there are overflow blank lines that need to be flushed as empty '-' records.
    * Call this AFTER process_line() returns non-'\0', BEFORE writing the actual line.
-   * Each '-' record represents "advance 3 lines" and consumes 3 blank lines.
+   * Each '-' record represents "advance 3 lines" and consumes 2 blank lines.
    * Returns true if an empty '-' record should be written.
    */
   bool has_overflow_blanks()
@@ -2712,7 +2709,7 @@ int zds_read_from_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, 
   }
   else
   {
-    // Non-ASA: read in chunks as before
+    // Non-ASA: read in chunks
     const size_t chunk_size = FIFO_CHUNK_SIZE * 3 / 4;
     std::vector<char> buf(chunk_size);
     size_t bytes_read;
