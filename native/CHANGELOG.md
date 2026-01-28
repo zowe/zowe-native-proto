@@ -6,7 +6,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Recent Changes
 
-- `c`: Added `zowex ds copy` command to copy data sets and members with optional `--replace` and `--overwrite` flags for overwrite protection. Supports PDS-to-PDS, member-to-member, sequential-to-sequential, sequential-to-member, and member-to-sequential copies. [#750](https://github.com/zowe/zowe-native-proto/pull/750)
+- `c`: Added `zowex ds copy` command to copy data sets and members with optional `--replace` and `--overwrite` flags for overwrite protection. Supports PDS-to-PDS, member-to-member, and sequential-to-sequential copies. [#750](https://github.com/zowe/zowe-native-proto/pull/750)
 - `c`: Imlement `zut_bpxwdyn_rtdsn` to obtain and return a system allocated data set name.
 - `c`: Implement command `zowex job view-file` to print contents of a job output data set.
 - The `zowex job submit-jcl` command now displays the submitted job in the following format: `JobName(JobId)` [#733](https://github.com/zowe/zowe-native-proto/issues/733)

@@ -306,6 +306,24 @@ int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2, bool replace,
     return RTNCD_FAILURE;
   }
 
+  // Member -> PS is not supported (cross-type copy)
+  if (info1.type == ZDS_TYPE_MEMBER && info2.member_name.empty())
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg,
+                                  "Cannot copy PDS member to a sequential data set. "
+                                  "Target must specify a member name.");
+    return RTNCD_FAILURE;
+  }
+
+  // PS -> Member is not supported (cross-type copy)
+  if (info1.type == ZDS_TYPE_PS && !info2.member_name.empty())
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg,
+                                  "Cannot copy sequential data set to a PDS member. "
+                                  "Target must be a sequential data set.");
+    return RTNCD_FAILURE;
+  }
+
   bool is_pds_full_copy = (info1.type == ZDS_TYPE_PDS && info2.member_name.empty());
   bool target_is_member = !info2.member_name.empty();
 
@@ -316,40 +334,9 @@ int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2, bool replace,
     string create_resp;
     DS_ATTRIBUTES attrs = {0};
 
-    if (target_is_member)
+    if (info1.type == ZDS_TYPE_PDS || info1.type == ZDS_TYPE_MEMBER)
     {
-      // Target is a member, so we need to create a PDS
-      // Use source attributes if source is a PDS/PDSE, otherwise use defaults
-      if (info1.type == ZDS_TYPE_PDS)
-      {
-        attrs.dsorg = "PO";
-        attrs.recfm = info1.entry.recfm.c_str();
-        attrs.lrecl = info1.entry.lrecl;
-        attrs.blksize = info1.entry.blksize;
-        attrs.dirblk = 5;
-        attrs.dsntype = info1.entry.dsntype.c_str();
-      }
-      else
-      {
-        // Source is PS or member, create PDS with default attributes
-        attrs.dsorg = "PO";
-        attrs.recfm = "F,B";
-        attrs.lrecl = 80;
-        attrs.blksize = 800;
-        attrs.dirblk = 5;
-      }
-    }
-    else if (info1.type == ZDS_TYPE_MEMBER)
-    {
-      // Member -> Sequential: create a sequential data set with PDS attributes
-      attrs.dsorg = "PS";
-      attrs.recfm = info1.entry.recfm.c_str();
-      attrs.lrecl = info1.entry.lrecl;
-      attrs.blksize = info1.entry.blksize;
-    }
-    else if (info1.type == ZDS_TYPE_PDS)
-    {
-      // PDS -> PDS: copy attributes
+      // PDS -> PDS or Member -> Member: create PDS with source attributes
       attrs.dsorg = "PO";
       attrs.recfm = info1.entry.recfm.c_str();
       attrs.lrecl = info1.entry.lrecl;

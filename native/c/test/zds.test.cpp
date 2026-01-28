@@ -393,7 +393,7 @@ void zds_tests()
                              Expect(tc.copy()).ToBe(0);
                            });
 
-                        it("should copy PDS member to sequential data set",
+                        it("should fail to copy PDS member to sequential data set",
                            [&]() -> void
                            {
                              CopyTestContext tc(created_dsns);
@@ -402,7 +402,8 @@ void zds_tests()
 
                              ZDS zds = {0};
                              int rc = zds_copy_dsn(&zds, tc.source_dsn + "(MEMBER)", tc.target_dsn);
-                             ExpectWithContext(rc, zds.diag.e_msg).ToBe(0);
+                             Expect(rc).Not().ToBe(0);
+                             Expect(string(zds.diag.e_msg)).ToContain("must specify a member name");
                            });
 
                         it("should copy sequential data set to sequential data set",
@@ -424,7 +425,7 @@ void zds_tests()
                              Expect(tc.copy_member("SRCMEM", "TGTMEM")).ToBe(0);
                            });
 
-                        it("should copy sequential data set to PDS member",
+                        it("should fail to copy sequential data set to PDS member",
                            [&]() -> void
                            {
                              CopyTestContext tc(created_dsns);
@@ -433,7 +434,8 @@ void zds_tests()
 
                              ZDS zds = {0};
                              int rc = zds_copy_dsn(&zds, tc.source_dsn, tc.target_dsn + "(MEMBER)");
-                             ExpectWithContext(rc, zds.diag.e_msg).ToBe(0);
+                             Expect(rc).Not().ToBe(0);
+                             Expect(string(zds.diag.e_msg)).ToContain("must be a sequential data set");
                            });
 
                         it("should copy PDS with multiple members",
@@ -661,7 +663,7 @@ void zds_tests()
                              Expect(tc.target_has_member("MEM2")).ToBe(true);
                            });
 
-                        it("should copy sequential to existing PDS member with replace",
+                        it("should fail to copy sequential to PDS member even with replace",
                            [&]() -> void
                            {
                              CopyTestContext tc(created_dsns);
@@ -672,7 +674,8 @@ void zds_tests()
 
                              ZDS zds = {0};
                              int rc = zds_copy_dsn(&zds, tc.source_dsn, tc.target_dsn + "(EXISTING)", true);
-                             ExpectWithContext(rc, zds.diag.e_msg).ToBe(0);
+                             Expect(rc).Not().ToBe(0);
+                             Expect(string(zds.diag.e_msg)).ToContain("must be a sequential data set");
                            });
                       });
 
