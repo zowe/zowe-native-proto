@@ -837,7 +837,7 @@ async function artifacts(connection: Client, packageAll: boolean) {
 }
 
 async function runCommandInShell(connection: Client, command: string) {
-    const spinner = startSpinner(`Running: ${command.trim()}`);
+    const spinner = startSpinner(`$ ${command.trim()}`);
     return new Promise<string>((resolve, reject) => {
         let data = "";
         let error = "";
