@@ -319,13 +319,10 @@ class WatchUtils {
         const zowedSourceChanged = paths.some((filePath) => toPosixPath(filePath).split("/")[0] === "zowed");
 
         // Determine which tasks need to run
-        const tasksToRun: string[] = [];
-        if (cSourceChanged) {
-            tasksToRun.push("c");
-        }
-        if (zowedSourceChanged || cSourceChanged) {
-            tasksToRun.push("zowed");
-        }
+        const tasksToRun = [
+            ...(cSourceChanged ? ["c"] : []),
+            ...(zowedSourceChanged || cSourceChanged ? ["zowed"] : []),
+        ];
 
         // Add tasks to UI and start spinner
         for (const task of tasksToRun) {
@@ -448,7 +445,6 @@ class WatchUI {
     private readonly files: Map<string, FileChangeKind> = new Map();
     private readonly tasks: Map<string, TaskState> = new Map();
     private timestamp: Date = new Date();
-    private readonly boxWidth = 60;
     private lineCount = 0;
     private spinnerInterval: NodeJS.Timeout | null = null;
     private spinnerFrame = 0;
@@ -456,6 +452,10 @@ class WatchUI {
 
     private isInteractive(): boolean {
         return process.stdout.isTTY === true && !DEBUG_MODE() && process.env.CI == null;
+    }
+
+    private get boxWidth(): number {
+        return process.stdout.columns || 80;
     }
 
     setFiles(files: Map<string, { kind: FileChangeKind; mtime: Date }>) {
@@ -533,15 +533,14 @@ class WatchUI {
     }
 
     private buildLines(): string[] {
-        const lines: string[] = [];
-
-        // Top border with timestamp
-        lines.push(this.horizontalLine(BOX.TOP_LEFT, BOX.TOP_RIGHT));
         const timeStr = this.timestamp.toLocaleString();
-        lines.push(this.padLine(timeStr, timeStr.length));
 
-        // Separator after timestamp
-        lines.push(this.horizontalLine(BOX.LEFT_T, BOX.RIGHT_T));
+        // Top border with timestamp and separator
+        const lines: string[] = [
+            this.horizontalLine(BOX.TOP_LEFT, BOX.TOP_RIGHT),
+            this.padLine(timeStr, timeStr.length),
+            this.horizontalLine(BOX.LEFT_T, BOX.RIGHT_T),
+        ];
 
         // File changes
         for (const [filePath, kind] of this.files.entries()) {
@@ -552,8 +551,7 @@ class WatchUI {
 
         // Dashed separator before tasks
         if (this.tasks.size > 0) {
-            lines.push(this.dashedLine());
-            lines.push(this.padLine("tasks:", 6));
+            lines.push(this.dashedLine(), this.padLine("tasks:", 6));
 
             for (const [, task] of this.tasks.entries()) {
                 const icon = this.getStatusIcon(task.status);
@@ -563,13 +561,12 @@ class WatchUI {
 
                 // Show error inline if present
                 if (task.error) {
-                    lines.push(this.padLine("", 0));
                     const errorHeader = `${ANSI.RED}error (${task.name}):${ANSI.RESET}`;
-                    lines.push(this.padLine(`  ${errorHeader}`, `  error (${task.name}):`.length));
+                    lines.push(this.padLine("", 0), this.padLine(`  ${errorHeader}`, `  error (${task.name}):`.length));
 
                     // Split error into lines and show first few
                     const allErrorLines = task.error.split("\n").filter((line) => line.trim().length > 0);
-                    const maxLines = 3;
+                    const maxLines = 10;
                     const visibleLines = allErrorLines.slice(0, maxLines);
                     const remainingCount = allErrorLines.length - maxLines;
 
@@ -595,20 +592,22 @@ class WatchUI {
 
                     // Show log file path
                     if (task.errorLogPath) {
-                        lines.push(this.padLine("", 0));
                         const logText = `full log: ${task.errorLogPath}`;
-                        lines.push(this.padLine(`  ${ANSI.DIM}${logText}${ANSI.RESET}`, logText.length + 2));
+                        lines.push(
+                            this.padLine("", 0),
+                            this.padLine(`  ${ANSI.DIM}${logText}${ANSI.RESET}`, logText.length + 2),
+                        );
                     }
                 }
             }
         }
 
-        // Footer separator and message
-        lines.push(this.horizontalLine(BOX.LEFT_T, BOX.RIGHT_T));
-        lines.push(this.padLine(this.footerMessage, this.footerMessage.length));
-
-        // Bottom border
-        lines.push(this.horizontalLine(BOX.BOTTOM_LEFT, BOX.BOTTOM_RIGHT));
+        // Footer separator, message, and bottom border
+        lines.push(
+            this.horizontalLine(BOX.LEFT_T, BOX.RIGHT_T),
+            this.padLine(this.footerMessage, this.footerMessage.length),
+            this.horizontalLine(BOX.BOTTOM_LEFT, BOX.BOTTOM_RIGHT),
+        );
 
         return lines;
     }
@@ -798,8 +797,7 @@ function getDirs(next = "") {
     for (const dir of readDirs) {
         if (dir.isDirectory()) {
             const newDir = `${dir.name}/`;
-            dirs.push(`${next}${newDir}`);
-            dirs.push(...getDirs(`${next}${newDir}`));
+            dirs.push(`${next}${newDir}`, ...getDirs(`${next}${newDir}`));
         }
     }
     return dirs;
