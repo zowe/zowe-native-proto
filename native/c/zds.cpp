@@ -37,6 +37,7 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include "zbase64.h"
+#include "zdsm.h"
 
 const size_t MAX_DS_LENGTH = 44u;
 
