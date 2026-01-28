@@ -522,6 +522,9 @@ static char get_newline_char(const string &encoding)
  */
 struct AsaStreamState
 {
+  // ASA triple-space ('-') advances 3 lines, so we need 3 blank lines to trigger it
+  static constexpr int ASA_TRIPLE_SPACE_LINES = 3;
+
   int blank_count;
   bool is_first_line;
   char cr_char;
@@ -545,9 +548,9 @@ private:
    */
   bool has_overflow_blanks()
   {
-    if (blank_count >= 3)
+    if (blank_count >= ASA_TRIPLE_SPACE_LINES)
     {
-      blank_count -= 3; // Each '-' record consumes 3 blank lines worth of spacing
+      blank_count -= ASA_TRIPLE_SPACE_LINES;
       return true;
     }
     return false;
@@ -611,9 +614,9 @@ public:
    */
   struct PrepareResult
   {
-    bool skip_line;        // If true, skip this line entirely (it's a blank that increments counter)
-    int overflow_records;  // Number of empty '-' records to write before this line
-    char asa_char;         // ASA control character to prepend to the line (if !skip_line)
+    bool skip_line;       // If true, skip this line entirely (it's a blank that increments counter)
+    int overflow_records; // Number of empty '-' records to write before this line
+    char asa_char;        // ASA control character to prepend to the line (if !skip_line)
   };
 
   /**
@@ -3121,7 +3124,8 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const string &dsn, const str
         }
         catch (std::exception &e)
         {
-          if (cd != (iconv_t)(-1)) iconv_close(cd);
+          if (cd != (iconv_t)(-1))
+            iconv_close(cd);
           zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from %s to %s", source_encoding.c_str(), codepage.c_str());
           zds_close_output_bpam(zds, ioc);
           return RTNCD_FAILURE;
@@ -3144,7 +3148,8 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const string &dsn, const str
       if (rc != RTNCD_SUCCESS)
       {
         DiagMsgGuard guard(zds);
-        if (cd != (iconv_t)(-1)) iconv_close(cd);
+        if (cd != (iconv_t)(-1))
+          iconv_close(cd);
         zds_close_output_bpam(zds, ioc);
         return rc;
       }
@@ -3208,7 +3213,8 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const string &dsn, const str
           }
           catch (std::exception &e)
           {
-            if (cd != (iconv_t)(-1)) iconv_close(cd);
+            if (cd != (iconv_t)(-1))
+              iconv_close(cd);
             zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from %s to %s", source_encoding.c_str(), codepage.c_str());
             zds_close_output_bpam(zds, ioc);
             return RTNCD_FAILURE;
@@ -3231,7 +3237,8 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const string &dsn, const str
         if (rc != RTNCD_SUCCESS)
         {
           DiagMsgGuard guard(zds);
-          if (cd != (iconv_t)(-1)) iconv_close(cd);
+          if (cd != (iconv_t)(-1))
+            iconv_close(cd);
           zds_close_output_bpam(zds, ioc);
           return rc;
         }
