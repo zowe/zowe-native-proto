@@ -121,7 +121,7 @@ class WatchUtils {
     private readonly pendingChanges: Map<string, { kind: "+" | "~" | "-"; mtime: Date }> = new Map();
     private rootDir: string;
     private sftp: SFTPWrapper | null = null;
-    private ui: WatchUI = new WatchUI();
+    private readonly ui: WatchUI = new WatchUI();
     private watcher: chokidar.FSWatcher;
 
     constructor(
@@ -444,10 +444,10 @@ interface TaskState {
 }
 
 class WatchUI {
-    private files: Map<string, FileChangeKind> = new Map();
-    private tasks: Map<string, TaskState> = new Map();
+    private readonly files: Map<string, FileChangeKind> = new Map();
+    private readonly tasks: Map<string, TaskState> = new Map();
     private timestamp: Date = new Date();
-    private boxWidth = 60;
+    private readonly boxWidth = 60;
     private lineCount = 0;
     private spinnerInterval: NodeJS.Timeout | null = null;
     private spinnerFrame = 0;
@@ -613,7 +613,14 @@ class WatchUI {
         if (this.tasks.size > 0) {
             console.log("tasks:");
             for (const [, task] of this.tasks.entries()) {
-                const statusText = task.status === "success" ? "✔" : task.status === "error" ? "✘" : task.status;
+                let statusText: string;
+                if (task.status === "success") {
+                    statusText = "✔";
+                } else if (task.status === "error") {
+                    statusText = "✘";
+                } else {
+                    statusText = task.status;
+                }
                 console.log(`  [${task.name}] make ${statusText}`);
                 if (task.error) {
                     console.log(`  error: ${task.error}`);
@@ -687,10 +694,8 @@ function getAllServerFiles() {
     }
 
     const dirs = getDirs();
-
-    for (const dir of dirs) {
-        files.push(...getServerFiles(dir));
-    }
+    const dirFiles = dirs.map((dir) => getServerFiles(dir));
+    files.push(...dirFiles.flat());
 
     return files;
 }
