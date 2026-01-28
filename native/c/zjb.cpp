@@ -493,6 +493,8 @@ int zjb_list_dds(ZJB *zjb, string jobid, vector<ZJobDD> &jobDDs)
     int view_rc = zjb_view(zjb, jobid, job);
     if (RTNCD_SUCCESS == view_rc)
     {
+      zut_rtrim(job.jobname);
+
       ZJobDD jesmsglg = {0};
       jesmsglg.jobid = job.jobid;
       jesmsglg.ddn = "JESMSGLG";
