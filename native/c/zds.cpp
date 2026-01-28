@@ -37,6 +37,10 @@
 #include "zdsm.h"
 
 const size_t MAX_DS_LENGTH = 44u;
+// CR is 0x0D in both ASCII and EBCDIC
+const char CR_CHAR = '\x0D';
+// Form feed is 0x0C in both ASCII and EBCDIC
+const char FF_CHAR = '\x0C';
 
 using namespace std;
 
@@ -334,7 +338,6 @@ static int get_effective_lrecl_from_attrs(const DscbAttributes &attrs)
 static void scan_for_truncated_lines(const string &data, int max_len,
                                      char newline_char, TruncationTracker &truncation)
 {
-  const char cr_char = '\x0D';
   int line_num = 0;
   size_t pos = 0;
   size_t newline_pos;
@@ -345,7 +348,7 @@ static void scan_for_truncated_lines(const string &data, int max_len,
     size_t line_len = newline_pos - pos;
 
     // Account for CR if present (Windows line endings)
-    if (line_len > 0 && data[newline_pos - 1] == cr_char)
+    if (line_len > 0 && data[newline_pos - 1] == CR_CHAR)
     {
       line_len--;
     }
@@ -362,7 +365,7 @@ static void scan_for_truncated_lines(const string &data, int max_len,
   {
     line_num++;
     size_t line_len = data.length() - pos;
-    if (line_len > 0 && data[data.length() - 1] == cr_char)
+    if (line_len > 0 && data[data.length() - 1] == CR_CHAR)
     {
       line_len--;
     }
@@ -527,16 +530,10 @@ struct AsaStreamState
 
   int blank_count;
   bool is_first_line;
-  char cr_char;
-  char ff_char;
 
-  AsaStreamState(const string &source_encoding = "UTF-8")
+  AsaStreamState()
       : blank_count(0), is_first_line(true)
   {
-    // Form feed is 0x0C in both ASCII and EBCDIC
-    ff_char = '\x0C';
-    // CR is 0x0D in both ASCII and EBCDIC
-    cr_char = '\x0D';
   }
 
 private:
@@ -591,7 +588,7 @@ private:
   char process_line_internal(string &line, bool &has_formfeed_out)
   {
     // Check for form feed at start of line
-    has_formfeed_out = (!line.empty() && line[0] == ff_char);
+    has_formfeed_out = (!line.empty() && line[0] == FF_CHAR);
     if (has_formfeed_out)
     {
       line = line.substr(1); // remove form feed from content
@@ -723,12 +720,12 @@ static int zds_write_sequential(ZDS *zds, const string &dsn, string &data, const
         }
       }
 
-      // Track truncated lines for text mode
-      if (isTextMode && attrs.lrecl > 0 && !data.empty())
+      // Track truncated lines for text mode (post-encoding to handle multi-byte encodings correctly)
+      if (isTextMode && attrs.lrecl > 0 && !temp.empty())
       {
         const int max_len = get_effective_lrecl_from_attrs(attrs);
-        const char newline_char = get_newline_char(source_encoding);
-        scan_for_truncated_lines(data, max_len, newline_char, truncation);
+        const char newline_char = get_newline_char(codepage);
+        scan_for_truncated_lines(temp, max_len, newline_char, truncation);
       }
 
       size_t bytes_written = fwrite(temp.c_str(), 1u, temp.length(), fp);
@@ -776,7 +773,6 @@ static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
   // Determine source encoding for line splitting
   const auto source_encoding = strlen(zds->encoding_opts.source_codepage) > 0 ? string(zds->encoding_opts.source_codepage) : "UTF-8";
   const char newline_char = get_newline_char(source_encoding);
-  const char cr_char = '\x0D';
 
   // Track truncated lines
   TruncationTracker truncation;
@@ -784,7 +780,7 @@ static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
   const int max_len = get_effective_lrecl(ioc);
 
   // ASA state tracking (only used when converting to ASA)
-  AsaStreamState asa_state(source_encoding);
+  AsaStreamState asa_state;
 
   // Parse and write data line by line
   if (!data.empty())
@@ -797,7 +793,7 @@ static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
       string line = data.substr(pos, newline_pos - pos);
 
       // Remove trailing CR if present (Windows line endings)
-      if (!line.empty() && line[line.size() - 1] == cr_char)
+      if (!line.empty() && line[line.size() - 1] == CR_CHAR)
       {
         line.erase(line.size() - 1);
       }
@@ -874,7 +870,7 @@ static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
       string line = data.substr(pos);
 
       // Remove trailing carriage return if present
-      if (!line.empty() && line[line.size() - 1] == cr_char)
+      if (!line.empty() && line[line.size() - 1] == CR_CHAR)
       {
         line.erase(line.size() - 1);
       }
@@ -2819,10 +2815,10 @@ static int zds_write_sequential_streamed(ZDS *zds, const string &dsn, const stri
   int line_num = 0;
   string line_buffer;
 
-  // Determine source encoding for encoding conversion and newline detection
+  // Determine source encoding for encoding conversion
   const auto source_encoding = strlen(zds->encoding_opts.source_codepage) > 0 ? string(zds->encoding_opts.source_codepage) : "UTF-8";
-  const char newline_char = get_newline_char(source_encoding);
-  const char cr_char = '\x0D';
+  // Use target encoding's newline for post-encoding truncation check
+  const char newline_char = get_newline_char(codepage);
 
   {
     FileGuard fout(dsname.c_str(), fopen_flags.c_str());
@@ -2873,35 +2869,6 @@ static int zds_write_sequential_streamed(ZDS *zds, const string &dsn, const stri
       int chunk_len = temp_encoded.size();
       *content_len += chunk_len;
 
-      // Check for truncated lines in text mode before encoding
-      if (isTextMode && attrs.lrecl > 0)
-      {
-        line_buffer.append(temp_encoded.begin(), temp_encoded.end());
-
-        size_t pos = 0;
-        size_t newline_pos;
-        while ((newline_pos = line_buffer.find(newline_char, pos)) != string::npos)
-        {
-          line_num++;
-          size_t line_len = newline_pos - pos;
-
-          // Account for CR if present (Windows line endings)
-          if (line_len > 0 && line_buffer[newline_pos - 1] == cr_char)
-          {
-            line_len--;
-          }
-
-          if (static_cast<int>(line_len) > max_len)
-          {
-            truncation.add_line(line_num);
-          }
-          pos = newline_pos + 1;
-        }
-
-        // Keep remaining partial line in buffer
-        line_buffer = line_buffer.substr(pos);
-      }
-
       if (has_encoding)
       {
         try
@@ -2918,6 +2885,35 @@ static int zds_write_sequential_streamed(ZDS *zds, const string &dsn, const stri
         }
       }
 
+      // Check for truncated lines in text mode (post-encoding to handle multi-byte encodings correctly)
+      if (isTextMode && attrs.lrecl > 0)
+      {
+        line_buffer.append(chunk, chunk_len);
+
+        size_t pos = 0;
+        size_t newline_pos;
+        while ((newline_pos = line_buffer.find(newline_char, pos)) != string::npos)
+        {
+          line_num++;
+          size_t line_len = newline_pos - pos;
+
+          // Account for CR if present (Windows line endings become CR+NL in EBCDIC)
+          if (line_len > 0 && line_buffer[newline_pos - 1] == CR_CHAR)
+          {
+            line_len--;
+          }
+
+          if (static_cast<int>(line_len) > max_len)
+          {
+            truncation.add_line(line_num);
+          }
+          pos = newline_pos + 1;
+        }
+
+        // Keep remaining partial line in buffer
+        line_buffer = line_buffer.substr(pos);
+      }
+
       size_t bytes_written = fwrite(chunk, 1, chunk_len, fout);
       if (bytes_written != chunk_len)
       {
@@ -2932,7 +2928,7 @@ static int zds_write_sequential_streamed(ZDS *zds, const string &dsn, const stri
     {
       line_num++;
       size_t line_len = line_buffer.length();
-      if (line_len > 0 && line_buffer[line_len - 1] == cr_char)
+      if (line_len > 0 && line_buffer[line_len - 1] == CR_CHAR)
       {
         line_len--;
       }
@@ -3043,10 +3039,9 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const string &dsn, const str
   // Determine source encoding for line splitting
   const auto source_encoding = strlen(zds->encoding_opts.source_codepage) > 0 ? string(zds->encoding_opts.source_codepage) : "UTF-8";
   const char newline_char = get_newline_char(source_encoding);
-  const char cr_char = '\x0D'; // CR is 0x0D in both ASCII and EBCDIC
 
   // ASA state tracking for streaming
-  AsaStreamState asa_state(source_encoding);
+  AsaStreamState asa_state;
 
   std::vector<char> buf(FIFO_CHUNK_SIZE);
   size_t bytes_read;
@@ -3082,7 +3077,7 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const string &dsn, const str
       string line = line_buffer.substr(pos, newline_pos - pos);
 
       // Remove trailing carriage return if present (Windows line endings)
-      if (!line.empty() && line[line.size() - 1] == cr_char)
+      if (!line.empty() && line[line.size() - 1] == CR_CHAR)
       {
         line.erase(line.size() - 1);
       }
@@ -3166,7 +3161,7 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const string &dsn, const str
   if (!line_buffer.empty())
   {
     // Remove trailing carriage return if present
-    if (line_buffer[line_buffer.size() - 1] == cr_char)
+    if (line_buffer[line_buffer.size() - 1] == CR_CHAR)
     {
       line_buffer.erase(line_buffer.size() - 1);
     }
