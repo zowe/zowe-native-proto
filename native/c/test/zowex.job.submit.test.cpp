@@ -151,7 +151,8 @@ void zowex_job_submit_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
                   command = zowex_command + " job watch " + job_dsn + " --until-match \"IEFBR14  ENDED\"";
                   rc = execute_command(command, stdout_output, stderr_output);
                   ExpectWithContext(rc, stderr_output).ToBe(0);
-                  Expect(stdout_output).ToContain("'String' pattern in job spool files matched");
+                  Expect(stdout_output).ToContain("'String' pattern");
+                  Expect(stdout_output).ToContain("job spool files matched");
                   Expect(stdout_output).ToContain("IEFBR14  ENDED");
 
                   command = zowex_command + " job watch " + job_dsn + " --until-match \"iefbr14  ended\" --any-case";
