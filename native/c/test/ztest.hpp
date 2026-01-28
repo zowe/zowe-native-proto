@@ -166,6 +166,7 @@ static Colors colors;
 struct TEST_CASE
 {
   bool success;
+  bool skipped;
   std::string description;
   std::string fail_message;
   std::chrono::high_resolution_clock::time_point start_time;
@@ -190,6 +191,7 @@ struct TEST_SUITE
   std::vector<HOOK_WITH_OPTIONS> after_each_hooks;
   std::vector<HOOK_WITH_OPTIONS> after_all_hooks;
   bool before_all_executed = false;
+  bool skipped = false;
 };
 
 struct EXPECT_CONTEXT
@@ -466,7 +468,7 @@ public:
     {
       // Use hook's timeout if specified (non-zero), otherwise use default
       unsigned int timeout_seconds = hook.options.timeout_sec > 0 ? hook.options.timeout_sec : DEFAULT_TEST_TIMEOUT_SECONDS;
-      
+
       bool abend = false;
       bool timeout = false;
       struct sigaction sa, timeout_sa, old_timeout_sa;
@@ -1152,6 +1154,17 @@ template <typename Callable,
 void xit(const std::string &description, Callable)
 {
   Globals &g = Globals::get_instance();
+  int suite_idx = g.get_suite_index();
+
+  TEST_CASE tc = {0};
+  tc.description = description;
+  tc.skipped = true;
+
+  if (suite_idx >= 0 && suite_idx < static_cast<int>(g.get_suites().size()))
+  {
+    g.get_suites()[suite_idx].tests.push_back(tc);
+  }
+
   std::cout << get_indent(g.get_nesting()) << "/ SKIP " << description << std::endl;
 }
 
@@ -1161,6 +1174,13 @@ template <typename Callable,
 void xdescribe(const std::string &description, Callable)
 {
   Globals &g = Globals::get_instance();
+
+  TEST_SUITE suite = {0};
+  suite.description = description;
+  suite.nesting_level = g.get_nesting();
+  suite.skipped = true;
+  g.get_suites().push_back(suite);
+
   std::cout << get_indent(g.get_nesting()) << "/ SKIP " << description << std::endl;
 }
 
@@ -1388,9 +1408,11 @@ inline void print_failed_tests()
 inline int report()
 {
   int suite_fail = 0;
+  int suite_skip = 0;
   int suite_total = 0;
   int tests_total = 0;
   int tests_fail = 0;
+  int tests_skip = 0;
   std::chrono::microseconds total_duration(0);
 
   Globals &g = Globals::get_instance();
@@ -1402,23 +1424,30 @@ inline int report()
 
   for (std::vector<TEST_SUITE>::iterator it = g.get_suites().begin(); it != g.get_suites().end(); it++)
   {
+    suite_total++;
+
+    if (it->skipped)
+    {
+      suite_skip++;
+      continue;
+    }
+
     bool suite_success = true;
-    bool suite_ran = false;
     for (std::vector<TEST_CASE>::iterator iit = it->tests.begin(); iit != it->tests.end(); iit++)
     {
-      suite_ran = true;
       tests_total++;
-      if (!iit->success)
+      if (iit->skipped)
+      {
+        tests_skip++;
+      }
+      else if (!iit->success)
       {
         suite_success = false;
         tests_fail++;
       }
       total_duration += std::chrono::duration_cast<std::chrono::microseconds>(iit->end_time - iit->start_time);
     }
-    if (suite_ran)
-    {
-      suite_total++;
-    }
+
     if (!suite_success)
     {
       suite_fail++;
@@ -1426,15 +1455,25 @@ inline int report()
   }
 
   const int width = 13;
-  std::cout << std::left << std::setw(width) << "Suites:"
-            << colors.green << suite_total - suite_fail << " passed" << colors.reset << ", "
-            << colors.red << suite_fail << " failed" << colors.reset << ", "
-            << suite_total << " total" << std::endl;
+  int suite_pass = suite_total - suite_fail - suite_skip;
+  std::cout << std::left << std::setw(width) << "Suites:";
+  if (suite_fail > 0)
+    std::cout << colors.red << suite_fail << " failed" << colors.reset << ", ";
+  if (suite_skip > 0)
+    std::cout << colors.yellow << suite_skip << " skipped" << colors.reset << ", ";
+  if (suite_pass > 0)
+    std::cout << colors.green << suite_pass << " passed" << colors.reset << ", ";
+  std::cout << suite_total << " total" << std::endl;
 
-  std::cout << std::left << std::setw(width) << "Tests:"
-            << colors.green << tests_total - tests_fail << " passed" << colors.reset << ", "
-            << colors.red << tests_fail << " failed" << colors.reset << ", "
-            << tests_total << " total" << std::endl;
+  int tests_pass = tests_total - tests_fail - tests_skip;
+  std::cout << std::left << std::setw(width) << "Tests:";
+  if (tests_fail > 0)
+    std::cout << colors.red << tests_fail << " failed" << colors.reset << ", ";
+  if (tests_skip > 0)
+    std::cout << colors.yellow << tests_skip << " skipped" << colors.reset << ", ";
+  if (tests_pass > 0)
+    std::cout << colors.green << tests_pass << " passed" << colors.reset << ", ";
+  std::cout << tests_total << " total" << std::endl;
 
   std::cout << std::left << std::setw(width) << "Time:"
             << std::fixed << std::setprecision(3)
@@ -1486,6 +1525,7 @@ inline void report_xml(const std::string &filename = "test-results.xml")
 
   int total_tests = 0;
   int total_failures = 0;
+  int total_skipped = 0;
   std::chrono::microseconds total_time(0);
 
   // Count totals first
@@ -1494,7 +1534,9 @@ inline void report_xml(const std::string &filename = "test-results.xml")
     for (const auto &test : suite.tests)
     {
       total_tests++;
-      if (!test.success)
+      if (test.skipped)
+        total_skipped++;
+      else if (!test.success)
         total_failures++;
       total_time += std::chrono::duration_cast<std::chrono::microseconds>(
           test.end_time - test.start_time);
@@ -1505,6 +1547,7 @@ inline void report_xml(const std::string &filename = "test-results.xml")
   xml_file << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
   xml_file << "<testsuites tests=\"" << total_tests
            << "\" failures=\"" << total_failures
+           << "\" skipped=\"" << total_skipped
            << "\" time=\"" << std::fixed << std::setprecision(3)
            << total_time.count() / 1000000.0 << "\">\n";
 
@@ -1533,25 +1576,33 @@ inline void report_xml(const std::string &filename = "test-results.xml")
     if (g.get_suites()[i].nesting_level != 0)
       continue;
 
+    bool suite_is_skipped = g.get_suites()[i].skipped;
+
     // Collect all descendant tests with their paths
     std::vector<std::pair<std::string, const TEST_CASE *>> all_tests;
-    for (size_t j = i; j < g.get_suites().size(); j++)
+    if (!suite_is_skipped)
     {
-      if (j > i && g.get_suites()[j].nesting_level == 0)
-        break;
-      for (const auto &test : g.get_suites()[j].tests)
-        all_tests.push_back(std::make_pair(suite_paths[j], &test));
-    }
+      for (size_t j = i; j < g.get_suites().size(); j++)
+      {
+        if (j > i && g.get_suites()[j].nesting_level == 0)
+          break;
+        for (const auto &test : g.get_suites()[j].tests)
+          all_tests.push_back(std::make_pair(suite_paths[j], &test));
+      }
 
-    if (all_tests.empty())
-      continue;
+      if (all_tests.empty())
+        continue;
+    }
 
     // Calculate suite totals
     int suite_failures = 0;
+    int suite_skipped = 0;
     std::chrono::microseconds suite_time(0);
     for (const auto &test_pair : all_tests)
     {
-      if (!test_pair.second->success)
+      if (test_pair.second->skipped)
+        suite_skipped++;
+      else if (!test_pair.second->success)
         suite_failures++;
       suite_time += std::chrono::duration_cast<std::chrono::microseconds>(
           test_pair.second->end_time - test_pair.second->start_time);
@@ -1560,11 +1611,25 @@ inline void report_xml(const std::string &filename = "test-results.xml")
     // Write suite header
     std::string suite_name = g.get_suites()[i].description;
     escape_xml(suite_name);
-    xml_file << "  <testsuite name=\"" << suite_name
-             << "\" tests=\"" << all_tests.size()
-             << "\" failures=\"" << suite_failures
-             << "\" time=\"" << std::fixed << std::setprecision(3)
-             << suite_time.count() / 1000000.0 << "\">\n";
+
+    if (suite_is_skipped)
+    {
+      // Skipped suite
+      xml_file << "  <testsuite name=\"" << suite_name
+               << "\" tests=\"0"
+               << "\" failures=\"0"
+               << "\" skipped=\"0"
+               << "\" time=\"0.000\">\n";
+    }
+    else
+    {
+      xml_file << "  <testsuite name=\"" << suite_name
+               << "\" tests=\"" << all_tests.size()
+               << "\" failures=\"" << suite_failures
+               << "\" skipped=\"" << suite_skipped
+               << "\" time=\"" << std::fixed << std::setprecision(3)
+               << suite_time.count() / 1000000.0 << "\">\n";
+    }
 
     // Write test cases
     for (const auto &test_pair : all_tests)
@@ -1584,7 +1649,13 @@ inline void report_xml(const std::string &filename = "test-results.xml")
                << "\" time=\"" << std::fixed << std::setprecision(3)
                << test_time.count() / 1000000.0 << "\"";
 
-      if (!test_pair.second->success)
+      if (test_pair.second->skipped)
+      {
+        xml_file << ">\n";
+        xml_file << "      <skipped/>\n";
+        xml_file << "    </testcase>\n";
+      }
+      else if (!test_pair.second->success)
       {
         xml_file << ">\n";
         xml_file << "      <failure message=\"" << failure_message << "\"/>\n";
