@@ -81,6 +81,7 @@ struct Colors
   const char *check; // Unicode check mark or ASCII alternative
   const char *cross; // Unicode X or ASCII alternative
   const char *warn;  // Unicode warning or ASCII alternative
+  const char *skip;  // Unicode circle or ASCII alternative
   const char *arrow; // Unicode corner arrow or ASCII alternative
 
   Colors()
@@ -149,6 +150,7 @@ struct Colors
       check = "✓";
       cross = "✗";
       warn = "!";
+      skip = "○";
       arrow = "└─";
     }
     else
@@ -156,6 +158,7 @@ struct Colors
       check = "+";
       cross = "-";
       warn = "!";
+      skip = "/";
       arrow = "|-";
     }
   }
@@ -1165,7 +1168,7 @@ void xit(const std::string &description, Callable)
     g.get_suites()[suite_idx].tests.push_back(tc);
   }
 
-  std::cout << get_indent(g.get_nesting()) << "/ SKIP " << description << std::endl;
+  std::cout << get_indent(g.get_nesting()) << colors.skip << " SKIP " << description << std::endl;
 }
 
 template <typename Callable,
@@ -1181,7 +1184,7 @@ void xdescribe(const std::string &description, Callable)
   suite.skipped = true;
   g.get_suites().push_back(suite);
 
-  std::cout << get_indent(g.get_nesting()) << "/ SKIP " << description << std::endl;
+  std::cout << get_indent(g.get_nesting()) << colors.skip << " SKIP " << description << std::endl;
 }
 
 template <typename Callable,
