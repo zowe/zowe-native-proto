@@ -22,7 +22,7 @@ export default class ViewJobStatusHandler extends SshBaseHandler {
         params.response.format.output({
             output: response,
             format: "table",
-            fields: ["id", "name", "status", "retcode"],
+            fields: ["id", "name", "owner", "status", "retcode"],
         });
         return response;
     }

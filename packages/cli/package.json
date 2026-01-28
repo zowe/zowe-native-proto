@@ -14,7 +14,6 @@
   "license": "EPL-2.0",
   "description": "Zowe Native Proto plug-in for Zowe CLI",
   "files": [
-    "bin",
     "lib",
     "npm-shrinkwrap.json"
   ],
