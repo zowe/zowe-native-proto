@@ -75,6 +75,32 @@ string zds_get_recfm(const fldata_t &file_info)
   return recfm;
 }
 
+static vector<string> get_member_names(const string &pds_dsn)
+{
+  vector<string> names;
+  vector<ZDSMem> members;
+  ZDS temp_zds = {};
+  zds_list_members(&temp_zds, pds_dsn, members);
+  for (vector<ZDSMem>::iterator it = members.begin(); it != members.end(); ++it)
+  {
+    string name = it->name;
+    zut_trim(name);
+    names.push_back(name);
+  }
+  return names;
+}
+
+static bool member_exists_in_pds(const string &pds_dsn, const string &member_name)
+{
+  vector<string> names = get_member_names(pds_dsn);
+  for (vector<string>::iterator it = names.begin(); it != names.end(); ++it)
+  {
+    if (*it == member_name)
+      return true;
+  }
+  return false;
+}
+
 int zds_get_type_info(const string &dsn, ZDSTypeInfo &info)
 {
   info.exists = false;
@@ -136,32 +162,6 @@ int zds_get_type_info(const string &dsn, ZDSTypeInfo &info)
   }
 
   return RTNCD_SUCCESS;
-}
-
-static vector<string> get_member_names(const string &pds_dsn)
-{
-  vector<string> names;
-  vector<ZDSMem> members;
-  ZDS temp_zds = {};
-  zds_list_members(&temp_zds, pds_dsn, members);
-  for (vector<ZDSMem>::iterator it = members.begin(); it != members.end(); ++it)
-  {
-    string name = it->name;
-    zut_trim(name);
-    names.push_back(name);
-  }
-  return names;
-}
-
-static bool member_exists_in_pds(const string &pds_dsn, const string &member_name)
-{
-  vector<string> names = get_member_names(pds_dsn);
-  for (vector<string>::iterator it = names.begin(); it != names.end(); ++it)
-  {
-    if (*it == member_name)
-      return true;
-  }
-  return false;
 }
 
 static void delete_all_members(const string &pds_dsn)
