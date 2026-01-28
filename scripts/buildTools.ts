@@ -121,6 +121,7 @@ class WatchUtils {
     private readonly pendingChanges: Map<string, { kind: "+" | "~" | "-"; mtime: Date }> = new Map();
     private rootDir: string;
     private sftp: SFTPWrapper | null = null;
+    private ui: WatchUI = new WatchUI();
     private watcher: chokidar.FSWatcher;
 
     constructor(
@@ -206,9 +207,11 @@ class WatchUtils {
             applyChangesDebounced();
         });
 
-        this.printReadyMessage();
         if (this.pendingChanges.size > 0) {
             void this.applyChanges();
+        } else {
+            // Show initial "watching" message when no changes pending
+            console.log(`${new Date().toLocaleString()} watching for changes...`);
         }
     }
 
@@ -222,16 +225,19 @@ class WatchUtils {
 
         this.buildMutex = new DeferredPromise<void>();
         try {
+            // Update UI with pending file changes
+            this.ui.setFiles(this.pendingChanges);
+            this.ui.setFooter("syncing files...");
+            this.ui.render();
+
             const toDelete: string[] = [];
             const toUpload: { localPath: string; remotePath: string }[] = [];
             const uniqueDirs = new Set<string>();
-            for (const [filePath, { kind, mtime }] of this.pendingChanges.entries()) {
+            for (const [filePath, { kind }] of this.pendingChanges.entries()) {
                 const remotePath = `${deployDirs.root}/${toPosixPath(filePath)}`;
                 if (kind === "-") {
-                    console.log(`${mtime.toLocaleString()} [-] ${filePath}`);
                     toDelete.push(remotePath);
                 } else {
-                    console.log(`${mtime.toLocaleString()} [${kind}] ${filePath} -> ${remotePath}`);
                     toUpload.push({ localPath: filePath, remotePath });
                     // Ensure all parent directories exist on the remote side
                     this.collectParentDirs(remotePath, uniqueDirs);
@@ -260,7 +266,10 @@ class WatchUtils {
     }
 
     private printReadyMessage() {
-        console.log(`${new Date().toLocaleString()} watching for changes...`);
+        this.ui.setFooter("watching for changes...");
+        this.ui.render();
+        // Reset UI state for next change batch (keeps last render visible)
+        this.ui.reset();
     }
 
     private async deleteFile(sftp: SFTPWrapper, remotePath: string) {
@@ -308,19 +317,43 @@ class WatchUtils {
     private async executeBuild(...paths: string[]) {
         const cSourceChanged = paths.some((filePath) => toPosixPath(filePath).split("/")[0] === "c");
         const zowedSourceChanged = paths.some((filePath) => toPosixPath(filePath).split("/")[0] === "zowed");
+
+        // Determine which tasks need to run
+        const tasksToRun: string[] = [];
+        if (cSourceChanged) {
+            tasksToRun.push("c");
+        }
+        if (zowedSourceChanged || cSourceChanged) {
+            tasksToRun.push("zowed");
+        }
+
+        // Add tasks to UI and start spinner
+        for (const task of tasksToRun) {
+            this.ui.addTask(task);
+        }
+        this.ui.setFooter("building...");
+        this.ui.startSpinner();
+
         let result: number | string; // number for failing exit code or string for successful output
         if (cSourceChanged) {
-            result = await this.makeTask();
+            result = await this.makeTask("c");
         }
         if (zowedSourceChanged || typeof result === "string" || result === 0) {
-            await this.makeTask(deployDirs.zowedDir);
+            await this.makeTask("zowed", deployDirs.zowedDir);
         }
+
+        this.ui.stopSpinner();
     }
 
-    private makeTask(inDir?: string): Promise<number | string> {
+    private makeTask(taskName: string, inDir?: string): Promise<number | string> {
+        this.ui.updateTask(taskName, "running");
+        this.ui.render();
+
         return new Promise<number | string>((resolve, reject) => {
             this.connection.shell(false, async (err, stream) => {
                 if (err) {
+                    this.ui.updateTask(taskName, "error", err.message);
+                    this.ui.render();
                     reject(err);
                     return;
                 }
@@ -332,24 +365,28 @@ class WatchUtils {
                 const cwd = inDir ?? deployDirs.cDir;
                 const cmd = `cd ${cwd}\nmake\nexit $?\n`;
                 stream.write(cmd);
-                const prefix = `[tasks -> ${path.basename(cwd)}] make`;
-                const spinner = startSpinner(prefix);
 
                 let outText = "";
                 let errText = "";
                 stream
                     .on("exit", (code: number) => {
                         if (errText.length > 0) {
-                            const status = code > 0 ? `failed (rc=${code}) ✘` : `succeeded with warnings !`;
-                            stopSpinner(spinner, `${prefix} ${status}\nerror: \n${errText}`);
+                            const status: TaskStatus = code > 0 ? "error" : "warning";
+                            this.ui.updateTask(taskName, status, errText);
+                            this.ui.render();
                             resolve(code);
                         } else {
-                            const status = outText.length > 0 ? "succeeded ✔" : "detected no changes —";
-                            stopSpinner(spinner, `${prefix} ${status}`);
+                            const status: TaskStatus = outText.length > 0 ? "success" : "no_changes";
+                            this.ui.updateTask(taskName, status);
+                            this.ui.render();
                             resolve(outText);
                         }
                     })
-                    .on("error", reject)
+                    .on("error", (err: Error) => {
+                        this.ui.updateTask(taskName, "error", err.message);
+                        this.ui.render();
+                        reject(err);
+                    })
                     .stdout.on("data", (data: Buffer) => {
                         const str = data.toString().trim();
                         outText += str;
@@ -367,6 +404,251 @@ class WatchUtils {
 
 function DEBUG_MODE() {
     return process.env.ZOWE_NATIVE_DEBUG?.toUpperCase() === "TRUE" || process.env.ZOWE_NATIVE_DEBUG === "1";
+}
+
+// ANSI escape codes for terminal formatting
+const ANSI = {
+    HIDE_CURSOR: "\x1b[?25l",
+    SHOW_CURSOR: "\x1b[?25h",
+    CLEAR_LINE: "\x1b[2K",
+    MOVE_UP: (n: number) => `\x1b[${n}A`,
+    GREEN: "\x1b[32m",
+    RED: "\x1b[31m",
+    YELLOW: "\x1b[33m",
+    DIM: "\x1b[2m",
+    RESET: "\x1b[0m",
+};
+
+// Box drawing characters (rounded)
+const BOX = {
+    TOP_LEFT: "╭",
+    TOP_RIGHT: "╮",
+    BOTTOM_LEFT: "╰",
+    BOTTOM_RIGHT: "╯",
+    HORIZONTAL: "─",
+    VERTICAL: "│",
+    LEFT_T: "├",
+    RIGHT_T: "┤",
+    DASHED: "╌",
+};
+
+const BRAILLE_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+
+type FileChangeKind = "+" | "~" | "-";
+type TaskStatus = "pending" | "running" | "success" | "warning" | "error" | "no_changes";
+
+interface TaskState {
+    name: string;
+    status: TaskStatus;
+    error?: string;
+}
+
+class WatchUI {
+    private files: Map<string, FileChangeKind> = new Map();
+    private tasks: Map<string, TaskState> = new Map();
+    private timestamp: Date = new Date();
+    private boxWidth = 60;
+    private lineCount = 0;
+    private spinnerInterval: NodeJS.Timeout | null = null;
+    private spinnerFrame = 0;
+    private footerMessage = "watching for changes...";
+
+    private isInteractive(): boolean {
+        return process.stdout.isTTY === true && !DEBUG_MODE() && process.env.CI == null;
+    }
+
+    setFiles(files: Map<string, { kind: FileChangeKind; mtime: Date }>) {
+        this.files.clear();
+        this.timestamp = new Date();
+        for (const [filePath, { kind }] of files.entries()) {
+            this.files.set(filePath, kind);
+        }
+    }
+
+    addTask(name: string) {
+        this.tasks.set(name, { name, status: "pending" });
+    }
+
+    updateTask(name: string, status: TaskStatus, error?: string) {
+        const task = this.tasks.get(name);
+        if (task) {
+            task.status = status;
+            task.error = error;
+        }
+    }
+
+    setFooter(message: string) {
+        this.footerMessage = message;
+    }
+
+    private getStatusIcon(status: TaskStatus): string {
+        switch (status) {
+            case "running":
+                return BRAILLE_FRAMES[this.spinnerFrame];
+            case "success":
+                return `${ANSI.GREEN}✔${ANSI.RESET}`;
+            case "warning":
+                return `${ANSI.YELLOW}!${ANSI.RESET}`;
+            case "error":
+                return `${ANSI.RED}✘${ANSI.RESET}`;
+            case "no_changes":
+                return `${ANSI.DIM}—${ANSI.RESET}`;
+            default:
+                return " ";
+        }
+    }
+
+    private getFileIcon(kind: FileChangeKind): string {
+        switch (kind) {
+            case "+":
+                return `${ANSI.GREEN}+${ANSI.RESET}`;
+            case "-":
+                return `${ANSI.RED}-${ANSI.RESET}`;
+            case "~":
+                return `${ANSI.YELLOW}~${ANSI.RESET}`;
+        }
+    }
+
+    private horizontalLine(left: string, right: string, char = BOX.HORIZONTAL): string {
+        return `${left}${char.repeat(this.boxWidth - 2)}${right}`;
+    }
+
+    private dashedLine(): string {
+        return `${BOX.LEFT_T}${BOX.DASHED.repeat(this.boxWidth - 2)}${BOX.RIGHT_T}`;
+    }
+
+    private padLine(content: string, rawLength: number): string {
+        const padding = this.boxWidth - 4 - rawLength;
+        return `${BOX.VERTICAL} ${content}${" ".repeat(Math.max(0, padding))} ${BOX.VERTICAL}`;
+    }
+
+    private buildLines(): string[] {
+        const lines: string[] = [];
+
+        // Top border with timestamp
+        lines.push(this.horizontalLine(BOX.TOP_LEFT, BOX.TOP_RIGHT));
+        const timeStr = this.timestamp.toLocaleString();
+        lines.push(this.padLine(timeStr, timeStr.length));
+
+        // Separator after timestamp
+        lines.push(this.horizontalLine(BOX.LEFT_T, BOX.RIGHT_T));
+
+        // File changes
+        for (const [filePath, kind] of this.files.entries()) {
+            const icon = this.getFileIcon(kind);
+            const display = `${icon} ${filePath}`;
+            lines.push(this.padLine(display, filePath.length + 2));
+        }
+
+        // Dashed separator before tasks
+        if (this.tasks.size > 0) {
+            lines.push(this.dashedLine());
+            lines.push(this.padLine("tasks:", 6));
+
+            for (const [, task] of this.tasks.entries()) {
+                const icon = this.getStatusIcon(task.status);
+                const taskLine = `  [${task.name}] make ${icon}`;
+                const rawLen = `  [${task.name}] make X`.length;
+                lines.push(this.padLine(taskLine, rawLen));
+
+                // Show error inline if present
+                if (task.error) {
+                    lines.push(this.padLine("", 0));
+                    const errorHeader = `${ANSI.RED}error (${task.name}):${ANSI.RESET}`;
+                    lines.push(this.padLine(`  ${errorHeader}`, `  error (${task.name}):`.length));
+                    // Split error into lines and indent
+                    const errorLines = task.error.split("\n").slice(0, 5); // Limit to 5 lines
+                    for (const errLine of errorLines) {
+                        const truncated =
+                            errLine.length > this.boxWidth - 10
+                                ? `${errLine.slice(0, this.boxWidth - 13)}...`
+                                : errLine;
+                        lines.push(this.padLine(`    ${ANSI.DIM}${truncated}${ANSI.RESET}`, truncated.length + 4));
+                    }
+                }
+            }
+        }
+
+        // Footer separator and message
+        lines.push(this.horizontalLine(BOX.LEFT_T, BOX.RIGHT_T));
+        lines.push(this.padLine(this.footerMessage, this.footerMessage.length));
+
+        // Bottom border
+        lines.push(this.horizontalLine(BOX.BOTTOM_LEFT, BOX.BOTTOM_RIGHT));
+
+        return lines;
+    }
+
+    clear() {
+        if (!this.isInteractive()) return;
+
+        if (this.lineCount > 0) {
+            // Move cursor up and clear each line
+            process.stdout.write(ANSI.MOVE_UP(this.lineCount));
+            for (let i = 0; i < this.lineCount; i++) {
+                process.stdout.write(`${ANSI.CLEAR_LINE}\n`);
+            }
+            process.stdout.write(ANSI.MOVE_UP(this.lineCount));
+        }
+    }
+
+    render() {
+        if (!this.isInteractive()) {
+            // Fallback: simple console output
+            this.renderFallback();
+            return;
+        }
+
+        this.clear();
+        const lines = this.buildLines();
+        process.stdout.write(lines.join("\n") + "\n");
+        this.lineCount = lines.length;
+    }
+
+    private renderFallback() {
+        console.log(`\n${this.timestamp.toLocaleString()}`);
+        for (const [filePath, kind] of this.files.entries()) {
+            console.log(`[${kind}] ${filePath}`);
+        }
+        if (this.tasks.size > 0) {
+            console.log("tasks:");
+            for (const [, task] of this.tasks.entries()) {
+                const statusText = task.status === "success" ? "✔" : task.status === "error" ? "✘" : task.status;
+                console.log(`  [${task.name}] make ${statusText}`);
+                if (task.error) {
+                    console.log(`  error: ${task.error}`);
+                }
+            }
+        }
+        console.log(this.footerMessage);
+    }
+
+    startSpinner() {
+        if (!this.isInteractive()) return;
+
+        process.stdout.write(ANSI.HIDE_CURSOR);
+        this.spinnerInterval = setInterval(() => {
+            this.spinnerFrame = (this.spinnerFrame + 1) % BRAILLE_FRAMES.length;
+            this.render();
+        }, 80);
+    }
+
+    stopSpinner() {
+        if (this.spinnerInterval) {
+            clearInterval(this.spinnerInterval);
+            this.spinnerInterval = null;
+        }
+        if (this.isInteractive()) {
+            process.stdout.write(ANSI.SHOW_CURSOR);
+        }
+    }
+
+    reset() {
+        this.stopSpinner();
+        this.files.clear();
+        this.tasks.clear();
+        this.lineCount = 0;
+    }
 }
 
 function startSpinner(text = "Loading...") {
