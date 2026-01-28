@@ -17,56 +17,61 @@ const path = require('path');
 const rspack = require('@rspack/core');
 const { TsCheckerRspackPlugin } = require('ts-checker-rspack-plugin');
 
-/**@type {import('@rspack/core').RspackOptions}*/
-const extensionConfig = {
-  target: 'node', // VS Code extensions run in a Node.js-context 📖 -> https://webpack.js.org/configuration/node/
-  entry: './src/extension.ts', // the entry point of this extension, 📖 -> https://webpack.js.org/configuration/entry-context/
-  output: {
-    // the bundle is stored in the 'dist' folder (check package.json), 📖 -> https://webpack.js.org/configuration/output/
-    path: path.resolve(__dirname, 'out'),
-    filename: 'extension.js',
-    libraryTarget: 'commonjs2',
-    devtoolModuleFilenameTemplate: 'webpack:///[absolute-resource-path]'
-  },
-  devtool: 'source-map',
-  externals: {
-    vscode: 'commonjs vscode' // the vscode-module is created on-the-fly and must be excluded. Add other modules that cannot be webpack'ed, 📖 -> https://webpack.js.org/configuration/externals/
-    // modules added here also need to be added in the .vscodeignore file
-  },
-  resolve: {
-    // support reading TypeScript and JavaScript files, 📖 -> https://github.com/TypeStrong/ts-loader
-    extensions: ['.ts', '.js'],
-    alias: {
-      'zowe-native-proto-sdk': path.resolve(__dirname, '..', 'sdk', 'src'),
-      'cpu-features': false,
-      './crypto/build/Release/sshcrypto.node': false,
-    }
-  },
-  module: {
-    rules: [
-      {
-        test: /\.ts$/,
-        exclude: /node_modules/,
-        loader: 'builtin:swc-loader',
-        options: {
-          jsc: {
-            parser: {
-              syntax: 'typescript',
-            },
-            target: 'es2022'
-          },
-        },
-      },
-      {
-        test: /\.js$/,
-        include: /wontache/, // https://gitlab.com/jgonggrijp/wontache/-/issues/68
-        type: "javascript/auto",
+module.exports = (_env, argv) => {
+  const isProd = argv.mode === 'production';
+
+  /**@type {import('@rspack/core').RspackOptions}*/
+  const extensionConfig = {
+    target: 'node', // VS Code extensions run in a Node.js-context 📖 -> https://webpack.js.org/configuration/node/
+    entry: './src/extension.ts', // the entry point of this extension, 📖 -> https://webpack.js.org/configuration/entry-context/
+    output: {
+      // the bundle is stored in the 'dist' folder (check package.json), 📖 -> https://webpack.js.org/configuration/output/
+      path: path.resolve(__dirname, 'out'),
+      filename: 'extension.js',
+      libraryTarget: 'commonjs2',
+      devtoolModuleFilenameTemplate: 'webpack:///[absolute-resource-path]'
+    },
+    devtool: isProd ? 'nosources-source-map' : 'source-map',
+    externals: {
+      vscode: 'commonjs vscode' // the vscode-module is created on-the-fly and must be excluded. Add other modules that cannot be webpack'ed, 📖 -> https://webpack.js.org/configuration/externals/
+      // modules added here also need to be added in the .vscodeignore file
+    },
+    resolve: {
+      // support reading TypeScript and JavaScript files, 📖 -> https://github.com/TypeStrong/ts-loader
+      extensions: ['.ts', '.js'],
+      alias: {
+        'zowe-native-proto-sdk': path.resolve(__dirname, '..', 'sdk', 'src'),
+        'cpu-features': false,
+        './crypto/build/Release/sshcrypto.node': false,
       }
-    ]
-  },
-  plugins: [new TsCheckerRspackPlugin()],
-  stats: {
-    warnings: false,
-  }
+    },
+    module: {
+      rules: [
+        {
+          test: /\.ts$/,
+          exclude: /node_modules/,
+          loader: 'builtin:swc-loader',
+          options: {
+            jsc: {
+              parser: {
+                syntax: 'typescript',
+              },
+              target: 'es2022'
+            },
+          },
+        }
+      ]
+    },
+    plugins: [
+      new TsCheckerRspackPlugin(),
+      new rspack.CopyRspackPlugin({
+        patterns: [{ from: '../sdk/bin', to: '../bin', noErrorOnMissing: !isProd, force: true }],
+      }),
+    ],
+    stats: {
+      warnings: false,
+    }
+  };
+
+  return [extensionConfig];
 };
-module.exports = [extensionConfig];

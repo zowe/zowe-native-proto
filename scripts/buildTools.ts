@@ -457,7 +457,7 @@ async function artifacts(connection: Client, packageAll: boolean) {
         artifactPaths.push("c/build-out/zoweax", "c/build-out/zowex");
     }
     const artifactNames = artifactPaths.map((file) => path.basename(file)).sort();
-    const localDirs = packageAll ? ["dist"] : ["packages/cli/bin", "packages/vsce/bin"];
+    const localDir = packageAll ? "dist" : "packages/sdk/bin";
     const localFiles = ["server.pax.Z", "checksums.asc"];
     const [paxFile, checksumFile] = localFiles;
     const prePaxCmds = artifactPaths.map(
@@ -476,18 +476,9 @@ async function artifacts(connection: Client, packageAll: boolean) {
             postPaxCmd,
         ].join("\n"),
     );
-    for (const localDir of localDirs) {
-        fs.mkdirSync(path.resolve(__dirname, `./../${localDir}`), { recursive: true });
-        for (const localFile of localFiles) {
-            if (localDirs.indexOf(localDir) === 0) {
-                await retrieve(connection, [`dist/${localFile}`], localDir, true);
-            } else {
-                fs.cpSync(
-                    path.resolve(__dirname, `./../${localDirs[0]}/${localFile}`),
-                    path.resolve(__dirname, `./../${localDir}/${localFile}`),
-                );
-            }
-        }
+    fs.mkdirSync(path.resolve(__dirname, `./../${localDir}`), { recursive: true });
+    for (const localFile of localFiles) {
+        await retrieve(connection, [`dist/${localFile}`], localDir, true);
     }
 }
 

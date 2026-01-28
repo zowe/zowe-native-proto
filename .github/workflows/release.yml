@@ -73,8 +73,7 @@ jobs:
 
       - name: Download Server
         run: |
-          gh run download $RUN_ID --name zowe-server-bin
-          node scripts/moveArtifacts.js
+          gh run download $RUN_ID --dir packages/sdk/bin --name zowe-server-bin
           gh run download $RUN_ID --name zowe-server-release
           mkdir dist && mv server.pax.Z dist/zowe-server-${NEW_VERSION_SUFFIX}.pax.Z
         env:
