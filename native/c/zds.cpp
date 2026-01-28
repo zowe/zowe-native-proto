@@ -458,22 +458,21 @@ int zds_read_from_dd(ZDS *zds, string ddname, string &response)
   ifstream in(ddname.c_str());
   if (!in.is_open())
   {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open DD '%s'", ddname.c_str());
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open file '%s'", ddname.c_str());
     return RTNCD_FAILURE;
   }
 
-  bool started = false;
+  int index = 0;
+
   string line;
   while (getline(in, line))
   {
-    // Skip leading empty lines (preserves original behavior for IEBCOPY output)
-    if (!started && line.empty())
-      continue;
-
-    if (started)
+    if (index > 0 || line.size() > 0)
+    {
+      response += line;
       response.push_back('\n');
-    response += line;
-    started = true;
+      index++;
+    }
   }
   in.close();
 
@@ -559,7 +558,7 @@ int zds_write_to_dd(ZDS *zds, string ddname, const string &data)
 
   if (!out.is_open())
   {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open DD '%s'", ddname.c_str());
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open file '%s'", ddname.c_str());
     return RTNCD_FAILURE;
   }
 
