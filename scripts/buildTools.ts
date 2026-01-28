@@ -120,6 +120,7 @@ class WatchUtils {
     private cacheFile: string;
     private readonly pendingChanges: Map<string, { kind: "+" | "~" | "-"; mtime: Date }> = new Map();
     private rootDir: string;
+    private sftp: SFTPWrapper | null = null;
     private readonly spinnerFrames = ["-", "\\", "|", "/"];
     private watcher: chokidar.FSWatcher;
 
@@ -130,6 +131,23 @@ class WatchUtils {
         this.cacheFile = path.resolve(this.cacheDir, `${sshProfile.user}_${sshProfile.host}.json`);
         this.rootDir = path.resolve(__dirname, localDeployDir);
         this.loadCache();
+    }
+
+    private async getSftp(): Promise<SFTPWrapper> {
+        if (this.sftp == null) {
+            this.sftp = await promisify(this.connection.sftp.bind(this.connection))();
+            this.sftp.on("close", () => {
+                this.sftp = null;
+            });
+        }
+        return this.sftp;
+    }
+
+    private closeSftp() {
+        if (this.sftp != null) {
+            this.sftp.end();
+            this.sftp = null;
+        }
     }
 
     public loadCache() {
@@ -168,6 +186,7 @@ class WatchUtils {
             if (debounceTimer) {
                 clearTimeout(debounceTimer);
             }
+            this.closeSftp();
             this.watcher.close();
         });
         const applyChangesDebounced = () => {
@@ -204,7 +223,6 @@ class WatchUtils {
         }
 
         this.buildMutex = new DeferredPromise<void>();
-        let sftp: SFTPWrapper;
         try {
             const toDelete: string[] = [];
             const toUpload: { localPath: string; remotePath: string }[] = [];
@@ -224,7 +242,7 @@ class WatchUtils {
             }
             this.pendingChanges.clear();
 
-            sftp = await promisify(this.connection.sftp.bind(this.connection))();
+            const sftp = await this.getSftp();
             await Promise.all(toDelete.map((remotePath) => this.deleteFile(sftp, remotePath)));
             for (const dirPath of uniqueDirs) {
                 // Create directories sequentially since order may matter
@@ -236,7 +254,6 @@ class WatchUtils {
             this.saveCache();
             await this.executeBuild(...toUpload.map(({ localPath }) => localPath));
         } finally {
-            sftp?.end();
             this.buildMutex.resolve();
             this.printReadyMessage();
         }
