@@ -8,7 +8,7 @@
     "build:all": "npm run build:types && npm run build",
     "build:types": "npx tsx scripts/generateTypes.ts",
     "clean": "npm run clean --workspaces",
-    "download": "gh run download --name zowe-server-bin && node scripts/moveArtifacts.js",
+    "download": "gh run download --dir packages/sdk/bin --name zowe-server-bin",
     "license": "node scripts/updateLicenses.js",
     "lint": "npm run lint --workspaces",
     "lint:cpp": "bash -c \"clang-format --dry-run --Werror native/**/*.{c,cpp,h,hpp}\"",

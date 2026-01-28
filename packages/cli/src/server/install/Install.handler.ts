@@ -18,7 +18,6 @@ import {
 } from "@zowe/imperative";
 import { ZSshClient, ZSshUtils } from "zowe-native-proto-sdk";
 import { translateCliError } from "../../CliErrorUtils";
-import { Constants } from "../../Constants";
 import { SshBaseHandler } from "../../SshBaseHandler";
 
 export default class ServerInstallHandler implements ICommandHandler {
@@ -34,7 +33,7 @@ export default class ServerInstallHandler implements ICommandHandler {
 
         params.response.progress.startBar({ task });
         try {
-            await ZSshUtils.installServer(session, serverPath, Constants.ZSSH_BIN_DIR, {
+            await ZSshUtils.installServer(session, serverPath, {
                 onProgress: (progressIncrement) => {
                     task.percentComplete += progressIncrement;
                 },
