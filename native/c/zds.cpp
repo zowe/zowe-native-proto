@@ -853,19 +853,13 @@ static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
         }
       }
 
-      // Prepend EBCDIC ASA control character AFTER encoding
-      if (is_asa)
-      {
-        line = string(1, asa_char) + line;
-      }
-
-      // Check if line will be truncated
-      if (static_cast<int>(line.length()) > max_len)
+      // Check if line will be truncated (account for ASA char if present)
+      if (static_cast<int>(line.length() + (is_asa ? 1 : 0)) > max_len)
       {
         truncation.add_line(line_num);
       }
 
-      rc = zds_write_output_bpam(zds, ioc, line);
+      rc = zds_write_output_bpam(zds, ioc, line, is_asa ? asa_char : '\0');
       if (rc != RTNCD_SUCCESS)
       {
         DiagMsgGuard guard(zds);
@@ -930,18 +924,13 @@ static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
             }
           }
 
-          // Prepend EBCDIC ASA control character AFTER encoding
-          if (is_asa && asa_char != '\0')
-          {
-            line = string(1, asa_char) + line;
-          }
-
-          if (static_cast<int>(line.length()) > max_len)
+          // Check if line will be truncated (account for ASA char if present)
+          if (static_cast<int>(line.length() + (is_asa && asa_char != '\0' ? 1 : 0)) > max_len)
           {
             truncation.add_line(line_num);
           }
 
-          rc = zds_write_output_bpam(zds, ioc, line);
+          rc = zds_write_output_bpam(zds, ioc, line, (is_asa && asa_char != '\0') ? asa_char : '\0');
           if (rc != RTNCD_SUCCESS)
           {
             DiagMsgGuard guard(zds);
@@ -1102,16 +1091,29 @@ int zds_open_output_bpam(ZDS *zds, std::string dsname, IO_CTRL *&ioc)
   return RTNCD_SUCCESS;
 }
 
-int zds_write_output_bpam(ZDS *zds, IO_CTRL *ioc, string &data)
+int zds_write_output_bpam(ZDS *zds, IO_CTRL *ioc, string &data, char asa_char)
 {
   int rc = 0;
-  int length = data.length();
-  rc = ZDSWBPAM(zds, ioc, data.c_str(), &length);
+  int length = 0;
+  if (asa_char != '\0')
+  {
+    string asa_data;
+    asa_data.reserve(data.length() + 1);
+    asa_data = asa_char;
+    asa_data += data;
+    length = asa_data.length();
+    rc = ZDSWBPAM(zds, ioc, asa_data.c_str(), &length);
+  }
+  else
+  {
+    length = data.length();
+    rc = ZDSWBPAM(zds, ioc, data.c_str(), &length);
+  }
   if (0 != rc)
   {
     if (0 == zds->diag.e_msg_len) // only set error if no error message was already set
     {
-      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to write output to BPAM: %s", data.c_str());
+      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to write output to BPAM: %s... (%d bytes)", data.substr(0, 20).c_str(), length);
       return RTNCD_FAILURE;
     }
   }
@@ -3131,19 +3133,13 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const string &dsn, const str
         }
       }
 
-      // Prepend EBCDIC ASA control character AFTER encoding
-      if (is_asa)
-      {
-        line = string(1, asa_char) + line;
-      }
-
-      // Check if line will be truncated
-      if (static_cast<int>(line.length()) > max_len)
+      // Check if line will be truncated (account for ASA char if present)
+      if (static_cast<int>(line.length() + (is_asa ? 1 : 0)) > max_len)
       {
         truncation.add_line(line_num);
       }
 
-      rc = zds_write_output_bpam(zds, ioc, line);
+      rc = zds_write_output_bpam(zds, ioc, line, is_asa ? asa_char : '\0');
       if (rc != RTNCD_SUCCESS)
       {
         DiagMsgGuard guard(zds);
@@ -3216,19 +3212,13 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const string &dsn, const str
           }
         }
 
-        // Prepend EBCDIC ASA control character AFTER encoding
-        if (is_asa && asa_char != '\0')
-        {
-          line_buffer = string(1, asa_char) + line_buffer;
-        }
-
-        // Check if line will be truncated
-        if (static_cast<int>(line_buffer.length()) > max_len)
+        // Check if line will be truncated (account for ASA char if present)
+        if (static_cast<int>(line_buffer.length() + (is_asa && asa_char != '\0' ? 1 : 0)) > max_len)
         {
           truncation.add_line(line_num);
         }
 
-        rc = zds_write_output_bpam(zds, ioc, line_buffer);
+        rc = zds_write_output_bpam(zds, ioc, line_buffer, (is_asa && asa_char != '\0') ? asa_char : '\0');
         if (rc != RTNCD_SUCCESS)
         {
           DiagMsgGuard guard(zds);
