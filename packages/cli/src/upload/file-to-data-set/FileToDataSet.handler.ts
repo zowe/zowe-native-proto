@@ -30,6 +30,9 @@ export default class UploadFileToDataSetHandler extends SshBaseHandler {
             uploadSource,
             params.arguments.dataSet,
         );
+        if (response.truncationWarning) {
+            params.response.console.log("Warning: %s", response.truncationWarning);
+        }
         params.response.data.setMessage(successMsg);
         return response;
     }

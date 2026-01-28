@@ -57,7 +57,7 @@ int interactive_mode(plugin::InvocationContext &context)
 
   std::string command;
   int rc = 0;
-  int is_tty = isatty(fileno(stdout));
+  int is_tty = isatty(fileno(stdin));
 
   do
   {

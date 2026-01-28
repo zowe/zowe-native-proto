@@ -336,7 +336,7 @@ int handle_uss_write(InvocationContext &context)
     string data = "";
     string line = "";
 
-    if (!isatty(fileno(stdout)))
+    if (!isatty(fileno(stdin)))
     {
       std::istreambuf_iterator<char> begin(context.input_stream());
       std::istreambuf_iterator<char> end;
@@ -344,10 +344,15 @@ int handle_uss_write(InvocationContext &context)
     }
     else
     {
+      bool first_line = true;
       while (getline(context.input_stream(), line))
       {
+        if (!first_line)
+        {
+          data.push_back('\n');
+        }
+        first_line = false;
         data += line;
-        data.push_back('\n');
       }
     }
     rc = zusf_write_to_uss_file(&zusf, file, data);
