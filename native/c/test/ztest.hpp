@@ -502,11 +502,10 @@ public:
       // Setup timeout handler (always active)
       setup_timeout_handler(timeout_sa, old_timeout_sa);
 
-      // Set alarm AFTER both setjmp and signal handler setup
-      alarm(timeout_seconds);
-
       if (!abend && !timeout)
       {
+        alarm(timeout_seconds);
+
         try
         {
           hook.callback();
@@ -533,10 +532,11 @@ public:
           error_message = hook_type + " hook failed with unknown error";
           throw std::runtime_error(error_message);
         }
+
+        alarm(0);
       }
 
-      // Cancel alarm and reset handlers
-      alarm(0);
+      // Reset handlers
       reset_timeout_handler(old_timeout_sa);
       if (!hook.options.remove_signal_handling)
       {
@@ -737,18 +737,16 @@ public:
     // Setup timeout handler (always active)
     setup_timeout_handler(timeout_sa, old_timeout_sa);
 
-    // Set alarm AFTER both setjmp and signal handler setup
-    alarm(timeout_seconds);
-
     if (!abend && !timeout)
     {
+      alarm(timeout_seconds);
       execute_test(test, tc, abend);
+      alarm(0);
     }
 
     tc.end_time = std::chrono::high_resolution_clock::now();
 
-    // Cancel alarm and reset timeout handler
-    alarm(0);
+    // Reset timeout handler
     reset_timeout_handler(old_timeout_sa);
 
     if (!opts.remove_signal_handling)

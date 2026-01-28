@@ -168,7 +168,7 @@ By default, LE or Metal C abends will signal for program termination. When this 
 In this situation, no CEEDUMP is captured. To disable this behavior, disable signal handling by passing a `TEST_OPTIONS` object as a parameter to `it()`, e.g.:
 
 ```c
-             TEST_OPTIONS opts = {0};
+             TEST_OPTIONS opts = {};
              opts.remove_signal_handling = true;
 
              it("should recover from an abend", []() -> void
@@ -183,7 +183,7 @@ In this situation, no CEEDUMP is captured. To disable this behavior, disable sig
 Tests have a default timeout of 10 seconds to prevent hung tests. For tests that need more time (e.g., mainframe I/O operations), the timeout can be increased:
 
 ```c
-             TEST_OPTIONS opts = {0};
+             TEST_OPTIONS opts = {};
              opts.timeout_sec = 30;
 
              it("should complete slow operation", []() -> void
