@@ -1461,7 +1461,7 @@ void zowex_ds_tests()
 
                                         const size_t first_byte_pos = response.find_first_not_of(" \r\n\t");
                                         ExpectWithContext(first_byte_pos != string::npos, response).ToBe(true);
-                                        const string first_byte = response.substr(first_byte_pos, 2);
+                                        string first_byte = response.substr(first_byte_pos, 2);
                                         Expect(first_byte).ToBe("40");
                                       });
 
