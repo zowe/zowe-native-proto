@@ -11,6 +11,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - The `submitJcl` and `submitJob` functions in the `SshJesApi` class now return the job name as a property (`jobname`) within the response object. [#733](https://github.com/zowe/zowe-native-proto/issues/733)
 - Enhanced the `Job` type to include more properties such as `subsystem`, `owner`, `type`, and `class` when listing jobs. [#749](https://github.com/zowe/zowe-native-proto/pull/749)
 - Added `bin` folder that bundles server binaries in the SDK package. [#760](https://github.com/zowe/zowe-native-proto/pull/760)
+- Data set truncation warnings are now included in the response object for write operations. [#751](https://github.com/zowe/zowe-native-proto/pull/751)
 
 ## `0.2.2`
 
