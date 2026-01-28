@@ -26,6 +26,14 @@ interface IConfig {
 
 type SftpError = Error & { code?: number };
 
+/**
+ * Converts a file path to use POSIX separators (forward slashes).
+ * This ensures consistent cache keys across Windows and Unix systems.
+ */
+function toPosixPath(filePath: string): string {
+    return filePath.split(path.sep).join("/");
+}
+
 const localDeployDir = "./../native";
 const args = process.argv.slice(2);
 let deployDirs: {
@@ -142,11 +150,11 @@ class WatchUtils {
             (filePath) =>
                 !path.basename(filePath).startsWith(".") &&
                 fs.statSync(path.join(this.rootDir, filePath)).mtimeMs >
-                    (this.cache[filePath.replaceAll(path.sep, path.posix.sep)] ?? 0),
+                    (this.cache[toPosixPath(filePath)] ?? 0),
         );
         for (const filePath of changedFiles) {
             const absLocalPath = path.resolve(__dirname, `${localDeployDir}/${filePath}`);
-            const changeKind = this.cache[filePath.replaceAll(path.sep, path.posix.sep)] == null ? "+" : "~";
+            const changeKind = this.cache[toPosixPath(filePath)] == null ? "+" : "~";
             this.pendingChanges.set(filePath, { kind: changeKind, mtime: fs.statSync(absLocalPath).mtime });
         }
 
@@ -202,7 +210,7 @@ class WatchUtils {
             const toUpload: { localPath: string; remotePath: string }[] = [];
             const uniqueDirs = new Set<string>();
             for (const [filePath, { kind, mtime }] of this.pendingChanges.entries()) {
-                const remotePath = `${deployDirs.root}/${filePath.replaceAll(path.sep, path.posix.sep)}`;
+                const remotePath = `${deployDirs.root}/${toPosixPath(filePath)}`;
                 if (kind === "-") {
                     console.log(`${mtime.toLocaleString()} [-] ${filePath}`);
                     toDelete.push(remotePath);
@@ -266,8 +274,8 @@ class WatchUtils {
     }
 
     private async executeBuild(...paths: string[]) {
-        const cSourceChanged = paths.some((filePath) => filePath.split(path.sep)[0] === "c");
-        const zowedSourceChanged = paths.some((filePath) => filePath.split(path.sep)[0] === "zowed");
+        const cSourceChanged = paths.some((filePath) => toPosixPath(filePath).split("/")[0] === "c");
+        const zowedSourceChanged = paths.some((filePath) => toPosixPath(filePath).split("/")[0] === "zowed");
         let result: number | string; // number for failing exit code or string for successful output
         if (cSourceChanged) {
             result = await this.makeTask();
@@ -590,9 +598,9 @@ async function upload(connection: Client, sshProfile: IProfile) {
             }
             for (let i = 0; i < files.length; i++) {
                 const from = path.resolve(__dirname, `${localDeployDir}/${files[i]}`);
-                const to = `${deployDirs.root}/${files[i]}`;
+                const to = `${deployDirs.root}/${toPosixPath(files[i])}`;
                 pendingUploads.push(uploadFile(sftpcon, from, to));
-                watcher.cache[files[i].replaceAll(path.sep, path.posix.sep)] = fs.statSync(from).mtimeMs;
+                watcher.cache[toPosixPath(files[i])] = fs.statSync(from).mtimeMs;
             }
             await Promise.all(pendingUploads);
 
