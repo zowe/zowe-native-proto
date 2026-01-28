@@ -259,10 +259,10 @@ private:
     sigaction(SIGALRM, &sa, &old_sa); // Save old handler
   }
 
-  static void reset_timeout_handler(struct sigaction &old_sa)
+  static void reset_timeout_handler(const struct sigaction &old_sa)
   {
-    alarm(0);                          // Cancel any pending alarm
-    sigaction(SIGALRM, &old_sa, NULL); // Restore old handler
+    alarm(0);                             // Cancel any pending alarm
+    sigaction(SIGALRM, &old_sa, nullptr); // Restore old handler
   }
 
   template <typename Callable>
