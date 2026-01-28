@@ -235,16 +235,18 @@ class WatchUtils {
                 } else {
                     console.log(`${mtime.toLocaleString()} [${kind}] ${filePath} -> ${remotePath}`);
                     toUpload.push({ localPath: filePath, remotePath });
-                    // Check . and .. directories to ensure parent dirs get created
-                    uniqueDirs.add(path.dirname(path.dirname(remotePath)));
-                    uniqueDirs.add(path.dirname(remotePath));
+                    // Ensure all parent directories exist on the remote side
+                    this.collectParentDirs(remotePath, uniqueDirs);
                 }
             }
             this.pendingChanges.clear();
 
             const sftp = await this.getSftp();
             await Promise.all(toDelete.map((remotePath) => this.deleteFile(sftp, remotePath)));
-            for (const dirPath of uniqueDirs) {
+            const orderedDirs = Array.from(uniqueDirs).sort((left, right) => {
+                return left.split("/").length - right.split("/").length;
+            });
+            for (const dirPath of orderedDirs) {
                 // Create directories sequentially since order may matter
                 await this.createDir(sftp, dirPath);
             }
@@ -272,6 +274,21 @@ class WatchUtils {
             }
         }
         delete this.cache[path.posix.relative(deployDirs.root, remotePath)];
+    }
+
+    private collectParentDirs(remotePath: string, uniqueDirs: Set<string>) {
+        let dirPath = path.posix.dirname(remotePath);
+        while (dirPath && dirPath !== "." && dirPath !== "/" && dirPath !== deployDirs.root) {
+            uniqueDirs.add(dirPath);
+            const nextDir = path.posix.dirname(dirPath);
+            if (nextDir === dirPath) {
+                break;
+            }
+            dirPath = nextDir;
+        }
+        if (deployDirs.root && deployDirs.root !== "/" && deployDirs.root !== ".") {
+            uniqueDirs.add(deployDirs.root);
+        }
     }
 
     private async createDir(sftp: SFTPWrapper, remotePath: string) {
