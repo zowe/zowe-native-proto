@@ -15,10 +15,12 @@
 #include <cstring>
 #include <fstream>
 #include <iostream>
+#include <iterator>
 #include <sstream>
 #include <string>
 #include <iomanip>
 #include <algorithm>
+#include <unistd.h>
 #include "zut.hpp"
 #include "zutm.h"
 #include "zutm31.h"
@@ -762,4 +764,30 @@ FileGuard::operator FILE *() const
 FileGuard::operator bool() const
 {
   return fp != nullptr;
+}
+
+string zut_read_input(istream &input_stream)
+{
+  string data;
+  if (!isatty(fileno(stdin)))
+  {
+    istreambuf_iterator<char> begin(input_stream);
+    istreambuf_iterator<char> end;
+    data.assign(begin, end);
+  }
+  else
+  {
+    string line;
+    bool first_line = true;
+    while (getline(input_stream, line))
+    {
+      if (!first_line)
+      {
+        data.push_back('\n');
+      }
+      first_line = false;
+      data += line;
+    }
+  }
+  return data;
 }

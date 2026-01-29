@@ -15,7 +15,6 @@
 #include "../zut.hpp"
 #include <string>
 #include <vector>
-#include <unistd.h>
 
 using namespace ast;
 using namespace parser;
@@ -622,29 +621,7 @@ int handle_data_set_write(InvocationContext &context)
   }
   else
   {
-    string data;
-    string line;
-
-    if (!isatty(fileno(stdin)))
-    {
-      istreambuf_iterator<char> begin(context.input_stream());
-      istreambuf_iterator<char> end;
-      data.assign(begin, end);
-    }
-    else
-    {
-      bool first_line = true;
-      while (getline(context.input_stream(), line))
-      {
-        if (!first_line)
-        {
-          data.push_back('\n');
-        }
-        first_line = false;
-        data += line;
-      }
-    }
-
+    string data = zut_read_input(context.input_stream());
     rc = zds_write_to_dsn(&zds, dsn, data);
   }
 
