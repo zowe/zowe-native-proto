@@ -191,7 +191,7 @@ static int run_iebcopy(ZDS *zds, vector<string> &dds, const string &control_stmt
     return RTNCD_FAILURE;
   }
 
-  rc = zut_run("IEBCOPY");
+  rc = zut_run(zds->diag, string("IEBCOPY"), string(""));
   if (rc != RTNCD_SUCCESS)
   {
     string output;
@@ -213,45 +213,24 @@ static int run_iebcopy(ZDS *zds, vector<string> &dds, const string &control_stmt
   return RTNCD_SUCCESS;
 }
 
+static int copy_sequential(ZDS *zds, const string &src_dsn, const string &dst_dsn);
+
+// PDS-to-PDS copy by copying each member with binary I/O (avoids IEBCOPY LOAD/call 0C4)
 static int copy_pds_to_pds(ZDS *zds, const ZDSTypeInfo &src, const ZDSTypeInfo &dst, bool replace)
 {
-  vector<string> dds;
-  dds.push_back("alloc dd(INDD) da('" + src.base_dsn + "') shr");
-  dds.push_back("alloc dd(OUTDD) da('" + dst.base_dsn + "') old");
-  dds.push_back("alloc dd(sysprint) lrecl(80) recfm(f,b) blksize(80)");
-  dds.push_back("alloc dd(sysin) lrecl(80) recfm(f,b) blksize(80)");
-
-  string control_stmts;
-  if (replace)
+  vector<string> src_members = get_member_names(src.base_dsn);
+  for (size_t i = 0; i < src_members.size(); i++)
   {
-    // INDD with R option replaces like-named members
-    control_stmts = "        COPY OUTDD=OUTDD,INDD=((INDD,R))";
+    const string &member = src_members[i];
+    if (!replace && member_exists_in_pds(dst.base_dsn, member))
+      continue;
+    string src_mem_dsn = src.base_dsn + "(" + member + ")";
+    string dst_mem_dsn = dst.base_dsn + "(" + member + ")";
+    int rc = copy_sequential(zds, src_mem_dsn, dst_mem_dsn);
+    if (rc != RTNCD_SUCCESS)
+      return rc;
   }
-  else
-  {
-    vector<string> target_members = get_member_names(dst.base_dsn);
-    if (target_members.empty())
-    {
-      control_stmts = "        COPY OUTDD=OUTDD,INDD=INDD";
-    }
-    else
-    {
-      control_stmts = "        COPY OUTDD=OUTDD,INDD=INDD\n";
-      control_stmts += "        EXCLUDE MEMBER=(";
-      for (size_t i = 0; i < target_members.size(); i++)
-      {
-        if (i > 0)
-          control_stmts += ",";
-        // IEBCOPY has 71 char line limit
-        if (control_stmts.length() - control_stmts.rfind('\n') > 60)
-          control_stmts += "\n               ";
-        control_stmts += target_members[i];
-      }
-      control_stmts += ")";
-    }
-  }
-
-  return run_iebcopy(zds, dds, control_stmts);
+  return RTNCD_SUCCESS;
 }
 
 // Copy sequential data set or member using binary I/O
@@ -359,11 +338,13 @@ int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2, bool replace,
     }
     else
     {
-      // PS -> PS: copy attributes
+      // PS -> PS: copy attributes and ensure space allocation (primary/secondary in tracks)
       attrs.dsorg = "PS";
       attrs.recfm = info1.entry.recfm.c_str();
       attrs.lrecl = info1.entry.lrecl;
       attrs.blksize = info1.entry.blksize;
+      attrs.primary = 1;
+      attrs.secondary = 1;
     }
 
     rc = zds_create_dsn(&create_zds, info2.base_dsn, attrs, create_resp);
@@ -408,17 +389,10 @@ int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2, bool replace,
   {
     if (same_pds)
     {
-      // Use IEBCOPY for same-PDS member copy to avoid file locking issues
-      vector<string> dds;
-      dds.push_back("alloc dd(INDD) da('" + info1.base_dsn + "') shr");
-      dds.push_back("alloc dd(OUTDD) da('" + info2.base_dsn + "') old");
-      dds.push_back("alloc dd(sysprint) lrecl(80) recfm(f,b) blksize(80)");
-      dds.push_back("alloc dd(sysin) lrecl(80) recfm(f,b) blksize(80)");
-
-      string control_stmts = "        COPY OUTDD=OUTDD,INDD=INDD\n";
-      control_stmts += "        SELECT MEMBER=((" + info1.member_name + "," + info2.member_name + ",R))";
-
-      return run_iebcopy(zds, dds, control_stmts);
+      // Same PDS: copy member to member using binary I/O
+      string src_mem_dsn = info1.base_dsn + "(" + info1.member_name + ")";
+      string dst_mem_dsn = info2.base_dsn + "(" + info2.member_name + ")";
+      return copy_sequential(zds, src_mem_dsn, dst_mem_dsn);
     }
 
     return copy_sequential(zds, dsn1, dsn2);
@@ -435,6 +409,28 @@ int zds_compress_dsn(ZDS *zds, const string &dsn)
   {
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "data set '%s' is not a PDS", dsn.c_str());
     return RTNCD_FAILURE;
+  }
+
+  // When DSCB did not set dsntype (like test or migrated), verify via fldata that it is PDS not PDSE
+  if (info.entry.dsntype.empty())
+  {
+    string dsn_path = "//'" + info.base_dsn + "'";
+    FILE *dir = fopen(dsn_path.c_str(), "r");
+    if (dir)
+    {
+      fldata_t file_info = {0};
+      char file_name[64] = {0};
+      if (0 == fldata(dir, file_name, &file_info))
+      {
+        if (file_info.__dsorgPDSE || !file_info.__dsorgPDSdir)
+        {
+          fclose(dir);
+          zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "data set '%s' is not a PDS", dsn.c_str());
+          return RTNCD_FAILURE;
+        }
+      }
+      fclose(dir);
+    }
   }
 
   vector<string> dds;
