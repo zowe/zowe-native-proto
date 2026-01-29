@@ -20,6 +20,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - `c`: Fixed issue where BPAM write operations would accidentally wipe the contents of a data set if one of the lines exceeded the record length. Now, the line is truncated according to the max record length of the data set, and the user is warned about line ranges that exceed the record length. [#587](https://github.com/zowe/zowe-native-proto/issues/587)
 - `c`: PDS and PDSE members are now edited using a partitioned access method to preserve and update ISPF statistics. [#587](https://github.com/zowe/zowe-native-proto/issues/587)
 - `c`: Added support for handling ASA control characters when writing to sequential and partitioned data sets. [#751](https://github.com/zowe/zowe-native-proto/pull/751)
+- `c`: Added support for line truncation detection when writing to data sets. The truncated line ranges are displayed as a warning message after the write process is complete. [#751](https://github.com/zowe/zowe-native-proto/pull/751)
 
 ## `0.2.2`
 
