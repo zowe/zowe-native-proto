@@ -47,6 +47,8 @@ void zowex_ds_tests()
   describe("data-set",
            [&]() -> void
            {
+             TEST_OPTIONS long_test_opts = {false, 30};
+
              afterAll(
                  [&]() -> void
                  {
@@ -77,7 +79,8 @@ void zowex_ds_tests()
                        }
                      }
                    }
-                 });
+                 },
+                 long_test_opts);
              it("should display help", []() -> void
                 {
                   int rc = 0;

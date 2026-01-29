@@ -13,9 +13,10 @@
 #define ZUTILS_HPP
 #include <string>
 #include <vector>
-#include "../zjson.hpp"
+
 const std::string zowex_command = "./../build-out/zowex";
 const std::string zoweax_command = "./../build-out/zoweax";
+
 int execute_command_with_input(const std::string &command, const std::string &input, bool suppress_output = true);
 int execute_command_with_output(const std::string &command, std::string &output);
 std::string get_random_string(const int length = 7, const bool allNumbers = true);
@@ -26,4 +27,5 @@ std::string parse_etag_from_output(const std::string &output);
 std::vector<std::string> parse_rfc_response(const std::string input, const char *delim = ",");
 // Wait for a job to be visible in JES (returns true if found, false if timeout)
 bool wait_for_job(const std::string &jobid, int max_retries = 30, int delay_ms = 100);
+
 #endif
