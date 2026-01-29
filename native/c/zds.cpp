@@ -811,7 +811,10 @@ static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
     }
   }
 
-  // Parse and write data line by line
+  // Collect all lines first, then write them (so we can append flush bytes to the last line)
+  std::vector<std::pair<string, char>> lines_to_write; // pair of (encoded line, asa_char)
+
+  // Parse data line by line
   if (!data.empty())
   {
     size_t pos = 0;
@@ -838,14 +841,10 @@ static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
           continue;
         }
 
-        // Flush overflow blank lines as empty '-' records (for 3+ blank lines)
-        rc = write_asa_overflow_records(zds, ioc, asa_result.overflow_records);
-        if (rc != RTNCD_SUCCESS)
+        // Add overflow blank lines as empty '-' records (for 3+ blank lines)
+        for (int i = 0; i < asa_result.overflow_records; i++)
         {
-          if (cd != (iconv_t)(-1))
-            iconv_close(cd);
-          zds_close_output_bpam(zds, ioc);
-          return rc;
+          lines_to_write.push_back(std::make_pair(string(), '-'));
         }
 
         asa_char = asa_result.asa_char;
@@ -853,7 +852,7 @@ static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
 
       line_num++;
 
-      // Encode line if needed (before adding ASA char)
+      // Encode line if needed
       if (has_encoding)
       {
         try
@@ -876,16 +875,7 @@ static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
         truncation.add_line(line_num);
       }
 
-      rc = zds_write_output_bpam(zds, ioc, line, is_asa ? asa_char : '\0');
-      if (rc != RTNCD_SUCCESS)
-      {
-        DiagMsgGuard guard(zds);
-        if (cd != (iconv_t)(-1))
-          iconv_close(cd);
-        zds_close_output_bpam(zds, ioc);
-        return rc;
-      }
-
+      lines_to_write.push_back(std::make_pair(line, is_asa ? asa_char : '\0'));
       pos = newline_pos + 1;
     }
 
@@ -913,14 +903,10 @@ static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
           }
           else
           {
-            // Flush overflow blank lines as empty '-' records
-            rc = write_asa_overflow_records(zds, ioc, asa_result.overflow_records);
-            if (rc != RTNCD_SUCCESS)
+            // Add overflow blank lines as empty '-' records
+            for (int i = 0; i < asa_result.overflow_records; i++)
             {
-              if (cd != (iconv_t)(-1))
-                iconv_close(cd);
-              zds_close_output_bpam(zds, ioc);
-              return rc;
+              lines_to_write.push_back(std::make_pair(string(), '-'));
             }
 
             asa_char = asa_result.asa_char;
@@ -931,6 +917,7 @@ static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
         {
           line_num++;
 
+          // Encode line if needed
           if (has_encoding)
           {
             try
@@ -953,21 +940,13 @@ static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
             truncation.add_line(line_num);
           }
 
-          rc = zds_write_output_bpam(zds, ioc, line, (is_asa && asa_char != '\0') ? asa_char : '\0');
-          if (rc != RTNCD_SUCCESS)
-          {
-            DiagMsgGuard guard(zds);
-            if (cd != (iconv_t)(-1))
-              iconv_close(cd);
-            zds_close_output_bpam(zds, ioc);
-            return rc;
-          }
+          lines_to_write.push_back(std::make_pair(line, (is_asa && asa_char != '\0') ? asa_char : '\0'));
         }
       }
     }
   }
 
-  // Flush the shift state for stateful encodings after all lines are processed
+  // Flush encoding state and append to last line if needed
   if (has_encoding && cd != (iconv_t)(-1))
   {
     try
@@ -979,8 +958,19 @@ static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
         zds_close_output_bpam(zds, ioc);
         return RTNCD_FAILURE;
       }
-      // Note: For BPAM record writes, any trailing shift sequence bytes are typically
-      // not written as a separate record since each record should be self-contained
+
+      // Append flush bytes to the last non-empty line
+      if (!flush_buffer.empty() && !lines_to_write.empty())
+      {
+        for (auto it = lines_to_write.rbegin(); it != lines_to_write.rend(); ++it)
+        {
+          if (!it->first.empty())
+          {
+            it->first.append(flush_buffer.begin(), flush_buffer.end());
+            break;
+          }
+        }
+      }
     }
     catch (std::exception &e)
     {
@@ -991,6 +981,18 @@ static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
     }
 
     iconv_close(cd);
+  }
+
+  // Now write all the lines
+  for (size_t i = 0; i < lines_to_write.size(); i++)
+  {
+    rc = zds_write_output_bpam(zds, ioc, lines_to_write[i].first, lines_to_write[i].second);
+    if (rc != RTNCD_SUCCESS)
+    {
+      DiagMsgGuard guard(zds);
+      zds_close_output_bpam(zds, ioc);
+      return rc;
+    }
   }
 
   // Finalize any pending range
@@ -3104,12 +3106,6 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const string &dsn, const str
   // ASA state tracking for streaming
   AsaStreamState asa_state;
 
-  std::vector<char> buf(FIFO_CHUNK_SIZE);
-  size_t bytes_read;
-  std::vector<char> temp_encoded;
-  std::vector<char> left_over;
-  string line_buffer; // Buffer for accumulating partial lines across chunks
-
   // Open iconv descriptor once for all lines (for stateful encodings like IBM-939)
   iconv_t cd = (iconv_t)(-1);
   if (has_encoding)
@@ -3122,6 +3118,17 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const string &dsn, const str
       return RTNCD_FAILURE;
     }
   }
+
+  std::vector<char> buf(FIFO_CHUNK_SIZE);
+  size_t bytes_read;
+  std::vector<char> temp_encoded;
+  std::vector<char> left_over;
+  string line_buffer; // Buffer for accumulating partial lines across chunks
+
+  // Buffer the previous line so we can append flush bytes to the last one
+  string prev_line;
+  char prev_asa_char = '\0';
+  bool has_prev_line = false;
 
   while ((bytes_read = fread(&buf[0], 1, FIFO_CHUNK_SIZE, fin)) > 0)
   {
@@ -3158,6 +3165,8 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const string &dsn, const str
         rc = write_asa_overflow_records(zds, ioc, asa_result.overflow_records);
         if (rc != RTNCD_SUCCESS)
         {
+          if (cd != (iconv_t)(-1))
+            iconv_close(cd);
           zds_close_output_bpam(zds, ioc);
           return rc;
         }
@@ -3167,7 +3176,7 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const string &dsn, const str
 
       line_num++;
 
-      // Encode line content FIRST (before adding ASA char)
+      // Encode line content
       if (has_encoding)
       {
         try
@@ -3190,15 +3199,23 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const string &dsn, const str
         truncation.add_line(line_num);
       }
 
-      rc = zds_write_output_bpam(zds, ioc, line, is_asa ? asa_char : '\0');
-      if (rc != RTNCD_SUCCESS)
+      // Write previous line (not the current one - we buffer it in case it's the last)
+      if (has_prev_line)
       {
-        DiagMsgGuard guard(zds);
-        if (cd != (iconv_t)(-1))
-          iconv_close(cd);
-        zds_close_output_bpam(zds, ioc);
-        return rc;
+        rc = zds_write_output_bpam(zds, ioc, prev_line, prev_asa_char);
+        if (rc != RTNCD_SUCCESS)
+        {
+          DiagMsgGuard guard(zds);
+          if (cd != (iconv_t)(-1))
+            iconv_close(cd);
+          zds_close_output_bpam(zds, ioc);
+          return rc;
+        }
       }
+
+      prev_line = line;
+      prev_asa_char = is_asa ? asa_char : '\0';
+      has_prev_line = true;
 
       pos = newline_pos + 1;
     }
@@ -3208,7 +3225,7 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const string &dsn, const str
     temp_encoded.clear();
   }
 
-  // Write any remaining content that didn't end with a newline
+  // Handle remaining content that didn't end with a newline
   if (!line_buffer.empty())
   {
     // Remove trailing carriage return if present
@@ -3234,6 +3251,8 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const string &dsn, const str
           rc = write_asa_overflow_records(zds, ioc, asa_result.overflow_records);
           if (rc != RTNCD_SUCCESS)
           {
+            if (cd != (iconv_t)(-1))
+              iconv_close(cd);
             zds_close_output_bpam(zds, ioc);
             return rc;
           }
@@ -3246,7 +3265,7 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const string &dsn, const str
       {
         line_num++;
 
-        // Encode line content FIRST (before adding ASA char)
+        // Encode line content
         if (has_encoding)
         {
           try
@@ -3269,20 +3288,28 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const string &dsn, const str
           truncation.add_line(line_num);
         }
 
-        rc = zds_write_output_bpam(zds, ioc, line_buffer, (is_asa && asa_char != '\0') ? asa_char : '\0');
-        if (rc != RTNCD_SUCCESS)
+        // Write previous line first
+        if (has_prev_line)
         {
-          DiagMsgGuard guard(zds);
-          if (cd != (iconv_t)(-1))
-            iconv_close(cd);
-          zds_close_output_bpam(zds, ioc);
-          return rc;
+          rc = zds_write_output_bpam(zds, ioc, prev_line, prev_asa_char);
+          if (rc != RTNCD_SUCCESS)
+          {
+            DiagMsgGuard guard(zds);
+            if (cd != (iconv_t)(-1))
+              iconv_close(cd);
+            zds_close_output_bpam(zds, ioc);
+            return rc;
+          }
         }
+
+        prev_line = line_buffer;
+        prev_asa_char = (is_asa && asa_char != '\0') ? asa_char : '\0';
+        has_prev_line = true;
       }
     }
   }
 
-  // Flush the shift state for stateful encodings after all lines are processed
+  // Flush encoding state and append to the last line
   if (has_encoding && cd != (iconv_t)(-1))
   {
     try
@@ -3294,8 +3321,12 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const string &dsn, const str
         zds_close_output_bpam(zds, ioc);
         return RTNCD_FAILURE;
       }
-      // Note: For BPAM record writes, any trailing shift sequence bytes are typically
-      // not written as a separate record since each record should be self-contained
+
+      // Append flush bytes to the last line
+      if (!flush_buffer.empty() && has_prev_line)
+      {
+        prev_line.append(flush_buffer.begin(), flush_buffer.end());
+      }
     }
     catch (std::exception &e)
     {
@@ -3306,6 +3337,18 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const string &dsn, const str
     }
 
     iconv_close(cd);
+  }
+
+  // Write the last buffered line
+  if (has_prev_line)
+  {
+    rc = zds_write_output_bpam(zds, ioc, prev_line, prev_asa_char);
+    if (rc != RTNCD_SUCCESS)
+    {
+      DiagMsgGuard guard(zds);
+      zds_close_output_bpam(zds, ioc);
+      return rc;
+    }
   }
 
   // Finalize any pending range
