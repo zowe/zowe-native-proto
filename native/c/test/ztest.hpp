@@ -53,9 +53,13 @@ namespace ztst
 // Forward declarations
 class Globals;
 
+// Default timeout for individual tests and hooks (in seconds)
+constexpr unsigned int DEFAULT_TEST_TIMEOUT_SECONDS = 10;
+
 struct TEST_OPTIONS
 {
   bool remove_signal_handling;
+  unsigned int timeout_sec; // Timeout in seconds (0 = use default)
 };
 
 inline std::string get_indent(int level)
@@ -63,8 +67,9 @@ inline std::string get_indent(int level)
   return std::string(level * 2, ' ');
 }
 
-// Forward declaration of signal handler
+// Forward declaration of signal handlers
 inline void signal_handler(int code, siginfo_t *info, void *context);
+inline void timeout_handler(int sig);
 
 // ANSI color codes
 struct Colors
@@ -76,6 +81,7 @@ struct Colors
   const char *check; // Unicode check mark or ASCII alternative
   const char *cross; // Unicode X or ASCII alternative
   const char *warn;  // Unicode warning or ASCII alternative
+  const char *skip;  // Unicode circle or ASCII alternative
   const char *arrow; // Unicode corner arrow or ASCII alternative
 
   Colors()
@@ -144,6 +150,7 @@ struct Colors
       check = "✓";
       cross = "✗";
       warn = "!";
+      skip = "○";
       arrow = "└─";
     }
     else
@@ -151,6 +158,7 @@ struct Colors
       check = "+";
       cross = "-";
       warn = "!";
+      skip = "/";
       arrow = "|-";
     }
   }
@@ -161,6 +169,7 @@ static Colors colors;
 struct TEST_CASE
 {
   bool success;
+  bool skipped;
   std::string description;
   std::string fail_message;
   std::chrono::high_resolution_clock::time_point start_time;
@@ -168,16 +177,24 @@ struct TEST_CASE
 };
 
 using hook_callback = std::function<void()>;
+
+struct HOOK_WITH_OPTIONS
+{
+  hook_callback callback;
+  TEST_OPTIONS options;
+};
+
 struct TEST_SUITE
 {
   std::string description;
   std::vector<TEST_CASE> tests;
   int nesting_level;
-  std::vector<hook_callback> before_all_hooks;
-  std::vector<hook_callback> before_each_hooks;
-  std::vector<hook_callback> after_each_hooks;
-  std::vector<hook_callback> after_all_hooks;
+  std::vector<HOOK_WITH_OPTIONS> before_all_hooks;
+  std::vector<HOOK_WITH_OPTIONS> before_each_hooks;
+  std::vector<HOOK_WITH_OPTIONS> after_each_hooks;
+  std::vector<HOOK_WITH_OPTIONS> after_all_hooks;
   bool before_all_executed = false;
+  bool skipped = false;
 };
 
 struct EXPECT_CONTEXT
@@ -199,6 +216,7 @@ private:
   std::string matcher = "";
   std::vector<int> suite_stack;
   std::string znp_test_log = "";
+  bool timeout_occurred = false;
 
   Globals()
   {
@@ -231,6 +249,20 @@ private:
 #endif
     sigaction(SIGABRT, &sa, NULL);
     sigaction(SIGILL, &sa, NULL);
+  }
+
+  static void setup_timeout_handler(struct sigaction &sa, struct sigaction &old_sa)
+  {
+    memset(&sa, 0, sizeof(struct sigaction));
+    sa.sa_handler = timeout_handler;
+    sa.sa_flags = 0;
+    sigaction(SIGALRM, &sa, &old_sa); // Save old handler
+  }
+
+  static void reset_timeout_handler(const struct sigaction &old_sa)
+  {
+    alarm(0);                             // Cancel any pending alarm
+    sigaction(SIGALRM, &old_sa, nullptr); // Restore old handler
   }
 
   template <typename Callable>
@@ -381,6 +413,14 @@ public:
   {
     return jump_buf;
   }
+  void set_timeout_occurred(bool value)
+  {
+    timeout_occurred = value;
+  }
+  bool get_timeout_occurred()
+  {
+    return timeout_occurred;
+  }
   void increment_nesting()
   {
     current_nesting++;
@@ -425,31 +465,101 @@ public:
   }
 
   // Execute a vector of hooks, catching and reporting any errors
-  void execute_hooks(const std::vector<hook_callback> &hooks, const std::string &hook_type, std::string &error_message)
+  void execute_hooks(const std::vector<HOOK_WITH_OPTIONS> &hooks, const std::string &hook_type, std::string &error_message)
   {
     for (const auto &hook : hooks)
     {
-      try
+      // Use hook's timeout if specified (non-zero), otherwise use default
+      unsigned int timeout_seconds = hook.options.timeout_sec > 0 ? hook.options.timeout_sec : DEFAULT_TEST_TIMEOUT_SECONDS;
+
+      bool abend = false;
+      bool timeout = false;
+      struct sigaction sa, timeout_sa, old_timeout_sa;
+
+      // Initialize timeout flag before setjmp
+      timeout_occurred = false;
+
+      // Call setjmp FIRST before setting up any signal handlers
+      if (0 != setjmp(get_jmp_buf()))
       {
-        hook();
+        // Jumped back from signal handler
+        if (timeout_occurred)
+        {
+          timeout = true;
+        }
+        else
+        {
+          abend = true;
+        }
       }
-      catch (const std::exception &e)
+
+      // Setup signal handlers AFTER setjmp to avoid race condition
+      if (!hook.options.remove_signal_handling)
       {
-        error_message = hook_type + " hook failed: " + std::string(e.what());
+        setup_signal_handlers(sa);
+      }
+
+      // Setup timeout handler (always active)
+      setup_timeout_handler(timeout_sa, old_timeout_sa);
+
+      if (!abend && !timeout)
+      {
+        alarm(timeout_seconds);
+
+        try
+        {
+          hook.callback();
+        }
+        catch (const std::exception &e)
+        {
+          alarm(0);
+          reset_timeout_handler(old_timeout_sa);
+          if (!hook.options.remove_signal_handling)
+          {
+            reset_signal_handlers(sa);
+          }
+          error_message = hook_type + " hook failed: " + std::string(e.what());
+          throw std::runtime_error(error_message);
+        }
+        catch (...)
+        {
+          alarm(0);
+          reset_timeout_handler(old_timeout_sa);
+          if (!hook.options.remove_signal_handling)
+          {
+            reset_signal_handlers(sa);
+          }
+          error_message = hook_type + " hook failed with unknown error";
+          throw std::runtime_error(error_message);
+        }
+
+        alarm(0);
+      }
+
+      // Reset handlers
+      reset_timeout_handler(old_timeout_sa);
+      if (!hook.options.remove_signal_handling)
+      {
+        reset_signal_handlers(sa);
+      }
+
+      if (timeout)
+      {
+        error_message = hook_type + " hook timed out after " + std::to_string(timeout_seconds) + " seconds";
         throw std::runtime_error(error_message);
       }
-      catch (...)
+      else if (abend)
       {
-        error_message = hook_type + " hook failed with unknown error";
+        error_message = hook_type + " hook failed with ABEND";
         throw std::runtime_error(error_message);
       }
     }
   }
 
   // Collect beforeEach hooks from current suite and all parent suites (parent -> child order)
-  std::vector<hook_callback> collect_before_each_hooks()
+  std::vector<HOOK_WITH_OPTIONS> collect_before_each_hooks()
   {
-    std::vector<hook_callback> hooks;
+    std::vector<HOOK_WITH_OPTIONS> hooks;
     if (suite_stack.empty())
     {
       return hooks;
@@ -465,9 +575,9 @@ public:
   }
 
   // Collect afterEach hooks from current suite and all parent suites (child -> parent order)
-  std::vector<hook_callback> collect_after_each_hooks()
+  std::vector<HOOK_WITH_OPTIONS> collect_after_each_hooks()
   {
-    std::vector<hook_callback> hooks;
+    std::vector<HOOK_WITH_OPTIONS> hooks;
     if (suite_stack.empty())
     {
       return hooks;
@@ -489,6 +599,9 @@ public:
   {
     TEST_CASE tc = {0};
     tc.description = description;
+
+    // Determine timeout to use (0 means use default)
+    unsigned int timeout_seconds = opts.timeout_sec > 0 ? opts.timeout_sec : DEFAULT_TEST_TIMEOUT_SECONDS;
 
     int current_nesting = get_nesting();
 
@@ -556,7 +669,7 @@ public:
     }
 
     // Collect and execute beforeEach hooks
-    std::vector<hook_callback> before_each_hooks = collect_before_each_hooks();
+    std::vector<HOOK_WITH_OPTIONS> before_each_hooks = collect_before_each_hooks();
     if (!before_each_hooks.empty())
     {
       std::string error_message;
@@ -570,7 +683,7 @@ public:
         tc.fail_message = error_message;
 
         // Still run afterEach hooks even if beforeEach failed
-        std::vector<hook_callback> after_each_hooks = collect_after_each_hooks();
+        std::vector<HOOK_WITH_OPTIONS> after_each_hooks = collect_after_each_hooks();
         if (!after_each_hooks.empty())
         {
           std::string after_error;
@@ -593,40 +706,67 @@ public:
     }
 
     bool abend = false;
+    bool timeout = false;
     struct sigaction sa;
+    struct sigaction timeout_sa, old_timeout_sa;
 
+    // Initialize timeout flag before setjmp
+    timeout_occurred = false;
+
+    tc.start_time = std::chrono::high_resolution_clock::now();
+
+    // Call setjmp FIRST before setting up any signal handlers
+    if (0 != setjmp(get_jmp_buf()))
+    {
+      if (timeout_occurred)
+      {
+        timeout = true;
+      }
+      else
+      {
+        abend = true;
+      }
+    }
+
+    // Setup signal handlers AFTER setjmp to avoid race condition
     if (!opts.remove_signal_handling)
     {
       setup_signal_handlers(sa);
     }
 
-    tc.start_time = std::chrono::high_resolution_clock::now();
+    // Setup timeout handler (always active)
+    setup_timeout_handler(timeout_sa, old_timeout_sa);
 
-    if (0 != setjmp(get_jmp_buf()))
+    if (!abend && !timeout)
     {
-      abend = true;
-    }
-
-    if (!abend)
-    {
+      alarm(timeout_seconds);
       execute_test(test, tc, abend);
+      alarm(0);
     }
 
     tc.end_time = std::chrono::high_resolution_clock::now();
+
+    // Reset timeout handler
+    reset_timeout_handler(old_timeout_sa);
 
     if (!opts.remove_signal_handling)
     {
       reset_signal_handlers(sa);
     }
 
-    if (abend)
+    if (timeout)
     {
       tc.success = false;
-      tc.fail_message = "unexpected ABEND occured. Add `TEST_OPTIONS.remove_signal_handling = false` to `it(...)` to capture abend dump";
+      tc.fail_message = "test timed out after " + std::to_string(timeout_seconds) + " seconds";
+    }
+    else if (abend)
+    {
+      tc.success = false;
+      tc.fail_message = "unexpected ABEND occurred. Add `TEST_OPTIONS.remove_signal_handling = true` to `it(...)` to capture abend dump";
     }
 
     // Execute afterEach hooks (always run, even if test failed)
-    std::vector<hook_callback> after_each_hooks = collect_after_each_hooks();
+    std::vector<HOOK_WITH_OPTIONS> after_each_hooks = collect_after_each_hooks();
     if (!after_each_hooks.empty())
     {
       std::string error_message;
@@ -657,10 +797,17 @@ public:
   }
 };
 
-// Signal handler needs to be after Globals class definition
+// Signal handlers need to be after Globals class definition
 inline void signal_handler(int code, siginfo_t *info, void *context)
 {
   Globals &g = Globals::get_instance();
+  longjmp(g.get_jmp_buf(), 1);
+}
+
+inline void timeout_handler(int sig)
+{
+  Globals &g = Globals::get_instance();
+  g.set_timeout_occurred(true);
   longjmp(g.get_jmp_buf(), 1);
 }
 
@@ -977,7 +1124,7 @@ void describe(const std::string &description, Callable suite)
   if (current_suite_idx >= 0 && current_suite_idx < static_cast<int>(g.get_suites().size()))
   {
     TEST_SUITE &current_suite = g.get_suites()[current_suite_idx];
-    const std::vector<hook_callback> &after_all_hooks = current_suite.after_all_hooks;
+    const std::vector<HOOK_WITH_OPTIONS> &after_all_hooks = current_suite.after_all_hooks;
     if (!after_all_hooks.empty())
     {
       std::string error_message;
@@ -1008,7 +1155,18 @@ template <typename Callable,
 void xit(const std::string &description, Callable)
 {
   Globals &g = Globals::get_instance();
-  std::cout << get_indent(g.get_nesting()) << "/ SKIP " << description << std::endl;
+  int suite_idx = g.get_suite_index();
+
+  TEST_CASE tc = {0};
+  tc.description = description;
+  tc.skipped = true;
+
+  if (suite_idx >= 0 && suite_idx < static_cast<int>(g.get_suites().size()))
+  {
+    g.get_suites()[suite_idx].tests.push_back(tc);
+  }
+
+  std::cout << get_indent(g.get_nesting()) << colors.skip << " SKIP " << description << std::endl;
 }
 
 template <typename Callable,
@@ -1017,7 +1175,14 @@ template <typename Callable,
 void xdescribe(const std::string &description, Callable)
 {
   Globals &g = Globals::get_instance();
-  std::cout << get_indent(g.get_nesting()) << "/ SKIP " << description << std::endl;
+
+  TEST_SUITE suite = {0};
+  suite.description = description;
+  suite.nesting_level = g.get_nesting();
+  suite.skipped = true;
+  g.get_suites().push_back(suite);
+
+  std::cout << get_indent(g.get_nesting()) << colors.skip << " SKIP " << description << std::endl;
 }
 
 template <typename Callable,
@@ -1025,7 +1190,7 @@ template <typename Callable,
               std::is_same<void, decltype(std::declval<Callable>()())>::value>::type>
 void it(const std::string &description, Callable test)
 {
-  TEST_OPTIONS opts = {0};
+  TEST_OPTIONS opts = {false, 0};
   it(description, test, opts);
 }
 
@@ -1053,11 +1218,21 @@ template <typename Callable,
               std::is_same<void, decltype(std::declval<Callable>()())>::value>::type>
 void beforeAll(Callable hook)
 {
+  TEST_OPTIONS opts = {false, 0};
+  beforeAll(hook, opts);
+}
+
+template <typename Callable,
+          typename = typename std::enable_if<
+              std::is_same<void, decltype(std::declval<Callable>()())>::value>::type>
+void beforeAll(Callable hook, TEST_OPTIONS &opts)
+{
   Globals &g = Globals::get_instance();
   int suite_idx = g.get_suite_index();
   if (suite_idx >= 0 && suite_idx < static_cast<int>(g.get_suites().size()))
   {
-    g.get_suites()[suite_idx].before_all_hooks.push_back(hook);
+    HOOK_WITH_OPTIONS hook_with_opts = {hook, opts};
+    g.get_suites()[suite_idx].before_all_hooks.push_back(hook_with_opts);
   }
 }
 
@@ -1066,11 +1241,21 @@ template <typename Callable,
               std::is_same<void, decltype(std::declval<Callable>()())>::value>::type>
 void beforeEach(Callable hook)
 {
+  TEST_OPTIONS opts = {false, 0};
+  beforeEach(hook, opts);
+}
+
+template <typename Callable,
+          typename = typename std::enable_if<
+              std::is_same<void, decltype(std::declval<Callable>()())>::value>::type>
+void beforeEach(Callable hook, TEST_OPTIONS &opts)
+{
   Globals &g = Globals::get_instance();
   int suite_idx = g.get_suite_index();
   if (suite_idx >= 0 && suite_idx < static_cast<int>(g.get_suites().size()))
   {
-    g.get_suites()[suite_idx].before_each_hooks.push_back(hook);
+    HOOK_WITH_OPTIONS hook_with_opts = {hook, opts};
+    g.get_suites()[suite_idx].before_each_hooks.push_back(hook_with_opts);
   }
 }
 
@@ -1079,11 +1264,21 @@ template <typename Callable,
               std::is_same<void, decltype(std::declval<Callable>()())>::value>::type>
 void afterEach(Callable hook)
 {
+  TEST_OPTIONS opts = {false, 0};
+  afterEach(hook, opts);
+}
+
+template <typename Callable,
+          typename = typename std::enable_if<
+              std::is_same<void, decltype(std::declval<Callable>()())>::value>::type>
+void afterEach(Callable hook, TEST_OPTIONS &opts)
+{
   Globals &g = Globals::get_instance();
   int suite_idx = g.get_suite_index();
   if (suite_idx >= 0 && suite_idx < static_cast<int>(g.get_suites().size()))
   {
-    g.get_suites()[suite_idx].after_each_hooks.push_back(hook);
+    HOOK_WITH_OPTIONS hook_with_opts = {hook, opts};
+    g.get_suites()[suite_idx].after_each_hooks.push_back(hook_with_opts);
   }
 }
 
@@ -1092,11 +1287,21 @@ template <typename Callable,
               std::is_same<void, decltype(std::declval<Callable>()())>::value>::type>
 void afterAll(Callable hook)
 {
+  TEST_OPTIONS opts = {false, 0};
+  afterAll(hook, opts);
+}
+
+template <typename Callable,
+          typename = typename std::enable_if<
+              std::is_same<void, decltype(std::declval<Callable>()())>::value>::type>
+void afterAll(Callable hook, TEST_OPTIONS &opts)
+{
   Globals &g = Globals::get_instance();
   int suite_idx = g.get_suite_index();
   if (suite_idx >= 0 && suite_idx < static_cast<int>(g.get_suites().size()))
   {
-    g.get_suites()[suite_idx].after_all_hooks.push_back(hook);
+    HOOK_WITH_OPTIONS hook_with_opts = {hook, opts};
+    g.get_suites()[suite_idx].after_all_hooks.push_back(hook_with_opts);
   }
 }
 
@@ -1204,9 +1409,11 @@ inline void print_failed_tests()
 inline int report()
 {
   int suite_fail = 0;
+  int suite_skip = 0;
   int suite_total = 0;
   int tests_total = 0;
   int tests_fail = 0;
+  int tests_skip = 0;
   std::chrono::microseconds total_duration(0);
 
   Globals &g = Globals::get_instance();
@@ -1218,23 +1425,30 @@ inline int report()
 
   for (std::vector<TEST_SUITE>::iterator it = g.get_suites().begin(); it != g.get_suites().end(); it++)
   {
+    suite_total++;
+
+    if (it->skipped)
+    {
+      suite_skip++;
+      continue;
+    }
+
     bool suite_success = true;
-    bool suite_ran = false;
     for (std::vector<TEST_CASE>::iterator iit = it->tests.begin(); iit != it->tests.end(); iit++)
     {
-      suite_ran = true;
       tests_total++;
-      if (!iit->success)
+      if (iit->skipped)
+      {
+        tests_skip++;
+      }
+      else if (!iit->success)
       {
         suite_success = false;
         tests_fail++;
       }
       total_duration += std::chrono::duration_cast<std::chrono::microseconds>(iit->end_time - iit->start_time);
     }
-    if (suite_ran)
-    {
-      suite_total++;
-    }
+
     if (!suite_success)
     {
       suite_fail++;
@@ -1242,15 +1456,25 @@ inline int report()
   }
 
   const int width = 13;
-  std::cout << std::left << std::setw(width) << "Suites:"
-            << colors.green << suite_total - suite_fail << " passed" << colors.reset << ", "
-            << colors.red << suite_fail << " failed" << colors.reset << ", "
-            << suite_total << " total" << std::endl;
+  int suite_pass = suite_total - suite_fail - suite_skip;
+  std::cout << std::left << std::setw(width) << "Suites:";
+  if (suite_fail > 0)
+    std::cout << colors.red << suite_fail << " failed" << colors.reset << ", ";
+  if (suite_skip > 0)
+    std::cout << colors.yellow << suite_skip << " skipped" << colors.reset << ", ";
+  if (suite_pass > 0)
+    std::cout << colors.green << suite_pass << " passed" << colors.reset << ", ";
+  std::cout << suite_total << " total" << std::endl;
 
-  std::cout << std::left << std::setw(width) << "Tests:"
-            << colors.green << tests_total - tests_fail << " passed" << colors.reset << ", "
-            << colors.red << tests_fail << " failed" << colors.reset << ", "
-            << tests_total << " total" << std::endl;
+  int tests_pass = tests_total - tests_fail - tests_skip;
+  std::cout << std::left << std::setw(width) << "Tests:";
+  if (tests_fail > 0)
+    std::cout << colors.red << tests_fail << " failed" << colors.reset << ", ";
+  if (tests_skip > 0)
+    std::cout << colors.yellow << tests_skip << " skipped" << colors.reset << ", ";
+  if (tests_pass > 0)
+    std::cout << colors.green << tests_pass << " passed" << colors.reset << ", ";
+  std::cout << tests_total << " total" << std::endl;
 
   std::cout << std::left << std::setw(width) << "Time:"
             << std::fixed << std::setprecision(3)
@@ -1302,6 +1526,7 @@ inline void report_xml(const std::string &filename = "test-results.xml")
 
   int total_tests = 0;
   int total_failures = 0;
+  int total_skipped = 0;
   std::chrono::microseconds total_time(0);
 
   // Count totals first
@@ -1310,7 +1535,9 @@ inline void report_xml(const std::string &filename = "test-results.xml")
     for (const auto &test : suite.tests)
     {
       total_tests++;
-      if (!test.success)
+      if (test.skipped)
+        total_skipped++;
+      else if (!test.success)
         total_failures++;
       total_time += std::chrono::duration_cast<std::chrono::microseconds>(
           test.end_time - test.start_time);
@@ -1321,6 +1548,7 @@ inline void report_xml(const std::string &filename = "test-results.xml")
   xml_file << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
   xml_file << "<testsuites tests=\"" << total_tests
            << "\" failures=\"" << total_failures
+           << "\" skipped=\"" << total_skipped
            << "\" time=\"" << std::fixed << std::setprecision(3)
            << total_time.count() / 1000000.0 << "\">\n";
 
@@ -1349,25 +1577,33 @@ inline void report_xml(const std::string &filename = "test-results.xml")
     if (g.get_suites()[i].nesting_level != 0)
       continue;
 
+    bool suite_is_skipped = g.get_suites()[i].skipped;
+
     // Collect all descendant tests with their paths
     std::vector<std::pair<std::string, const TEST_CASE *>> all_tests;
-    for (size_t j = i; j < g.get_suites().size(); j++)
+    if (!suite_is_skipped)
     {
-      if (j > i && g.get_suites()[j].nesting_level == 0)
-        break;
-      for (const auto &test : g.get_suites()[j].tests)
-        all_tests.push_back(std::make_pair(suite_paths[j], &test));
-    }
+      for (size_t j = i; j < g.get_suites().size(); j++)
+      {
+        if (j > i && g.get_suites()[j].nesting_level == 0)
+          break;
+        for (const auto &test : g.get_suites()[j].tests)
+          all_tests.push_back(std::make_pair(suite_paths[j], &test));
+      }
 
-    if (all_tests.empty())
-      continue;
+      if (all_tests.empty())
+        continue;
+    }
 
     // Calculate suite totals
     int suite_failures = 0;
+    int suite_skipped = 0;
     std::chrono::microseconds suite_time(0);
     for (const auto &test_pair : all_tests)
     {
-      if (!test_pair.second->success)
+      if (test_pair.second->skipped)
+        suite_skipped++;
+      else if (!test_pair.second->success)
         suite_failures++;
       suite_time += std::chrono::duration_cast<std::chrono::microseconds>(
           test_pair.second->end_time - test_pair.second->start_time);
@@ -1376,11 +1612,25 @@ inline void report_xml(const std::string &filename = "test-results.xml")
     // Write suite header
     std::string suite_name = g.get_suites()[i].description;
     escape_xml(suite_name);
-    xml_file << "  <testsuite name=\"" << suite_name
-             << "\" tests=\"" << all_tests.size()
-             << "\" failures=\"" << suite_failures
-             << "\" time=\"" << std::fixed << std::setprecision(3)
-             << suite_time.count() / 1000000.0 << "\">\n";
+
+    if (suite_is_skipped)
+    {
+      // Skipped suite
+      xml_file << "  <testsuite name=\"" << suite_name
+               << "\" tests=\"0"
+               << "\" failures=\"0"
+               << "\" skipped=\"0"
+               << "\" time=\"0.000\">\n";
+    }
+    else
+    {
+      xml_file << "  <testsuite name=\"" << suite_name
+               << "\" tests=\"" << all_tests.size()
+               << "\" failures=\"" << suite_failures
+               << "\" skipped=\"" << suite_skipped
+               << "\" time=\"" << std::fixed << std::setprecision(3)
+               << suite_time.count() / 1000000.0 << "\">\n";
+    }
 
     // Write test cases
     for (const auto &test_pair : all_tests)
@@ -1400,7 +1650,13 @@ inline void report_xml(const std::string &filename = "test-results.xml")
                << "\" time=\"" << std::fixed << std::setprecision(3)
                << test_time.count() / 1000000.0 << "\"";
 
-      if (!test_pair.second->success)
+      if (test_pair.second->skipped)
+      {
+        xml_file << ">\n";
+        xml_file << "      <skipped/>\n";
+        xml_file << "    </testcase>\n";
+      }
+      else if (!test_pair.second->success)
       {
         xml_file << ">\n";
         xml_file << "      <failure message=\"" << failure_message << "\"/>\n";
