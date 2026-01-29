@@ -34,6 +34,13 @@ function toPosixPath(filePath: string): string {
     return filePath.split(path.sep).join("/");
 }
 
+/**
+ * Compares two strings for sorting in alphabetical order.
+ */
+function localeCompare(a: string, b: string): number {
+    return a.localeCompare(b);
+}
+
 const localDeployDir = "./../native";
 const args = process.argv.slice(2);
 let deployDirs: {
@@ -641,7 +648,7 @@ class WatchUI {
     }
 
     private renderFallback() {
-        const fileKey = Array.from(this.files.keys()).sort().join(",");
+        const fileKey = Array.from(this.files.keys()).sort(localeCompare).join(",");
         const filesChanged = fileKey !== this.lastFallbackState;
 
         // Print file changes header once
@@ -842,7 +849,7 @@ async function artifacts(connection: Client, packageAll: boolean) {
     if (packageAll) {
         artifactPaths.push("c/build-out/zoweax", "c/build-out/zowex");
     }
-    const artifactNames = artifactPaths.map((file) => path.basename(file)).sort();
+    const artifactNames = artifactPaths.map((file) => path.basename(file)).sort(localeCompare);
     const localDir = packageAll ? "dist" : "packages/sdk/bin";
     const localFiles = ["server.pax.Z", "checksums.asc"];
     const [paxFile, checksumFile] = localFiles;
