@@ -427,12 +427,25 @@ int handle_job_submit_jcl(InvocationContext &context)
   string data;
   string line;
 
-  std::istreambuf_iterator<char> begin(context.input_stream());
-  std::istreambuf_iterator<char> end;
-
-  std::vector<char> raw_bytes(begin, end);
-  data.assign(raw_bytes.begin(), raw_bytes.end());
-  raw_bytes.clear();
+  if (!isatty(fileno(stdin)))
+  {
+    std::istreambuf_iterator<char> begin(context.input_stream());
+    std::istreambuf_iterator<char> end;
+    data.assign(begin, end);
+  }
+  else
+  {
+    bool first_line = true;
+    while (getline(context.input_stream(), line))
+    {
+      if (!first_line)
+      {
+        data.push_back('\n');
+      }
+      first_line = false;
+      data += line;
+    }
+  }
 
   ZEncode encoding_opts = {};
   bool encoding_prepared = context.has("encoding") && zut_prepare_encoding(context.get<std::string>("encoding", ""), &encoding_opts);
