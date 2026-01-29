@@ -15,6 +15,7 @@
 #include "../zjb.hpp"
 #include "../zusf.hpp"
 #include "../zut.hpp"
+#include <regex.h>
 
 using namespace ast;
 using namespace parser;
