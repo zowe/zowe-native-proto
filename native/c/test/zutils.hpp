@@ -13,7 +13,6 @@
 #define ZUTILS_HPP
 #include <string>
 #include <vector>
-#include "../zjson.hpp"
 #include "../zds.hpp"
 
 const std::string zowex_command = "./../build-out/zowex";
