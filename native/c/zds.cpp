@@ -202,8 +202,8 @@ static int run_iebcopy(ZDS *zds, vector<string> &dds, const string &control_stmt
       string truncated = output.length() > max_output_len
                              ? output.substr(0, max_output_len) + "..."
                              : output;
-      zds->diag.e_msg_len = sprintf(zds->diag.e_msg,
-                                    "IEBCOPY failed. SYSPRINT:\n%s", truncated.c_str());
+      sprintf(zds->diag.e_msg, "IEBCOPY failed. SYSPRINT:\n%s", truncated.c_str());
+      zds->diag.e_msg_len = strlen(zds->diag.e_msg);
     }
     zut_free_dynalloc_dds(zds->diag, dds);
     return RTNCD_FAILURE;
@@ -338,8 +338,9 @@ int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2, bool replace,
 
   bool is_pds_full_copy = (info1.type == ZDS_TYPE_PDS && info2.member_name.empty());
   bool target_is_member = !info2.member_name.empty();
+  bool target_base_exists = zds_dataset_exists(info2.base_dsn);
 
-  if (!info2.exists)
+  if (!target_base_exists)
   {
     // Create the target data set
     ZDS create_zds = {};
@@ -389,6 +390,10 @@ int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2, bool replace,
     }
   }
 
+  // Check if source and target are in the same PDS - need special handling
+  bool same_pds = (info1.type == ZDS_TYPE_MEMBER && target_is_member &&
+                   info1.base_dsn == info2.base_dsn);
+
   // --overwrite: delete all existing members in target PDS first
   if (overwrite && is_pds_full_copy && info2.exists)
   {
@@ -401,10 +406,6 @@ int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2, bool replace,
   }
   else
   {
-    // Check if source and target are in the same PDS - need special handling
-    bool same_pds = (info1.type == ZDS_TYPE_MEMBER && target_is_member &&
-                     info1.base_dsn == info2.base_dsn);
-
     if (same_pds)
     {
       // Use IEBCOPY for same-PDS member copy to avoid file locking issues
@@ -429,7 +430,8 @@ int zds_compress_dsn(ZDS *zds, const string &dsn)
   ZDSTypeInfo info = {};
   zds_get_type_info(dsn, info);
 
-  if (!info.exists || info.type != ZDS_TYPE_PDS || info.entry.dsntype == "LIBRARY")
+  if (!info.exists || info.type != ZDS_TYPE_PDS ||
+      info.entry.dsntype == "LIBRARY" || info.entry.dsorg == ZDS_DSORG_PDSE)
   {
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "data set '%s' is not a PDS", dsn.c_str());
     return RTNCD_FAILURE;
