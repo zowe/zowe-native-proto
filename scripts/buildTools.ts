@@ -449,6 +449,8 @@ class WatchUI {
     private spinnerInterval: NodeJS.Timeout | null = null;
     private spinnerFrame = 0;
     private footerMessage = "watching for changes...";
+    private lastFallbackState = "";
+    private readonly printedFallbackItems: Set<string> = new Set();
 
     private isInteractive(): boolean {
         return process.stdout.isTTY === true && !DEBUG_MODE() && process.env.CI == null;
@@ -639,28 +641,58 @@ class WatchUI {
     }
 
     private renderFallback() {
-        console.log(`\n${this.timestamp.toLocaleString()}`);
-        for (const [filePath, kind] of this.files.entries()) {
-            console.log(`[${kind}] ${filePath}`);
+        const fileKey = Array.from(this.files.keys()).sort().join(",");
+        const filesChanged = fileKey !== this.lastFallbackState;
+
+        // Print file changes header once
+        if (filesChanged && this.files.size > 0) {
+            console.log(`\n${this.timestamp.toLocaleString()}`);
+            for (const [filePath, kind] of this.files.entries()) {
+                console.log(`[${kind}] ${filePath}`);
+            }
+            this.lastFallbackState = fileKey;
         }
-        if (this.tasks.size > 0) {
-            console.log("tasks:");
-            for (const [, task] of this.tasks.entries()) {
-                let statusText: string;
-                if (task.status === "success") {
-                    statusText = "✔";
-                } else if (task.status === "error") {
-                    statusText = "✘";
-                } else {
-                    statusText = task.status;
-                }
-                console.log(`  [${task.name}] make ${statusText}`);
-                if (task.error) {
-                    console.log(`  error: ${task.error}`);
+
+        for (const [, task] of this.tasks.entries()) {
+            const runningKey = `task:${task.name}:running`;
+            const doneKey = `task:${task.name}:done`;
+
+            // Print "running" once when task starts
+            if (task.status === "running" && !this.printedFallbackItems.has(runningKey)) {
+                console.log(`  [${task.name}] make running`);
+                this.printedFallbackItems.add(runningKey);
+            }
+
+            // Print final result once when task completes
+            if (!this.printedFallbackItems.has(doneKey)) {
+                if (
+                    task.status === "success" ||
+                    task.status === "error" ||
+                    task.status === "warning" ||
+                    task.status === "no_changes"
+                ) {
+                    const statusText =
+                        task.status === "success"
+                            ? "✔"
+                            : task.status === "error"
+                              ? "✘"
+                              : task.status === "warning"
+                                ? "!"
+                                : "—";
+                    console.log(`  [${task.name}] make ${statusText}`);
+                    if (task.error) {
+                        console.log(`    error: ${task.error}`);
+                    }
+                    this.printedFallbackItems.add(doneKey);
                 }
             }
         }
-        console.log(this.footerMessage);
+
+        // Print footer only when transitioning to "watching" state
+        if (this.footerMessage === "watching for changes..." && !this.printedFallbackItems.has("footer:watching")) {
+            console.log(this.footerMessage);
+            this.printedFallbackItems.add("footer:watching");
+        }
     }
 
     startSpinner() {
@@ -688,6 +720,8 @@ class WatchUI {
         this.files.clear();
         this.tasks.clear();
         this.lineCount = 0;
+        this.lastFallbackState = "";
+        this.printedFallbackItems.clear();
     }
 }
 
