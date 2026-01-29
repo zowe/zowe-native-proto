@@ -482,31 +482,38 @@ async function artifacts(connection: Client, packageAll: boolean) {
     }
 }
 
-async function runCommandInShell(connection: Client, command: string) {
-    const spinner = startSpinner(`Running: ${command.trim()}`);
+async function runCommandInShell(connection: Client, command: string, streamOutput = false) {
+    const spinner = streamOutput ? null : startSpinner(`Running: ${command.trim()}`);
     return new Promise<string>((resolve, reject) => {
         let data = "";
         let error = "";
         const cb: ClientCallback = (err, stream) => {
             if (err) {
-                stopSpinner(spinner, `Error: runCommand connection.exec error ${err}`);
+                if (spinner) stopSpinner(spinner, `Error: runCommand connection.exec error ${err}`);
                 reject(err);
             }
             stream.on("close", () => {
-                stopSpinner(spinner);
+                if (spinner) stopSpinner(spinner);
                 resolve(data);
             });
             stream.on("data", (part: Buffer) => {
-                data += part.toString();
+                const output = part.toString();
+                data += output;
+                if (streamOutput) {
+                    process.stdout.write(output);
+                }
             });
             stream.stderr.on("data", (err: Buffer) => {
-                error += err.toString();
-                DEBUG_MODE() && console.log(error);
+                const errOutput = err.toString();
+                error += errOutput;
+                if (streamOutput || DEBUG_MODE()) {
+                    process.stderr.write(errOutput);
+                }
             });
             stream.on("exit", (exitCode: number) => {
                 if (exitCode !== 0) {
                     const fullError = `\nError: runCommand connection.exec error - stream.on exit: \n ${error || data}`;
-                    stopSpinner(spinner, fullError);
+                    if (spinner) stopSpinner(spinner, fullError);
                     process.exitCode = exitCode;
                     reject(fullError);
                 }
@@ -626,10 +633,10 @@ async function test(connection: Client) {
     console.log("Testing native/c ...");
     const testEnv = '_CEE_RUNOPTS="TRAP(ON,NOSPIE)"';
     const cTestCmd = `cd ${deployDirs.cTestDir} && ${testEnv} ./build-out/ztest_runner ${args[1] ?? ""}`;
-    const zowedTestCmd = `cd ${deployDirs.zowedTestDir} && ${testEnv} ./build-out/zowed_test_runner ${args[1] ?? ""}`;
-    const response = await runCommandInShell(connection, `${cTestCmd}; cd -; ${zowedTestCmd}\n`);
-    console.log(response);
-    console.log("Testing complete!");
+    const zowedTestCmd = `cd ${path.posix.relative(deployDirs.cTestDir, deployDirs.zowedTestDir)} && ${testEnv} ./build-out/zowed_test_runner ${args[1] ?? ""}`;
+    const exitMaxRc = `[ "$rc1" -gt "$rc2" ] && exit "$rc1" || exit "$rc2"`;
+    await runCommandInShell(connection, `${cTestCmd}; rc1=$?; ${zowedTestCmd}; rc2=$?; ${exitMaxRc}\n`, true);
+    console.log("\nTesting complete!");
     await retrieve(connection, [`c/test/test-results.xml`, `zowed/test/test-results.xml`], "native", false, true);
 }
 

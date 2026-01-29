@@ -69,13 +69,16 @@ void zowex_job_tests()
                _files.clear();
              };
 
+             TEST_OPTIONS long_test_opts = {false, 30};
+
              afterAll(
                  [&]() -> void
                  {
                    _cleanup_jobs();
                    _cleanup_ds();
                    _cleanup_files();
-                 });
+                 },
+                 long_test_opts);
 
              zowex_job_list_tests(_jobs, _ds, _files);
              zowex_job_submit_tests(_jobs, _ds, _files);
