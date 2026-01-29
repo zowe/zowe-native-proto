@@ -124,6 +124,68 @@ void zowex_job_submit_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
                   }
                 });
 
+             it("should submit JCL and wait for pattern in spool files",
+                [&]()
+                {
+                  string jobid;
+                  string stdout_output, stderr_output;
+                  string command = "printf \"" + jcl_base + "\" | " + zowex_command + " job submit-jcl --only-jobid";
+                  int rc = execute_command(command, stdout_output, stderr_output);
+                  jobid = TrimChars(stdout_output);
+                  _jobs.push_back(jobid);
+                  ExpectWithContext(rc, stderr_output).ToBe(0);
+
+                  string response;
+                  execute_command(zowex_command + " job list-files " + jobid + " --response-format-csv", stdout_output, stderr_output);
+                  vector<string> lines = parse_rfc_response(stdout_output, "\n");
+                  string job_dsn = "";
+                  if (lines.size() > 0)
+                  {
+                    vector<string> parts = parse_rfc_response(lines[0], ",");
+                    if (parts.size() >= 1)
+                    {
+                      job_dsn = parts[1];
+                    }
+                  }
+
+                  command = zowex_command + " job watch " + job_dsn + " --pattern \"IEFBR14  ENDED\"";
+                  rc = execute_command(command, stdout_output, stderr_output);
+                  ExpectWithContext(rc, stderr_output).ToBe(0);
+                  Expect(stdout_output).ToContain("'String' pattern");
+                  Expect(stdout_output).ToContain("job spool files matched");
+                  Expect(stdout_output).ToContain("IEFBR14  ENDED");
+
+                  command = zowex_command + " job watch " + job_dsn + " --pattern \"iefbr14  ended\" --ignore-case";
+                  rc = execute_command(command, stdout_output, stderr_output);
+                  ExpectWithContext(rc, stderr_output).ToBe(0);
+                  Expect(stdout_output).ToContain("job spool files matched");
+                  Expect(stdout_output).ToContain("IEFBR14  ENDED");
+
+                  // Test alias 'wch' for 'watch', um, and regex
+                  command = zowex_command + " job wch " + job_dsn + " -p \"/^.*IEFBR14.*ENDED.*$/\" --mws 1";
+                  rc = execute_command(command, stdout_output, stderr_output);
+                  ExpectWithContext(rc, stderr_output).ToBe(0);
+                  Expect(stdout_output).ToContain("'Regex' pattern");
+                  Expect(stdout_output).ToContain("job spool files matched");
+
+                  // Test that this fails waiting beyond what is permitted by the --mws option
+                  command = zowex_command + " job watch " + job_dsn + " --pattern \"IEFBR14 ENDED\" --mws 301";
+                  rc = execute_command(command, stdout_output, stderr_output);
+                  ExpectWithContext(rc, stderr_output).Not().ToBe(0);
+
+                  // Test that this fails when waiting for 0 seconds
+                  command = zowex_command + " job wch " + job_dsn + " -p \"/^.*IEFBR14.*ENDED.*$/\" --mws 0";
+                  rc = execute_command(command, stdout_output, stderr_output);
+                  ExpectWithContext(rc, stderr_output).Not().ToBe(0);
+                  Expect(stderr_output).ToContain("Error: max-wait-seconds must be greater than 0 seconds");
+
+                  // Test that this fails when waiting for a regex pattern with --ignore-case
+                  command = zowex_command + " job wch " + job_dsn + " -p \"/^.*IEFBR14.*ENDED.*$/\" --mws 1 --ignore-case";
+                  rc = execute_command(command, stdout_output, stderr_output);
+                  ExpectWithContext(rc, stderr_output).Not().ToBe(0);
+                  Expect(stderr_output).ToContain("Error: ignore-case is not supported for regex patterns");
+                });
+
              it("should submit from a data set",
                 [&]()
                 {
