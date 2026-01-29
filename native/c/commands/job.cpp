@@ -512,9 +512,9 @@ int handle_job_watch(InvocationContext &context)
   int rc = 0;
   ZJB zjb = {};
   string job_dsn = context.get<std::string>("job-dsn", "");
-  string until_match = context.get<std::string>("until-match", "");
+  string until_match = context.get<std::string>("pattern", "");
   long long max_sleep_seconds = context.get<long long>("max-wait-seconds");
-  bool any_case = context.get<bool>("any-case", false);
+  bool any_case = context.get<bool>("ignore-case", false);
 
 #define MAX_WAIT_SECONDS 60ll * 5ll
 
@@ -535,7 +535,7 @@ int handle_job_watch(InvocationContext &context)
 
   if (any_case && is_regex)
   {
-    context.error_stream() << "Error: any-case is not supported for regex patterns" << endl;
+    context.error_stream() << "Error: ignore-case is not supported for regex patterns" << endl;
     return RTNCD_FAILURE;
   }
 
@@ -905,12 +905,12 @@ void register_commands(parser::Command &root_command)
   auto job_watch_cmd = command_ptr(new Command("watch", "watch job spool files for a given string pattern"));
   job_watch_cmd->add_alias("wch");
   job_watch_cmd->add_positional_arg("job-dsn", "job dsn to watch (from 'job list-files')", ArgType_Single, true);
-  job_watch_cmd->add_keyword_arg("until-match", make_aliases("--until-match", "--um"), "string pattern to watch for in spool files", ArgType_Single, true);
+  job_watch_cmd->add_keyword_arg("pattern", make_aliases("--pattern", "-p"), "string pattern to watch for in spool files", ArgType_Single, true);
   job_watch_cmd->add_keyword_arg("max-wait-seconds", make_aliases("--max-wait-seconds", "--mws"), "maximum number of seconds to wait for the pattern to match (max 300 seconds)", ArgType_Single, false, ArgValue(15ll));
-  job_watch_cmd->add_keyword_arg("any-case", make_aliases("--any-case", "--ac"), "match string in any case", ArgType_Flag, false, ArgValue(false));
+  job_watch_cmd->add_keyword_arg("ignore-case", make_aliases("--ignore-case", "--ic"), "match string in any case", ArgType_Flag, false, ArgValue(false));
   job_watch_cmd->set_handler(handle_job_watch);
-  job_watch_cmd->add_example("Watch job spool files for a given string pattern", "zowex job watch IBMUSER.IEFBR14@.JOB01684.D0000002.JESMSGLG --until-match \"$HASP395 IEFBR14@ ENDED\"");
-  job_watch_cmd->add_example("Watch job spool files for a given regex pattern", "zowex job watch IBMUSER.IEFBR14@.JOB01684D0000002.JESMSGLG --until-match \"/^.*ENDED.*$/g\"");
+  job_watch_cmd->add_example("Watch job spool files for a given string pattern", "zowex job watch IBMUSER.IEFBR14@.JOB01684.D0000002.JESMSGLG --pattern \"$HASP395 IEFBR14@ ENDED\"");
+  job_watch_cmd->add_example("Watch job spool files for a given regex pattern", "zowex job watch IBMUSER.IEFBR14@.JOB01684D0000002.JESMSGLG --pattern \"/^.*ENDED.*$/g\"");
   job_group->add_command(job_watch_cmd);
 
   // Cancel subcommand
