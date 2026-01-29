@@ -162,13 +162,13 @@ Tests:      : 13 passed, 1 failed, 14 total
 By default, LE or Metal C abends will signal for program termination. When this occurs, a message may appear:
 
 ```txt
-    unexpected ABEND occured.  Add `TEST_OPTIONS.remove_signal_handling = false` to `it(...)` to capture abend dump
+    unexpected ABEND occurred.  Add `TEST_OPTIONS.remove_signal_handling = true` to `it(...)` to capture abend dump
 ```
 
 In this situation, no CEEDUMP is captured. To disable this behavior, disable signal handling by passing a `TEST_OPTIONS` object as a parameter to `it()`, e.g.:
 
 ```c
-             TEST_OPTIONS opts = {0};
+             TEST_OPTIONS opts = {};
              opts.remove_signal_handling = true;
 
              it("should recover from an abend", []() -> void
@@ -177,6 +177,22 @@ In this situation, no CEEDUMP is captured. To disable this behavior, disable sig
                 Expect(rc).ToBe(0); }, opts);
            });
 ```
+
+#### Timeouts
+
+Tests have a default timeout of 10 seconds to prevent hung tests. For tests that need more time (e.g., mainframe I/O operations), the timeout can be increased:
+
+```c
+             TEST_OPTIONS opts = {};
+             opts.timeout_sec = 30;
+
+             it("should complete slow operation", []() -> void
+                {
+                  // Test with 30 second timeout
+                }, opts);
+```
+
+If `timeout_sec` is 0, the default timeout of 10 seconds applies to tests and hooks.
 
 #### API
 
@@ -289,4 +305,3 @@ You must ensure `zut_alloc_debug()` is called to allocate an output DD for log m
 ```
 
 By default, output is printed to `/tmp/zowex_debug.txt` when using `ZUTDBGMG()`; however, you may provide a Metal C compatible alternative.
-
