@@ -38,4 +38,3 @@ void create_seq(ZDS *zds, const std::string &dsn);
 void write_to_dsn(const std::string &dsn, const std::string &data);
 
 #endif
-#endif
