@@ -16,6 +16,8 @@
 #include "../zusf.hpp"
 #include "../zut.hpp"
 #include <unistd.h>
+#include <regex.h>
+#include <cstring>
 
 using namespace ast;
 using namespace parser;
@@ -24,6 +26,31 @@ using namespace commands::common;
 
 namespace job
 {
+
+/**
+ * @brief Parse a string to determine if it's a regex pattern
+ *
+ * Detects regex patterns in the format: /pattern/
+ * Note: POSIX regex doesn't support flags like 'g' or 'i' in the pattern itself
+ *
+ * @param input The input string to check
+ * @param pattern Output parameter for the extracted pattern
+ * @return true if input is a regex pattern, false otherwise
+ */
+bool parse_regex_pattern(const string &input, string &pattern)
+{
+  pattern = input;
+
+  // Check for /pattern/ format
+  if (input.size() >= 2 && input[0] == '/' && input[input.size() - 1] == '/')
+  {
+    pattern = input.substr(1, input.size() - 2);
+    return true;
+  }
+
+  return false;
+}
+
 int handle_job_list(InvocationContext &context)
 {
   int rc = 0;
@@ -475,6 +502,165 @@ int handle_job_delete(InvocationContext &context)
   return RTNCD_SUCCESS;
 }
 
+bool case_insensitive_match(const char a, const char b)
+{
+  return tolower(a) == tolower(b);
+}
+
+int handle_job_watch(InvocationContext &context)
+{
+  int rc = 0;
+  ZJB zjb = {};
+  string job_dsn = context.get<std::string>("job-dsn", "");
+  string until_match = context.get<std::string>("pattern", "");
+  long long max_sleep_seconds = context.get<long long>("max-wait-seconds");
+  bool any_case = context.get<bool>("ignore-case", false);
+
+#define MAX_WAIT_SECONDS 60ll * 5ll
+
+  if (max_sleep_seconds > MAX_WAIT_SECONDS)
+  {
+    context.error_stream() << "Error: max-wait-seconds must be less than " << MAX_WAIT_SECONDS << " seconds" << endl;
+    return RTNCD_FAILURE;
+  }
+
+  if (max_sleep_seconds <= 0)
+  {
+    context.error_stream() << "Error: max-wait-seconds must be greater than 0 seconds" << endl;
+    return RTNCD_FAILURE;
+  }
+
+  string pattern;
+  bool is_regex = parse_regex_pattern(until_match, pattern);
+
+  if (any_case && is_regex)
+  {
+    context.error_stream() << "Error: ignore-case is not supported for regex patterns" << endl;
+    return RTNCD_FAILURE;
+  }
+
+  bool found_match = false;
+  string matched;
+  long long total_sleep_seconds = 0;
+
+  do
+  {
+    string response;
+    rc = zjb_read_job_content_by_dsn(&zjb, job_dsn, response);
+    if (0 != rc)
+    {
+      context.error_stream() << "Error: could not read job content: '" << job_dsn << "' rc: '" << rc << "'" << endl;
+      context.error_stream() << "  Details: " << zjb.diag.e_msg << endl;
+      return RTNCD_FAILURE;
+    }
+
+    if (is_regex)
+    {
+      regex_t re;
+      // Use REG_EXTENDED for extended regex syntax
+      // Use REG_NEWLINE so ^ and $ match line boundaries (not just start/end of string)
+      int ret = regcomp(&re, pattern.c_str(), REG_EXTENDED | REG_NEWLINE);
+      if (ret == 0)
+      {
+        regmatch_t match[1];
+        memset(match, 0, sizeof(match));
+
+        int exec_ret = regexec(&re, response.c_str(), 1, match, 0);
+
+        if (exec_ret == 0)
+        {
+          // On z/OS, rm_eo may not be set correctly by regexec
+          // Use rm_so as the start position - it appears to be reliable
+          if (match[0].rm_so >= 0)
+          {
+            size_t start = static_cast<size_t>(match[0].rm_so);
+
+            // Find the line containing the match
+            // Search backwards for start of line
+            size_t line_start = start;
+            while (line_start > 0 && response[line_start - 1] != '\n')
+            {
+              line_start--;
+            }
+
+            // Search forwards for end of line
+            size_t line_end = start;
+            while (line_end < response.length() && response[line_end] != '\n')
+            {
+              line_end++;
+            }
+
+            if (line_start <= response.length() && line_end <= response.length())
+            {
+              matched = response.substr(line_start, line_end - line_start);
+              found_match = true;
+            }
+          }
+        }
+        else if (exec_ret == REG_NOMATCH)
+        {
+          // No match found, continue loop
+        }
+        else
+        {
+          char errbuf[256];
+          regerror(exec_ret, &re, errbuf, sizeof(errbuf));
+          context.error_stream() << "Debug: regexec error: " << errbuf << endl;
+        }
+        regfree(&re);
+      }
+      else
+      {
+        char errbuf[256];
+        regerror(ret, &re, errbuf, sizeof(errbuf));
+        context.error_stream() << "Error: invalid regex pattern: '" << pattern << "' - " << errbuf << endl;
+      }
+    }
+    else
+    {
+      if (any_case)
+      {
+        auto it = search(response.begin(), response.end(), pattern.begin(), pattern.end(), case_insensitive_match);
+        if (it != response.end())
+        {
+          matched = response.substr(it - response.begin(), pattern.length());
+          found_match = true;
+        }
+      }
+      else
+      {
+        if (response.find(pattern) != string::npos)
+        {
+          matched = pattern;
+          found_match = true;
+        }
+      }
+    }
+
+    if (found_match)
+    {
+      break;
+    }
+    total_sleep_seconds++;
+    sleep(1);
+  } while (total_sleep_seconds < max_sleep_seconds);
+
+  if (found_match)
+  {
+    context.output_stream() << (is_regex ? "'Regex'" : "'String'") << " pattern '" << pattern << "' in job spool files matched in " << total_sleep_seconds << "s on:"
+                            << endl;
+    context.output_stream() << matched << endl;
+    return RTNCD_SUCCESS;
+  }
+  else
+  {
+    context.error_stream() << "Error: " << (is_regex ? "'Regex'" : "'String'") << " pattern '" << pattern << "' in job spool files was not found in " << total_sleep_seconds << "s" << endl;
+    return RTNCD_FAILURE;
+  }
+
+  return found_match ? RTNCD_SUCCESS : RTNCD_FAILURE;
+}
+
 int handle_job_cancel(InvocationContext &context)
 {
   int rc = 0;
@@ -714,6 +900,18 @@ void register_commands(parser::Command &root_command)
   job_delete_cmd->add_positional_arg(JOB_ID);
   job_delete_cmd->set_handler(handle_job_delete);
   job_group->add_command(job_delete_cmd);
+
+  // Watch subcommand
+  auto job_watch_cmd = command_ptr(new Command("watch", "watch job spool files for a given string pattern"));
+  job_watch_cmd->add_alias("wch");
+  job_watch_cmd->add_positional_arg("job-dsn", "job dsn to watch (from 'job list-files')", ArgType_Single, true);
+  job_watch_cmd->add_keyword_arg("pattern", make_aliases("--pattern", "-p"), "string pattern to watch for in spool files", ArgType_Single, true);
+  job_watch_cmd->add_keyword_arg("max-wait-seconds", make_aliases("--max-wait-seconds", "--mws"), "maximum number of seconds to wait for the pattern to match (max 300 seconds)", ArgType_Single, false, ArgValue(15ll));
+  job_watch_cmd->add_keyword_arg("ignore-case", make_aliases("--ignore-case", "--ic"), "match string in any case", ArgType_Flag, false, ArgValue(false));
+  job_watch_cmd->set_handler(handle_job_watch);
+  job_watch_cmd->add_example("Watch job spool files for a given string pattern", "zowex job watch IBMUSER.IEFBR14@.JOB01684.D0000002.JESMSGLG --pattern \"$HASP395 IEFBR14@ ENDED\"");
+  job_watch_cmd->add_example("Watch job spool files for a given regex pattern", "zowex job watch IBMUSER.IEFBR14@.JOB01684D0000002.JESMSGLG --pattern \"/^.*ENDED.*$/g\"");
+  job_group->add_command(job_watch_cmd);
 
   // Cancel subcommand
   auto job_cancel_cmd = command_ptr(new Command("cancel", "cancel a job"));
