@@ -40,7 +40,7 @@
           "background": {
             "activeOnStart": true,
             "beginsPattern": "^\\d{1,2}/\\d{1,2}/\\d{4}, \\d{1,2}:\\d{2}:\\d{2} (?:AM|PM)\\s*$",
-            "endsPattern": "^\\d{1,2}/\\d{1,2}/\\d{4}, \\d{1,2}:\\d{2}:\\d{2} (?:AM|PM) watching for changes\\.\\.\\.\\s*$"
+            "endsPattern": "^\\s*watching for changes\\.\\.\\.\\s*$"
           }
         },
         {
