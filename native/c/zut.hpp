@@ -310,6 +310,17 @@ int zut_free_dynalloc_dds(ZDIAG &diag, std::vector<std::string> &list);
 int zut_list_parmlib(ZDIAG &diag, std::vector<std::string> &parmlibs);
 
 /**
+ * @brief Read input data from a stream, handling both TTY and piped input
+ *
+ * When stdin is not a TTY (piped input), reads raw bytes using istreambuf_iterator.
+ * When stdin is a TTY, reads lines using getline and preserves newlines between lines.
+ *
+ * @param input_stream The input stream to read from
+ * @return The data read from the input stream
+ */
+std::string zut_read_input(std::istream &input_stream);
+
+/**
  * @brief RAII class to manage auto-conversion state
  *
  * Saves the current auto-conversion state on construction and restores it on destruction.

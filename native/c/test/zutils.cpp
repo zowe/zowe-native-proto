@@ -77,7 +77,6 @@ string get_random_string(const int length, const bool allNumbers)
     seeded = true;
   }
   string ret = "";
-  static const unsigned char EBCDIC_A = 0xC1;
 
   for (int i = 0; i < length; ++i)
   {
@@ -87,8 +86,8 @@ string get_random_string(const int length, const bool allNumbers)
     }
     else
     {
-      const auto rand_num = rand() % 26;
-      ret += EBCDIC_A + (rand_num / 10 * 6) + (rand_num % 10);
+      static const char letters[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+      ret += letters[rand() % 26];
     }
   }
   return ret;

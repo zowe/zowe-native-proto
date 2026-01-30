@@ -14,7 +14,6 @@
 #include "../parser.hpp"
 #include "../zusf.hpp"
 #include "../zut.hpp"
-#include <unistd.h>
 
 using namespace ast;
 using namespace parser;
@@ -333,23 +332,7 @@ int handle_uss_write(InvocationContext &context)
   }
   else
   {
-    string data = "";
-    string line = "";
-
-    if (!isatty(fileno(stdout)))
-    {
-      std::istreambuf_iterator<char> begin(context.input_stream());
-      std::istreambuf_iterator<char> end;
-      data.assign(begin, end);
-    }
-    else
-    {
-      while (getline(context.input_stream(), line))
-      {
-        data += line;
-        data.push_back('\n');
-      }
-    }
+    string data = zut_read_input(context.input_stream());
     rc = zusf_write_to_uss_file(&zusf, file, data);
   }
 

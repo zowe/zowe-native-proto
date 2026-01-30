@@ -195,10 +195,17 @@ int ZDSWBPAM(ZDS *zds, IO_CTRL *ioc, const char *data, int *length)
   int rc = 0;
   ZDS zds31 = {0};
   memcpy(&zds31, zds, sizeof(ZDS));
-  char *data31 = (char *)storage_obtain31(*length);
-  memcpy(data31, data, *length);
+
+  // Handle zero-length records (empty lines) - allocate at least 1 byte to avoid NULL pointer
+  int alloc_size = (*length > 0) ? *length : 1;
+  char *data31 = (char *)storage_obtain31(alloc_size);
+  if (*length > 0)
+  {
+    memcpy(data31, data, *length);
+  }
+
   rc = write_output_bpam(&zds31.diag, ioc, data31, *length);
-  storage_release(*length, data31);
+  storage_release(alloc_size, data31);
   memcpy(zds, &zds31, sizeof(ZDS));
   return rc;
 }
