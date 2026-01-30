@@ -17,7 +17,6 @@
 #include <cstring>
 #include <chrono>
 #include <thread>
-#include <random>
 #include <stdexcept>
 
 using namespace std;
@@ -205,17 +204,6 @@ bool wait_for_job(const string &jobid, int max_retries, int delay_ms)
 }
 
 // Data set creation helpers
-
-string get_test_dsn()
-{
-  static int counter = 0;
-  counter++;
-  static random_device rd;
-  static mt19937 gen(rd()); // NOSONAR: safe for generating unique test names, not for security
-  uniform_int_distribution<> dist(0, 99999);
-  int random_num = dist(gen);
-  return get_user() + ".ZDSTEST.T" + to_string(random_num) + to_string(counter);
-}
 
 void create_dsn_with_attrs(ZDS *zds, const string &dsn, DS_ATTRIBUTES &attrs, const string &type_name)
 {

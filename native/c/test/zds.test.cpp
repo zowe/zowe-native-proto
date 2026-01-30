@@ -30,8 +30,8 @@ struct CopyTestContext
 
   CopyTestContext(vector<string> &list) : cleanup_list(list)
   {
-    source_dsn = get_test_dsn();
-    target_dsn = get_test_dsn();
+    source_dsn = get_random_ds(3);
+    target_dsn = get_random_ds(3);
     cleanup_list.push_back(source_dsn);
     cleanup_list.push_back(target_dsn);
   }
@@ -136,7 +136,7 @@ struct CompressTestContext
 
   CompressTestContext(vector<string> &list) : cleanup_list(list)
   {
-    pds_dsn = get_test_dsn();
+    pds_dsn = get_random_ds(3);
     cleanup_list.push_back(pds_dsn);
   }
 
@@ -469,7 +469,7 @@ void zds_tests()
                            {
                              ZDS zds = {0};
                              string source_dsn = "NONEXISTENT.DATASET.NAME";
-                             string target_dsn = get_test_dsn();
+                             string target_dsn = get_random_ds(3);
                              created_dsns.push_back(target_dsn);
                              int rc = zds_copy_dsn(&zds, source_dsn, target_dsn);
                              Expect(rc).Not().ToBe(0);

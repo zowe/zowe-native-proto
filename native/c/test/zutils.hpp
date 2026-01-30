@@ -30,7 +30,6 @@ std::vector<std::string> parse_rfc_response(const std::string input, const char 
 bool wait_for_job(const std::string &jobid, int max_retries = 30, int delay_ms = 100);
 
 // Data set creation helpers
-std::string get_test_dsn();
 void create_dsn_with_attrs(ZDS *zds, const std::string &dsn, DS_ATTRIBUTES &attrs, const std::string &type_name);
 void create_pds(ZDS *zds, const std::string &dsn);
 void create_pdse(ZDS *zds, const std::string &dsn);
