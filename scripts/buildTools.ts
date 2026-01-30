@@ -415,25 +415,14 @@ const ANSI = {
     HIDE_CURSOR: "\x1b[?25l",
     SHOW_CURSOR: "\x1b[?25h",
     CLEAR_LINE: "\x1b[2K",
+    CLEAR_DOWN: "\x1b[J",
     MOVE_UP: (n: number) => `\x1b[${n}A`,
+    MOVE_TO_COL: (n: number) => `\x1b[${n}G`,
     GREEN: "\x1b[32m",
     RED: "\x1b[31m",
     YELLOW: "\x1b[33m",
     DIM: "\x1b[2m",
     RESET: "\x1b[0m",
-};
-
-// Box drawing characters (rounded)
-const BOX = {
-    TOP_LEFT: "╭",
-    TOP_RIGHT: "╮",
-    BOTTOM_LEFT: "╰",
-    BOTTOM_RIGHT: "╯",
-    HORIZONTAL: "─",
-    VERTICAL: "│",
-    LEFT_T: "├",
-    RIGHT_T: "┤",
-    DASHED: "╌",
 };
 
 const BRAILLE_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
@@ -461,10 +450,6 @@ class WatchUI {
 
     private isInteractive(): boolean {
         return process.stdout.isTTY === true && !DEBUG_MODE() && process.env.CI == null;
-    }
-
-    private get boxWidth(): number {
-        return process.stdout.columns || 80;
     }
 
     setFiles(files: Map<string, { kind: FileChangeKind; mtime: Date }>) {
@@ -528,115 +513,67 @@ class WatchUI {
         }
     }
 
-    private horizontalLine(left: string, right: string, char = BOX.HORIZONTAL): string {
-        return `${left}${char.repeat(this.boxWidth - 2)}${right}`;
-    }
-
-    private dashedLine(): string {
-        return `${BOX.LEFT_T}${BOX.DASHED.repeat(this.boxWidth - 2)}${BOX.RIGHT_T}`;
-    }
-
-    private padLine(content: string, rawLength: number): string {
-        const padding = this.boxWidth - 4 - rawLength;
-        return `${BOX.VERTICAL} ${content}${" ".repeat(Math.max(0, padding))} ${BOX.VERTICAL}`;
-    }
-
     private buildLines(): string[] {
-        const timeStr = this.timestamp.toLocaleString();
+        const lines: string[] = [];
 
-        // Top border with timestamp and separator
-        const lines: string[] = [
-            this.horizontalLine(BOX.TOP_LEFT, BOX.TOP_RIGHT),
-            this.padLine(timeStr, timeStr.length),
-            this.horizontalLine(BOX.LEFT_T, BOX.RIGHT_T),
-        ];
+        // Timestamp header
+        lines.push(`${ANSI.DIM}${this.timestamp.toLocaleString()}${ANSI.RESET}`);
 
         // File changes
         for (const [filePath, kind] of this.files.entries()) {
             const icon = this.getFileIcon(kind);
-            const display = `${icon} ${filePath}`;
-            lines.push(this.padLine(display, filePath.length + 2));
+            lines.push(`  ${icon} ${filePath}`);
         }
 
-        // Dashed separator before tasks
+        // Tasks section
         if (this.tasks.size > 0) {
-            lines.push(this.dashedLine(), this.padLine("tasks:", 6));
+            lines.push("", "  tasks:");
 
             for (const [, task] of this.tasks.entries()) {
                 const icon = this.getStatusIcon(task.status);
-                const taskLine = `  [${task.name}] make ${icon}`;
-                const rawLen = `  [${task.name}] make X`.length;
-                lines.push(this.padLine(taskLine, rawLen));
+                lines.push(`    [${task.name}] make ${icon}`);
 
                 // Show error inline if present
                 if (task.error) {
-                    const errorHeader = `${ANSI.RED}error (${task.name}):${ANSI.RESET}`;
-                    lines.push(this.padLine("", 0), this.padLine(`  ${errorHeader}`, `  error (${task.name}):`.length));
+                    lines.push("", `    ${ANSI.RED}error:${ANSI.RESET}`);
 
                     // Split error into lines and show first few
                     const allErrorLines = task.error.split("\n").filter((line) => line.trim().length > 0);
-                    const maxLines = 10;
-                    const visibleLines = allErrorLines.slice(0, maxLines);
-                    const remainingCount = allErrorLines.length - maxLines;
+                    const maxErrorLines = 8;
+                    const visibleLines = allErrorLines.slice(0, maxErrorLines);
+                    const remainingCount = allErrorLines.length - maxErrorLines;
 
                     for (const errLine of visibleLines) {
-                        const truncated =
-                            errLine.length > this.boxWidth - 10
-                                ? `${errLine.slice(0, this.boxWidth - 13)}...`
-                                : errLine;
-                        lines.push(this.padLine(`    ${ANSI.DIM}${truncated}${ANSI.RESET}`, truncated.length + 4));
+                        lines.push(`      ${ANSI.DIM}${errLine}${ANSI.RESET}`);
                     }
 
-                    // Show "N more lines" indicator if truncated
                     if (remainingCount > 0) {
-                        const moreText = `↓ ${remainingCount} more line${remainingCount > 1 ? "s" : ""}`;
-                        const padding = this.boxWidth - 6 - moreText.length;
-                        lines.push(
-                            this.padLine(
-                                `${" ".repeat(padding)}${ANSI.DIM}${moreText}${ANSI.RESET}`,
-                                this.boxWidth - 6,
-                            ),
-                        );
+                        lines.push(`      ${ANSI.DIM}... ${remainingCount} more line${remainingCount > 1 ? "s" : ""}${ANSI.RESET}`);
                     }
 
-                    // Show log file path
                     if (task.errorLogPath) {
-                        const logText = `full log: ${task.errorLogPath}`;
-                        lines.push(
-                            this.padLine("", 0),
-                            this.padLine(`  ${ANSI.DIM}${logText}${ANSI.RESET}`, logText.length + 2),
-                        );
+                        lines.push("", `    ${ANSI.DIM}full log: ${task.errorLogPath}${ANSI.RESET}`);
                     }
                 }
             }
         }
 
-        // Footer separator, message, and bottom border
-        lines.push(
-            this.horizontalLine(BOX.LEFT_T, BOX.RIGHT_T),
-            this.padLine(this.footerMessage, this.footerMessage.length),
-            this.horizontalLine(BOX.BOTTOM_LEFT, BOX.BOTTOM_RIGHT),
-        );
+        // Footer
+        lines.push("", `${ANSI.DIM}${this.footerMessage}${ANSI.RESET}`);
 
         return lines;
     }
 
-    clear() {
-        if (!this.isInteractive()) return;
+    private clear() {
+        if (!this.isInteractive() || this.lineCount === 0) return;
 
-        if (this.lineCount > 0) {
-            // Move cursor up and clear each line
-            process.stdout.write(ANSI.MOVE_UP(this.lineCount));
-            for (let i = 0; i < this.lineCount; i++) {
-                process.stdout.write(`${ANSI.CLEAR_LINE}\n`);
-            }
-            process.stdout.write(ANSI.MOVE_UP(this.lineCount));
-        }
+        process.stdout.write(ANSI.MOVE_UP(this.lineCount));
+        process.stdout.write(ANSI.MOVE_TO_COL(1));
+        process.stdout.write(ANSI.CLEAR_DOWN);
     }
 
     render() {
         if (!this.isInteractive()) {
-            // Fallback: simple console output
             this.renderFallback();
             return;
         }
