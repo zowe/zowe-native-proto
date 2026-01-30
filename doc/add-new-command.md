@@ -298,6 +298,8 @@ The `CommandBuilder` provides a fluent API for mapping RPC parameters to command
 - `.read_stdout(name, base64)` - Read the command's stdout into the RPC response
 - `.handle_fifo(rpcId, argName, mode)` - Create a FIFO pipe for streaming data
 
+**Note:** The middleware automatically converts camelCase parameter names (used in JSON-RPC requests to match JSON standards) to kebab-case argument names (used in CLI flags to match CLI standards). For example, `maxReturnedRows` in the RPC request becomes `--max-returned-rows` when passed to the CLI command.
+
 ---
 
 ## 4. Testing Your Middleware Command
