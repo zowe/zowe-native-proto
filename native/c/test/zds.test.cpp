@@ -811,26 +811,14 @@ void zds_tests()
                            [&]() -> void
                            {
                              ZDS zds = {0};
-                             DS_ATTRIBUTES attr = {0};
-
-                             attr.dsorg = "PS";
-                             attr.recfm = "FB";
-                             attr.lrecl = 80;
-                             attr.blksize = 0;
-                             attr.alcunit = "TRACKS";
-                             attr.primary = 1;
-                             attr.secondary = 1;
-                             attr.dirblk = 0;
-
                              string source = get_random_ds(3);
                              string target = get_random_ds(3);
                              created_dsns.push_back(source);
                              created_dsns.push_back(target);
 
-                             string response;
-                             int rc = zds_create_dsn(&zds, source, attr, response);
-                             rc = zds_create_dsn(&zds, target, attr, response);
-                             rc = zds_rename_dsn(&zds, source, target);
+                             create_seq(&zds, source);
+                             create_seq(&zds, target);
+                             int rc = zds_rename_dsn(&zds, source, target);
                              Expect(rc).ToBe(RTNCD_FAILURE);
                              Expect(string(zds.diag.e_msg)).ToContain("Target data set name already exists");
                            });
@@ -839,23 +827,12 @@ void zds_tests()
                            [&]() -> void
                            {
                              ZDS zds = {0};
-                             DS_ATTRIBUTES attr = {0};
-
-                             attr.dsorg = "PS";
-                             attr.recfm = "FB";
-                             attr.lrecl = 80;
-                             attr.blksize = 0;
-                             attr.alcunit = "TRACKS";
-                             attr.primary = 1;
-                             attr.secondary = 1;
-                             attr.dirblk = 0;
                              string before = get_random_ds(3);
                              string after = get_random_ds(3);
                              created_dsns.push_back(after); // before is renamed to after; clean up final name
 
-                             string response;
-                             int rc = zds_create_dsn(&zds, before, attr, response);
-                             rc = zds_rename_dsn(&zds, before, after);
+                             create_seq(&zds, before);
+                             int rc = zds_rename_dsn(&zds, before, after);
                              ExpectWithContext(rc, zds.diag.e_msg).ToBe(0);
                            });
                       });
