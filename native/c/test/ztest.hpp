@@ -1341,7 +1341,7 @@ inline void print_failed_tests()
     // Check if this suite has any failures
     for (std::vector<TEST_CASE>::iterator iit = it->tests.begin(); iit != it->tests.end(); iit++)
     {
-      if (!iit->success)
+      if (!iit->success && !iit->skipped)
       {
         suite_has_failures = true;
         break;
@@ -1369,7 +1369,7 @@ inline void print_failed_tests()
 
       for (std::vector<TEST_CASE>::iterator iit = it->tests.begin(); iit != it->tests.end(); iit++)
       {
-        if (!iit->success)
+        if (!iit->success && !iit->skipped)
         {
           std::cout << "  " << colors.red << colors.cross << " FAIL " << iit->description << colors.reset << std::endl;
           if (!iit->fail_message.empty())

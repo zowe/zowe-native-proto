@@ -26,6 +26,21 @@ interface IConfig {
 
 type SftpError = Error & { code?: number };
 
+/**
+ * Converts a file path to use POSIX separators (forward slashes).
+ * This ensures consistent cache keys across Windows and Unix systems.
+ */
+function toPosixPath(filePath: string): string {
+    return filePath.split(path.sep).join("/");
+}
+
+/**
+ * Compares two strings for sorting in alphabetical order.
+ */
+function localeCompare(a: string, b: string): number {
+    return a.localeCompare(b);
+}
+
 const localDeployDir = "./../native";
 const args = process.argv.slice(2);
 let deployDirs: {
@@ -112,7 +127,8 @@ class WatchUtils {
     private cacheFile: string;
     private readonly pendingChanges: Map<string, { kind: "+" | "~" | "-"; mtime: Date }> = new Map();
     private rootDir: string;
-    private readonly spinnerFrames = ["-", "\\", "|", "/"];
+    private sftp: SFTPWrapper | null = null;
+    private readonly ui: WatchUI = new WatchUI();
     private watcher: chokidar.FSWatcher;
 
     constructor(
@@ -122,6 +138,23 @@ class WatchUtils {
         this.cacheFile = path.resolve(this.cacheDir, `${sshProfile.user}_${sshProfile.host}.json`);
         this.rootDir = path.resolve(__dirname, localDeployDir);
         this.loadCache();
+    }
+
+    private async getSftp(): Promise<SFTPWrapper> {
+        if (this.sftp == null) {
+            this.sftp = await promisify(this.connection.sftp.bind(this.connection))();
+            this.sftp.on("close", () => {
+                this.sftp = null;
+            });
+        }
+        return this.sftp;
+    }
+
+    private closeSftp() {
+        if (this.sftp != null) {
+            this.sftp.end();
+            this.sftp = null;
+        }
     }
 
     public loadCache() {
@@ -141,12 +174,11 @@ class WatchUtils {
         const changedFiles = getAllServerFiles().filter(
             (filePath) =>
                 !path.basename(filePath).startsWith(".") &&
-                fs.statSync(path.join(this.rootDir, filePath)).mtimeMs >
-                    (this.cache[filePath.replaceAll(path.sep, path.posix.sep)] ?? 0),
+                fs.statSync(path.join(this.rootDir, filePath)).mtimeMs > (this.cache[toPosixPath(filePath)] ?? 0),
         );
         for (const filePath of changedFiles) {
             const absLocalPath = path.resolve(__dirname, `${localDeployDir}/${filePath}`);
-            const changeKind = this.cache[filePath.replaceAll(path.sep, path.posix.sep)] == null ? "+" : "~";
+            const changeKind = this.cache[toPosixPath(filePath)] == null ? "+" : "~";
             this.pendingChanges.set(filePath, { kind: changeKind, mtime: fs.statSync(absLocalPath).mtime });
         }
 
@@ -160,6 +192,7 @@ class WatchUtils {
             if (debounceTimer) {
                 clearTimeout(debounceTimer);
             }
+            this.closeSftp();
             this.watcher.close();
         });
         const applyChangesDebounced = () => {
@@ -181,9 +214,11 @@ class WatchUtils {
             applyChangesDebounced();
         });
 
-        this.printReadyMessage();
         if (this.pendingChanges.size > 0) {
             void this.applyChanges();
+        } else {
+            // Show initial "watching" message when no changes pending
+            console.log(`${new Date().toLocaleString()} watching for changes...`);
         }
     }
 
@@ -196,29 +231,33 @@ class WatchUtils {
         }
 
         this.buildMutex = new DeferredPromise<void>();
-        let sftp: SFTPWrapper;
         try {
+            // Update UI with pending file changes
+            this.ui.setFiles(this.pendingChanges);
+            this.ui.setFooter("syncing files...");
+            this.ui.render();
+
             const toDelete: string[] = [];
             const toUpload: { localPath: string; remotePath: string }[] = [];
             const uniqueDirs = new Set<string>();
-            for (const [filePath, { kind, mtime }] of this.pendingChanges.entries()) {
-                const remotePath = `${deployDirs.root}/${filePath.replaceAll(path.sep, path.posix.sep)}`;
+            for (const [filePath, { kind }] of this.pendingChanges.entries()) {
+                const remotePath = `${deployDirs.root}/${toPosixPath(filePath)}`;
                 if (kind === "-") {
-                    console.log(`${mtime.toLocaleString()} [-] ${filePath}`);
                     toDelete.push(remotePath);
                 } else {
-                    console.log(`${mtime.toLocaleString()} [${kind}] ${filePath} -> ${remotePath}`);
                     toUpload.push({ localPath: filePath, remotePath });
-                    // Check . and .. directories to ensure parent dirs get created
-                    uniqueDirs.add(path.dirname(path.dirname(remotePath)));
-                    uniqueDirs.add(path.dirname(remotePath));
+                    // Ensure all parent directories exist on the remote side
+                    this.collectParentDirs(remotePath, uniqueDirs);
                 }
             }
             this.pendingChanges.clear();
 
-            sftp = await promisify(this.connection.sftp.bind(this.connection))();
+            const sftp = await this.getSftp();
             await Promise.all(toDelete.map((remotePath) => this.deleteFile(sftp, remotePath)));
-            for (const dirPath of uniqueDirs) {
+            const orderedDirs = Array.from(uniqueDirs).sort((left, right) => {
+                return left.split("/").length - right.split("/").length;
+            });
+            for (const dirPath of orderedDirs) {
                 // Create directories sequentially since order may matter
                 await this.createDir(sftp, dirPath);
             }
@@ -228,14 +267,16 @@ class WatchUtils {
             this.saveCache();
             await this.executeBuild(...toUpload.map(({ localPath }) => localPath));
         } finally {
-            sftp?.end();
             this.buildMutex.resolve();
             this.printReadyMessage();
         }
     }
 
     private printReadyMessage() {
-        console.log(`${new Date().toLocaleString()} watching for changes...`);
+        this.ui.setFooter("watching for changes...");
+        this.ui.render();
+        // Reset UI state for next change batch (keeps last render visible)
+        this.ui.reset();
     }
 
     private async deleteFile(sftp: SFTPWrapper, remotePath: string) {
@@ -247,6 +288,21 @@ class WatchUtils {
             }
         }
         delete this.cache[path.posix.relative(deployDirs.root, remotePath)];
+    }
+
+    private collectParentDirs(remotePath: string, uniqueDirs: Set<string>) {
+        let dirPath = path.posix.dirname(remotePath);
+        while (dirPath && dirPath !== "." && dirPath !== "/" && dirPath !== deployDirs.root) {
+            uniqueDirs.add(dirPath);
+            const nextDir = path.posix.dirname(dirPath);
+            if (nextDir === dirPath) {
+                break;
+            }
+            dirPath = nextDir;
+        }
+        if (deployDirs.root && deployDirs.root !== "/" && deployDirs.root !== ".") {
+            uniqueDirs.add(deployDirs.root);
+        }
     }
 
     private async createDir(sftp: SFTPWrapper, remotePath: string) {
@@ -266,21 +322,42 @@ class WatchUtils {
     }
 
     private async executeBuild(...paths: string[]) {
-        const cSourceChanged = paths.some((filePath) => filePath.split(path.sep)[0] === "c");
-        const zowedSourceChanged = paths.some((filePath) => filePath.split(path.sep)[0] === "zowed");
+        const cSourceChanged = paths.some((filePath) => toPosixPath(filePath).split("/")[0] === "c");
+        const zowedSourceChanged = paths.some((filePath) => toPosixPath(filePath).split("/")[0] === "zowed");
+
+        // Determine which tasks need to run
+        const tasksToRun = [
+            ...(cSourceChanged ? ["c"] : []),
+            ...(zowedSourceChanged || cSourceChanged ? ["zowed"] : []),
+        ];
+
+        // Add tasks to UI and start spinner
+        for (const task of tasksToRun) {
+            this.ui.addTask(task);
+        }
+        this.ui.setFooter("building...");
+        this.ui.startSpinner();
+
         let result: number | string; // number for failing exit code or string for successful output
         if (cSourceChanged) {
-            result = await this.makeTask();
+            result = await this.makeTask("c");
         }
         if (zowedSourceChanged || typeof result === "string" || result === 0) {
-            await this.makeTask(deployDirs.zowedDir);
+            await this.makeTask("zowed", deployDirs.zowedDir);
         }
+
+        this.ui.stopSpinner();
     }
 
-    private makeTask(inDir?: string): Promise<number | string> {
+    private makeTask(taskName: string, inDir?: string): Promise<number | string> {
+        this.ui.updateTask(taskName, "running");
+        this.ui.render();
+
         return new Promise<number | string>((resolve, reject) => {
             this.connection.shell(false, async (err, stream) => {
                 if (err) {
+                    this.ui.updateTask(taskName, "error", err.message);
+                    this.ui.render();
                     reject(err);
                     return;
                 }
@@ -292,50 +369,44 @@ class WatchUtils {
                 const cwd = inDir ?? deployDirs.cDir;
                 const cmd = `cd ${cwd}\nmake\nexit $?\n`;
                 stream.write(cmd);
-                const prefix = `\t[tasks -> ${path.basename(cwd)}] make`;
-                const spinner = this.startSpinner(prefix);
 
                 let outText = "";
                 let errText = "";
                 stream
                     .on("exit", (code: number) => {
-                        this.stopSpinner(spinner);
                         if (errText.length > 0) {
-                            const status = code > 0 ? `failed (rc=${code}) ✘` : `succeeded with warnings !`;
-                            console.log(`${prefix} ${status}\nerror: \n${errText}`);
+                            const status: TaskStatus = code > 0 ? "error" : "warning";
+                            this.ui.updateTask(taskName, status, errText);
+                            this.ui.render();
                             resolve(code);
                         } else {
-                            const status = outText.length > 0 ? "succeeded ✔" : "detected no changes —";
-                            console.log(`${prefix} ${status}`);
+                            const status: TaskStatus = outText.length > 0 ? "success" : "no_changes";
+                            this.ui.updateTask(taskName, status);
+                            this.ui.render();
                             resolve(outText);
                         }
                     })
-                    .on("error", reject)
+                    .on("error", (err: Error) => {
+                        this.ui.updateTask(taskName, "error", err.message);
+                        this.ui.render();
+                        reject(err);
+                    })
                     .stdout.on("data", (data: Buffer) => {
                         const str = data.toString().trim();
-                        outText += str;
+                        if (str.length > 0) {
+                            outText += (outText.length > 0 ? "\n" : "") + str;
+                        }
                     })
                     .stderr.on("data", (data: Buffer) => {
                         // Filter out INFO level messages and ones about compiler optimizations
                         const str = data.toString().trim();
                         if (/IGD\d{5}I /.test(str) || /WARNING CLC1145:/.test(str)) return;
-                        errText += str;
+                        if (str.length > 0) {
+                            errText += (errText.length > 0 ? "\n" : "") + str;
+                        }
                     });
             });
         });
-    }
-
-    private startSpinner(prefix: string) {
-        let spinnerIndex = 0;
-        return setInterval(() => {
-            process.stdout.write(`\r${prefix} ${this.spinnerFrames[spinnerIndex]}`);
-            spinnerIndex = (spinnerIndex + 1) % this.spinnerFrames.length;
-        }, 100);
-    }
-
-    private stopSpinner(spinner: NodeJS.Timeout | null) {
-        spinner && clearInterval(spinner);
-        process.stdout.write("\r");
     }
 }
 
@@ -343,20 +414,284 @@ function DEBUG_MODE() {
     return process.env.ZOWE_NATIVE_DEBUG?.toUpperCase() === "TRUE" || process.env.ZOWE_NATIVE_DEBUG === "1";
 }
 
+// ANSI escape codes for terminal formatting
+const ANSI = {
+    HIDE_CURSOR: "\x1b[?25l",
+    SHOW_CURSOR: "\x1b[?25h",
+    CLEAR_LINE: "\x1b[2K",
+    CLEAR_DOWN: "\x1b[J",
+    MOVE_UP: (n: number) => `\x1b[${n}A`,
+    MOVE_TO_COL: (n: number) => `\x1b[${n}G`,
+    GREEN: "\x1b[32m",
+    RED: "\x1b[31m",
+    YELLOW: "\x1b[33m",
+    DIM: "\x1b[2m",
+    RESET: "\x1b[0m",
+};
+
+const BRAILLE_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+
+type FileChangeKind = "+" | "~" | "-";
+type TaskStatus = "pending" | "running" | "success" | "warning" | "error" | "no_changes";
+
+interface TaskState {
+    name: string;
+    status: TaskStatus;
+    error?: string;
+    errorLogPath?: string;
+}
+
+class WatchUI {
+    private readonly files: Map<string, FileChangeKind> = new Map();
+    private readonly tasks: Map<string, TaskState> = new Map();
+    private timestamp: Date = new Date();
+    private lineCount = 0;
+    private spinnerInterval: NodeJS.Timeout | null = null;
+    private spinnerFrame = 0;
+    private footerMessage = "watching for changes...";
+    private lastFallbackState = "";
+    private readonly printedFallbackItems: Set<string> = new Set();
+
+    private isInteractive(): boolean {
+        return process.stdout.isTTY === true && !DEBUG_MODE() && process.env.CI == null;
+    }
+
+    setFiles(files: Map<string, { kind: FileChangeKind; mtime: Date }>) {
+        this.files.clear();
+        this.timestamp = new Date();
+        for (const [filePath, { kind }] of files.entries()) {
+            this.files.set(filePath, kind);
+        }
+    }
+
+    addTask(name: string) {
+        this.tasks.set(name, { name, status: "pending" });
+    }
+
+    updateTask(name: string, status: TaskStatus, error?: string) {
+        const task = this.tasks.get(name);
+        if (task) {
+            task.status = status;
+            task.error = error;
+            // Write full error to log file if present
+            if (error) {
+                const errorLogDir = path.resolve(__dirname, "../.cache/build-errors");
+                fs.mkdirSync(errorLogDir, { recursive: true });
+                const logPath = path.join(errorLogDir, `${name}.log`);
+                const logContent = `Build error log for [${name}]\nTimestamp: ${this.timestamp.toLocaleString()}\n${"─".repeat(50)}\n\n${error}`;
+                fs.writeFileSync(logPath, logContent);
+                task.errorLogPath = `.cache/build-errors/${name}.log`;
+            }
+        }
+    }
+
+    setFooter(message: string) {
+        this.footerMessage = message;
+    }
+
+    private getStatusIcon(status: TaskStatus): string {
+        switch (status) {
+            case "running":
+                return BRAILLE_FRAMES[this.spinnerFrame];
+            case "success":
+                return `${ANSI.GREEN}✔${ANSI.RESET}`;
+            case "warning":
+                return `${ANSI.YELLOW}!${ANSI.RESET}`;
+            case "error":
+                return `${ANSI.RED}✘${ANSI.RESET}`;
+            case "no_changes":
+                return `${ANSI.DIM}—${ANSI.RESET}`;
+            default:
+                return " ";
+        }
+    }
+
+    private getFileIcon(kind: FileChangeKind): string {
+        switch (kind) {
+            case "+":
+                return `${ANSI.GREEN}+${ANSI.RESET}`;
+            case "-":
+                return `${ANSI.RED}-${ANSI.RESET}`;
+            case "~":
+                return `${ANSI.YELLOW}~${ANSI.RESET}`;
+        }
+    }
+
+    private buildLines(): string[] {
+        const lines: string[] = [];
+
+        // Timestamp header
+        lines.push(`${ANSI.DIM}${this.timestamp.toLocaleString()}${ANSI.RESET}`);
+
+        // File changes
+        for (const [filePath, kind] of this.files.entries()) {
+            const icon = this.getFileIcon(kind);
+            lines.push(`  ${icon} ${filePath}`);
+        }
+
+        // Tasks section
+        if (this.tasks.size > 0) {
+            lines.push("", "  tasks:");
+
+            for (const [, task] of this.tasks.entries()) {
+                const icon = this.getStatusIcon(task.status);
+                lines.push(`    [${task.name}] make ${icon}`);
+
+                // Show error inline if present
+                if (task.error) {
+                    lines.push("", `    ${ANSI.RED}error:${ANSI.RESET}`);
+
+                    // Split error into lines and show first few
+                    const allErrorLines = task.error.split("\n").filter((line) => line.trim().length > 0);
+                    const maxErrorLines = 8;
+                    const visibleLines = allErrorLines.slice(0, maxErrorLines);
+                    const remainingCount = allErrorLines.length - maxErrorLines;
+
+                    for (const errLine of visibleLines) {
+                        lines.push(`      ${ANSI.DIM}${errLine}${ANSI.RESET}`);
+                    }
+
+                    if (remainingCount > 0) {
+                        lines.push(`      ${ANSI.DIM}... ${remainingCount} more line${remainingCount > 1 ? "s" : ""}${ANSI.RESET}`);
+                    }
+
+                    if (task.errorLogPath) {
+                        lines.push("", `    ${ANSI.DIM}full log: ${task.errorLogPath}${ANSI.RESET}`);
+                    }
+                }
+            }
+        }
+
+        // Footer
+        lines.push("", `${ANSI.DIM}${this.footerMessage}${ANSI.RESET}`);
+
+        return lines;
+    }
+
+    private clear() {
+        if (!this.isInteractive() || this.lineCount === 0) return;
+
+        process.stdout.write(ANSI.MOVE_UP(this.lineCount));
+        process.stdout.write(ANSI.MOVE_TO_COL(1));
+        process.stdout.write(ANSI.CLEAR_DOWN);
+    }
+
+    render() {
+        if (!this.isInteractive()) {
+            this.renderFallback();
+            return;
+        }
+
+        this.clear();
+        const lines = this.buildLines();
+        process.stdout.write(lines.join("\n") + "\n");
+        this.lineCount = lines.length;
+    }
+
+    private renderFallback() {
+        const fileKey = Array.from(this.files.keys()).sort(localeCompare).join(",");
+        const filesChanged = fileKey !== this.lastFallbackState;
+
+        // Print file changes header once
+        if (filesChanged && this.files.size > 0) {
+            console.log(`\n${this.timestamp.toLocaleString()}`);
+            for (const [filePath, kind] of this.files.entries()) {
+                console.log(`[${kind}] ${filePath}`);
+            }
+            this.lastFallbackState = fileKey;
+        }
+
+        for (const [, task] of this.tasks.entries()) {
+            const runningKey = `task:${task.name}:running`;
+            const doneKey = `task:${task.name}:done`;
+
+            // Print "running" once when task starts
+            if (task.status === "running" && !this.printedFallbackItems.has(runningKey)) {
+                console.log(`  [${task.name}] make running`);
+                this.printedFallbackItems.add(runningKey);
+            }
+
+            // Print final result once when task completes
+            if (!this.printedFallbackItems.has(doneKey)) {
+                if (
+                    task.status === "success" ||
+                    task.status === "error" ||
+                    task.status === "warning" ||
+                    task.status === "no_changes"
+                ) {
+                    const statusText =
+                        task.status === "success"
+                            ? "✔"
+                            : task.status === "error"
+                              ? "✘"
+                              : task.status === "warning"
+                                ? "!"
+                                : "—";
+                    console.log(`  [${task.name}] make ${statusText}`);
+                    if (task.error) {
+                        console.log(`    error: ${task.error}`);
+                    }
+                    this.printedFallbackItems.add(doneKey);
+                }
+            }
+        }
+
+        // Print footer only when transitioning to "watching" state
+        if (this.footerMessage === "watching for changes..." && !this.printedFallbackItems.has("footer:watching")) {
+            console.log(this.footerMessage);
+            this.printedFallbackItems.add("footer:watching");
+        }
+    }
+
+    startSpinner() {
+        if (!this.isInteractive()) return;
+
+        process.stdout.write(ANSI.HIDE_CURSOR);
+        this.spinnerInterval = setInterval(() => {
+            this.spinnerFrame = (this.spinnerFrame + 1) % BRAILLE_FRAMES.length;
+            this.render();
+        }, 80);
+    }
+
+    stopSpinner() {
+        if (this.spinnerInterval) {
+            clearInterval(this.spinnerInterval);
+            this.spinnerInterval = null;
+        }
+        if (this.isInteractive()) {
+            process.stdout.write(ANSI.SHOW_CURSOR);
+        }
+    }
+
+    reset() {
+        this.stopSpinner();
+        this.files.clear();
+        this.tasks.clear();
+        this.lineCount = 0;
+        this.lastFallbackState = "";
+        this.printedFallbackItems.clear();
+    }
+}
+
 function startSpinner(text = "Loading...") {
     if (DEBUG_MODE() || process.env.CI != null) {
         console.log(text);
         return null;
     }
-    console.log(text);
-    let progressIndex = 0;
 
-    const PROGRESS_BAR_FRAMES = ["▏", "▎", "▍", "▌", "▋", "▊", "▉", "▊", "▋", "▌", "▍", "▎"];
+    const BRAILLE_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+    let frameIndex = 0;
+
+    // Truncate text to fit terminal width (leave room for spinner and padding)
+    const maxWidth = (process.stdout.columns || 80) - 4;
+    const displayText = text.length > maxWidth ? `${text.slice(0, maxWidth - 3)}...` : text;
+
+    // Hide cursor
+    process.stdout.write("\x1b[?25l");
     return setInterval(() => {
-        const progressBar = PROGRESS_BAR_FRAMES.map((_, i) => (i === progressIndex ? "█" : " ")).join("");
-        process.stdout.write(`\rRunning... █${progressBar}`);
-        progressIndex = (progressIndex + 1) % PROGRESS_BAR_FRAMES.length;
-    }, 100);
+        process.stdout.write(`\r${BRAILLE_FRAMES[frameIndex]} ${displayText}`);
+        frameIndex = (frameIndex + 1) % BRAILLE_FRAMES.length;
+    }, 80);
 }
 
 function stopSpinner(spinner: NodeJS.Timeout | null, text = "Done!") {
@@ -364,6 +699,8 @@ function stopSpinner(spinner: NodeJS.Timeout | null, text = "Done!") {
         return;
     }
     spinner && clearInterval(spinner);
+    // Restore cursor
+    process.stdout.write(`\x1b[?25h`);
     process.stdout.write(`\x1b[2K\r${text}\n`);
 }
 
@@ -376,10 +713,8 @@ function getAllServerFiles() {
     }
 
     const dirs = getDirs();
-
-    for (const dir of dirs) {
-        files.push(...getServerFiles(dir));
-    }
+    const dirFiles = dirs.map((dir) => getServerFiles(dir));
+    files.push(...dirFiles.flat());
 
     return files;
 }
@@ -444,8 +779,7 @@ function getDirs(next = "") {
     for (const dir of readDirs) {
         if (dir.isDirectory()) {
             const newDir = `${dir.name}/`;
-            dirs.push(`${next}${newDir}`);
-            dirs.push(...getDirs(`${next}${newDir}`));
+            dirs.push(`${next}${newDir}`, ...getDirs(`${next}${newDir}`));
         }
     }
     return dirs;
@@ -456,7 +790,7 @@ async function artifacts(connection: Client, packageAll: boolean) {
     if (packageAll) {
         artifactPaths.push("c/build-out/zoweax", "c/build-out/zowex");
     }
-    const artifactNames = artifactPaths.map((file) => path.basename(file)).sort();
+    const artifactNames = artifactPaths.map((file) => path.basename(file)).sort(localeCompare);
     const localDir = packageAll ? "dist" : "packages/sdk/bin";
     const localFiles = ["server.pax.Z", "checksums.asc"];
     const [paxFile, checksumFile] = localFiles;
@@ -483,7 +817,7 @@ async function artifacts(connection: Client, packageAll: boolean) {
 }
 
 async function runCommandInShell(connection: Client, command: string, streamOutput = false) {
-    const spinner = streamOutput ? null : startSpinner(`Running: ${command.trim()}`);
+    const spinner = streamOutput ? null : startSpinner(`$ ${command.trim()}`);
     return new Promise<string>((resolve, reject) => {
         let data = "";
         let error = "";
@@ -588,9 +922,9 @@ async function upload(connection: Client, sshProfile: IProfile) {
             }
             for (let i = 0; i < files.length; i++) {
                 const from = path.resolve(__dirname, `${localDeployDir}/${files[i]}`);
-                const to = `${deployDirs.root}/${files[i]}`;
+                const to = `${deployDirs.root}/${toPosixPath(files[i])}`;
                 pendingUploads.push(uploadFile(sftpcon, from, to));
-                watcher.cache[files[i].replaceAll(path.sep, path.posix.sep)] = fs.statSync(from).mtimeMs;
+                watcher.cache[toPosixPath(files[i])] = fs.statSync(from).mtimeMs;
             }
             await Promise.all(pendingUploads);
 
