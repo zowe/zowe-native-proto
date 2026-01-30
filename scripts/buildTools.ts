@@ -393,13 +393,17 @@ class WatchUtils {
                     })
                     .stdout.on("data", (data: Buffer) => {
                         const str = data.toString().trim();
-                        outText += str;
+                        if (str.length > 0) {
+                            outText += (outText.length > 0 ? "\n" : "") + str;
+                        }
                     })
                     .stderr.on("data", (data: Buffer) => {
                         // Filter out INFO level messages and ones about compiler optimizations
                         const str = data.toString().trim();
                         if (/IGD\d{5}I /.test(str) || /WARNING CLC1145:/.test(str)) return;
-                        errText += str;
+                        if (str.length > 0) {
+                            errText += (errText.length > 0 ? "\n" : "") + str;
+                        }
                     });
             });
         });
