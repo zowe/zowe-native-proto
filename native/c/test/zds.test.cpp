@@ -768,7 +768,7 @@ void zds_tests()
                            });
                       });
              describe("rename",
-                      []() -> void
+                      [&]() -> void
                       {
                         it("should fail if source or target data sets are empty",
                            []() -> void
@@ -808,7 +808,7 @@ void zds_tests()
                            });
 
                         it("should fail if target data set already exists",
-                           []() -> void
+                           [&]() -> void
                            {
                              ZDS zds = {0};
                              DS_ATTRIBUTES attr = {0};
@@ -824,6 +824,8 @@ void zds_tests()
 
                              string source = get_random_ds(3);
                              string target = get_random_ds(3);
+                             created_dsns.push_back(source);
+                             created_dsns.push_back(target);
 
                              string response;
                              int rc = zds_create_dsn(&zds, source, attr, response);
@@ -834,7 +836,7 @@ void zds_tests()
                            });
 
                         it("should rename dataset successfully when valid",
-                           []() -> void
+                           [&]() -> void
                            {
                              ZDS zds = {0};
                              DS_ATTRIBUTES attr = {0};
@@ -849,6 +851,7 @@ void zds_tests()
                              attr.dirblk = 0;
                              string before = get_random_ds(3);
                              string after = get_random_ds(3);
+                             created_dsns.push_back(after); // before is renamed to after; clean up final name
 
                              string response;
                              int rc = zds_create_dsn(&zds, before, attr, response);
