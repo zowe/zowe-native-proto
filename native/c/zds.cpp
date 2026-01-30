@@ -411,26 +411,23 @@ int zds_compress_dsn(ZDS *zds, const string &dsn)
     return RTNCD_FAILURE;
   }
 
-  // When DSCB did not set dsntype (like test or migrated), verify via fldata that it is PDS not PDSE
-  if (info.entry.dsntype.empty())
+  // Always verify via fldata that it is PDS not PDSE (catalog/DSCB can be wrong or missing)
+  string dsn_path = "//'" + info.base_dsn + "'";
+  FILE *dir = fopen(dsn_path.c_str(), "r");
+  if (dir)
   {
-    string dsn_path = "//'" + info.base_dsn + "'";
-    FILE *dir = fopen(dsn_path.c_str(), "r");
-    if (dir)
+    fldata_t file_info = {0};
+    char file_name[64] = {0};
+    if (0 == fldata(dir, file_name, &file_info))
     {
-      fldata_t file_info = {0};
-      char file_name[64] = {0};
-      if (0 == fldata(dir, file_name, &file_info))
+      if (file_info.__dsorgPDSE || !file_info.__dsorgPDSdir)
       {
-        if (file_info.__dsorgPDSE || !file_info.__dsorgPDSdir)
-        {
-          fclose(dir);
-          zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "data set '%s' is not a PDS", dsn.c_str());
-          return RTNCD_FAILURE;
-        }
+        fclose(dir);
+        zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "data set '%s' is not a PDS", dsn.c_str());
+        return RTNCD_FAILURE;
       }
-      fclose(dir);
     }
+    fclose(dir);
   }
 
   vector<string> dds;
