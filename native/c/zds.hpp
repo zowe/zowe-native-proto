@@ -79,6 +79,62 @@ typedef struct
 extern "C"
 {
 #endif
+
+enum ZDS_TYPE
+{
+  ZDS_TYPE_UNKNOWN = 0,
+  ZDS_TYPE_PS,     // Sequential
+  ZDS_TYPE_PDS,    // Partitioned (including PDSE)
+  ZDS_TYPE_MEMBER, // Member of a PDS
+  ZDS_TYPE_VSAM    // VSAM
+};
+
+struct ZDSTypeInfo
+{
+  bool exists;
+  ZDS_TYPE type;
+  std::string base_dsn;
+  std::string member_name;
+  ZDSEntry entry; // Basic attributes if it exists
+};
+
+/**
+ * @brief Get detailed type and existence information for a data set string
+ *
+ * @param dsn data set name string (possibly with member)
+ * @param info populated type info structure
+ * @return int 0 for success; non zero otherwise
+ */
+int zds_get_type_info(const std::string &dsn, ZDSTypeInfo &info);
+
+/**
+ * @brief Copy a data set or member
+ *
+ * @param zds data set returned attributes and error information
+ * @param dsn1 source data set name
+ * @param dsn2 destination data set name
+ * @param replace if true, replace like-named members in target (for PDS copy)
+ * @return int 0 for success; non zero otherwise
+ */
+int zds_copy_dsn(ZDS *zds, const std::string &dsn1, const std::string &dsn2, bool replace = false, bool overwrite = false);
+
+/**
+ * @brief Compress a PDS data set
+ *
+ * @param zds data set returned attributes and error information
+ * @param dsn data set name to compress
+ * @return int 0 for success; non zero otherwise
+ */
+int zds_compress_dsn(ZDS *zds, const std::string &dsn);
+
+/**
+ * @brief Check if a data set exists
+ *
+ * @param dsn data set name to check
+ * @return true if it exists; false otherwise
+ */
+bool zds_dataset_exists(const std::string &dsn);
+
 /**
  * @brief Read data from a z/OS data set
  *

@@ -36,7 +36,8 @@ int zut_search(string parms)
 
 int zut_run(ZDIAG &diag, string program, string parms)
 {
-  return ZUTRUN(&diag, program.c_str(), parms.c_str());
+  const char *parms_ptr = parms.empty() ? nullptr : parms.c_str();
+  return ZUTRUN(&diag, program.c_str(), parms_ptr);
 }
 
 int zut_run(string program)
@@ -707,17 +708,19 @@ int zut_free_dynalloc_dds(ZDIAG &diag, vector<string> &list)
   for (vector<string>::iterator it = list.begin(); it != list.end(); it++)
   {
     string alloc_dd = *it;
-    size_t start = alloc_dd.find(" ");
-    size_t end = alloc_dd.find(")", start);
-    if (start == string::npos || end == string::npos)
+    size_t dd_start = alloc_dd.find("dd(");
+    if (dd_start == string::npos)
     {
       diag.e_msg_len = sprintf(diag.e_msg, "Invalid format in DD alloc string: %s", (*it).c_str());
       return RTNCD_FAILURE;
     }
-    else
+    size_t paren_end = alloc_dd.find(")", dd_start + 3);
+    if (paren_end == string::npos)
     {
-      free_dds.push_back("free " + alloc_dd.substr(start + 1, end - start));
+      diag.e_msg_len = sprintf(diag.e_msg, "Invalid format in DD alloc string: %s", (*it).c_str());
+      return RTNCD_FAILURE;
     }
+    free_dds.push_back("free " + alloc_dd.substr(dd_start, paren_end - dd_start + 1));
   }
 
   return zut_loop_dynalloc(diag, free_dds);

@@ -248,12 +248,12 @@ int ZUTRUN(ZDIAG *diag, const char *program, const char *parms)
   int rc = 0;
 
   PARMS pstruct = {0};
-  if (parms)
+  PARMS *pptr = NULL;
+  if (parms && *parms)
   {
     pstruct.len = sprintf(pstruct.parms, "%s", parms);
+    pptr = &pstruct;
   }
-
-  PARMS *pptr = &pstruct;
 
   char name_truncated[8 + 1] = {0};
   memset(name_truncated, ' ', sizeof(name_truncated) - 1);                                                                      // pad with spaces
