@@ -2741,7 +2741,6 @@ int zds_read_from_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, 
       *content_len += chunk_len;
       temp_encoded = zbase64::encode(chunk, chunk_len, &left_over);
       fwrite(&temp_encoded[0], 1, temp_encoded.size(), fout);
-      temp_encoded.clear();
     }
 
     // Add trailing newline if we read any records
@@ -2770,7 +2769,6 @@ int zds_read_from_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, 
       *content_len += chunk_len;
       temp_encoded = zbase64::encode(chunk, chunk_len, &left_over);
       fwrite(&temp_encoded[0], 1, temp_encoded.size(), fout);
-      temp_encoded.clear();
     }
   }
   else
@@ -2804,7 +2802,6 @@ int zds_read_from_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, 
       *content_len += chunk_len;
       temp_encoded = zbase64::encode(chunk, chunk_len, &left_over);
       fwrite(&temp_encoded[0], 1, temp_encoded.size(), fout);
-      temp_encoded.clear();
     }
   }
 
@@ -3222,7 +3219,6 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const string &dsn, const str
 
     // Keep any remaining partial line in the buffer
     line_buffer = line_buffer.substr(pos);
-    temp_encoded.clear();
   }
 
   // Handle remaining content that didn't end with a newline
