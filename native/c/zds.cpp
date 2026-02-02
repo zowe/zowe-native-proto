@@ -1128,7 +1128,7 @@ int zds_write_to_dsn(ZDS *zds, const string &dsn, string &data)
     rc = zds_write_sequential(zds, dsn, data, attrs);
   }
 
-  if (rc != RTNCD_SUCCESS)
+  if (rc == RTNCD_FAILURE)
   {
     return rc;
   }
@@ -1145,7 +1145,7 @@ int zds_write_to_dsn(ZDS *zds, const string &dsn, string &data)
   etag_stream << hex << zut_calc_adler32_checksum(saved_contents);
   strcpy(zds->etag, etag_stream.str().c_str());
 
-  return 0;
+  return rc;
 }
 
 int zds_open_output_bpam(ZDS *zds, std::string dsname, IO_CTRL *&ioc)
@@ -3409,7 +3409,7 @@ int zds_write_to_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, s
     rc = zds_write_sequential_streamed(zds, dsn, pipe, content_len, attrs);
   }
 
-  if (rc != RTNCD_SUCCESS)
+  if (rc == RTNCD_FAILURE)
   {
     return rc;
   }
@@ -3426,5 +3426,5 @@ int zds_write_to_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, s
   etag_stream << std::hex << zut_calc_adler32_checksum(saved_contents) << std::dec;
   strcpy(zds->etag, etag_stream.str().c_str());
 
-  return RTNCD_SUCCESS;
+  return rc;
 }
