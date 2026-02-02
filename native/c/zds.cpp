@@ -356,7 +356,7 @@ int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2, bool replace,
       return RTNCD_FAILURE;
     }
   }
-  else if (!replace && !is_pds_full_copy)
+  else if (!replace && !overwrite && !is_pds_full_copy)
   {
     bool target_actually_exists = target_is_member
                                       ? member_exists_in_pds(info2.base_dsn, info2.member_name)
@@ -365,7 +365,7 @@ int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2, bool replace,
     if (target_actually_exists)
     {
       zds->diag.e_msg_len = sprintf(zds->diag.e_msg,
-                                    "Target '%s' already exists. Use --replace to overwrite.",
+                                    "Target '%s' already exists. Use --replace or --overwrite to overwrite.",
                                     dsn2.c_str());
       return RTNCD_FAILURE;
     }
