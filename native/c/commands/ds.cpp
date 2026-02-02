@@ -717,6 +717,27 @@ int handle_data_set_rename(InvocationContext &context)
   return rc;
 }
 
+int handle_rename_member(InvocationContext &context)
+{
+  int rc = 0;
+  string dsn = context.get<string>("dsn", "");
+  string member_before = context.get<string>("member-before", "");
+  string member_after = context.get<string>("member-after", "");
+  ZDS zds = {};
+
+  rc = zds_rename_members(&zds, dsn, member_before, member_after);
+
+  if (0 != rc)
+  {
+    context.error_stream() << "Error: Could not rename member: '" << member_before << "' rc: '" << rc << "'" << endl;
+    context.error_stream() << " Details: " << zds.diag.e_msg << endl;
+    return RTNCD_FAILURE;
+  }
+  context.output_stream() << "Data set '" << member_before << "' renamed to '" << member_after << "'" << endl;
+
+  return rc;
+}
+
 int handle_data_set_restore(InvocationContext &context)
 {
   int rc = 0;
@@ -965,6 +986,12 @@ void register_commands(parser::Command &root_command)
   ds_rename_cmd->add_positional_arg("dsname-before", "data set to rename", ArgType_Single, true);
   ds_rename_cmd->add_positional_arg("dsname-after", "new data set name", ArgType_Single, true);
   ds_rename_cmd->set_handler(handle_data_set_rename);
+  data_set_cmd->add_command(ds_rename_cmd);
+
+  auto ds_rename_members_cmd = command_ptr(new Command("rename-members", "rename a member"));
+  ds_rename_members_cmd->add_positional_arg("member-name-before", "member to rename", ArgType_Single, true);
+  ds_rename_cmd->add_positional_arg("member-after", "new member name", ArgType_Single, true);
+  ds_rename_cmd->set_handler(handle_rename_member);
   data_set_cmd->add_command(ds_rename_cmd);
 
   // Compress subcommand
