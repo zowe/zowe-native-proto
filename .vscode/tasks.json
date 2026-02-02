@@ -23,44 +23,45 @@
       "problemMatcher": [
         {
           "owner": "zos-cpp",
-          "fileLocation": ["search", { "include": ["${workspaceFolder}/native"] }],
-          "pattern": [
-            {
-              "regexp": "(?:error:)"
-            },
-            {
-              "regexp": "^\"\\./(.+)\", line (\\d+)\\.(\\d+): (\\w+\\d+) \\((.)\\) (.+)$",
-              "file": 1,
-              "line": 2,
-              "column": 3,
-              "code": 4,
-              "severity": 5,
-              "message": 6
-            }
+          "source": "z/OS C++",
+          "fileLocation": [
+            "search",
+            { "include": ["${workspaceFolder}/native"] }
           ],
+          "pattern": {
+            "regexp": "^\\s*\"(?:\\./)?(.+)\", line (\\d+)\\.(\\d+): (\\w+\\d+) \\((.)\\) (.+?)\\s*$",
+            "file": 1,
+            "line": 2,
+            "column": 3,
+            "code": 4,
+            "severity": 5,
+            "message": 6
+          },
           "background": {
             "activeOnStart": true,
-            "beginsPattern": "^\\d{1,2}/\\d{1,2}/\\d{4}, \\d{1,2}:\\d{2}:\\d{2} (?:AM|PM) \\[.\\]\\s",
-            "endsPattern": "^\\d{1,2}/\\d{1,2}/\\d{4}, \\d{1,2}:\\d{2}:\\d{2} (?:AM|PM) watching for changes\\.\\.\\."
+            "beginsPattern": "^\\d{1,2}/\\d{1,2}/\\d{4}, \\d{1,2}:\\d{2}:\\d{2} (?:AM|PM)\\s*$",
+            "endsPattern": "\\s*watching for changes\\.\\.\\.\\s*$"
           }
         },
         {
           "owner": "zos-metal",
+          "source": "z/OS Metal C",
           "severity": "error",
-          "fileLocation": ["search", { "include": ["${workspaceFolder}/native"] }],
-          "pattern": [
-            {
-              "regexp": "^ERROR (\\w+) ./(.+):(\\d+)\\s+(.+)\\.",
-              "file": 2,
-              "line": 3,
-              "code": 1,
-              "message": 4
-            }
+          "fileLocation": [
+            "search",
+            { "include": ["${workspaceFolder}/native"] }
           ],
+          "pattern": {
+            "regexp": "^\\s*ERROR (\\w+) \\./(.+):(\\d+)\\s+(.+)\\.\\s*$",
+            "file": 2,
+            "line": 3,
+            "code": 1,
+            "message": 4
+          },
           "background": {
             "activeOnStart": true,
-            "beginsPattern": "^\\d{1,2}/\\d{1,2}/\\d{4}, \\d{1,2}:\\d{2}:\\d{2} (?:AM|PM) \\[.\\]\\s",
-            "endsPattern": "^\\d{1,2}/\\d{1,2}/\\d{4}, \\d{1,2}:\\d{2}:\\d{2} (?:AM|PM) watching for changes\\.\\.\\."
+            "beginsPattern": "^\\d{1,2}/\\d{1,2}/\\d{4}, \\d{1,2}:\\d{2}:\\d{2} (?:AM|PM)\\s*$",
+            "endsPattern": "\\s*watching for changes\\.\\.\\.\\s*$"
           }
         }
       ],
