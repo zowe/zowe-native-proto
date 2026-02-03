@@ -666,10 +666,10 @@ int zds_rename_dsn(ZDS *zds, string dsn_before, string dsn_after)
   return 0;
 }
 
-int zds_rename_members(ZDS *zds, string dsn, string member_before, string member_after)
+int zds_rename_members(ZDS *zds, string dsname, string member_before, string member_after)
 {
   int rc = 0;
-  if (dsn.empty())
+  if (dsname.empty())
   {
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Data set name must be valid");
     return RTNCD_FAILURE;
@@ -679,18 +679,18 @@ int zds_rename_members(ZDS *zds, string dsn, string member_before, string member
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Member names must be valid");
     return RTNCD_FAILURE;
   }
-  if (!zds_dataset_exists(dsn))
+  if (!zds_dataset_exists(dsname))
   {
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Data set does not exist");
     return RTNCD_FAILURE;
   }
-  if (!zds_member_exists(dsn, member_before))
+  if (!zds_member_exists(dsname, member_before))
   {
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Source member does not exist");
     return RTNCD_FAILURE;
   }
-  member_before = "//'" + dsn + "(" + member_before + ")'";
-  member_after = "//'" + dsn + "(" + member_after + ")'";
+  member_before = "//'" + dsname + "(" + member_before + ")'";
+  member_after = "//'" + dsname + "(" + member_after + ")'";
   rc = rename(member_before.c_str(), member_after.c_str());
 
   errno = 0;
