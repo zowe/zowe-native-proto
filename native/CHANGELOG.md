@@ -6,6 +6,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Recent Changes
 
+- `c`: Added rename data set members functionality to the backend. [#765] (https://github.com/zowe/zowe-native-proto/pull/765)
 - `c`: Implement `zowex job watch` command to watch spool output for a string or regex until terminating.
 - `c`: Implement `zut_bpxwdyn_rtdsn` to obtain and return a system allocated data set name.
 - `c`: Implement command `zowex job view-file` to print contents of a job output data set.
