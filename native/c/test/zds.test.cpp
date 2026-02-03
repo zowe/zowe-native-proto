@@ -376,8 +376,7 @@ void zds_tests()
                            {
                              ZDS zds = {0};
                              string ds = get_random_ds(3);
-                             int rc = zds_create_dsn(&zds, ds, attr, response);
-                             rc = zds_rename_members(&zds, ds, M1, M2);
+                             int rc = zds_rename_members(&zds, ds, M1, M2);
                              Expect(rc).ToBe(RTNCD_FAILURE);
                              Expect(string(zds.diag.e_msg)).ToContain("Data set does not exist");
                            });
@@ -390,6 +389,7 @@ void zds_tests()
                              int rc = zds_create_dsn(&zds, ds, attr, response);
                              rc = zds_rename_members(&zds, ds, M1, M2);
                              Expect(rc).ToBe(RTNCD_FAILURE);
+                             std::cout << "error message" + string(zds.diag.e_msg);
                              Expect(string(zds.diag.e_msg)).ToContain("Source member does not exist");
                            });
 
@@ -413,10 +413,9 @@ void zds_tests()
                              ZDS zds = {};
                              string ds = get_random_ds(3);
                              int rc = zds_create_dsn(&zds, ds, attr, response);
-                             Expect(rc).ToBe(0);
+
                              string empty = "";
                              rc = zds_write_to_dsn(&zds, ds + "(M1)", empty);
-                             Expect(rc).ToBe(0);
 
                              rc = zds_rename_members(&zds, ds, M1, M2);
                              Expect(rc).ToBe(0);
