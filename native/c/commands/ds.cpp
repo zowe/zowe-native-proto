@@ -733,7 +733,7 @@ int handle_rename_member(InvocationContext &context)
     context.error_stream() << " Details: " << zds.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
-  context.output_stream() << "Data set '" << member_before << "' renamed to '" << member_after << "'" << endl;
+  context.output_stream() << "Data set member '" << member_before << "' renamed to '" << member_after << "'" << endl;
 
   return rc;
 }
@@ -989,10 +989,11 @@ void register_commands(parser::Command &root_command)
   data_set_cmd->add_command(ds_rename_cmd);
 
   auto ds_rename_members_cmd = command_ptr(new Command("rename-members", "rename a member"));
-  ds_rename_members_cmd->add_positional_arg("member-name-before", "member to rename", ArgType_Single, true);
-  ds_rename_cmd->add_positional_arg("member-after", "new member name", ArgType_Single, true);
-  ds_rename_cmd->set_handler(handle_rename_member);
-  data_set_cmd->add_command(ds_rename_cmd);
+  ds_rename_members_cmd->add_positional_arg("dsn", "data set", ArgType_Single, true);
+  ds_rename_members_cmd->add_positional_arg("member-before", "member to rename", ArgType_Single, true);
+  ds_rename_members_cmd->add_positional_arg("member-after", "new member name", ArgType_Single, true);
+  ds_rename_members_cmd->set_handler(handle_rename_member);
+  data_set_cmd->add_command(ds_rename_members_cmd);
 
   // Compress subcommand
   auto ds_compress_cmd = command_ptr(new Command("compress", "compress data set"));
