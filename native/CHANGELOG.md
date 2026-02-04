@@ -23,7 +23,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - `c`: Added support for handling ASA control characters when writing to sequential and partitioned data sets. [#751](https://github.com/zowe/zowe-native-proto/pull/751)
 - `c`: Added support for line truncation detection when writing to data sets. The truncated line ranges are displayed as a warning message after the write process is complete. [#751](https://github.com/zowe/zowe-native-proto/pull/751)
 - `c`: Fixed an issue where the output stream was checked to determine the input method for write commands, causing unexpected behavior when piping data to the commands. Now, the commands check if the input stream is a pseudo-terminal before continuing. [#756](https://github.com/zowe/zowe-native-proto/issues/756)
-- `c`: Fixed an issue where the write commands would accidentally add duplicate newlines when reading user input in interactive mode. Now, a newline character is only added between lines and after the first line of text is processed. [#755](https://github.com/zowe/zowe-native-proto/issues/755)
+- `c`: Fixed an issue where the write commands would inadvertently add duplicate newlines when reading user input in interactive mode. Now, a newline character is only added between lines and after the first line of text is processed. [#755](https://github.com/zowe/zowe-native-proto/issues/755)
 
 ## `0.2.2`
 
