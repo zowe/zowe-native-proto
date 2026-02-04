@@ -47,7 +47,24 @@ int zut_run(string program)
 
 int zut_run_link(ZDIAG &diag, string program, string parms)
 {
-  return ZUTLINK(&diag, program.c_str(), parms.c_str());
+  // 1. MVS expects the program name to be exactly 8 chars, padded with spaces.
+  char prog8[9] = "        ";
+  memcpy(prog8, program.c_str(), (program.length() > 8) ? 8 : program.length());
+
+  // 2. MVS expects: [Halfword Length][Data]
+  // We create a buffer: 2 bytes for length + data bytes
+  short pLen = (short)parms.length();
+  std::vector<char> mvs_buffer(2 + pLen);
+
+  // Copy length (Big Endian) and then the data
+  memcpy(&mvs_buffer[0], &pLen, 2);
+  if (pLen > 0)
+  {
+    memcpy(&mvs_buffer[2], parms.c_str(), pLen);
+  }
+
+  // 3. Call with the address of the length field
+  return ZUTLINK(&diag, prog8, &mvs_buffer[0]);
 }
 
 unsigned char zut_get_key()
