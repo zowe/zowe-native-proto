@@ -405,6 +405,7 @@ void zds_tests()
 
                              rc = zds_rename_members(&zds, ds, M1, M2);
                              Expect(rc).ToBe(RTNCD_FAILURE);
+                             Expect(string(zds.diag.e_msg)).ToContain("Target member already exists");
                            });
 
                         it("should rename dataset successfully when valid",

@@ -689,6 +689,11 @@ int zds_rename_members(ZDS *zds, string dsname, string member_before, string mem
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Source member does not exist");
     return RTNCD_FAILURE;
   }
+  if (zds_member_exists(dsname, member_after))
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Target member already exists");
+    return RTNCD_FAILURE;
+  }
   member_before = "//'" + dsname + "(" + member_before + ")'";
   member_after = "//'" + dsname + "(" + member_after + ")'";
   rc = rename(member_before.c_str(), member_after.c_str());
