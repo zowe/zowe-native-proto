@@ -36,8 +36,7 @@ int zut_search(string parms)
 
 int zut_run(ZDIAG &diag, string program, string parms)
 {
-  const char *parms_ptr = parms.empty() ? nullptr : parms.c_str();
-  return ZUTRUN(&diag, program.c_str(), parms_ptr);
+  return ZUTRUN(&diag, program.c_str(), parms.c_str());
 }
 
 int zut_run(string program)
