@@ -774,7 +774,8 @@ int handle_data_set_copy(InvocationContext &context)
   bool overwrite = context.get<bool>("overwrite", false);
 
   ZDS zds = {};
-  int rc = zds_copy_dsn(&zds, source, target, replace, overwrite);
+  bool target_created = false;
+  int rc = zds_copy_dsn(&zds, source, target, replace, overwrite, &target_created);
 
   if (rc != RTNCD_SUCCESS)
   {
@@ -786,7 +787,11 @@ int handle_data_set_copy(InvocationContext &context)
     return RTNCD_FAILURE;
   }
 
-  if (overwrite)
+  if (target_created)
+  {
+    context.output_stream() << "New data set '" << target << "' created and copied from '" << source << "'" << endl;
+  }
+  else if (overwrite)
   {
     context.output_stream() << "Data set '" << target << "' has been overwritten with contents of '" << source << "'" << endl;
   }

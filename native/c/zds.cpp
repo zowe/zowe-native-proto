@@ -274,9 +274,11 @@ static int copy_sequential(ZDS *zds, const string &src_dsn, const string &dst_ds
   return RTNCD_SUCCESS;
 }
 
-int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2, bool replace, bool overwrite)
+int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2, bool replace, bool overwrite, bool *target_created)
 {
   int rc = 0;
+  if (target_created)
+    *target_created = false;
   ZDSTypeInfo info1 = {};
   ZDSTypeInfo info2 = {};
 
@@ -375,6 +377,8 @@ int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2, bool replace,
                                     create_zds.diag.e_msg_len > 0 ? create_zds.diag.e_msg : create_resp.c_str());
       return RTNCD_FAILURE;
     }
+    if (target_created)
+      *target_created = true;
   }
   else if (!replace && !overwrite && !is_pds_full_copy)
   {
@@ -829,14 +833,16 @@ int zds_create_dsn(ZDS *zds, string dsn, DS_ATTRIBUTES attributes, string &respo
     response = "Invalid allocation unit '" + attributes.alcunit + "'";
     return RTNCD_FAILURE;
   }
-  if (attributes.blksize == 0)
+  // Only default blksize when unset (negative); preserve 0 for RECFM U
+  if (attributes.blksize < 0)
   {
-    attributes.blksize = 80; // Block Size
+    attributes.blksize = (attributes.lrecl > 0) ? attributes.lrecl : 80; // Block Size (avoid system default when unset)
   }
   if (attributes.primary == 0)
   {
     attributes.primary = 1; // Primary Space
   }
+  // Only default lrecl when unset (negative); preserve 0 for RECFM U
   if (attributes.lrecl < 0)
   {
     attributes.lrecl = 80; // Record Length
@@ -866,7 +872,7 @@ int zds_create_dsn(ZDS *zds, string dsn, DS_ATTRIBUTES attributes, string &respo
     parm += ") " + attributes.alcunit;
   }
 
-  if (attributes.lrecl > 0)
+  if (attributes.lrecl >= 0)
   {
     memset(numberAsString, 0, sizeof(numberAsString));
     parm += " LRECL(" + string(itoa(attributes.lrecl, numberAsString, 10)) + ")";
@@ -896,7 +902,8 @@ int zds_create_dsn(ZDS *zds, string dsn, DS_ATTRIBUTES attributes, string &respo
   if (!attributes.unit.empty())
     parm += " UNIT(" + attributes.unit + ")";
 
-  if (attributes.blksize > 0)
+  // Include BLKSIZE when set (>= 0) so target matches source; 0 is valid for RECFM U
+  if (attributes.blksize >= 0)
   {
     memset(numberAsString, 0, sizeof(numberAsString));
     parm += " BLKSIZE(" + string(itoa(attributes.blksize, numberAsString, 10)) + ")";

@@ -705,6 +705,7 @@ void zds_tests()
                            });
                       });
 
+             // IEBCOPY invoked via ZUTRUN (LOAD/CALL) can 0C4 on some systems
              describe("compress",
                       [&]() -> void
                       {
