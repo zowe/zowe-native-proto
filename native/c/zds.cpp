@@ -234,7 +234,7 @@ static int copy_pds_to_pds(ZDS *zds, const ZDSTypeInfo &src, const ZDSTypeInfo &
   return RTNCD_SUCCESS;
 }
 
-// Copy sequential data set or member using binary I/O
+// Copy sequential data set or member using binary I/O. Target must already exist (created via ALLOC with source attributes).
 static int copy_sequential(ZDS *zds, const string &src_dsn, const string &dst_dsn)
 {
   string src_path = "//'" + src_dsn + "'";
@@ -324,7 +324,7 @@ int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2, bool replace,
 
   if (!target_base_exists)
   {
-    // Create the target data set
+    // Create the target data set via ALLOC so BLKSIZE and space are explicitly passed (fopen path can let runtime use SDFS and produce smaller BLKSIZE)
     ZDS create_zds = {};
     string create_resp;
     DS_ATTRIBUTES attrs = {0};
@@ -341,21 +341,15 @@ int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2, bool replace,
     }
     else
     {
-      // PS -> PS: copy attributes from source (space unit, primary/secondary, block size)
+      // PS -> PS: copy attributes from source (BLKSIZE, space unit, primary/secondary)
       attrs.dsorg = "PS";
       attrs.recfm = info1.entry.recfm.c_str();
       attrs.lrecl = info1.entry.lrecl;
       attrs.blksize = info1.entry.blksize;
-      // Keep same space unit (CYLINDERS or TRACKS)
       if (info1.entry.spacu == "CYLINDERS" || info1.entry.spacu == "CYL")
-      {
         attrs.alcunit = "CYL";
-      }
       else
-      {
         attrs.alcunit = "TRACKS";
-      }
-      // Preserve primary/secondary when source used CYLINDERS or TRACKS
       if ((info1.entry.spacu == "CYLINDERS" || info1.entry.spacu == "TRACKS" || info1.entry.spacu == "CYL") &&
           info1.entry.primary >= 0 && info1.entry.secondary >= 0)
       {

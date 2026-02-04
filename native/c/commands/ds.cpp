@@ -953,6 +953,12 @@ void register_commands(parser::Command &root_command)
   ds_copy_cmd->add_keyword_arg("overwrite", make_aliases("--overwrite", "-o"),
                                "delete all target members first, then copy source (target matches source exactly)",
                                ArgType_Flag, false, ArgValue(false));
+  ds_copy_cmd->add_example("Copy PDS to new target",
+                           "zowex ds copy USERID.PDS.SRC USERID.PDS.NEW");
+  ds_copy_cmd->add_example("Update existing PDS: overwrite like-named members, keep target-only members",
+                           "zowex ds copy USERID.PDS.SRC USERID.PDS.TGT --replace");
+  ds_copy_cmd->add_example("Replace target PDS entirely (target ends with exactly source members)",
+                           "zowex ds copy USERID.PDS.SRC USERID.PDS.TGT --overwrite");
   ds_copy_cmd->set_handler(handle_data_set_copy);
   data_set_cmd->add_command(ds_copy_cmd);
 
