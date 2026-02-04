@@ -57,6 +57,36 @@ const ArgTemplate FILE_PATH = {
     ArgValue(),
     make_aliases()};
 
+// only for use when there's both a source and destination
+const ArgTemplate FILE_PATH_SOURCE = {
+    "source-path",
+    make_aliases(),
+    "source path",
+    ArgType_Single,
+    true,
+    ArgValue(),
+    make_aliases()};
+
+// only for use when there's both a source and destination
+const ArgTemplate FILE_PATH_DEST = {
+    "destination-path",
+    make_aliases(),
+    "destination path",
+    ArgType_Single,
+    true,
+    ArgValue(),
+    make_aliases()};
+
+// Keyword Arguments
+const ArgTemplate ENCODING_NEW = {
+    "encoding",
+    make_aliases("--encoding-new", "--ec"),
+    "return contents in given encoding",
+    ArgType_Single,
+    false,
+    ArgValue(),
+    make_aliases()};
+
 // Keyword Arguments
 const ArgTemplate ENCODING = {
     "encoding",

@@ -17,5 +17,5 @@
 #include <string>
 
 int ztso_issue(std::string, std::string &);
-
+int issue_command_combined_stdoutstderr(std::string, std::string &);
 #endif

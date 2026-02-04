@@ -29,29 +29,18 @@
 
 using namespace std;
 
-// NOTE(Kelosky): alternatives we'll likely use / consider in the future
-// - CEA, probably needed to achieve z/OSMF parity (allows starting, stopping TSO address spaces)
-// - IKJEFT01, requires authorized caller
-// - IKJEFTSR, limited TSO dynamic environment
-// - Load TMP directly, untested, but potentially useful if we read/write SYSTSIN/SYSTSPRT
-int ztso_issue(string command, string &response)
+int issue_command_combined_stdoutstderr(string command, string &response)
 {
   int rc = 0;
-
-  // NOTE(Kelosky): for now we combined stderr and stdout as `popen` doesnt
-  // appear to allow access to stderr and tsocmd always writes the input parameters
-  // to stderr
-  string data = "tsocmd " + command + " 2>&1"; // combine stderr
   string response_raw;
-
-  FILE *tso = popen(data.c_str(), "r");
-  if (nullptr == tso)
+  FILE *cmd = popen(command.c_str(), "r");
+  if (nullptr == cmd)
   {
     return RTNCD_FAILURE;
   }
 
   char buffer[256] = {0};
-  while (fgets(buffer, sizeof(buffer), tso) != nullptr)
+  while (fgets(buffer, sizeof(buffer), cmd) != nullptr)
   {
     response_raw += string(buffer);
   }
@@ -70,11 +59,25 @@ int ztso_issue(string command, string &response)
     }
   }
 
-  rc = pclose(tso);
+  rc = pclose(cmd);
   if (0 != rc)
   {
     return WEXITSTATUS(rc);
   }
 
   return rc;
+}
+
+// NOTE(Kelosky): alternatives we'll likely use / consider in the future
+// - CEA, probably needed to achieve z/OSMF parity (allows starting, stopping TSO address spaces)
+// - IKJEFT01, requires authorized caller
+// - IKJEFTSR, limited TSO dynamic environment
+// - Load TMP directly, untested, but potentially useful if we read/write SYSTSIN/SYSTSPRT
+int ztso_issue(string command, string &response)
+{
+  // NOTE(Kelosky): for now we combined stderr and stdout as `popen` doesnt
+  // appear to allow access to stderr and tsocmd always writes the input parameters
+  // to stderr
+  string tso_cmd = "tsocmd " + command + " 2>&1"; // combine stderr
+  return issue_command_combined_stdoutstderr(tso_cmd, response);
 }

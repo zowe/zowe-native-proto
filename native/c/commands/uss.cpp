@@ -9,11 +9,14 @@
  *
  */
 
+#include <cstdlib>
+#include <cstdio>
 #include "uss.hpp"
 #include "common_args.hpp"
 #include "../parser.hpp"
 #include "../zusf.hpp"
 #include "../zut.hpp"
+#include "../ztso.hpp"
 #include <unistd.h>
 
 using namespace ast;
@@ -23,6 +26,49 @@ using namespace commands::common;
 
 namespace uss
 {
+
+int handle_uss_copy(InvocationContext &context)
+{
+
+  string source_path = context.get<std::string>("srcFsPath");
+  string destination_path = context.get<std::string>("destination-path");
+  // cp -R -L -p -B ttest ttest2
+  bool recursive = context.get<bool>("recursive", false);
+  bool follow_symlinks = context.get<bool>("follow-symlinks", false);
+  bool dont_preserve_permissions = context.get<bool>("ignore-permissions", false);
+
+  if (follow_symlinks && !recursive)
+  {
+    context.error_stream() << "Error: the --follow-symlinks flag must be used with the --recursive flag" << endl;
+    return RTNCD_FAILURE;
+  }
+
+  string command_flags = "";
+  if (recursive)
+  {
+    command_flags += "-R ";
+  }
+  if (follow_symlinks)
+  {
+    command_flags += "-L ";
+  }
+  if (!dont_preserve_permissions)
+  {
+    command_flags += "-p ";
+  }
+  command_flags += "-B ";
+
+  string cp_command = "cp " + command_flags + source_path + " " + destination_path;
+  string response;
+  int rc = issue_command_combined_stdoutstderr(cp_command, response);
+  if (rc > 0) {
+    context.error_stream() << "Error occurred while trying to copy " + source_path + " to " + destination_path << endl;
+    context.error_stream() << "  " + cp_command << endl;
+    context.error_stream() << "  Details: \n" << response << endl;
+  }
+
+  return rc;
+}
 
 int handle_uss_create_file(InvocationContext &context)
 {
@@ -499,6 +545,16 @@ void register_commands(parser::Command &root_command)
 {
   // USS command group
   auto uss_group = command_ptr(new Command("uss", "z/OS USS operations"));
+
+  // Copy subcommand
+  auto uss_copy_cmd = command_ptr(new Command("copy", "copy a USS file or directory"));
+  uss_copy_cmd->add_positional_arg(FILE_PATH_SOURCE);
+  uss_copy_cmd->add_positional_arg(FILE_PATH_DEST);
+  uss_copy_cmd->add_keyword_arg("follow-symlinks", make_aliases("--follow-symlinks", "-L"), "follows symlinks within a directory tree. requires \"--recursive\"", ArgType_Flag, false);
+  uss_copy_cmd->add_keyword_arg("recursive", make_aliases("--recursive", "-r"), "recursively copies if the source is a directory", ArgType_Flag, false);
+  uss_copy_cmd->add_keyword_arg("ignore-permissions", make_aliases("--ignore-permissions", "-i"), "does not preserve permission bits or ownership on copy to destination", ArgType_Flag, false);
+  uss_copy_cmd->set_handler(handle_uss_copy);
+  uss_group->add_command(uss_copy_cmd);
 
   // Create-file subcommand
   auto uss_create_file_cmd = command_ptr(new Command("create-file", "create a USS file"));

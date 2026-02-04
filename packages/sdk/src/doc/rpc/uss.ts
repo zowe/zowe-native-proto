@@ -64,6 +64,39 @@ export interface ChtagFileRequest extends common.CommandRequest<"chtagFile"> {
 
 export type ChtagFileResponse = common.CommandResponse;
 
+export interface CopyUssRequest extends common.CommandRequest<"copyUss"> {
+    /**
+     * The source file or directory to copy.
+     */
+    srcFsPath: string;
+    /**
+     * The destination file or directory to copy into.
+     */
+    dstFsPath: string;
+    /**
+     * Should the copy action recursively traverse through sub-directories and files.
+     *
+     * Default: false
+     */
+    recursive?: boolean;
+    /**
+     * Should the copy action follow symlinks when encountered. Note: This can only be set in combination with recursive.
+     *
+     * Default: false
+     */
+    followSymlinks?: boolean;
+    /**
+     * Set to true if the copy action should **not** preserve permission bits and ownership in the output destination.
+     *   Note: the USS 'cp' utility by default does not preserve these permissions. zowex's USS copy by default *does*.
+     *    This is the one major way our default behavior diverges from `cp`.
+     *
+     * Default: false
+     */
+    ignorePermissions?: boolean;
+}
+
+export type CopyUssResponse = common.CommandResponse;
+
 export interface CreateFileRequest extends common.CommandRequest<"createFile"> {
     /**
      * Permissions for the new path

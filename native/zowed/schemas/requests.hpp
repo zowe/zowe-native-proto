@@ -208,6 +208,15 @@ ZJSON_SCHEMA(ChtagFileRequest,
     FIELD_REQUIRED(recursive, BOOL)
 );
 
+struct CopyUssRequest {};
+ZJSON_SCHEMA(CopyUssRequest,
+    FIELD_REQUIRED(srcFsPath, STRING),
+    FIELD_REQUIRED(dstFsPath, STRING),
+    FIELD_OPTIONAL(recursive, BOOL),
+    FIELD_OPTIONAL(followSymlinks, BOOL),
+    FIELD_OPTIONAL(ignorePermissions, BOOL)
+);
+
 struct CreateFileRequest {};
 ZJSON_SCHEMA(CreateFileRequest,
     FIELD_OPTIONAL(permissions, STRING),
