@@ -707,13 +707,13 @@ int zut_free_dynalloc_dds(ZDIAG &diag, vector<string> &list)
   for (vector<string>::iterator it = list.begin(); it != list.end(); it++)
   {
     string alloc_dd = *it;
-    size_t dd_start = alloc_dd.find("dd(");
+    const auto dd_start = alloc_dd.find("dd(");
     if (dd_start == string::npos)
     {
       diag.e_msg_len = sprintf(diag.e_msg, "Invalid format in DD alloc string: %s", (*it).c_str());
       return RTNCD_FAILURE;
     }
-    size_t paren_end = alloc_dd.find(")", dd_start + 3);
+    const auto paren_end = alloc_dd.find(")", dd_start + 3);
     if (paren_end == string::npos)
     {
       diag.e_msg_len = sprintf(diag.e_msg, "Invalid format in DD alloc string: %s", (*it).c_str());

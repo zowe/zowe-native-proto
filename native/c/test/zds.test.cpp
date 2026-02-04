@@ -21,14 +21,39 @@
 using namespace std;
 using namespace ztst;
 
-// Test context for copy operations
-struct CopyTestContext
+// Base for test contexts that create data sets and register them for cleanup
+struct DataSetTestContextBase
 {
   vector<string> &cleanup_list;
+
+  explicit DataSetTestContextBase(vector<string> &list) : cleanup_list(list) {}
+
+  void create_pds_at(const string &dsn)
+  {
+    ZDS zds = {0};
+    create_pds(&zds, dsn);
+  }
+
+  void create_pdse_at(const string &dsn)
+  {
+    ZDS zds = {0};
+    create_pdse(&zds, dsn);
+  }
+
+  void create_seq_at(const string &dsn)
+  {
+    ZDS zds = {0};
+    create_seq(&zds, dsn);
+  }
+};
+
+// Test context for copy operations
+struct CopyTestContext : DataSetTestContextBase
+{
   string source_dsn;
   string target_dsn;
 
-  CopyTestContext(vector<string> &list) : cleanup_list(list)
+  explicit CopyTestContext(vector<string> &list) : DataSetTestContextBase(list)
   {
     source_dsn = get_random_ds(3);
     target_dsn = get_random_ds(3);
@@ -36,35 +61,11 @@ struct CopyTestContext
     cleanup_list.push_back(target_dsn);
   }
 
-  void create_source_pds()
-  {
-    ZDS zds = {0};
-    create_pds(&zds, source_dsn);
-  }
-
-  void create_source_pdse()
-  {
-    ZDS zds = {0};
-    create_pdse(&zds, source_dsn);
-  }
-
-  void create_source_seq()
-  {
-    ZDS zds = {0};
-    create_seq(&zds, source_dsn);
-  }
-
-  void create_target_pds()
-  {
-    ZDS zds = {0};
-    create_pds(&zds, target_dsn);
-  }
-
-  void create_target_seq()
-  {
-    ZDS zds = {0};
-    create_seq(&zds, target_dsn);
-  }
+  void create_source_pds() { create_pds_at(source_dsn); }
+  void create_source_pdse() { create_pdse_at(source_dsn); }
+  void create_source_seq() { create_seq_at(source_dsn); }
+  void create_target_pds() { create_pds_at(target_dsn); }
+  void create_target_seq() { create_seq_at(target_dsn); }
 
   void write_source_member(const string &member, const string &data)
   {
@@ -129,32 +130,19 @@ struct CopyTestContext
   }
 };
 
-struct CompressTestContext
+struct CompressTestContext : DataSetTestContextBase
 {
-  vector<string> &cleanup_list;
   string pds_dsn;
 
-  CompressTestContext(vector<string> &list) : cleanup_list(list)
+  explicit CompressTestContext(vector<string> &list) : DataSetTestContextBase(list)
   {
     pds_dsn = get_random_ds(3);
     cleanup_list.push_back(pds_dsn);
   }
 
-  void create_pds()
-  {
-    ZDS z = {0};
-    ::create_pds(&z, pds_dsn);
-  }
-  void create_pdse()
-  {
-    ZDS z = {0};
-    ::create_pdse(&z, pds_dsn);
-  }
-  void create_seq()
-  {
-    ZDS z = {0};
-    ::create_seq(&z, pds_dsn);
-  }
+  void create_pds() { create_pds_at(pds_dsn); }
+  void create_pdse() { create_pdse_at(pds_dsn); }
+  void create_seq() { create_seq_at(pds_dsn); }
   void write_member(const string &member, const string &data)
   {
     write_to_dsn(pds_dsn + "(" + member + ")", data);
