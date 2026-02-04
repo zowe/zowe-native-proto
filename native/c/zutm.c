@@ -290,6 +290,44 @@ int ZUTRUN(ZDIAG *diag, const char *program, const char *parms)
   return rc;
 }
 
+/* Run program via LINK so it runs as main (sees TIOT, does OPEN). Avoids 0C4 from LOAD+CALL for utilities like IEBCOPY. */
+#pragma prolog(ZUTLINK, " ZWEPROLG NEWDSA=(YES,16),LOC24=YES ")
+#pragma epilog(ZUTLINK, " ZWEEPILG ")
+int ZUTLINK(ZDIAG *diag, const char *program, const char *parms)
+{
+  int rc = 0;
+
+  PARMS pstruct = {0};
+  if (parms)
+  {
+    pstruct.len = sprintf(pstruct.parms, "%s", parms);
+  }
+
+  char name_truncated[8 + 1] = {0};
+  memset(name_truncated, ' ', sizeof(name_truncated) - 1);
+  memcpy(name_truncated, program, strlen(program) > sizeof(name_truncated) - 1 ? sizeof(name_truncated) - 1 : strlen(program));
+
+  PARMS *parm31 = (PARMS *)__malloc31(sizeof(PARMS));
+  if (!parm31)
+  {
+    diag->e_msg_len = sprintf(diag->e_msg, "LINK: no storage for parm list");
+    diag->detail_rc = ZUT_RTNCD_LOAD_FAILURE;
+    return RTNCD_FAILURE;
+  }
+  memcpy(parm31, &pstruct, sizeof(PARMS));
+
+  LINK(name_truncated, parm31, rc);
+  free(parm31);
+
+  if (rc != 0)
+  {
+    diag->e_msg_len = sprintf(diag->e_msg, "LINK to '%s' returned %d", name_truncated, rc);
+    diag->detail_rc = rc;
+    return RTNCD_FAILURE;
+  }
+  return RTNCD_SUCCESS;
+}
+
 typedef struct
 {
   short len;

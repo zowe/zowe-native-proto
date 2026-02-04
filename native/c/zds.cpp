@@ -176,6 +176,9 @@ static void delete_all_members(const string &pds_dsn)
   }
 }
 
+/*
+ * Run IEBCOPY for PDS compress (COPY OUTDD= same as INDD=).
+ */
 static int run_iebcopy(ZDS *zds, vector<string> &dds, const string &control_stmts)
 {
   int rc = zut_loop_dynalloc(zds->diag, dds);
@@ -192,7 +195,7 @@ static int run_iebcopy(ZDS *zds, vector<string> &dds, const string &control_stmt
     return RTNCD_FAILURE;
   }
 
-  rc = zut_run(zds->diag, string("IEBCOPY"), string(""));
+  rc = zut_run_link(zds->diag, string("IEBCOPY"), string(""));
   if (rc != RTNCD_SUCCESS)
   {
     string output;
@@ -417,6 +420,10 @@ int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2, bool replace,
   }
 }
 
+/*
+ * Compress a PDS (reclaim space from deleted members). Uses IEBCOPY COPY INDD=OUTDD= same data set.
+ * Only classic PDS is supported; PDSE (LIBRARY) is rejected. IEBCOPY is run via LINK (see run_iebcopy).
+ */
 int zds_compress_dsn(ZDS *zds, const string &dsn)
 {
   ZDSTypeInfo info = {};

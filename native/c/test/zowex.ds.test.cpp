@@ -146,12 +146,27 @@ void zowex_ds_tests()
                              // Compress requires a basic PDS (not PDSE); request PDS explicitly in case system defaults to LIBRARY
                              _create_ds(ds, "--dsorg PO --dirblk 2 --dsntype PDS");
 
+                             string list_resp;
+                             int list_rc = execute_command_with_output(zowex_command + " data-set list " + ds + " -a --rfc", list_resp);
+                             vector<string> tokens = parse_rfc_response(list_resp, ",");
+                             bool is_pds = (list_rc == 0 && tokens.size() > 9 && tokens[9] == "PDS");
+
                              string response;
                              string command = zowex_command + " data-set compress " + ds;
                              int rc = execute_command_with_output(command, response);
-                             ExpectWithContext(rc, response).ToBe(0);
-                             Expect(response).ToContain("Data set");
-                             Expect(response).ToContain("compressed");
+
+                             if (is_pds)
+                             {
+                               ExpectWithContext(rc, response).ToBe(0);
+                               Expect(response).ToContain("Data set");
+                               Expect(response).ToContain("compressed");
+                             }
+                             else
+                             {
+                               // System created PDSE (LIBRARY) despite DSNTYPE(PDS); compress correctly rejects
+                               ExpectWithContext(rc, response).Not().ToBe(0);
+                               Expect(response).ToContain("is not a PDS");
+                             }
                            });
 
                         // TODO: https://github.com/zowe/zowe-native-proto/issues/666

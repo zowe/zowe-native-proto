@@ -45,6 +45,11 @@ int zut_run(string program)
   return ZUTRUN(&diag, program.c_str(), NULL);
 }
 
+int zut_run_link(ZDIAG &diag, string program, string parms)
+{
+  return ZUTLINK(&diag, program.c_str(), parms.c_str());
+}
+
 unsigned char zut_get_key()
 {
   return ZUTMGKEY();

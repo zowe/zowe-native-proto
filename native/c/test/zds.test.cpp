@@ -694,8 +694,7 @@ void zds_tests()
                            });
                       });
 
-             // IEBCOPY is invoked via LOAD+CALL in-process; it can 0C4 on some systems. Skip until run via LINK/subtask.
-             xdescribe("compress",
+             describe("compress",
                       [&]() -> void
                       {
                         it("should compress a PDS",
