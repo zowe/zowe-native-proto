@@ -484,10 +484,22 @@ void zds_tests()
                              tc.write_source("Test data");
                              Expect(tc.copy()).ToBe(0);
 
+                             vector<ZDSEntry> source_entries;
                              vector<ZDSEntry> target_entries;
                              ZDS zds_list = {0};
+                             zds_list_data_sets(&zds_list, tc.source_dsn, source_entries, true);
                              zds_list_data_sets(&zds_list, tc.target_dsn, target_entries, true);
+                             Expect(source_entries.empty()).ToBe(false);
                              Expect(target_entries.empty()).ToBe(false);
+
+                             const ZDSEntry &src = source_entries[0];
+                             const ZDSEntry &tgt = target_entries[0];
+                             Expect(tgt.recfm).ToBe(src.recfm);
+                             Expect(tgt.lrecl).ToBe(src.lrecl);
+                             Expect(tgt.blksize).ToBe(src.blksize);
+                             Expect(tgt.spacu).ToBe(src.spacu);
+                             Expect(tgt.primary).ToBe(src.primary);
+                             Expect(tgt.secondary).ToBe(src.secondary);
 
                              ZDS zds_read = {0};
                              string content;
