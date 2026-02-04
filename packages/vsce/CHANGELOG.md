@@ -6,7 +6,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Recent Changes
 
-- Added the functionality for the rename member option. [#765] (https://github.com/zowe/zowe-native-proto/pull/765).
+- Added the functionality for the `rename member` option. [#765] (https://github.com/zowe/zowe-native-proto/pull/765).
 - Added the functionality for the rename data set option. [#376](https://github.com/zowe/zowe-native-proto/issues/376)
 - Fixed an issue where the Zowe Explorer "Submit as JCL" command displayed `undefined` as the job name within the "Job submitted" notification. Now, the job name and ID are present in the information message. [#733](https://github.com/zowe/zowe-native-proto/issues/733)
 - Updated the server installation process to locate server PAX bundled in the SDK package. [#760](https://github.com/zowe/zowe-native-proto/pull/760)
