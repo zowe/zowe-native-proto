@@ -36,7 +36,7 @@ static CommandBuilder create_uss_builder(CommandBuilder::CommandHandler handler)
 
 static CommandBuilder copy_uss_builder(CommandBuilder::CommandHandler handler) 
 {
-    return CommandBuilder(handler).rename_arg("srcFsPath", "source-path").rename_arg("dstFsPath", "destination-path");
+    return CommandBuilder(handler).rename_arg("src-fs-path", "source-path").rename_arg("dst-fs-path", "destination-path");
 }
 
 void register_ds_commands(CommandDispatcher &dispatcher)

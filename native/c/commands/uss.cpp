@@ -30,7 +30,7 @@ namespace uss
 int handle_uss_copy(InvocationContext &context)
 {
 
-  string source_path = context.get<std::string>("srcFsPath");
+  string source_path = context.get<std::string>("source-path");
   string destination_path = context.get<std::string>("destination-path");
   // cp -R -L -p -B ttest ttest2
   bool recursive = context.get<bool>("recursive", false);
