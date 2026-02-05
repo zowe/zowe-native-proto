@@ -637,7 +637,7 @@ int handle_data_set_write(InvocationContext &context)
   }
 
   // Handle truncation warning
-  if (RTNCD_WARNING == rc && zds.diag.detail_rc == ZDS_RSNCD_TRUNCATION_WARNING)
+  if (RTNCD_WARNING == rc && ZDS_RSNCD_TRUNCATION_WARNING == zds.diag.detail_rc)
   {
     context.error_stream() << "Warning: " << zds.diag.e_msg << endl;
     result->set("truncationWarning", str(zds.diag.e_msg));
