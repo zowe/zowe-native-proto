@@ -453,7 +453,23 @@ class WatchUI {
     private readonly printedFallbackItems: Set<string> = new Set();
 
     private isInteractive(): boolean {
-        return process.stdout.isTTY === true && !DEBUG_MODE() && process.env.CI == null;
+        // Allow users to force simple output mode
+        if (process.env.ZOWE_WATCH_SIMPLE === "1" || process.env.ZOWE_WATCH_SIMPLE?.toUpperCase() === "TRUE") {
+            return false;
+        }
+
+        // Basic TTY check
+        if (process.stdout.isTTY !== true || DEBUG_MODE() || process.env.CI != null) {
+            return false;
+        }
+
+        // Check if terminal width is reasonable (indicates proper terminal emulation)
+        const columns = process.stdout.columns;
+        if (columns == null || columns < 20) {
+            return false;
+        }
+
+        return true;
     }
 
     setFiles(files: Map<string, { kind: FileChangeKind; mtime: Date }>) {
@@ -552,7 +568,9 @@ class WatchUI {
                     }
 
                     if (remainingCount > 0) {
-                        lines.push(`      ${ANSI.DIM}... ${remainingCount} more line${remainingCount > 1 ? "s" : ""}${ANSI.RESET}`);
+                        lines.push(
+                            `      ${ANSI.DIM}... ${remainingCount} more line${remainingCount > 1 ? "s" : ""}${ANSI.RESET}`,
+                        );
                     }
 
                     if (task.errorLogPath) {
@@ -629,7 +647,20 @@ class WatchUI {
                                 : "—";
                     console.log(`  [${task.name}] make ${statusText}`);
                     if (task.error) {
-                        console.log(`    error: ${task.error}`);
+                        console.log("    error:");
+                        const errorLines = task.error.split("\n").filter((line) => line.trim().length > 0);
+                        const maxLines = 10;
+                        for (const line of errorLines.slice(0, maxLines)) {
+                            console.log(`      ${line}`);
+                        }
+                        if (errorLines.length > maxLines) {
+                            console.log(
+                                `      ... ${errorLines.length - maxLines} more line${errorLines.length - maxLines > 1 ? "s" : ""}`,
+                            );
+                        }
+                        if (task.errorLogPath) {
+                            console.log(`    full log: ${task.errorLogPath}`);
+                        }
                     }
                     this.printedFallbackItems.add(doneKey);
                 }
@@ -650,7 +681,7 @@ class WatchUI {
         this.spinnerInterval = setInterval(() => {
             this.spinnerFrame = (this.spinnerFrame + 1) % BRAILLE_FRAMES.length;
             this.render();
-        }, 80);
+        }, 160);
     }
 
     stopSpinner() {
@@ -691,7 +722,7 @@ function startSpinner(text = "Loading...") {
     return setInterval(() => {
         process.stdout.write(`\r${BRAILLE_FRAMES[frameIndex]} ${displayText}`);
         frameIndex = (frameIndex + 1) % BRAILLE_FRAMES.length;
-    }, 80);
+    }, 160);
 }
 
 function stopSpinner(spinner: NodeJS.Timeout | null, text = "Done!") {
