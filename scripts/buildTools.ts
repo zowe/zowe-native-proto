@@ -840,6 +840,7 @@ async function artifacts(connection: Client, packageAll: boolean) {
             `mv ${checksumFile} ../dist/${checksumFile}`,
             postPaxCmd,
         ].join("\n"),
+        { stepName: "Packaging artifacts" },
     );
     fs.mkdirSync(path.resolve(__dirname, `./../${localDir}`), { recursive: true });
     for (const localFile of localFiles) {
@@ -847,11 +848,16 @@ async function artifacts(connection: Client, packageAll: boolean) {
     }
 }
 
-async function runCommandInShell(connection: Client, command: string, streamOutput = false) {
+interface RunCommandOpts {
+    streamOutput?: boolean;
+    stepName?: string;
+}
+
+async function runCommandInShell(connection: Client, command: string, opts?: RunCommandOpts) {
     // For multi-line commands, show only the first line in the spinner
     const firstLine = command.trim().split("\n")[0];
-    const spinnerText = command.includes("\n") ? `$ ${firstLine}...` : `$ ${command.trim()}`;
-    const spinner = streamOutput ? null : startSpinner(spinnerText);
+    const spinnerText = opts?.stepName ?? (command.includes("\n") ? `$ ${firstLine}...` : `$ ${command.trim()}`);
+    const spinner = opts?.streamOutput ? null : startSpinner(spinnerText);
     return new Promise<string>((resolve, reject) => {
         let data = "";
         let error = "";
@@ -873,14 +879,14 @@ async function runCommandInShell(connection: Client, command: string, streamOutp
             stream.on("data", (part: Buffer) => {
                 const output = part.toString();
                 data += output;
-                if (streamOutput) {
+                if (opts?.streamOutput) {
                     process.stdout.write(output);
                 }
             });
             stream.stderr.on("data", (err: Buffer) => {
                 const errOutput = err.toString();
                 error += errOutput;
-                if (streamOutput || DEBUG_MODE()) {
+                if (opts?.streamOutput || DEBUG_MODE()) {
                     process.stderr.write(errOutput);
                 }
             });
@@ -888,7 +894,7 @@ async function runCommandInShell(connection: Client, command: string, streamOutp
                 if (exitCode !== 0) {
                     hasError = true;
                     const fullError = `${error || data}`.trim();
-                    if (spinner) stopSpinner(spinner, "\x1b[31mBuild failed\x1b[0m");
+                    if (spinner) stopSpinner(spinner, `\x1b[31m${opts?.stepName ?? "Command"} failed\x1b[0m`);
                     process.exitCode = exitCode;
                     reject(new Error(fullError));
                 }
@@ -978,16 +984,16 @@ async function upload(connection: Client, sshProfile: IProfile) {
 
 async function build(connection: Client, { preBuildCmd }: IConfig) {
     preBuildCmd = preBuildCmd ? `${preBuildCmd} && ` : "";
-    console.log("Building native/c ...");
     let response = await runCommandInShell(
         connection,
         `${preBuildCmd}cd ${deployDirs.cDir} && make ${DEBUG_MODE() ? "-DBuildType=DEBUG" : ""}\n`,
+        { stepName: "Building native/c" },
     );
     DEBUG_MODE() && console.log(response);
-    console.log("Building native/zowed ...");
     response = await runCommandInShell(
         connection,
         `${preBuildCmd}cd ${deployDirs.zowedDir} && make ${DEBUG_MODE() ? "-DBuildType=DEBUG" : ""}\n`,
+        { stepName: "Building native/zowed" },
     );
     DEBUG_MODE() && console.log(response);
     console.log("Build complete!");
@@ -996,21 +1002,20 @@ async function build(connection: Client, { preBuildCmd }: IConfig) {
 async function make(connection: Client, inDir?: string) {
     const pwd = inDir ?? deployDirs.cDir;
     const targets = args.filter((arg, idx) => idx > 0 && !arg.startsWith("--")).join(" ");
-    console.log(`Running "make ${targets || "all"}"${inDir ? ` in ${pwd}` : ""}...`);
     const response = await runCommandInShell(
         connection,
         `cd ${pwd} && make ${targets} ${DEBUG_MODE() ? "-DBuildType=DEBUG" : ""}\n`,
+        { stepName: `Running make ${targets || "all"}` },
     );
     console.log(response);
 }
 
 async function test(connection: Client) {
-    console.log("Testing native/c ...");
     const testEnv = '_CEE_RUNOPTS="TRAP(ON,NOSPIE)"';
     const cTestCmd = `cd ${deployDirs.cTestDir} && ${testEnv} ./build-out/ztest_runner ${args[1] ?? ""}`;
     const zowedTestCmd = `cd ${path.posix.relative(deployDirs.cTestDir, deployDirs.zowedTestDir)} && ${testEnv} ./build-out/zowed_test_runner ${args[1] ?? ""}`;
     const exitMaxRc = `[ "$rc1" -gt "$rc2" ] && exit "$rc1" || exit "$rc2"`;
-    await runCommandInShell(connection, `${cTestCmd}; rc1=$?; ${zowedTestCmd}; rc2=$?; ${exitMaxRc}\n`, true);
+    await runCommandInShell(connection, `${cTestCmd}; rc1=$?; ${zowedTestCmd}; rc2=$?; ${exitMaxRc}\n`, { streamOutput: true, stepName: "Running tests" });
     console.log("\nTesting complete!");
     await retrieve(connection, [`c/test/test-results.xml`, `zowed/test/test-results.xml`], "native", false, true);
 }
@@ -1038,6 +1043,7 @@ async function chdsect(connection: Client) {
                 response = await runCommandInShell(
                     connection,
                     `cd ${deployDirs.asmchdrDir} && make build-${args[1]} 2>&1 \n`,
+                    { stepName: `Building chdsect ${args[1]}` },
                 );
             } catch (err) {
                 console.log("Chdsect err");
@@ -1063,20 +1069,15 @@ async function chdsect(connection: Client) {
 }
 
 async function clean(connection: Client) {
-    console.log("Cleaning native/c ...");
-    console.log(await runCommandInShell(connection, `cd ${deployDirs.cDir} && make clean\n`));
-    console.log("Cleaning native/c/test ...");
-    console.log(await runCommandInShell(connection, `cd ${deployDirs.cTestDir} && make clean\n`));
-    console.log("Cleaning native/python ...");
-    console.log(await runCommandInShell(connection, `cd ${deployDirs.pythonDir} && make clean\n`));
-    console.log("Cleaning native/python/test ...");
-    console.log(await runCommandInShell(connection, `cd ${deployDirs.pythonTestDir} && make clean\n`));
+    console.log(await runCommandInShell(connection, `cd ${deployDirs.cDir} && make clean\n`, { stepName: "Cleaning native/c" }));
+    console.log(await runCommandInShell(connection, `cd ${deployDirs.cTestDir} && make clean\n`, { stepName: "Cleaning native/c/test" }));
+    console.log(await runCommandInShell(connection, `cd ${deployDirs.pythonDir} && make clean\n`, { stepName: "Cleaning native/python" }));
+    console.log(await runCommandInShell(connection, `cd ${deployDirs.pythonTestDir} && make clean\n`, { stepName: "Cleaning native/python/test" }));
     console.log("Clean complete");
 }
 
 async function rmdir(connection: Client, sshProfile: IProfile) {
-    console.log("Removing ROOT directory ...");
-    console.log(await runCommandInShell(connection, `rm -rf ${deployDirs.root}\n`));
+    console.log(await runCommandInShell(connection, `rm -rf ${deployDirs.root}\n`, { stepName: "Removing deploy directory" }));
     console.log("Removal complete");
     const watcher = new WatchUtils(connection, sshProfile);
     watcher.cache = {};
