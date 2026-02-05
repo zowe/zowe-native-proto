@@ -720,7 +720,7 @@ function startSpinner(text = "Loading...") {
     // Hide cursor
     process.stdout.write("\x1b[?25l");
     return setInterval(() => {
-        process.stdout.write(`\r${BRAILLE_FRAMES[frameIndex]} ${displayText}`);
+        process.stdout.write(`\x1b[2K\r${BRAILLE_FRAMES[frameIndex]} ${displayText}`);
         frameIndex = (frameIndex + 1) % BRAILLE_FRAMES.length;
     }, 160);
 }
@@ -848,18 +848,27 @@ async function artifacts(connection: Client, packageAll: boolean) {
 }
 
 async function runCommandInShell(connection: Client, command: string, streamOutput = false) {
-    const spinner = streamOutput ? null : startSpinner(`$ ${command.trim()}`);
+    // For multi-line commands, show only the first line in the spinner
+    const firstLine = command.trim().split("\n")[0];
+    const spinnerText = command.includes("\n") ? `$ ${firstLine}...` : `$ ${command.trim()}`;
+    const spinner = streamOutput ? null : startSpinner(spinnerText);
     return new Promise<string>((resolve, reject) => {
         let data = "";
         let error = "";
+        let hasError = false;
         const cb: ClientCallback = (err, stream) => {
             if (err) {
-                if (spinner) stopSpinner(spinner, `Error: runCommand connection.exec error ${err}`);
+                if (spinner) stopSpinner(spinner, `Error: ${err.message}`);
                 reject(err);
+                return;
             }
             stream.on("close", () => {
-                if (spinner) stopSpinner(spinner);
-                resolve(data);
+                if (!hasError && spinner) {
+                    stopSpinner(spinner);
+                }
+                if (!hasError) {
+                    resolve(data);
+                }
             });
             stream.on("data", (part: Buffer) => {
                 const output = part.toString();
@@ -877,10 +886,11 @@ async function runCommandInShell(connection: Client, command: string, streamOutp
             });
             stream.on("exit", (exitCode: number) => {
                 if (exitCode !== 0) {
-                    const fullError = `\nError: runCommand connection.exec error - stream.on exit: \n ${error || data}`;
-                    if (spinner) stopSpinner(spinner, fullError);
+                    hasError = true;
+                    const fullError = `${error || data}`.trim();
+                    if (spinner) stopSpinner(spinner, "\x1b[31mBuild failed\x1b[0m");
                     process.exitCode = exitCode;
-                    reject(fullError);
+                    reject(new Error(fullError));
                 }
             });
             stream.end(`${command}\nexit $?\n`);
@@ -1259,6 +1269,10 @@ async function main() {
 }
 
 main().catch((err) => {
-    console.error(err);
+    // Print error message without the Error object wrapper
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    if (errorMessage) {
+        console.error(`\n${errorMessage}`);
+    }
     process.exit(process.exitCode ?? 1);
 });
