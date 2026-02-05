@@ -323,14 +323,14 @@ void zds_tests()
                         const string M2 = "M2";
                         DS_ATTRIBUTES attr = {0};
 
-                        attr.dsorg = "PS";
+                        attr.dsorg = "PO";
                         attr.recfm = "FB";
                         attr.lrecl = 80;
                         attr.blksize = 0;
                         attr.alcunit = "TRACKS";
                         attr.primary = 1;
                         attr.secondary = 1;
-                        attr.dirblk = 0;
+                        attr.dirblk = 10;
                         string response;
                         it("should fail if data set name is empty",
                            [&]() -> void
@@ -387,9 +387,8 @@ void zds_tests()
                              ZDS zds = {0};
                              string ds = get_random_ds(3);
                              int rc = zds_create_dsn(&zds, ds, attr, response);
-                             rc = zds_rename_members(&zds, ds, M1, M2);
+                             rc = zds_rename_members(&zds, ds, M1, "M3");
                              Expect(rc).ToBe(RTNCD_FAILURE);
-                             std::cout << "error message" + string(zds.diag.e_msg);
                              Expect(string(zds.diag.e_msg)).ToContain("Source member does not exist");
                            });
 
@@ -404,7 +403,11 @@ void zds_tests()
                              rc = zds_write_to_dsn(&zds, ds + "(M2)", empty);
 
                              rc = zds_rename_members(&zds, ds, M1, M2);
+                             Expect(zds_member_exists(ds, "M1")).ToBe(true);
+                             Expect(zds_member_exists(ds, "M2")).ToBe(true);
+
                              Expect(rc).ToBe(RTNCD_FAILURE);
+                             std::cout << "error message" + string(zds.diag.e_msg);
                              Expect(string(zds.diag.e_msg)).ToContain("Target member already exists");
                            });
 
@@ -418,7 +421,7 @@ void zds_tests()
                              string empty = "";
                              rc = zds_write_to_dsn(&zds, ds + "(M1)", empty);
 
-                             rc = zds_rename_members(&zds, ds, M1, M2);
+                             rc = zds_rename_members(&zds, ds, M1, "M3");
                              Expect(rc).ToBe(0);
                            });
                       });
