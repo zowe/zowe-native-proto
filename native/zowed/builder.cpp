@@ -108,7 +108,20 @@ void CommandBuilder::apply_input_transforms(MiddlewareContext &context) const
     {
     case ArgTransform::RenameArg:
     {
-      // Rename: argument must exist
+      // Rename: argument must exist as camelCase
+      if (transform.arg_name.find('-') != string::npos)
+      {
+        string errMsg = string("Argument '") + transform.arg_name +
+                        "' contains hyphens but rename transform expects camelCase";
+        context.errln(errMsg.c_str());
+        LOG_ERROR("%s", errMsg.c_str());
+        continue;
+      }
+
+      // Convert camelCase to kebab-case to find the argument
+      string kebab_name = RpcServer::camel_case_to_kebab_case(transform.arg_name);
+      arg_it = args.find(kebab_name);
+
       if (arg_it == args.end())
       {
         LOG_DEBUG("Argument '%s' not found for rename transform, skipping", transform.arg_name.c_str());

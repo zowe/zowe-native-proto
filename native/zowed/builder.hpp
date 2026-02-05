@@ -91,7 +91,7 @@ public:
   // Constructor takes the command handler
   explicit CommandBuilder(CommandHandler handler);
 
-  // Rename an input argument (e.g., from RPC name to internal name)
+  // Rename an argument from JSON param name to CLI arg name
   CommandBuilder &rename_arg(const std::string &from, const std::string &to);
 
   // Set a default value for an argument if not provided
