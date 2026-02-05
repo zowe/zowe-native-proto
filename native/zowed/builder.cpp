@@ -31,6 +31,15 @@ CommandBuilder::CommandBuilder(CommandHandler handler)
 
 CommandBuilder &CommandBuilder::rename_arg(const string &from, const string &to)
 {
+  // Validate that input uses camelCase (not kebab-case)
+  if (from.find('-') != string::npos)
+  {
+    string errMsg = string("rename_arg configuration error: '") + from +
+                    "' contains hyphens. Use camelCase instead.";
+    std::cerr << errMsg << std::endl;
+    LOG_ERROR("%s", errMsg.c_str());
+  }
+
   transforms_.push_back(ArgTransform(ArgTransform::RenameArg, from, to));
   return *this;
 }
@@ -109,16 +118,6 @@ void CommandBuilder::apply_input_transforms(MiddlewareContext &context) const
     case ArgTransform::RenameArg:
     {
       // Rename: argument must exist as camelCase
-      if (transform.arg_name.find('-') != string::npos)
-      {
-        string errMsg = string("Argument '") + transform.arg_name +
-                        "' contains hyphens but rename transform expects camelCase";
-        context.errln(errMsg.c_str());
-        LOG_ERROR("%s", errMsg.c_str());
-        continue;
-      }
-
-      // Convert camelCase to kebab-case to find the argument
       string kebab_name = RpcServer::camel_case_to_kebab_case(transform.arg_name);
       arg_it = args.find(kebab_name);
 
