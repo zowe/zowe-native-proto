@@ -75,6 +75,21 @@ typedef struct
   std::string vol;       // Volume Serial
 } DS_ATTRIBUTES;
 
+/**
+ * Helper struct to hold data set attributes from DSCB lookup.
+ */
+struct DscbAttributes
+{
+  std::string recfm;
+  int lrecl;
+  bool is_asa;
+
+  DscbAttributes()
+      : recfm(""), lrecl(0), is_asa(false)
+  {
+  }
+};
+
 #ifdef SWIG
 extern "C"
 {

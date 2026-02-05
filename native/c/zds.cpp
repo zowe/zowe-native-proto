@@ -54,141 +54,6 @@ static inline bool zds_use_codepage(const ZDS *zds)
 }
 
 /**
- * RAII helper class to preserve diagnostic message across operations that may overwrite it.
- * Saves the current e_msg on construction and restores it on destruction.
- */
-class DiagMsgGuard
-{
-  ZDS *zds_;
-  char saved_msg_[256];
-  int saved_msg_len_;
-
-public:
-  explicit DiagMsgGuard(ZDS *zds)
-      : zds_(zds), saved_msg_len_(zds->diag.e_msg_len)
-  {
-    memcpy(saved_msg_, zds->diag.e_msg, sizeof(saved_msg_));
-  }
-
-  ~DiagMsgGuard()
-  {
-    memcpy(zds_->diag.e_msg, saved_msg_, sizeof(saved_msg_));
-    zds_->diag.e_msg_len = saved_msg_len_;
-  }
-
-  // Non-copyable
-  DiagMsgGuard(const DiagMsgGuard &) = delete;
-  DiagMsgGuard &operator=(const DiagMsgGuard &) = delete;
-};
-
-/**
- * RAII helper class to manage iconv descriptor lifecycle.
- * Automatically closes the iconv descriptor on destruction, ensuring proper cleanup
- * even in error paths.
- */
-class IconvGuard
-{
-  iconv_t cd_;
-
-public:
-  IconvGuard()
-      : cd_((iconv_t)(-1))
-  {
-  }
-
-  explicit IconvGuard(const char *to_code, const char *from_code)
-      : cd_((to_code && from_code) ? iconv_open(to_code, from_code) : (iconv_t)(-1))
-  {
-  }
-
-  ~IconvGuard()
-  {
-    if (cd_ != (iconv_t)(-1))
-    {
-      iconv_close(cd_);
-    }
-  }
-
-  iconv_t get() const
-  {
-    return cd_;
-  }
-
-  bool is_valid() const
-  {
-    return cd_ != (iconv_t)(-1);
-  }
-
-  // Non-copyable
-  IconvGuard(const IconvGuard &) = delete;
-  IconvGuard &operator=(const IconvGuard &) = delete;
-};
-
-/**
- * Helper struct to track truncated lines with range compression.
- * Consecutive lines are compressed into ranges (e.g., "5-8, 12, 45-46").
- */
-struct TruncationTracker
-{
-  int count;
-  int range_start;
-  int range_end;
-  string lines_str;
-
-  TruncationTracker()
-      : count(0), range_start(-1), range_end(-1), lines_str("")
-  {
-    lines_str.reserve(128);
-  }
-
-  void flush_range()
-  {
-    if (range_start == -1)
-      return;
-
-    if (!lines_str.empty())
-      lines_str += ", ";
-
-    ostringstream ss;
-    if (range_start == range_end)
-    {
-      ss << range_start;
-    }
-    else
-    {
-      ss << range_start << "-" << range_end;
-    }
-    lines_str += ss.str();
-    range_start = range_end = -1;
-  }
-
-  void add_line(int line_num)
-  {
-    count++;
-    if (range_start == -1)
-    {
-      range_start = range_end = line_num;
-    }
-    else if (line_num == range_end + 1)
-    {
-      range_end = line_num;
-    }
-    else
-    {
-      flush_range();
-      range_start = range_end = line_num;
-    }
-  }
-
-  string get_warning_message() const
-  {
-    ostringstream ss;
-    ss << count << " line(s) truncated to fit LRECL: " << lines_str;
-    return ss.str();
-  }
-};
-
-/**
  * Get the effective LRECL for writing, accounting for RDW in variable records
  * and ASA control character in ASA-formatted data sets.
  */
@@ -305,21 +170,6 @@ int zds_read_from_dd(ZDS *zds, string ddname, string &response)
 
   return 0;
 }
-
-/**
- * Helper struct to hold data set attributes from DSCB lookup.
- */
-struct DscbAttributes
-{
-  string recfm;
-  int lrecl;
-  bool is_asa;
-
-  DscbAttributes()
-      : recfm(""), lrecl(0), is_asa(false)
-  {
-  }
-};
 
 /**
  * Helper function to get data set attributes (RECFM, LRECL) from DSCB.
@@ -546,18 +396,33 @@ int zds_write_to_dd(ZDS *zds, string ddname, const string &data)
 }
 
 /**
- * Determine the newline character for a given encoding.
- * ASCII/UTF-8 uses 0x0A (LF), EBCDIC uses 0x15 (NL).
+ * Determine the newline character for a given encoding by converting '\n' from IBM-1047.
+ * This uses zut_encode to handle the conversion properly for any encoding.
+ * If encoding is empty, returns the native IBM-1047 newline character.
  */
-static char get_newline_char(const string &encoding)
+static char get_newline_char(const string &encoding, ZDIAG &diag)
 {
-  // EBCDIC codepages use 0x15 (NL) as newline
-  if (encoding.find("IBM-") == 0 || encoding.find("ibm-") == 0)
+  // If no encoding specified, return native IBM-1047 newline
+  if (encoding.empty())
   {
-    return '\x15'; // EBCDIC NL
+    return '\n'; // Native newline in IBM-1047
   }
-  // ASCII/UTF-8 use 0x0A (LF)
-  return '\x0A'; // ASCII LF
+
+  try
+  {
+    const string result = zut_encode("\n", "IBM-1047", encoding, diag);
+    if (!result.empty())
+    {
+      return result[0];
+    }
+  }
+  catch (...)
+  {
+    // Fall through to default
+  }
+
+  // Fallback: return native newline
+  return '\n';
 }
 
 /**
@@ -765,7 +630,7 @@ static int zds_write_sequential(ZDS *zds, const string &dsn, string &data, const
       if (isTextMode && attrs.lrecl > 0 && !temp.empty())
       {
         const int max_len = get_effective_lrecl_from_attrs(attrs);
-        const char newline_char = get_newline_char(codepage);
+        const char newline_char = get_newline_char(has_encoding ? codepage : "", zds->diag);
         scan_for_truncated_lines(temp, max_len, newline_char, truncation);
       }
 
@@ -831,7 +696,6 @@ static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
 
   // Determine source encoding for line splitting
   const auto source_encoding = strlen(zds->encoding_opts.source_codepage) > 0 ? string(zds->encoding_opts.source_codepage) : "UTF-8";
-  const char newline_char = get_newline_char(source_encoding);
 
   // Track truncated lines
   TruncationTracker truncation;
@@ -849,6 +713,9 @@ static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
     zds_close_output_bpam(zds, ioc);
     return RTNCD_FAILURE;
   }
+
+  // Determine newline character for the source encoding (or native if no encoding)
+  const char newline_char = get_newline_char(has_encoding ? source_encoding : "", zds->diag);
 
   // Collect all lines first, then write them (so we can append flush bytes to the last line)
   std::vector<std::pair<string, char>> lines_to_write; // pair of (encoded line, asa_char)
@@ -1020,7 +887,7 @@ static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
     rc = zds_write_output_bpam(zds, ioc, lines_to_write[i].first, lines_to_write[i].second);
     if (rc != RTNCD_SUCCESS)
     {
-      DiagMsgGuard guard(zds);
+      DiagMsgGuard guard(&zds->diag);
       zds_close_output_bpam(zds, ioc);
       return rc;
     }
@@ -2896,8 +2763,6 @@ static int zds_write_sequential_streamed(ZDS *zds, const string &dsn, const stri
 
   // Determine source encoding for encoding conversion
   const auto source_encoding = strlen(zds->encoding_opts.source_codepage) > 0 ? string(zds->encoding_opts.source_codepage) : "UTF-8";
-  // Use target encoding's newline for post-encoding truncation check
-  const char newline_char = get_newline_char(codepage);
 
   {
     FileGuard fout(dsname.c_str(), fopen_flags.c_str());
@@ -2935,6 +2800,9 @@ static int zds_write_sequential_streamed(ZDS *zds, const string &dsn, const stri
       zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Cannot open converter from %s to %s", source_encoding.c_str(), codepage.c_str());
       return RTNCD_FAILURE;
     }
+
+    // Use target encoding's newline for post-encoding truncation check (or native if no encoding)
+    const char newline_char = get_newline_char(has_encoding ? codepage : "", zds->diag);
 
     // Write chunks directly - the C runtime handles ASA and record boundaries in text mode
     while ((bytes_read = fread(&buf[0], 1, FIFO_CHUNK_SIZE, fin)) > 0)
@@ -3108,7 +2976,6 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const string &dsn, const str
 
   // Determine source encoding for line splitting
   const auto source_encoding = strlen(zds->encoding_opts.source_codepage) > 0 ? string(zds->encoding_opts.source_codepage) : "UTF-8";
-  const char newline_char = get_newline_char(source_encoding);
 
   // ASA state tracking for streaming
   AsaStreamState asa_state;
@@ -3121,6 +2988,9 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const string &dsn, const str
     zds_close_output_bpam(zds, ioc);
     return RTNCD_FAILURE;
   }
+
+  // Determine newline character for the source encoding (or native if no encoding)
+  const char newline_char = get_newline_char(has_encoding ? source_encoding : "", zds->diag);
 
   std::vector<char> buf(FIFO_CHUNK_SIZE);
   size_t bytes_read;
@@ -3204,7 +3074,7 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const string &dsn, const str
         rc = zds_write_output_bpam(zds, ioc, prev_line, prev_asa_char);
         if (rc != RTNCD_SUCCESS)
         {
-          DiagMsgGuard guard(zds);
+          DiagMsgGuard guard(&zds->diag);
           zds_close_output_bpam(zds, ioc);
           return rc;
         }
@@ -3286,7 +3156,7 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const string &dsn, const str
           rc = zds_write_output_bpam(zds, ioc, prev_line, prev_asa_char);
           if (rc != RTNCD_SUCCESS)
           {
-            DiagMsgGuard guard(zds);
+            DiagMsgGuard guard(&zds->diag);
             zds_close_output_bpam(zds, ioc);
             return rc;
           }
@@ -3331,7 +3201,7 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const string &dsn, const str
     rc = zds_write_output_bpam(zds, ioc, prev_line, prev_asa_char);
     if (rc != RTNCD_SUCCESS)
     {
-      DiagMsgGuard guard(zds);
+      DiagMsgGuard guard(&zds->diag);
       zds_close_output_bpam(zds, ioc);
       return rc;
     }
