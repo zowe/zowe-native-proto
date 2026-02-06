@@ -4,7 +4,7 @@ All notable changes to the Client code for "zowe-native-proto-sdk" are documente
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## Recent Changes
+## `0.2.3`
 
 - Added support for renaming datasets in the `RpcClientApi` [#376] (https://github.com/zowe/zowe-native-proto/issues/376).
 - Fixed an issue where connecting to the host with an expired password resulted in an ambiguous error. [#732](https://github.com/zowe/zowe-native-proto/issues/732)

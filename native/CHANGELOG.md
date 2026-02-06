@@ -4,7 +4,7 @@ All notable changes to the native code for "zowe-native-proto" are documented in
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## Recent Changes
+## `0.2.3`
 
 - `c`: Implement `zowex job watch` command to watch spool output for a string or regex until terminating.
 - `c`: Implement `zut_bpxwdyn_rtdsn` to obtain and return a system allocated data set name.
