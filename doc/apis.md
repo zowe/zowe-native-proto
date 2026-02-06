@@ -16,7 +16,7 @@
 | _List data set members_  | ✅              | ✅  | 🚧 <sup>1</sup> | ✅         | ✅  | ✅  | ✅   |
 | _Read data set_          | ✅              | ✅  | ✅              | ✅         | ✅  | ✅  | ✅   |
 | _Read data set member_   | ✅              | ✅  | ✅              | ✅         | ✅  | ✅  | ✅   |
-| _Write data set_         | ✅              | ✅  | ✅              | ✅         | ✅  | ✅  | ✅   |
+| _Write data set_         | ✅              | ✅  | 🚧 <sup>2</sup> | ✅         | ✅  | ✅  | ✅   |
 | _Write data set member_  | ✅              | ✅  | 🚧 <sup>2</sup> | ✅         | ✅  | ✅  | ✅   |
 | _Create data set_        | ✅              | ✅  | ✅              | ✅         | ✅  | ✅  | ✅   |
 | _Create data set member_ | ✅              | ✅  | 🚧 <sup>3</sup> | ✅         | ✅  | ✅  | ✅   |
@@ -30,11 +30,11 @@
 | Search data sets         | 🚧 <sup>5</sup> | ❌  | 🚧 <sup>5</sup> | ❌         | ❌  | ❌  | ❌   |
 | Invoke AMS (VSAM)        | ✅              | ❌  | ❌              | ❌         | ❌  | ❌  | ➖   |
 
-1. Not all attributes are retrieved
-2. Write operation erases ISPF statistics
-3. If the member already exists that data will be overwritten
-4. Does not support some migration utilities like CA Disk
-5. Limited options compared to ISPF `srchfor`
+1. Not all attributes are retrieved.
+2. RECFM=U (undefined record format) data sets are read-only; write attempts return an error.
+3. If the member already exists, this operation causes member contents to be overwritten.
+4. Does not support some migration utilities like CA Disk.
+5. Limited options compared to ISPF `srchfor`.
 
 ## USS Files
 
@@ -61,7 +61,7 @@
 | Mount file system        | ✅     | ❌  | ❌              | ❌         | ❌  | ❌  | ➖   |
 | Unmount file system      | ✅     | ❌  | ❌              | ❌         | ❌  | ❌  | ➖   |
 
-1. Recursive option is not supported
+1. Recursive option is not supported.
 
 ## Jobs
 
@@ -79,8 +79,8 @@
 | Release job        | ✅     | ❌  | ✅      | ✅         | ✅  | ✅  | ➖ <sup>2</sup> |
 | Change job class   | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ➖              |
 
-1. Does not support force, restart, dump, or purge
-2. Zowe Explorer does not support the Job Hold/Release operation
+1. Does not support force, restart, dump, or purge.
+2. Zowe Explorer does not support the Job Hold/Release operation.
 
 ## Console
 
@@ -90,7 +90,7 @@
 | Get MVS command response | ✅     | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
 | Get MVS detect result    | ✅     | ❌  | ❌              | ❌         | ❌  | ➖  | ➖   |
 
-1. Requires APF authorization
+1. Requires APF authorization.
 <!-- 2. You must manually deploy/symlink `zoweax` -->
 
 ## TSO
