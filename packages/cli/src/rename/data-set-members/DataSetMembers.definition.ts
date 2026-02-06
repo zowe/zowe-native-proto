@@ -33,7 +33,7 @@ export const RenameMemberDefinition: ICommandDefinition = {
         },
         {
             name: "memberBefore",
-            description: "The new name for the member",
+            description: "The current name of the member",
             type: "string",
             required: true,
         },
