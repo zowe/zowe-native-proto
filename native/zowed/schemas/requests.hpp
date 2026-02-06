@@ -75,6 +75,13 @@ ZJSON_SCHEMA(RenameDatasetRequest,
     FIELD_REQUIRED(dsnameAfter, STRING)
 );
 
+struct RenameMemberRequest {};
+ZJSON_SCHEMA(RenameMemberRequest,
+    FIELD_REQUIRED(dsname, STRING),
+    FIELD_REQUIRED(memberBefore, STRING),
+    FIELD_REQUIRED(memberAfter, STRING)
+);
+
 struct ListDatasetsRequest {};
 ZJSON_SCHEMA(ListDatasetsRequest,
     FIELD_OPTIONAL(maxItems, NUMBER),
