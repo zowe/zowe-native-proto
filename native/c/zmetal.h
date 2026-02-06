@@ -150,6 +150,23 @@ static int test_auth()
 #endif
 
 #if defined(__IBM_METAL__)
+/* Run program via LINK (subtask); parm_reg and epname_addr must be 31-bit addressable (e.g. __malloc31). */
+/* Pass epname in a register so LINKX does not embed a memory ref (e.g. 188(13)) into DC AL4(); "m"(epname) caused ASMA035S. */
+#define LINK(epname_addr, parm_reg, rc)                              \
+  __asm(                                                             \
+      "*                                                       \n"   \
+      " LR  1,%1        R1 = parameter list (31-bit)            \n"  \
+      " LINK EPLOC=(%2),PARAM=(1)                                \n" \
+      " ST  15,%0       save return code                        \n"  \
+      "*                                                        "    \
+      : "=m"(rc)                                                     \
+      : "r"(parm_reg), "r"(epname_addr)                              \
+      : "r0", "r1", "r14", "r15");
+#else
+#define LINK(epname_addr, parm_reg, rc)
+#endif
+
+#if defined(__IBM_METAL__)
 #define GET_KEY(key)                                 \
   __asm(                                             \
       "*                                         \n" \

@@ -151,14 +151,30 @@ void zowex_ds_tests()
                            [&]() -> void
                            {
                              string ds = _ds.back();
-                             _create_ds(ds, "--dsorg PO --dirblk 2");
+                             // Compress requires a basic PDS (not PDSE); request PDS explicitly in case system defaults to LIBRARY
+                             _create_ds(ds, "--dsorg PO --dirblk 2 --dsntype PDS");
+
+                             string list_resp;
+                             int list_rc = execute_command_with_output(zowex_command + " data-set list " + ds + " -a --rfc", list_resp);
+                             vector<string> tokens = parse_rfc_response(list_resp, ",");
+                             bool is_pds = (list_rc == 0 && tokens.size() > 9 && tokens[9] == "PDS");
 
                              string response;
                              string command = zowex_command + " data-set compress " + ds;
                              int rc = execute_command_with_output(command, response);
-                             ExpectWithContext(rc, response).ToBe(0);
-                             Expect(response).ToContain("Data set");
-                             Expect(response).ToContain("compressed");
+
+                             if (is_pds)
+                             {
+                               ExpectWithContext(rc, response).ToBe(0);
+                               Expect(response).ToContain("Data set");
+                               Expect(response).ToContain("compressed");
+                             }
+                             else
+                             {
+                               // System created PDSE (LIBRARY) despite DSNTYPE(PDS); compress correctly rejects
+                               ExpectWithContext(rc, response).Not().ToBe(0);
+                               Expect(response).ToContain("is not a PDS");
+                             }
                            });
 
                         // TODO: https://github.com/zowe/zowe-native-proto/issues/666
@@ -215,7 +231,7 @@ void zowex_ds_tests()
                              ExpectWithContext(rc, response).ToBe(0);
                              vector<string> tokens = parse_rfc_response(response, ",");
                              Expect(tokens[3]).ToBe("PO");
-                             Expect(tokens[9]).ToBe("PDS");
+                             Expect(tokens[9]).ToBe("LIBRARY");
                            });
 
                         it("should create a data set - recfm:VB dsorg:PO",
@@ -359,7 +375,7 @@ void zowex_ds_tests()
                              vector<string> tokens = parse_rfc_response(response, ",");
                              Expect(tokens[3]).ToBe("PO");
                              Expect(tokens[4]).ToBe("FB");
-                             Expect(tokens[9]).ToBe("PDS");
+                             Expect(tokens[9]).ToBe("LIBRARY"); // create-fb creates PDSE (LIBRARY)
                              // lrecl = 80
                            });
                         it("should fail to create a data set if the data set already exists",
@@ -555,7 +571,7 @@ void zowex_ds_tests()
                              vector<string> tokens = parse_rfc_response(response, ",");
                              Expect(tokens[3]).ToBe("PO");
                              Expect(tokens[4]).ToBe("VB");
-                             Expect(tokens[9]).ToBe("PDS");
+                             Expect(tokens[9]).ToBe("LIBRARY"); // create-vb creates PDSE (LIBRARY)
                              Expect(tokens[5]).ToBe("255"); // lrecl
                            });
                         it("should error when the data set already exists",

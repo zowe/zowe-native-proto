@@ -56,6 +56,15 @@ int zut_run(ZDIAG &diag, std::string input, std::string parms);
 int zut_run(std::string input);
 
 /**
+ * @brief Run a program via LINK (subtask). Use for utilities like IEBCOPY that 0C4 when invoked via LOAD+CALL.
+ * @param diag Diagnostic structure
+ * @param program Program name (e.g. IEBCOPY)
+ * @param parms Parameter string (can be empty)
+ * @return Return code (0 for success, non-zero for error)
+ */
+int zut_run_link(ZDIAG &diag, std::string program, std::string parms);
+
+/**
  * @brief Substitute a symbol in a string
  * @param symbol The symbol to substitute
  * @param result Reference to a string where the result will be stored

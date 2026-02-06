@@ -47,6 +47,28 @@ int zut_run(string program)
   return ZUTRUN(&diag, program.c_str(), NULL);
 }
 
+int zut_run_link(ZDIAG &diag, string program, string parms)
+{
+  // 1. MVS expects the program name to be exactly 8 chars, padded with spaces.
+  char prog8[9] = "        ";
+  memcpy(prog8, program.c_str(), (program.length() > 8) ? 8 : program.length());
+
+  // 2. MVS expects: [Halfword Length][Data]
+  // We create a buffer: 2 bytes for length + data bytes
+  short pLen = (short)parms.length();
+  std::vector<char> mvs_buffer(2 + pLen);
+
+  // Copy length (Big Endian) and then the data
+  memcpy(&mvs_buffer[0], &pLen, 2);
+  if (pLen > 0)
+  {
+    memcpy(&mvs_buffer[2], parms.c_str(), pLen);
+  }
+
+  // 3. Call with the address of the length field
+  return ZUTLINK(&diag, prog8, &mvs_buffer[0]);
+}
+
 unsigned char zut_get_key()
 {
   return ZUTMGKEY();
@@ -709,17 +731,19 @@ int zut_free_dynalloc_dds(ZDIAG &diag, vector<string> &list)
   for (vector<string>::iterator it = list.begin(); it != list.end(); it++)
   {
     string alloc_dd = *it;
-    size_t start = alloc_dd.find(" ");
-    size_t end = alloc_dd.find(")", start);
-    if (start == string::npos || end == string::npos)
+    const auto dd_start = alloc_dd.find("dd(");
+    if (dd_start == string::npos)
     {
       diag.e_msg_len = sprintf(diag.e_msg, "Invalid format in DD alloc string: %s", (*it).c_str());
       return RTNCD_FAILURE;
     }
-    else
+    const auto paren_end = alloc_dd.find(")", dd_start + 3);
+    if (paren_end == string::npos)
     {
-      free_dds.push_back("free " + alloc_dd.substr(start + 1, end - start));
+      diag.e_msg_len = sprintf(diag.e_msg, "Invalid format in DD alloc string: %s", (*it).c_str());
+      return RTNCD_FAILURE;
     }
+    free_dds.push_back("free " + alloc_dd.substr(dd_start, paren_end - dd_start + 1));
   }
 
   return zut_loop_dynalloc(diag, free_dds);
