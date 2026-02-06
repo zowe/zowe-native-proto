@@ -23,18 +23,6 @@
 using namespace std;
 using namespace ztst;
 
-static bool member_exists(const string &dsn, const string &member)
-{
-  string path = "//'" + dsn + "(" + member + ")'";
-  FILE *fp = fopen(path.c_str(), "r");
-  if (fp)
-  {
-    fclose(fp);
-    return true;
-  }
-  return false;
-}
-
 void zds_tests()
 {
 
