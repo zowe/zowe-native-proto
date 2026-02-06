@@ -264,7 +264,7 @@ int zds_write_to_dsn(ZDS *zds, const string &dsn, string &data)
   const auto hasEncoding = zds->encoding_opts.data_type == eDataTypeText && strlen(zds->encoding_opts.codepage) > 0;
   const auto codepage = string(zds->encoding_opts.codepage);
 
-  if (strlen(zds->etag) > 0 && zds->etag[0] != '\0' && 0 != zds_validate_etag(zds, dsn, hasEncoding))
+  if (strlen(zds->etag) > 0 && 0 != zds_validate_etag(zds, dsn, hasEncoding))
   {
     return RTNCD_FAILURE;
   }
@@ -697,7 +697,7 @@ int zds_rename_members(ZDS *zds, string dsname, string member_before, string mem
   member_before = "//'" + dsname + "(" + member_before + ")'";
   member_after = "//'" + dsname + "(" + member_after + ")'";
   rc = rename(member_before.c_str(), member_after.c_str());
-  cout << "rename reached" << endl;
+
   errno = 0;
   if (rc != 0)
   {

@@ -413,27 +413,16 @@ void zds_tests()
 
                              string ds = get_random_ds(3);
                              int rc = zds_create_dsn(&zds, ds, attr, response);
-                             cout << zds.etag << endl;
-                             //  sleep(3);
+
                              string empty = "";
                              rc = zds_write_to_dsn(&zds, ds + "(M1)", empty);
+                             Expect(rc).ToBe(0);
                              memset(zds.etag, 0, 8);
-                             ExpectWithContext(rc, "Failed to write M1").ToBe(RTNCD_SUCCESS);
                              rc = zds_write_to_dsn(&zds, ds + "(M2)", empty);
-                             ExpectWithContext(rc, "Failed to write M2").ToBe(RTNCD_SUCCESS);
+                             Expect(rc).ToBe(0);
 
                              rc = zds_rename_members(&zds, ds, M1, M2);
-                             //  Expect(zds_member_exists(ds, "M1")).ToBe(true);
-                             //  Expect(zds_member_exists(ds, "M2")).ToBe(true);
-                             bool res = member_exists(ds, "M2");
-                             bool res1 = member_exists(ds, "M1");
-                             std::cout << "M2 exists: " << res << std::endl;
-                             std::cout << "M1 exists: " << res1 << std::endl;
-
-                             ExpectWithContext(rc, "Rename RC is not RTNCD_FAILURE").ToBe(RTNCD_FAILURE);
-                             std::cout << "M2 exists: " << res << std::endl;
-                             std::cout << "M1 exists: " << res1 << std::endl;
-                             std::cout << "hello";
+                             Expect(rc).ToBe(RTNCD_FAILURE);
                              Expect(string(zds.diag.e_msg)).ToContain("Target member already exists");
                            });
 
@@ -446,6 +435,7 @@ void zds_tests()
 
                              string empty = "";
                              rc = zds_write_to_dsn(&zds, ds + "(M1)", empty);
+                             Expect(rc).ToBe(0);
 
                              rc = zds_rename_members(&zds, ds, M1, "M3");
                              Expect(rc).ToBe(0);
