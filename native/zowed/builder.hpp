@@ -91,7 +91,11 @@ public:
   // Constructor takes the command handler
   explicit CommandBuilder(CommandHandler handler);
 
-  // Rename an input argument (e.g., from RPC name to internal name)
+  // Rename an argument from JSON param name to CLI arg name
+  // - `from`: Name of JSON parameter from RPC request (camelCase)
+  // - `to`: Name of CLI argument passed to command handler (kebab-case)
+  //
+  // Note: Other transform methods expect argument names in CLI format (kebab-case).
   CommandBuilder &rename_arg(const std::string &from, const std::string &to);
 
   // Set a default value for an argument if not provided
@@ -103,8 +107,8 @@ public:
   CommandBuilder &set_default(const std::string &arg_name, double default_value);
 
   // Handle FIFO pipe creation for streaming
-  // mode: FifoMode::Get for download, FifoMode::Put for upload
-  // defer: if true, defer notification until content length is known (via set_content_len)
+  // - `mode`: FifoMode::Get for download, FifoMode::Put for upload
+  // - `defer`: if true, defer notification until content length is known (via set_content_len)
   CommandBuilder &handle_fifo(const std::string &rpc_id_param, const std::string &arg_name, FifoMode mode, bool defer = false);
 
   // Capture stdout and write to output argument (optionally base64 encoded)
