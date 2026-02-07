@@ -9,14 +9,39 @@
  *
  */
 
-import { type ICommandHandler, type IHandlerParameters, TextUtils } from "@zowe/imperative";
-import { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
+import {
+    ConnectionPropsForSessCfg,
+    type ICommandHandler,
+    type IHandlerParameters,
+    type IOverridePromptConnProps,
+    SessConstants,
+    TextUtils,
+} from "@zowe/imperative";
+import { type ISshSession, SshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import { type CommandResponse, type ISshErrorDefinition, ZSshClient, ZSshUtils } from "zowe-native-proto-sdk";
 import { translateCliError } from "./CliErrorUtils";
 
 export abstract class SshBaseHandler implements ICommandHandler {
+    // https://github.com/zowe/zowe-cli/blob/master/packages/zosuss/src/SshBaseHandler.ts
+    private static readonly sshSessCfgOverride: IOverridePromptConnProps[] = [
+        {
+            propertyName: "privateKey",
+            propertiesOverridden: ["password", "tokenType", "tokenValue", "cert", "certKey"],
+        },
+    ];
+
     public async process(commandParameters: IHandlerParameters) {
-        const session = ZSshUtils.buildSession(commandParameters.arguments);
+        const session = new SshSession(
+            await ConnectionPropsForSessCfg.addPropsOrPrompt<ISshSession>(
+                ZSshUtils.buildSession(commandParameters.arguments).ISshSession,
+                commandParameters.arguments,
+                {
+                    parms: commandParameters,
+                    propertyOverrides: SshBaseHandler.sshSessCfgOverride,
+                    supportedAuthTypes: [SessConstants.AUTH_TYPE_BASIC],
+                },
+            ),
+        );
 
         try {
             await this._processCommandWithClient(commandParameters, session);

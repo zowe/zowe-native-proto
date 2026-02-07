@@ -4,6 +4,10 @@ All notable changes to the Client code for "zowe-native-proto-cli" are documente
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## Recent Changes
+
+- Added prompting for user name and password when not supplied. [#771](https://github.com/zowe/zowe-native-proto/issues/771)
+
 ## `0.2.3`
 
 - Added the rename data set command to the CLI. [#376](https://github.com/zowe/zowe-native-proto/issues/376).
