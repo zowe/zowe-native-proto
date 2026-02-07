@@ -29,7 +29,7 @@
 
 using namespace std;
 
-int issue_command_combined_stdoutstderr(string command, string &response)
+int run_shell_command(string command, string &response)
 {
   int rc = 0;
   string response_raw;
@@ -79,5 +79,5 @@ int ztso_issue(string command, string &response)
   // appear to allow access to stderr and tsocmd always writes the input parameters
   // to stderr
   string tso_cmd = "tsocmd " + command + " 2>&1"; // combine stderr
-  return issue_command_combined_stdoutstderr(tso_cmd, response);
+  return run_shell_command(tso_cmd, response);
 }

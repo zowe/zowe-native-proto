@@ -32,10 +32,10 @@ int handle_uss_copy(InvocationContext &context)
 
   string source_path = context.get<std::string>("source-path");
   string destination_path = context.get<std::string>("destination-path");
-  // cp -R -L -p -B ttest ttest2
+
   bool recursive = context.get<bool>("recursive", false);
   bool follow_symlinks = context.get<bool>("follow-symlinks", false);
-  bool dont_preserve_permissions = context.get<bool>("ignore-permissions", false);
+  bool preserve_attributes = !context.get<bool>("ignore-attributes", false); // default = true
 
   if (follow_symlinks && !recursive)
   {
@@ -43,28 +43,12 @@ int handle_uss_copy(InvocationContext &context)
     return RTNCD_FAILURE;
   }
 
-  string command_flags = "";
-  if (recursive)
-  {
-    command_flags += "-R ";
-  }
-  if (follow_symlinks)
-  {
-    command_flags += "-L ";
-  }
-  if (!dont_preserve_permissions)
-  {
-    command_flags += "-p ";
-  }
-  command_flags += "-B ";
+  ZUSF zusf = {};
+  int rc = zusf_copy_file_or_dir(&zusf, source_path, destination_path, recursive, follow_symlinks, preserve_attributes);
 
-  string cp_command = "cp " + command_flags + source_path + " " + destination_path;
-  string response;
-  int rc = issue_command_combined_stdoutstderr(cp_command, response);
-  if (rc > 0) {
-    context.error_stream() << "Error occurred while trying to copy " + source_path + " to " + destination_path << endl;
-    context.error_stream() << "  " + cp_command << endl;
-    context.error_stream() << "  Details: \n" << response << endl;
+  if (rc != 0) {
+    context.error_stream() << "Error occurred while trying to copy %s to %s." << endl;
+    context.error_stream() << "  Details:" << zusf.diag.e_msg << endl;
   }
 
   return rc;
