@@ -114,7 +114,7 @@ export class SshUssApi extends SshCommonApi implements MainframeInteraction.IUss
     public async delete(ussPath: string, recursive?: boolean | undefined): Promise<zosfiles.IZosFilesResponse> {
         const response = await (await this.client).uss.deleteFile({
             fspath: ussPath,
-            recursive: recursive ?? false,
+            recursive: recursive,
         });
         return this.buildZosFilesResponse(response, response.success);
     }
