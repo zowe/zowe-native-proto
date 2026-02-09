@@ -76,6 +76,11 @@ void register_ds_commands(CommandDispatcher &dispatcher)
                                   .write_stdin("data", true)
                                   .handle_fifo("stream", "pipe-path", FifoMode::PUT));
   dispatcher.register_command("renameDataset", create_ds_builder(ds::handle_data_set_rename).validate<RenameDatasetRequest, RenameDatasetResponse>());
+  dispatcher.register_command("copyDataset",
+                              CommandBuilder(ds::handle_data_set_copy)
+                                  .validate<CopyDatasetRequest, CopyDatasetResponse>()
+                                  .rename_arg("fromDataset", "source")
+                                  .rename_arg("toDataset", "target"));
 }
 
 void register_job_commands(CommandDispatcher &dispatcher)

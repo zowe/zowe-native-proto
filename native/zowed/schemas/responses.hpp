@@ -158,6 +158,12 @@ ZJSON_SCHEMA(WriteDatasetResponse,
     FIELD_OPTIONAL(truncationWarning, STRING)
 );
 
+struct CopyDatasetResponse {};
+ZJSON_SCHEMA(CopyDatasetResponse,
+    FIELD_REQUIRED(success, BOOL),
+    FIELD_OPTIONAL(targetCreated, BOOL)
+);
+
 struct CancelJobResponse {};
 ZJSON_SCHEMA(CancelJobResponse,
     FIELD_REQUIRED(success, BOOL)
