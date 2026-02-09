@@ -223,6 +223,7 @@ void create_pds(ZDS *zds, const string &dsn)
 {
   DS_ATTRIBUTES attrs = {0};
   attrs.dsorg = "PO";
+  attrs.dsntype = "PDS";
   attrs.recfm = "F,B";
   attrs.lrecl = 80;
   attrs.blksize = 800;
