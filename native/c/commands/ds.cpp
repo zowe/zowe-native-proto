@@ -15,7 +15,6 @@
 #include "../zut.hpp"
 #include <string>
 #include <vector>
-#include <unistd.h>
 
 using namespace ast;
 using namespace parser;
@@ -298,7 +297,6 @@ int handle_data_set_view(InvocationContext &context)
       memcpy(zds.encoding_opts.source_codepage, source_encoding.data(), source_encoding.length() + 1);
     }
   }
-
   if (context.has("volser"))
   {
     string volser_value = context.get<string>("volser", "");
@@ -623,39 +621,29 @@ int handle_data_set_write(InvocationContext &context)
   }
   else
   {
-    string data;
-    string line;
-
-    if (!isatty(fileno(stdout)))
-    {
-      istreambuf_iterator<char> begin(context.input_stream());
-      istreambuf_iterator<char> end;
-      data.assign(begin, end);
-    }
-    else
-    {
-      while (getline(context.input_stream(), line))
-      {
-        data += line;
-        data.push_back('\n');
-      }
-    }
-
+    string data = zut_read_input(context.input_stream());
     rc = zds_write_to_dsn(&zds, dsn, data);
   }
 
   if (dds.size() > 0)
   {
     ZDIAG diag = {};
-    rc = zut_free_dynalloc_dds(diag, dds);
-    if (0 != rc)
+    int free_rc = zut_free_dynalloc_dds(diag, dds);
+    if (0 != free_rc)
     {
       context.error_stream() << diag.e_msg << endl;
       return RTNCD_FAILURE;
     }
   }
 
-  if (0 != rc)
+  // Handle truncation warning
+  if (RTNCD_WARNING == rc && ZDS_RSNCD_TRUNCATION_WARNING == zds.diag.detail_rc)
+  {
+    context.error_stream() << "Warning: " << zds.diag.e_msg << endl;
+    result->set("truncationWarning", str(zds.diag.e_msg));
+    // Continues w/ logic below to output success RC - operation succeeded with warning
+  }
+  else if (0 != rc)
   {
     context.error_stream() << "Error: could not write to data set: '" << dsn << "' rc: '" << rc << "'" << endl;
     context.error_stream() << "  Details: " << zds.diag.e_msg << endl;
@@ -676,7 +664,7 @@ int handle_data_set_write(InvocationContext &context)
   result->set("etag", str(zds.etag));
   context.set_object(result);
 
-  return rc;
+  return RTNCD_SUCCESS;
 }
 
 int handle_data_set_delete(InvocationContext &context)
