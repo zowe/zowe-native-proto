@@ -4,6 +4,10 @@ All notable changes to the Client code for "zowe-native-proto-sdk" are documente
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## Recent Changes
+
+- Fixed an issue where deploying to the `/tmp` directory would result in an error. [#781](https://github.com/zowe/zowe-native-proto/pull/781)
+
 ## `0.2.3`
 
 - Added support for renaming datasets in the `RpcClientApi` [#376] (https://github.com/zowe/zowe-native-proto/issues/376).
