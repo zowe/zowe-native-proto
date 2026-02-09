@@ -4,11 +4,12 @@ All notable changes to the Client code for "zowe-native-proto-cli" are documente
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## Recent Changes
+## `0.2.3`
 
-- Added the rename data set command to the CLI. [#376] (https://github.com/zowe/zowe-native-proto/issues/376).
+- Added the rename data set command to the CLI. [#376](https://github.com/zowe/zowe-native-proto/issues/376).
 - Added `owner` field to the table returned by the `zssh list jobs` and `zssh view job-status` commands. [#749](https://github.com/zowe/zowe-native-proto/pull/749)
 - Updated the `zssh server install` command to locate server PAX bundled in the SDK package. [#760](https://github.com/zowe/zowe-native-proto/pull/760)
+- The user is now warned if their data is truncated when uploading to a data set. Users can avoid truncation by keeping records within the maximum record length. [#751](https://github.com/zowe/zowe-native-proto/pull/751)
 
 ## `0.2.1`
 
