@@ -21,7 +21,7 @@ export const RenameMemberDefinition: ICommandDefinition = {
     examples: [
         {
             description: "Rename a member",
-            options: '"ibmuser.test.seq.cntl" "ibmuser.test.seq.cntl2"',
+            options: '"ibmuser.test.seq.cntl" "ibmuser.test.cntl(member1)" "ibmuser.test.cntl(member2)"',
         },
     ],
     positionals: [
