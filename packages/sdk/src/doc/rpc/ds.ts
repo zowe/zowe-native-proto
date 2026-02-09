@@ -204,3 +204,29 @@ export interface WriteDatasetResponse extends common.CommandResponse {
      */
     truncationWarning?: string;
 }
+
+export interface CopyDatasetRequest extends common.CommandRequest<"copyDataset"> {
+    /**
+     * Source data set name (can include member in parentheses)
+     */
+    fromDataset: string;
+    /**
+     * Target data set name (can include member in parentheses)
+     */
+    toDataset: string;
+    /**
+     * Replace existing members with the same name (keeps target members not in source)
+     */
+    replace?: boolean;
+    /**
+     * Overwrite target completely (delete all target members first, then copy)
+     */
+    overwrite?: boolean;
+}
+
+export interface CopyDatasetResponse extends common.CommandResponse {
+    /**
+     * If a new target data set was created
+     */
+    targetCreated?: boolean;
+}
