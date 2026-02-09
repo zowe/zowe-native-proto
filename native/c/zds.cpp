@@ -12,6 +12,7 @@
 
 #ifndef _OPEN_SYS_ITOA_EXT
 #define _OPEN_SYS_ITOA_EXT
+#include <cctype>
 #endif
 #ifndef _POSIX_SOURCE
 #define _POSIX_SOURCE
@@ -674,9 +675,19 @@ int zds_rename_members(ZDS *zds, string dsname, string member_before, string mem
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Data set name must be valid");
     return RTNCD_FAILURE;
   }
-  if (member_before.empty() || member_after.empty() || member_after.length() > 8)
+  if (member_before.empty() || member_after.empty())
   {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Member names must be valid");
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Member name cannot be empty");
+    return RTNCD_FAILURE;
+  }
+  if (!isalpha(member_before[0]) || !isalpha(member_after[0]))
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Member name must begin with an alphabetic character");
+    return RTNCD_FAILURE;
+  }
+  if (member_before.length() > 8 || member_after.length() > 8)
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Member name must not exceed 8 characters");
     return RTNCD_FAILURE;
   }
   if (!zds_dataset_exists(dsname))

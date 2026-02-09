@@ -354,12 +354,12 @@ void zds_tests()
 
                              rc = zds_rename_members(&zds, ds, "", M2);
                              Expect(rc).ToBe(RTNCD_FAILURE);
-                             Expect(string(zds.diag.e_msg)).ToContain("Member names must be valid");
+                             Expect(string(zds.diag.e_msg)).ToContain("Member name cannot be empty");
 
                              ZDS zds2 = {0};
                              rc = zds_rename_members(&zds2, ds, M1, "");
                              Expect(rc).ToBe(RTNCD_FAILURE);
-                             Expect(string(zds.diag.e_msg)).ToContain("Member names must be valid");
+                             Expect(string(zds.diag.e_msg)).ToContain("Member name cannot be empty");
                            });
                         it("should fail if member name is too long",
                            [&]() -> void
@@ -370,7 +370,7 @@ void zds_tests()
                              int rc = zds_create_dsn(&zds, ds, attr, response);
                              rc = zds_rename_members(&zds, ds, M1, longName);
                              Expect(rc).ToBe(RTNCD_FAILURE);
-                             Expect(string(zds.diag.e_msg)).ToContain("Member names must be valid");
+                             Expect(string(zds.diag.e_msg)).ToContain("Member name must not exceed 8 characters");
                            });
 
                         it("should fail if data set does not exist",
@@ -428,6 +428,22 @@ void zds_tests()
                              rc = zds_rename_members(&zds, ds, M1, "M3");
                              Expect(rc).ToBe(0);
                              rc = zds_delete_dsn(&zds, ds);
+                           });
+
+                        it("should fail if member name begins with a non alphabetic character",
+                           [&]() -> void
+                           {
+                             ZDS zds = {};
+                             string ds = get_random_ds(3);
+                             int rc = zds_create_dsn(&zds, ds, attr, response);
+
+                             string empty = "";
+                             rc = zds_write_to_dsn(&zds, ds + "(M1)", empty);
+                             Expect(rc).ToBe(0);
+
+                             rc = zds_rename_members(&zds, ds, M1, "123");
+                             Expect(rc).ToBe(RTNCD_FAILURE);
+                             Expect(string(zds.diag.e_msg)).ToContain("Member name must begin with an alphabetic character");
                            });
                       });
            });
