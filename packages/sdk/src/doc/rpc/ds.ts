@@ -218,4 +218,8 @@ export interface WriteDatasetResponse extends common.CommandResponse {
      * Length of dataset contents in bytes (only used for streaming)
      */
     contentLen?: number;
+    /**
+     * Warning message if lines were truncated to fit LRECL
+     */
+    truncationWarning?: string;
 }
