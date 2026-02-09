@@ -75,6 +75,21 @@ typedef struct
   std::string vol;       // Volume Serial
 } DS_ATTRIBUTES;
 
+/**
+ * Helper struct to hold data set attributes from DSCB lookup.
+ */
+struct DscbAttributes
+{
+  std::string recfm;
+  int lrecl;
+  bool is_asa;
+
+  DscbAttributes()
+      : recfm(""), lrecl(0), is_asa(false)
+  {
+  }
+};
+
 #ifdef SWIG
 extern "C"
 {
@@ -173,9 +188,10 @@ int zds_open_output_bpam(ZDS *zds, std::string dsname, IO_CTRL *&ioc);
  * @param zds data set returned attributes and error information
  * @param ioc IO_CTRL pointer to the data set
  * @param data data to write
+ * @param asa_char optional ASA control character to prepend (default '\0' means none)
  * @return int 0 for success; non zero otherwise
  */
-int zds_write_output_bpam(ZDS *zds, IO_CTRL *ioc, std::string &data);
+int zds_write_output_bpam(ZDS *zds, IO_CTRL *ioc, std::string &data, char asa_char = '\0');
 
 /**
  * @brief Close a data set using BPAM mode
