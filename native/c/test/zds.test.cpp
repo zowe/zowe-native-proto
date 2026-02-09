@@ -149,6 +149,17 @@ struct CompressTestContext : DataSetTestContextBase
     write_to_dsn(pds_dsn + "(" + member + ")", data);
   }
 
+  // Check if system actually created a PDS (some systems override DSNTYPE via SMS)
+  bool is_actual_pds()
+  {
+    ZDS zds = {0};
+    vector<ZDSEntry> entries;
+    zds_list_data_sets(&zds, pds_dsn, entries, true);
+    if (entries.empty())
+      return false;
+    return entries[0].dsntype == "PDS";
+  }
+
   int compress()
   {
     ZDS z = {0};
@@ -703,6 +714,11 @@ void zds_tests()
                            {
                              CompressTestContext tc(created_dsns);
                              tc.create_pds();
+                             if (!tc.is_actual_pds())
+                             {
+                               TestLog("Skipping - system created PDSE instead of PDS (SMS override)");
+                               return;
+                             }
                              tc.write_member("MEM1", "Data 1");
                              tc.write_member("MEM2", "Data 2");
                              Expect(tc.compress()).ToBe(0);
@@ -713,6 +729,11 @@ void zds_tests()
                            {
                              CompressTestContext tc(created_dsns);
                              tc.create_pds();
+                             if (!tc.is_actual_pds())
+                             {
+                               TestLog("Skipping - system created PDSE instead of PDS (SMS override)");
+                               return;
+                             }
                              for (int i = 1; i <= 5; i++)
                                tc.write_member("MEM" + to_string(i), "Data " + to_string(i));
                              Expect(tc.compress()).ToBe(0);
@@ -723,6 +744,11 @@ void zds_tests()
                            {
                              CompressTestContext tc(created_dsns);
                              tc.create_pds();
+                             if (!tc.is_actual_pds())
+                             {
+                               TestLog("Skipping - system created PDSE instead of PDS (SMS override)");
+                               return;
+                             }
                              Expect(tc.compress()).ToBe(0);
                            });
 
@@ -759,6 +785,11 @@ void zds_tests()
                            {
                              CompressTestContext tc(created_dsns);
                              tc.create_pds();
+                             if (!tc.is_actual_pds())
+                             {
+                               TestLog("Skipping - system created PDSE instead of PDS (SMS override)");
+                               return;
+                             }
                              string test_data = "Test data for compression";
                              tc.write_member("MEMBER", test_data);
                              Expect(tc.compress()).ToBe(0);
