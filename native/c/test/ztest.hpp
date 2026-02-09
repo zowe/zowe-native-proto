@@ -326,10 +326,10 @@ private:
     }
     std::cout << description;
 
-    if (duration.count() >= 100)
+    if (duration.count() >= 1e6)
     {
       std::cout << " (" << std::fixed << std::setprecision(3)
-                << duration.count() / 1000.0 << "ms)";
+                << duration.count() / 1000000.0 << "s)";
     }
     std::cout << std::endl;
 
@@ -1478,7 +1478,7 @@ inline int report()
 
   std::cout << std::left << std::setw(width) << "Time:"
             << std::fixed << std::setprecision(3)
-            << total_duration.count() / 1000.0 << "ms" << std::endl;
+            << total_duration.count() / 1000000.0 << "s" << std::endl;
 
   return tests_fail > 0 ? 1 : 0;
 }
