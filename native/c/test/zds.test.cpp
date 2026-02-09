@@ -27,7 +27,9 @@ struct DataSetTestContextBase
 {
   vector<string> &cleanup_list;
 
-  explicit DataSetTestContextBase(vector<string> &list) : cleanup_list(list) {}
+  explicit DataSetTestContextBase(vector<string> &list) : cleanup_list(list)
+  {
+  }
 
   void create_pds_at(const string &dsn)
   {
@@ -62,11 +64,26 @@ struct CopyTestContext : DataSetTestContextBase
     cleanup_list.push_back(target_dsn);
   }
 
-  void create_source_pds() { create_pds_at(source_dsn); }
-  void create_source_pdse() { create_pdse_at(source_dsn); }
-  void create_source_seq() { create_seq_at(source_dsn); }
-  void create_target_pds() { create_pds_at(target_dsn); }
-  void create_target_seq() { create_seq_at(target_dsn); }
+  void create_source_pds()
+  {
+    create_pds_at(source_dsn);
+  }
+  void create_source_pdse()
+  {
+    create_pdse_at(source_dsn);
+  }
+  void create_source_seq()
+  {
+    create_seq_at(source_dsn);
+  }
+  void create_target_pds()
+  {
+    create_pds_at(target_dsn);
+  }
+  void create_target_seq()
+  {
+    create_seq_at(target_dsn);
+  }
 
   void write_source_member(const string &member, const string &data)
   {
@@ -141,9 +158,18 @@ struct CompressTestContext : DataSetTestContextBase
     cleanup_list.push_back(pds_dsn);
   }
 
-  void create_pds() { create_pds_at(pds_dsn); }
-  void create_pdse() { create_pdse_at(pds_dsn); }
-  void create_seq() { create_seq_at(pds_dsn); }
+  void create_pds()
+  {
+    create_pds_at(pds_dsn);
+  }
+  void create_pdse()
+  {
+    create_pdse_at(pds_dsn);
+  }
+  void create_seq()
+  {
+    create_seq_at(pds_dsn);
+  }
   void write_member(const string &member, const string &data)
   {
     write_to_dsn(pds_dsn + "(" + member + ")", data);
