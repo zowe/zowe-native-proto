@@ -12,6 +12,7 @@
 #ifndef ZUT_HPP
 #define ZUT_HPP
 
+#include <sstream>
 #include <ostream>
 #include <iconv.h>
 #include <vector>
@@ -310,6 +311,17 @@ int zut_free_dynalloc_dds(ZDIAG &diag, std::vector<std::string> &list);
 int zut_list_parmlib(ZDIAG &diag, std::vector<std::string> &parmlibs);
 
 /**
+ * @brief Read input data from a stream, handling both TTY and piped input
+ *
+ * When stdin is not a TTY (piped input), reads raw bytes using istreambuf_iterator.
+ * When stdin is a TTY, reads lines using getline and preserves newlines between lines.
+ *
+ * @param input_stream The input stream to read from
+ * @return The data read from the input stream
+ */
+std::string zut_read_input(std::istream &input_stream);
+
+/**
  * @brief RAII class to manage auto-conversion state
  *
  * Saves the current auto-conversion state on construction and restores it on destruction.
@@ -352,6 +364,141 @@ public:
 
   operator FILE *() const;
   operator bool() const;
+};
+
+/**
+ * RAII helper class to preserve diagnostic message across operations that may overwrite it.
+ * Saves the current e_msg on construction and restores it on destruction.
+ */
+class DiagMsgGuard
+{
+  ZDIAG *diag_;
+  char saved_msg_[256];
+  int saved_msg_len_;
+
+public:
+  explicit DiagMsgGuard(ZDIAG *diag)
+      : diag_(diag), saved_msg_len_(diag->e_msg_len)
+  {
+    memcpy(saved_msg_, diag->e_msg, sizeof(saved_msg_));
+  }
+
+  ~DiagMsgGuard()
+  {
+    memcpy(diag_->e_msg, saved_msg_, sizeof(saved_msg_));
+    diag_->e_msg_len = saved_msg_len_;
+  }
+
+  // Non-copyable
+  DiagMsgGuard(const DiagMsgGuard &) = delete;
+  DiagMsgGuard &operator=(const DiagMsgGuard &) = delete;
+};
+
+/**
+ * RAII helper class to manage iconv descriptor lifecycle.
+ * Automatically closes the iconv descriptor on destruction, ensuring proper cleanup
+ * even in error paths.
+ */
+class IconvGuard
+{
+  iconv_t cd_;
+
+public:
+  IconvGuard()
+      : cd_((iconv_t)(-1))
+  {
+  }
+
+  explicit IconvGuard(const char *to_code, const char *from_code)
+      : cd_((to_code && from_code) ? iconv_open(to_code, from_code) : (iconv_t)(-1))
+  {
+  }
+
+  ~IconvGuard()
+  {
+    if (cd_ != (iconv_t)(-1))
+    {
+      iconv_close(cd_);
+    }
+  }
+
+  iconv_t get() const
+  {
+    return cd_;
+  }
+
+  bool is_valid() const
+  {
+    return cd_ != (iconv_t)(-1);
+  }
+
+  // Non-copyable
+  IconvGuard(const IconvGuard &) = delete;
+  IconvGuard &operator=(const IconvGuard &) = delete;
+};
+
+/**
+ * Helper struct to track truncated lines with range compression.
+ * Consecutive lines are compressed into ranges (e.g., "5-8, 12, 45-46").
+ */
+struct TruncationTracker
+{
+  int count;
+  int range_start;
+  int range_end;
+  std::string lines_str;
+
+  TruncationTracker()
+      : count(0), range_start(-1), range_end(-1), lines_str("")
+  {
+    lines_str.reserve(128);
+  }
+
+  void flush_range()
+  {
+    if (range_start == -1)
+      return;
+
+    if (!lines_str.empty())
+      lines_str += ", ";
+
+    std::ostringstream ss;
+    if (range_start == range_end)
+    {
+      ss << range_start;
+    }
+    else
+    {
+      ss << range_start << "-" << range_end;
+    }
+    lines_str += ss.str();
+    range_start = range_end = -1;
+  }
+
+  void add_line(int line_num)
+  {
+    count++;
+    if (range_start == -1)
+    {
+      range_start = range_end = line_num;
+    }
+    else if (line_num == range_end + 1)
+    {
+      range_end = line_num;
+    }
+    else
+    {
+      flush_range();
+      range_start = range_end = line_num;
+    }
+  }
+
+  std::string get_warning_message() const
+  {
+    std::ostringstream ss;
+    ss << count << " line(s) truncated to fit LRECL: " << lines_str;
+    return ss.str();
+  }
 };
 
 #endif // ZUT_HPP

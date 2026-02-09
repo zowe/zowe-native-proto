@@ -15,9 +15,7 @@
 #include "../zjb.hpp"
 #include "../zusf.hpp"
 #include "../zut.hpp"
-#include <unistd.h>
 #include <regex.h>
-#include <cstring>
 
 using namespace ast;
 using namespace parser;
@@ -451,15 +449,7 @@ int handle_job_submit_jcl(InvocationContext &context)
 {
   ZJB zjb = {};
   string jobid;
-  string data;
-  string line;
-
-  std::istreambuf_iterator<char> begin(context.input_stream());
-  std::istreambuf_iterator<char> end;
-
-  std::vector<char> raw_bytes(begin, end);
-  data.assign(raw_bytes.begin(), raw_bytes.end());
-  raw_bytes.clear();
+  string data = zut_read_input(context.input_stream());
 
   ZEncode encoding_opts = {};
   bool encoding_prepared = context.has("encoding") && zut_prepare_encoding(context.get<std::string>("encoding", ""), &encoding_opts);

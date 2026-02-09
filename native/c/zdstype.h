@@ -45,6 +45,7 @@
 
 #define ZDS_RSNCD_MAXED_ENTRIES_REACHED -1
 #define ZDS_RSNCD_NOT_FOUND -2
+#define ZDS_RSNCD_TRUNCATION_WARNING -3
 
 #define ZDS_RSNCD_NO_IO_CTRL -1
 #define ZDS_RSNCD_NOT_DYNALLOC -2
@@ -65,13 +66,15 @@
 #define ZDS_DSORG_PO "PO"      // Partitioned
 #define ZDS_DSORG_DA "DA"      // Direct Access
 
-// Record format constants
+// Record format constants (not exhaustive)
 #define ZDS_RECFM_FB "FB"   // Fixed Blocked
 #define ZDS_RECFM_F "F"     // Fixed
 #define ZDS_RECFM_VB "VB"   // Variable Blocked
 #define ZDS_RECFM_V "V"     // Variable
 #define ZDS_RECFM_U "U"     // Undefined
-#define ZDS_RECFM_FBS "FBS" // Fixed Blocked Spanned
+#define ZDS_RECFM_A "A"     // American National Standard (ASA) Control
+#define ZDS_RECFM_S "S"     // Standard
+#define ZDS_RECFM_FBS "FBS" // Fixed Blocked Standard
 #define ZDS_RECFM_VBS "VBS" // Variable Blocked Spanned
 
 // Device type codes (last byte of UCB device type)

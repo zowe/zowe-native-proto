@@ -48,7 +48,6 @@ private:
 
   // Helper methods for JSON processing
   RpcRequest parse_rpc_request(const zjson::Value &json);
-  std::string camel_case_to_kebab_case(const std::string &input);
   plugin::ArgumentMap convert_json_params_to_argument_map(const zjson::Value &params);
   zjson::Value convert_output_to_json(const std::string &output);
   zjson::Value convert_ast_to_json(const ast::Node &ast_node);
@@ -58,6 +57,12 @@ private:
   void add_large_data_to_json(std::string &json_string, const std::string &field_name, const std::string &data);
 
 public:
+  /**
+   * Convert camelCase string to kebab-case
+   * @param input The camelCase string to convert
+   * @return The kebab-case version of the string
+   */
+  static std::string camel_case_to_kebab_case(const std::string &input);
   /**
    * Process a JSON-RPC request string and return the response
    * This method is thread-safe and handles all JSON parsing, command execution,
