@@ -277,11 +277,36 @@ static int copy_sequential(ZDS *zds, const string &src_dsn, const string &dst_ds
     return RTNCD_FAILURE;
   }
 
+  // Check source RECFM using fldata - more reliable than catalog lookup
+  fldata_t src_info = {0};
+  char src_filename[64] = {0};
+  if (fldata(fin, src_filename, &src_info) == 0 && src_info.__recfmU)
+  {
+    fclose(fin);
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg,
+                                  "Cannot copy RECFM=U data set '%s'. Writing to RECFM=U data sets is not supported.",
+                                  src_dsn.c_str());
+    return RTNCD_FAILURE;
+  }
+
   FILE *fout = fopen(dst_path.c_str(), "wb");
   if (!fout)
   {
     fclose(fin);
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open target '%s'", dst_dsn.c_str());
+    return RTNCD_FAILURE;
+  }
+
+  // Check target RECFM using fldata
+  fldata_t dst_info = {0};
+  char dst_filename[64] = {0};
+  if (fldata(fout, dst_filename, &dst_info) == 0 && dst_info.__recfmU)
+  {
+    fclose(fin);
+    fclose(fout);
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg,
+                                  "Cannot copy to RECFM=U data set '%s'. Writing to RECFM=U data sets is not supported.",
+                                  dst_dsn.c_str());
     return RTNCD_FAILURE;
   }
 
@@ -320,25 +345,6 @@ int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2, bool replace,
   if (!info1.exists)
   {
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Source data set '%s' not found", info1.base_dsn.c_str());
-    return RTNCD_FAILURE;
-  }
-
-  // Check if source is RECFM=U - copying from RECFM=U is not supported because
-  // we cannot write to the target (even if newly created with RECFM=U attributes)
-  if (info1.entry.recfm == ZDS_RECFM_U)
-  {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg,
-                                  "Cannot copy RECFM=U data set '%s'. Writing to RECFM=U data sets is not supported.",
-                                  info1.base_dsn.c_str());
-    return RTNCD_FAILURE;
-  }
-
-  // Check if target is RECFM=U - copying to RECFM=U is not supported (same as write)
-  if (info2.exists && info2.entry.recfm == ZDS_RECFM_U)
-  {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg,
-                                  "Cannot copy to RECFM=U data set '%s'. Writing to RECFM=U data sets is not supported.",
-                                  info2.base_dsn.c_str());
     return RTNCD_FAILURE;
   }
 
