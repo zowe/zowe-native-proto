@@ -107,6 +107,25 @@ int handle_uss_create_dir(InvocationContext &context)
   return rc;
 }
 
+int handle_uss_move(InvocationContext &context)
+{
+  string source = context.get<std::string>("source", "");
+  string target = context.get<std::string>("target", "");
+  bool force = context.get<bool>("force", true);
+
+  ZUSF zusf = {};
+  int rc = zusf_move_uss_file_or_dir(&zusf, source, target, force);
+  if (0 != rc)
+  {
+    context.error_stream() << "Error: could not move USS file or directory: '" << source << "' to '" << target << "' rc: '" << rc << "'" << endl;
+    context.error_stream() << "  Details:\n"
+                           << zusf.diag.e_msg << endl;
+    return RTNCD_FAILURE;
+  }
+  context.output_stream() << "USS file or directory '" << source << "' moved to '" << target << "'" << endl;
+  return rc;
+}
+
 int handle_uss_list(InvocationContext &context)
 {
   int rc = 0;
@@ -496,6 +515,14 @@ void register_commands(parser::Command &root_command)
   uss_create_dir_cmd->add_keyword_arg("mode", make_aliases("--mode"), "permissions", ArgType_Single, false);
   uss_create_dir_cmd->set_handler(handle_uss_create_dir);
   uss_group->add_command(uss_create_dir_cmd);
+
+  // Move subcommand
+  auto uss_move_cmd = command_ptr(new Command("move", "move a USS file or directory"));
+  uss_move_cmd->add_positional_arg("source", "source path", ArgType_Single, true);
+  uss_move_cmd->add_positional_arg("target", "target path", ArgType_Single, true);
+  uss_move_cmd->add_keyword_arg("force", make_aliases("--force", "-f"), "force overwrite", ArgType_Flag, false, ArgValue(true));
+  uss_move_cmd->set_handler(handle_uss_move);
+  uss_group->add_command(uss_move_cmd);
 
   // List subcommand
   auto uss_list_cmd = command_ptr(new Command("list", "list USS files and directories"));

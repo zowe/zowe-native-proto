@@ -72,6 +72,37 @@ class TestUSSFunctions:
         assert isinstance(listing, str)
         assert "test_file.txt" in listing
 
+    def test_move_uss_file_or_dir_success(self):
+        """Test successful movement of USS file or directory."""
+        # Create test directory and file
+        test_dir = f"{self.test_base_dir}/test_move_dir"
+        uss.create_uss_dir(test_dir, "755")
+        
+        # Creat a file inside the folder
+        test_file = f"{test_dir}/test_file.txt"
+        uss.create_uss_file(test_file, "644")
+
+        # Move the file to a new location inside the same folder
+        new_file = f"{test_dir}/test_file_moved.txt"
+        uss.move_uss_file_or_dir(test_file, new_file)
+        
+        # Verify file was moved by listing directory
+        listing = uss.list_uss_dir(test_dir)
+        assert isinstance(listing, str)
+        assert "test_file_moved.txt" in listing
+        assert "test_file.txt" not in listing
+
+        # move the directory to a new location
+        new_dir = f"{self.test_base_dir}/test_move_dir_moved"
+        uss.move_uss_file_or_dir(test_dir, new_dir)
+        self.created_items.append(new_dir)
+        
+        # Verify directory was moved by listing directory
+        listing = uss.list_uss_dir(self.test_base_dir)
+        assert isinstance(listing, str)
+        assert "test_move_dir_moved" in listing
+        assert "test_move_dir" not in listing
+
     def test_list_uss_dir_success(self):
         """Test successful listing of USS directory."""
         # Create test directory with some content

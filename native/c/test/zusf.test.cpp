@@ -1417,4 +1417,40 @@ void zusf_tests()
                   Expect(strlen(zusf.diag.e_msg)).ToBeGreaterThan(0);
                 });
            });
+
+  describe("zusf_move_uss_file_or_dir tests",
+           [&]() -> void
+           {
+             ZUSF zusf;
+             beforeEach([&]() -> void
+                        { memset(&zusf, 0, sizeof(zusf)); });
+
+             it("should fail when source or destination is empty",
+                [&]() -> void
+                {
+                  int result = zusf_move_uss_file_or_dir(&zusf, "", "");
+                  Expect(result).ToBe(RTNCD_FAILURE);
+                  Expect(string(zusf.diag.e_msg)).ToContain("Source or destination is empty");
+
+                  result = zusf_move_uss_file_or_dir(&zusf, "/tmp/test_move_dir/test_file.txt", "");
+                  Expect(result).ToBe(RTNCD_FAILURE);
+                  Expect(string(zusf.diag.e_msg)).ToContain("Source or destination is empty");
+                });
+
+             it("should fail when source does not exist",
+                [&]() -> void
+                {
+                  int result = zusf_move_uss_file_or_dir(&zusf, "/tmp/nonexistent_file.txt", "/tmp/test_move_dir/test_file.txt");
+                  Expect(result).ToBe(RTNCD_FAILURE);
+                  Expect(string(zusf.diag.e_msg)).ToContain("Source path '/tmp/nonexistent_file.txt' does not exist");
+                });
+
+             it("should return early with success when source and destination are the same",
+                [&]() -> void
+                {
+                  int result = zusf_move_uss_file_or_dir(&zusf, "/tmp/test_move_dir/test_file.txt", "/tmp/test_move_dir/test_file.txt");
+                  Expect(result).ToBe(RTNCD_SUCCESS);
+                  Expect(string(zusf.diag.e_msg)).ToContain("Source and destination are the same");
+                });
+           });
 }

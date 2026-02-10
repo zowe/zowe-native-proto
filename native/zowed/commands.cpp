@@ -149,6 +149,7 @@ void register_uss_commands(CommandDispatcher &dispatcher)
   dispatcher.register_command("deleteFile",
                               create_uss_builder(uss::handle_uss_delete)
                                   .validate<DeleteFileRequest, DeleteFileResponse>());
+
   dispatcher.register_command("listFiles",
                               create_uss_builder(uss::handle_uss_list)
                                   .validate<ListFilesRequest, ListFilesResponse>()

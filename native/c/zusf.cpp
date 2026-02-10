@@ -20,10 +20,13 @@
 #define _LARGE_TIME_API
 #endif
 
+#ifndef _XOPEN_SOURCE_EXTENDED
+#define _XOPEN_SOURCE_EXTENDED 1
+#endif
+
 #include <limits.h>
 #include <limits>
 #include <climits>
-
 #include <algorithm>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -922,6 +925,87 @@ int zusf_create_uss_file_or_dir(ZUSF *zusf, const string &file, mode_t mode, boo
 
   zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not create '%s'", file.c_str());
   return RTNCD_FAILURE;
+}
+
+int zusf_move_uss_file_or_dir(ZUSF *zusf, const string &source, const string &target, bool force = true)
+{
+  // check if source or target is empty
+  if (source.empty() || target.empty())
+  {
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Source or target is empty");
+    return RTNCD_FAILURE;
+  }
+
+  // check if source exists
+  struct stat source_stats;
+  if (stat(source.c_str(), &source_stats) == -1)
+  {
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Source path '%s' does not exist", source.c_str());
+    return RTNCD_FAILURE;
+  }
+
+  // resolve paths
+  char resolved_source[1024]; // PATH_MAX = 1024 is defined in limits.h, but not in xlc
+  char resolved_target[1024]; // PATH_MAX = 1024 is defined in limits.h, but not in xlc
+  if (realpath(source.c_str(), resolved_source) == nullptr)
+  {
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to resolve source path '%s'", source.c_str());
+    return RTNCD_FAILURE;
+  }
+  // auto is_symlink =[&](const string &path) -> bool
+  // {
+  //   char destination[1024]; // PATH_MAX = 1024 is defined in limits.h, but not in xlc
+  //   return readlink(path.c_str(), destination, sizeof(destination)) != -1;
+  // };
+  // bool source_is_symlink = is_symlink(source);
+
+  // check if target exists
+  struct stat target_stats;
+  if (stat(target.c_str(), &target_stats) == 0)
+  {
+    // if target exists and force is not set, return failure
+    if (!force)
+    {
+      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Target path '%s' already exists", target.c_str());
+      return RTNCD_FAILURE;
+    }
+
+    // resolve target path, save it to resolved_target
+    if (realpath(target.c_str(), resolved_target) == nullptr)
+    {
+      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to resolve target path '%s'", target.c_str());
+      return RTNCD_FAILURE;
+    }
+
+    // check if paths are identical
+    if (strcmp(resolved_source, resolved_target) == 0)
+    {
+      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Source '%s' and target '%s' are identical", source.c_str(), target.c_str());
+      return RTNCD_FAILURE;
+    }
+
+    // check if source is a directory and target is not
+    if (S_ISDIR(source_stats.st_mode) && !S_ISDIR(target_stats.st_mode))
+    {
+      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Cannot move directory '%s'. Target '%s' is not a directory", source.c_str(), target.c_str());
+      return RTNCD_FAILURE;
+    }
+
+    // check if source is a pipe and target is not
+    if (S_ISFIFO(source_stats.st_mode) && !S_ISFIFO(target_stats.st_mode))
+    {
+      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Cannot move FIFO '%s'. Target '%s' is not a FIFO", source.c_str(), target.c_str());
+      return RTNCD_FAILURE;
+    }
+  }
+
+  if (rename(source.c_str(), target.c_str()) == -1)
+  {
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to move file or directory from '%s' to '%s'", source.c_str(), target.c_str());
+    return RTNCD_FAILURE;
+  }
+
+  return RTNCD_SUCCESS;
 }
 
 /**
