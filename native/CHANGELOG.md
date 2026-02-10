@@ -4,6 +4,10 @@ All notable changes to the native code for "zowe-native-proto" are documented in
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## Recent Changes
+
+- `c`: Fixed an issue where errors during `zowex` initialization and command execution were unhandled, causing abends as a result. Now, if a fatal error is encountered, the error is caught and its details are displayed before the process exits. [#784](https://github.com/zowe/zowe-native-proto/issues/784)
+
 ## `0.2.3`
 
 - `c`: Added `zowex ds copy` command to copy data sets and members with optional `--replace` and `--overwrite` flags for overwrite protection. Supports PDS-to-PDS, member-to-member, and sequential-to-sequential copies. Note: RECFM=U data sets are not supported. [#750](https://github.com/zowe/zowe-native-proto/pull/750)
