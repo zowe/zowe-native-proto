@@ -97,7 +97,8 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
                     entry.recfm = item.recfm;
                     entry.spacu = item.spacu;
                     entry.used = item.usedp != null ? `${item.usedp}%` : undefined;
-                    entry.vols = item.volser;
+                    entry.vol = item.volser;
+                    entry.vols = item.volsers?.join(" ");
                 }
                 return entry;
             }),

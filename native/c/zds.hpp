@@ -51,6 +51,7 @@ struct ZDSEntry
   int usedp;
   int usedx;
   std::string volser;
+  std::vector<std::string> volsers;
   // ISPF shows the following fields, but we omit them since they require reading PDS directory (too slow)
   // Maximum dir. blocks, Used dir. blocks, Number of members
 };

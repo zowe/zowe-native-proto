@@ -1497,11 +1497,15 @@ typedef struct
   ZDS_CSI_ERROR_INFO error_info;
 } ZDS_CSI_CATALOG;
 
+// This count should match number of catalog fields requested from CSI
+#define CSI_FIELD_COUNT 5
+#define CSI_FIELD_LEN 8
+
 typedef struct
 {
   int total_len;
   unsigned int reserved;
-  int field_lens; // data after field_lens
+  int field_lens[CSI_FIELD_COUNT]; // data after field_lens
 } ZDS_CSI_FIELD;
 
 typedef struct
@@ -1541,9 +1545,6 @@ typedef struct
 } ZDS_CSI_WORK_AREA;
 
 #pragma pack() // restore default packing
-
-#define BUFF_SIZE 1024
-#define FIELD_LEN 8
 
 #define DS1DSGPS_MASK 0x4000 // PS: Bit 2 is set
 #define DS1DSGDA_MASK 0x2000 // DA: Bit 3 is set
@@ -2213,9 +2214,9 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &datasets, bool sh
   zds->csi = NULL;
 
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=directory-catalog-field-names
-  string fields_long[][FIELD_LEN] = {{"VOLSER"}, {"DATACLAS"}, {"MGMTCLAS"}, {"STORCLAS"}, {"DEVTYP"}};
+  string fields_long[CSI_FIELD_COUNT][CSI_FIELD_LEN] = {{"VOLSER"}, {"DATACLAS"}, {"MGMTCLAS"}, {"STORCLAS"}, {"DEVTYP"}};
 
-  string(*fields)[FIELD_LEN] = nullptr;
+  string(*fields)[CSI_FIELD_LEN] = nullptr;
   int number_of_fields = 0;
 
   if (show_attributes)
@@ -2224,7 +2225,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &datasets, bool sh
     number_of_fields = sizeof(fields_long) / sizeof(fields_long[0]);
   }
 
-  int internal_used_buffer_size = sizeof(CSIFIELD) + number_of_fields * FIELD_LEN;
+  int internal_used_buffer_size = sizeof(CSIFIELD) + number_of_fields * CSI_FIELD_LEN;
 
   if (0 == zds->buffer_size)
     zds->buffer_size = ZDS_DEFAULT_BUFFER_SIZE;
@@ -2253,7 +2254,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &datasets, bool sh
 
   CSIFIELD *selection_criteria = (CSIFIELD *)area;
   char *csi_fields = (char *)(selection_criteria->csifldnm);
-  ZDS_CSI_WORK_AREA *csi_work_area = (ZDS_CSI_WORK_AREA *)(area + sizeof(CSIFIELD) + number_of_fields * FIELD_LEN);
+  ZDS_CSI_WORK_AREA *csi_work_area = (ZDS_CSI_WORK_AREA *)(area + sizeof(CSIFIELD) + number_of_fields * CSI_FIELD_LEN);
 
   // set work area
   csi_work_area->header.total_size = zds->buffer_size - min_buffer_size;
@@ -2273,9 +2274,9 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &datasets, bool sh
 
   for (int i = 0; i < number_of_fields; i++)
   {
-    memset(csi_fields, ' ', FIELD_LEN);
+    memset(csi_fields, ' ', CSI_FIELD_LEN);
     memcpy(csi_fields, fields[i][0].c_str(), fields[i][0].size());
-    csi_fields += FIELD_LEN;
+    csi_fields += CSI_FIELD_LEN;
   }
 
   selection_criteria->csinumen = number_of_fields;
@@ -2409,15 +2410,26 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &datasets, bool sh
       // Only process catalog fields and DSCB if show_attributes is true
       if (show_attributes)
       {
-        int *field_len = &f->response.field.field_lens;
+        int *field_len = f->response.field.field_lens;
         unsigned char *data = (unsigned char *)&f->response.field.field_lens;
-        data += (sizeof(f->response.field.field_lens) * number_fields);
+        data += sizeof(f->response.field.field_lens);
 
-        int volser_len = (*field_len > MAX_VOLSER_LENGTH) ? MAX_VOLSER_LENGTH : *field_len;
-        memset(buffer, 0x00, sizeof(buffer)); // clear buffer
-        memcpy(buffer, data, volser_len);     // copy VOLSER
-        entry.volser = strlen(buffer) == 0 ? ZDS_VOLSER_UNKNOWN : string(buffer);
-        entry.multivolume = (*field_len > MAX_VOLSER_LENGTH);
+        int num_volumes = field_len[0] / MAX_VOLSER_LENGTH;
+        entry.multivolume = num_volumes > 1;
+        entry.volsers.reserve(num_volumes);
+
+        for (int i = 0; i < num_volumes; i++)
+        {
+          memset(buffer, 0x00, sizeof(buffer)); // clear buffer
+          memcpy(buffer, data + (i * MAX_VOLSER_LENGTH), MAX_VOLSER_LENGTH);
+          std::string vol = string(buffer, MAX_VOLSER_LENGTH);
+          zut_rtrim(vol);
+          if (!vol.empty())
+            entry.volsers.push_back(vol);
+        }
+
+        // Use the first volume as the primary, or set unknown if empty
+        entry.volser = entry.volsers.empty() ? ZDS_VOLSER_UNKNOWN : entry.volsers[0];
 
 #define IPL_VOLUME "******"
 #define IPL_VOLUME_SYMBOL "&SYSR1" // https://www.ibm.com/docs/en/zos/3.1.0?topic=symbols-static-system
@@ -2489,6 +2501,9 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &datasets, bool sh
           zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Unsupported entry type '%x' ", f->type);
           return RTNCD_FAILURE;
         };
+
+        if (entry.volsers.empty())
+          entry.volsers.push_back(entry.volser);
       }
 
       if (datasets.size() + 1 > zds->max_entries)

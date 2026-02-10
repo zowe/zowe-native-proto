@@ -41,7 +41,8 @@ ZJSON_SCHEMA(Dataset,
     FIELD_OPTIONAL(storclass, STRING),
     FIELD_OPTIONAL(usedp, NUMBER),
     FIELD_OPTIONAL(usedx, NUMBER),
-    FIELD_OPTIONAL(volser, STRING)
+    FIELD_OPTIONAL(volser, STRING),
+    FIELD_OPTIONAL_ARRAY(volsers, STRING)
 );
 
 struct DsMember {};

@@ -200,6 +200,10 @@ export interface Dataset {
      * Volume serial
      */
     volser?: string;
+    /**
+     * List of volume serials
+     */
+    volsers?: string[];
 }
 
 export interface DatasetAttributes {

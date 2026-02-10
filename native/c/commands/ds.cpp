@@ -191,6 +191,10 @@ const ast::Node build_ds_object(const ZDSEntry &entry, bool attributes)
   if (entry.usedx != -1)
     obj_entry->set("usedx", i64(entry.usedx));
   obj_entry->set("volser", str(entry.volser));
+  const auto volsers_array = arr();
+  for (const auto it = entry.volsers.begin(); it != entry.volsers.end(); ++it)
+    volsers_array->push(str(*it));
+  obj_entry->set("volsers", volsers_array);
 
   return obj_entry;
 }
@@ -441,7 +445,7 @@ int handle_data_set_list(InvocationContext &context)
         fields.push_back(it->name);
         if (attributes)
         {
-          fields.push_back(it->volser);
+          fields.push_back(it->multivolume ? (it->volser + "+") : it->volser);
           fields.push_back(it->devtype != 0 ? zut_int_to_string(it->devtype, true) : "");
           fields.push_back(it->dsorg);
           fields.push_back(it->recfm);
@@ -461,7 +465,7 @@ int handle_data_set_list(InvocationContext &context)
         {
           context.output_stream() << left
                                   << setw(44) << it->name << " "
-                                  << setw(6) << it->volser << " "
+                                  << setw(7) << (it->multivolume ? (it->volser + "+") : it->volser) << " "
                                   << setw(7) << (it->devtype != 0 ? zut_int_to_string(it->devtype, true) : "") << " "
                                   << setw(4) << it->dsorg << " "
                                   << setw(6) << it->recfm << " "
