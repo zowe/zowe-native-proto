@@ -50,7 +50,7 @@ int main(int argc, char *argv[])
   }
   catch (const std::exception &e)
   {
-    std::cerr << "Fatal error encountered during zowex initialization: " << e.what() << std::endl;
+    std::cerr << "Fatal error encountered in zowex: " << e.what() << std::endl;
     return 1;
   }
 }
