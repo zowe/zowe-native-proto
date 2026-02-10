@@ -101,7 +101,11 @@ async function main() {
     console.log(`Icon written to ${OUTPUT} (${buffer.length} bytes)`);
 }
 
-main().catch((err) => {
-    console.error("Failed to generate icon:", err);
-    process.exit(1);
-});
+(async () => {
+    try {
+        await main();
+    } catch (err) {
+        console.error("Failed to generate icon:", err);
+        process.exit(1);
+    }
+})();
