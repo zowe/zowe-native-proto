@@ -4,6 +4,10 @@ All notable changes to the "zowe-native-proto-vsce" extension will be documented
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## Recent Changes
+
+- Added the `multivolume` (`mvol`) property when displaying data set attributes. [#782](https://github.com/zowe/zowe-native-proto/pull/782)
+
 ## `0.2.3`
 
 - Added the functionality for the rename data set option. [#376](https://github.com/zowe/zowe-native-proto/issues/376)

@@ -2413,8 +2413,9 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &datasets, bool sh
         unsigned char *data = (unsigned char *)&f->response.field.field_lens;
         data += (sizeof(f->response.field.field_lens) * number_fields);
 
-        memset(buffer, 0x00, sizeof(buffer));    // clear buffer
-        memcpy(buffer, data, MAX_VOLSER_LENGTH); // copy VOLSER
+        int volser_len = (*field_len > MAX_VOLSER_LENGTH) ? MAX_VOLSER_LENGTH : *field_len;
+        memset(buffer, 0x00, sizeof(buffer)); // clear buffer
+        memcpy(buffer, data, volser_len);     // copy VOLSER
         entry.volser = strlen(buffer) == 0 ? ZDS_VOLSER_UNKNOWN : string(buffer);
         entry.multivolume = (*field_len > MAX_VOLSER_LENGTH);
 

@@ -4,6 +4,10 @@ All notable changes to the Client code for "zowe-native-proto-sdk" are documente
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## Recent Changes
+
+- Added `multivolume` property to the `Dataset` type for listing data sets with attributes. [#782](https://github.com/zowe/zowe-native-proto/pull/782)
+
 ## `0.2.3`
 
 - Added support for renaming datasets in the `RpcClientApi` [#376] (https://github.com/zowe/zowe-native-proto/issues/376).
