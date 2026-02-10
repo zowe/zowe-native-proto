@@ -420,7 +420,9 @@ int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2, bool replace,
 
   if (!replace && !overwrite && !is_pds_full_copy)
   {
-    bool target_actually_exists = target_is_member ? target_member_exists : true;
+    // For member targets, check if the specific member exists
+    // For non-member targets (sequential DS), check if the base data set existed before this call
+    bool target_actually_exists = target_is_member ? target_member_exists : target_base_exists;
 
     if (target_actually_exists)
     {
