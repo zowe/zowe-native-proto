@@ -359,44 +359,44 @@ int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2, bool replace,
     string create_resp;
     DS_ATTRIBUTES attrs = {0};
 
+    // Common attributes for all data set types
+    attrs.recfm = info1.entry.recfm.c_str();
+    attrs.lrecl = info1.entry.lrecl;
+    attrs.blksize = info1.entry.blksize;
+
+    // Preserve space unit (CYLINDERS or TRACKS)
+    if (info1.entry.spacu == "CYLINDERS" || info1.entry.spacu == "CYL")
+    {
+      attrs.alcunit = "CYL";
+    }
+    else
+    {
+      attrs.alcunit = "TRACKS";
+    }
+
+    // Preserve primary/secondary allocation
+    if (info1.entry.primary >= 0 && info1.entry.secondary >= 0)
+    {
+      attrs.primary = info1.entry.primary > INT_MAX ? INT_MAX : static_cast<int>(info1.entry.primary);
+      attrs.secondary = info1.entry.secondary > INT_MAX ? INT_MAX : static_cast<int>(info1.entry.secondary);
+    }
+    else
+    {
+      attrs.primary = 1;
+      attrs.secondary = 1;
+    }
+
     if (info1.type == ZDS_TYPE_PDS || info1.type == ZDS_TYPE_MEMBER)
     {
       // PDS -> PDS or Member -> Member: create PDS with source attributes
       attrs.dsorg = "PO";
-      attrs.recfm = info1.entry.recfm.c_str();
-      attrs.lrecl = info1.entry.lrecl;
-      attrs.blksize = info1.entry.blksize;
       attrs.dirblk = 5;
       attrs.dsntype = info1.entry.dsntype.c_str();
     }
     else
     {
-      // PS -> PS: copy attributes from source (space unit, primary/secondary, block size)
+      // PS -> PS: create sequential data set with source attributes
       attrs.dsorg = "PS";
-      attrs.recfm = info1.entry.recfm.c_str();
-      attrs.lrecl = info1.entry.lrecl;
-      attrs.blksize = info1.entry.blksize;
-      // Keep same space unit (CYLINDERS or TRACKS)
-      if (info1.entry.spacu == "CYLINDERS" || info1.entry.spacu == "CYL")
-      {
-        attrs.alcunit = "CYL";
-      }
-      else
-      {
-        attrs.alcunit = "TRACKS";
-      }
-      // Preserve primary/secondary when source used CYLINDERS or TRACKS
-      if ((info1.entry.spacu == "CYLINDERS" || info1.entry.spacu == "TRACKS" || info1.entry.spacu == "CYL") &&
-          info1.entry.primary >= 0 && info1.entry.secondary >= 0)
-      {
-        attrs.primary = info1.entry.primary > INT_MAX ? INT_MAX : static_cast<int>(info1.entry.primary);
-        attrs.secondary = info1.entry.secondary > INT_MAX ? INT_MAX : static_cast<int>(info1.entry.secondary);
-      }
-      else
-      {
-        attrs.primary = 1;
-        attrs.secondary = 1;
-      }
     }
 
     rc = zds_create_dsn(&create_zds, info2.base_dsn, attrs, create_resp);
