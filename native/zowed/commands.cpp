@@ -26,7 +26,7 @@ static CommandBuilder create_ds_builder(CommandBuilder::CommandHandler handler)
 
 static CommandBuilder create_job_builder(CommandBuilder::CommandHandler handler)
 {
-  return CommandBuilder(handler).rename_arg("job-id", "jobid");
+  return CommandBuilder(handler).rename_arg("jobId", "jobid");
 }
 
 static CommandBuilder create_uss_builder(CommandBuilder::CommandHandler handler)
@@ -112,7 +112,7 @@ void register_job_commands(CommandDispatcher &dispatcher)
   dispatcher.register_command("readSpool",
                               create_job_builder(job::handle_job_view_file_by_id)
                                   .validate<ReadSpoolRequest, ReadSpoolResponse>()
-                                  .rename_arg("spool-id", "key")
+                                  .rename_arg("spoolId", "key")
                                   .set_default("encoding", "IBM-1047")
                                   .read_stdout("data", true));
   dispatcher.register_command("releaseJob",
@@ -181,7 +181,7 @@ void register_cmd_commands(CommandDispatcher &dispatcher)
   dispatcher.register_command("tsoCommand",
                               CommandBuilder(tso::handle_tso_issue)
                                   .validate<IssueTsoRequest, IssueTsoResponse>()
-                                  .rename_arg("command-text", "command")
+                                  .rename_arg("commandText", "command")
                                   .read_stdout("data", false));
 }
 

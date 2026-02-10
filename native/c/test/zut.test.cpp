@@ -10,6 +10,7 @@
  */
 
 #include <iostream>
+#include <sstream>
 #include <stdexcept>
 
 #include "ztest.hpp"
@@ -98,6 +99,105 @@ void zut_tests()
                              rc = zut_bpxwdyn(cmd, &code, resp);
                              expect(rc).ToBe(0);
                              expect(code).ToBe(0);
+                           });
+                      });
+
+             describe("zut_read_input",
+                      []() -> void
+                      {
+                        it("should read all content from a stringstream (simulates non-TTY piped input)",
+                           []() -> void
+                           {
+                             string input_data = "line1\nline2\nline3";
+                             istringstream input_stream(input_data);
+
+                             string result = zut_read_input(input_stream);
+
+                             expect(result).ToBe(input_data);
+                           });
+
+                        it("should handle empty input stream",
+                           []() -> void
+                           {
+                             istringstream input_stream("");
+
+                             string result = zut_read_input(input_stream);
+
+                             expect(result).ToBe("");
+                             expect(result.length()).ToBe(0);
+                           });
+
+                        it("should preserve binary data with null bytes",
+                           []() -> void
+                           {
+                             string input_data = "before\0after";
+                             input_data[6] = '\0'; // Ensure null byte is present
+                             istringstream input_stream(input_data);
+
+                             string result = zut_read_input(input_stream);
+
+                             expect(result.length()).ToBe(input_data.length());
+                             expect(result[6]).ToBe('\0');
+                           });
+
+                        it("should handle single line without newline",
+                           []() -> void
+                           {
+                             string input_data = "single line no newline";
+                             istringstream input_stream(input_data);
+
+                             string result = zut_read_input(input_stream);
+
+                             expect(result).ToBe(input_data);
+                           });
+
+                        it("should handle content with trailing newline",
+                           []() -> void
+                           {
+                             string input_data = "line with trailing newline\n";
+                             istringstream input_stream(input_data);
+
+                             string result = zut_read_input(input_stream);
+
+                             expect(result).ToBe(input_data);
+                           });
+
+                        it("should handle multiple consecutive newlines",
+                           []() -> void
+                           {
+                             string input_data = "line1\n\n\nline2";
+                             istringstream input_stream(input_data);
+
+                             string result = zut_read_input(input_stream);
+
+                             expect(result).ToBe(input_data);
+                           });
+
+                        it("should handle Windows-style line endings",
+                           []() -> void
+                           {
+                             string input_data = "line1\r\nline2\r\nline3";
+                             istringstream input_stream(input_data);
+
+                             string result = zut_read_input(input_stream);
+
+                             expect(result).ToBe(input_data);
+                           });
+
+                        it("should handle large input",
+                           []() -> void
+                           {
+                             string input_data;
+                             for (int i = 0; i < 1000; i++)
+                             {
+                               input_data += "Line " + zut_int_to_string(i) + " with some content\n";
+                             }
+                             istringstream input_stream(input_data);
+
+                             string result = zut_read_input(input_stream);
+
+                             expect(result).ToBe(input_data);
+                             expect(result.length()).ToBe(input_data.length());
                            });
                       });
 

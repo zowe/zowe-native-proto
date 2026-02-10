@@ -651,10 +651,10 @@ void zowex_uss_tests()
                            [&]() -> void
                            {
                              string viewCommand = zowex_command + " uss view " + uss_path + " --ec UTF-8";
-                             string writeCommand = zowex_command + " uss write " + uss_path + " --ec UTF-8";
+                             string writeCommand = "echo 'Hello World!' | " + zowex_command + " uss write " + uss_path + " --ec UTF-8";
                              string view_response;
 
-                             rc = execute_command_with_input(writeCommand, "Hello World!");
+                             rc = execute_command_with_output(writeCommand, response);
                              ExpectWithContext(rc, "Write command failed").ToBe(0);
 
                              rc = execute_command_with_output(viewCommand, view_response);
@@ -666,10 +666,10 @@ void zowex_uss_tests()
                            [&]() -> void
                            {
                              string viewCommand = zowex_command + " uss view " + uss_path + " --return-etag --ec UTF-8";
-                             string writeCommand = zowex_command + " uss write " + uss_path + " --ec UTF-8";
+                             string writeCommand = "echo 'Initial Content' | " + zowex_command + " uss write " + uss_path + " --ec UTF-8";
                              string view_response;
 
-                             rc = execute_command_with_input(writeCommand, "Initial Content");
+                             rc = execute_command_with_output(writeCommand, response);
                              ExpectWithContext(rc, "Initial write failed").ToBe(0);
 
                              rc = execute_command_with_output(viewCommand, view_response);
@@ -678,8 +678,8 @@ void zowex_uss_tests()
                              string valid_etag = parse_etag_from_output(view_response);
                              ExpectWithContext(valid_etag, "Failed to parse ETag from view output.").Not().ToBe("");
 
-                             string writeWithValidEtagCmd = writeCommand + " --etag " + valid_etag;
-                             rc = execute_command_with_input(writeWithValidEtagCmd, "Updated Content");
+                             string writeWithValidEtagCmd = "echo 'Updated Content' | " + zowex_command + " uss write " + uss_path + " --ec UTF-8 --etag " + valid_etag;
+                             rc = execute_command_with_output(writeWithValidEtagCmd, response);
                              ExpectWithContext(rc, "Write with valid etag failed").ToBe(0);
 
                              string final_view_response;
@@ -713,8 +713,8 @@ void zowex_uss_tests()
                                  "\x61\x20"                 // "a "
                                  "\x74\x65\x73\x74\x2e";    // "test."
 
-                             string writeCommand = zowex_command + " uss write " + uss_path + " --lec IBM-1047 --ec UTF-8";
-                             rc = execute_command_with_input(writeCommand, ebcdic_text);
+                             string writeCommand = "printf '%s' '" + ebcdic_text + "' | " + zowex_command + " uss write " + uss_path + " --lec IBM-1047 --ec UTF-8";
+                             rc = execute_command_with_output(writeCommand, response);
                              ExpectWithContext(rc, "Write command failed").ToBe(0);
 
                              string viewCommand = zowex_command + " uss view " + uss_path + " --ec UTF-8";
@@ -743,12 +743,12 @@ void zowex_uss_tests()
                         it("should handle write and view for a FIFO pipe",
                            [&]() -> void
                            {
-                             string writeCommand = zowex_command + " uss write " + uss_path + " --ec binary";
+                             string writeCommand = "echo 'Hello World!' | " + zowex_command + " uss write " + uss_path + " --ec binary";
                              string viewCommand = zowex_command + " uss view " + uss_path + " --ec binary";
                              string view_response;
                              mkfifo(uss_path.c_str(), 0777);
 
-                             rc = execute_command_with_input(writeCommand, "Hello World!");
+                             rc = execute_command_with_output(writeCommand, response);
                              ExpectWithContext(rc, "Write command failed").ToBe(0);
 
                              rc = execute_command_with_output(viewCommand, view_response);
@@ -764,14 +764,14 @@ void zowex_uss_tests()
                              symlink(uss_path.c_str(), symPath.c_str());
 
                              // Write to sym link
-                             string writeCommand = zowex_command + " uss write " + symPath + " --ec binary";
+                             string writeCommand = "echo 'Hello World!' | " + zowex_command + " uss write " + symPath + " --ec binary";
 
                              // Read from original path
                              string viewCommand = zowex_command + " uss view " + uss_path + " --ec binary";
                              string listCommand = zowex_command + " uss ls " + uss_path + " -l";
                              string view_response;
 
-                             rc = execute_command_with_input(writeCommand, "Hello World!");
+                             rc = execute_command_with_output(writeCommand, response);
                              ExpectWithContext(rc, "Write command failed").ToBe(0);
 
                              rc = execute_command_with_output(viewCommand, view_response);
