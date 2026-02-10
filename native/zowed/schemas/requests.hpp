@@ -198,21 +198,21 @@ struct ChmodFileRequest {};
 ZJSON_SCHEMA(ChmodFileRequest,
     FIELD_REQUIRED(mode, STRING),
     FIELD_REQUIRED(fspath, STRING),
-    FIELD_REQUIRED(recursive, BOOL)
+    FIELD_OPTIONAL(recursive, BOOL)
 );
 
 struct ChownFileRequest {};
 ZJSON_SCHEMA(ChownFileRequest,
     FIELD_REQUIRED(owner, STRING),
     FIELD_REQUIRED(fspath, STRING),
-    FIELD_REQUIRED(recursive, BOOL)
+    FIELD_OPTIONAL(recursive, BOOL)
 );
 
 struct ChtagFileRequest {};
 ZJSON_SCHEMA(ChtagFileRequest,
     FIELD_REQUIRED(fspath, STRING),
     FIELD_REQUIRED(tag, STRING),
-    FIELD_REQUIRED(recursive, BOOL)
+    FIELD_OPTIONAL(recursive, BOOL)
 );
 
 struct CreateFileRequest {};
@@ -225,7 +225,7 @@ ZJSON_SCHEMA(CreateFileRequest,
 struct DeleteFileRequest {};
 ZJSON_SCHEMA(DeleteFileRequest,
     FIELD_REQUIRED(fspath, STRING),
-    FIELD_REQUIRED(recursive, BOOL)
+    FIELD_OPTIONAL(recursive, BOOL)
 );
 
 struct ListFilesRequest {};
