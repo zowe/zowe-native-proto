@@ -161,6 +161,10 @@ export interface Dataset {
      */
     migrated?: boolean;
     /**
+     * Whether the data set is on multiple volumes
+     */
+    multivolume?: boolean;
+    /**
      * Primary units
      */
     primary?: number;

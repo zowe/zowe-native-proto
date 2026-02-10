@@ -173,6 +173,7 @@ const ast::Node build_ds_object(const ZDSEntry &entry, bool attributes)
   if (!entry.mgmtclass.empty())
     obj_entry->set("mgmtclass", str(entry.mgmtclass));
   obj_entry->set("migrated", boolean(entry.migrated));
+  obj_entry->set("multivolume", boolean(entry.multivolume));
   if (entry.primary != -1)
     obj_entry->set("primary", i64(entry.primary));
   if (!entry.rdate.empty())

@@ -92,6 +92,7 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
                     entry.edate = item.edate;
                     entry.lrecl = item.lrecl;
                     entry.migr = item.migrated ? "YES" : "NO";
+                    entry.mvol = item.multivolume ? "YES" : "NO";
                     entry.rdate = item.rdate;
                     entry.recfm = item.recfm;
                     entry.spacu = item.spacu;

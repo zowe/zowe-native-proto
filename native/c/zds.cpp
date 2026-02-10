@@ -37,6 +37,7 @@
 #include "zdsm.h"
 
 const size_t MAX_DS_LENGTH = 44u;
+const size_t MAX_VOLSER_LENGTH = 6u;
 // carriage return character, used for detecting CRLF line endings
 const char CR_CHAR = '\x0D';
 // form feed character, used for stripping off lines in ASA mode
@@ -2412,9 +2413,10 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &datasets, bool sh
         unsigned char *data = (unsigned char *)&f->response.field.field_lens;
         data += (sizeof(f->response.field.field_lens) * number_fields);
 
-        memset(buffer, 0x00, sizeof(buffer)); // clear buffer
-        memcpy(buffer, data, *field_len);     // copy VOLSER
+        memset(buffer, 0x00, sizeof(buffer));    // clear buffer
+        memcpy(buffer, data, MAX_VOLSER_LENGTH); // copy VOLSER
         entry.volser = strlen(buffer) == 0 ? ZDS_VOLSER_UNKNOWN : string(buffer);
+        entry.multivolume = (*field_len > MAX_VOLSER_LENGTH);
 
 #define IPL_VOLUME "******"
 #define IPL_VOLUME_SYMBOL "&SYSR1" // https://www.ibm.com/docs/en/zos/3.1.0?topic=symbols-static-system

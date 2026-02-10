@@ -41,6 +41,7 @@ struct ZDSEntry
   int lrecl;
   std::string mgmtclass;
   bool migrated;
+  bool multivolume;
   long long primary;
   std::string rdate;
   std::string recfm;
