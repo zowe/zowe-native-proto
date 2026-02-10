@@ -59,7 +59,6 @@
 #include <iomanip>
 #include <sstream>
 #include <errno.h>
-#include "ztso.hpp"
 using namespace std;
 
 /**
@@ -874,10 +873,9 @@ int zusf_copy_file_or_dir(ZUSF *zusf, const string &source_path, const string &d
     command_flags += "-p ";
   }
   command_flags += "-B ";
-
-  string cp_command = "cp " + command_flags + source_path + " " + destination_path;
+  string cp_command = "cp " + command_flags + " \"" + source_path + "\" \"" + destination_path + "\"";
   string response;
-  int rc = run_shell_command(cp_command, response);
+  int rc = zut_run_shell_command(cp_command, response);
   if (rc > 0) {
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Error: %s\n\t return code: %d", response.c_str(), rc);
     return RTNCD_FAILURE;

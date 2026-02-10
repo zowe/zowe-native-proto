@@ -92,7 +92,7 @@ export interface CopyUssRequest extends common.CommandRequest<"copyUss"> {
      *
      * Default: false
      */
-    ignorePermissions?: boolean;
+    noPreservePermissions?: boolean;
 }
 
 export type CopyUssResponse = common.CommandResponse;

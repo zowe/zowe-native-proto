@@ -84,6 +84,15 @@ void zowex_uss_tests()
                     return {lresponse, lrc};
                 };
 
+                auto delete_cmd = [&](const string &file_path, const string &options = "") -> std::pair<string, int>
+                {
+                    int lrc; 
+                    string lresponse;
+                    string command = zowex_command + " uss delete " + file_path + " " + options;
+                    lrc = execute_command_with_output(command, lresponse);
+                    return {lresponse, lrc};
+                };
+
                 auto list_cmd = [&](const string &file_path, const string &options = "") -> std::pair<string, int>
                 {
                     int lrc; 
@@ -91,6 +100,15 @@ void zowex_uss_tests()
                     string command = zowex_command + " uss list " + file_path + " " + options;
                     lrc = execute_command_with_output(command, lresponse);
                     return {lresponse, lrc};
+                };
+
+                auto chmod_cmd = [&](const string &file_path, const string &permissions, const string &options = "") -> std::pair<string, int> 
+                {
+                  int lrc;
+                  string lresponse;
+                  string command = zowex_command + " uss chmod " + permissions + " " + file_path;
+                  lrc = execute_command_with_output(command, lresponse);
+                  return {lresponse, lrc};
                 };
 
                 string uss_path;
@@ -121,6 +139,15 @@ void zowex_uss_tests()
                   list_file_result = list_cmd(target_file);
                   ExpectWithContext(list_file_result.second, list_file_result.first).ToBe(0);
 
+                  // copy with --no-preserve-pemissions
+                  zut_run_shell_command("chmod 777 " + source_file);
+                  copy_result = copy_cmd(source_file, target_file, "--no-preserve-permissions");
+                  ExpectWithContext(copy_result.second, copy_result.first).ToBe(0);
+                  //TODO: list show permissions
+                  list_file_result = list_cmd(target_file);
+                  ExpectWithContext(list_file_result.second, list_file_result.first).ToBe(0);
+                  Expect(list_file_result.first).ToContain("-r--r--r--");
+                  
                   // copy file with special characters
                   string file_special_chars = uss_path + "/\"te[st]_?*\"";
                   // this fails?
@@ -148,16 +175,16 @@ void zowex_uss_tests()
                   create_test_dir_cmd(source_dir);
 
                   // bad source
-                  copy_result = copy_cmd("/noway/noexist", target_dir);
-                  ExpectWithContext(copy_result.second, copy_result.first).ToBe(1);
+                  copy_result = copy_cmd("/noway/src/noexist", target_dir);
+                  ExpectWithContext(copy_result.second, copy_result.first).ToBe(255);
 
                   // bad target
-                  copy_result = copy_cmd(source_path, "/noway/noexist");
-                  ExpectWithContext(copy_result.second, copy_result.first).ToBe(1);
+                  copy_result = copy_cmd(source_dir, "/noway/dest/noexist");
+                  ExpectWithContext(copy_result.second, copy_result.first).ToBe(255);
 
                   // without --recursive fails
                   copy_result = copy_cmd(source_dir, target_dir);
-                  ExpectWithContext(copy_result.second, copy_result.first).ToBe(1);
+                  ExpectWithContext(copy_result.second, copy_result.first).ToBe(255);
                   list_file_result = list_cmd(target_dir);
                   ExpectWithContext(list_file_result.second, list_file_result.first).ToBe(255);
                   // with -r
@@ -165,9 +192,30 @@ void zowex_uss_tests()
                   ExpectWithContext(copy_result.second, copy_result.first).ToBe(0);
                   list_file_result = list_cmd(target_dir);
                   ExpectWithContext(list_file_result.second, list_file_result.first).ToBe(0);
-                  
-                  create_test_dir_cmd()
+                  delete_cmd(target_dir, "-r");
 
+                  // nested directories (no symlinks)
+                  string output;
+                  string nested_dir =  source_dir + "/one/two/three";  
+                  string target_nested_dir = target_dir + "/one/two/three";
+                  // TODO: story - enhance uss create-dir with -p?
+                  zut_run_shell_command("mkdir -p " + nested_dir, output);
+
+                  // copy nested dirs
+                  copy_result = copy_cmd(source_dir, target_dir, "--recursive");
+                  ExpectWithContext(copy_result.second, copy_result.first).ToBe(0);
+                  list_file_result = list_cmd(target_nested_dir);
+                  ExpectWithContext(list_file_result.second, list_file_result.first).ToBe(0);
+                  delete_cmd(target_dir, "-r");  
+
+                  // with symlinks
+                  string symlink_target_dir = uss_path + "/some/other/nested/dir";
+                  zut_run_shell_command("mkdir -p " + symlink_target_dir, output);
+                  zut_run_shell_command("ln -s " + uss_path + "/some" + " " + nested_dir, output);
+                  copy_result = copy_cmd(source_dir, target_dir, "-r -L");
+                  ExpectWithContext(copy_result.second, copy_result.first).ToBe(0);
+                  list_file_result = list_cmd(nested_dir + "/some/other");
+                  ExpectWithContext(list_file_result.second, list_file_result.first).ToBe(0);
 
                 });
 
@@ -191,9 +239,11 @@ void zowex_uss_tests()
 
                   // requires --recursive
                   copy_result = copy_cmd(source_dir, target_dir, "--follow-symlinks");
-                  ExpectWithContext(copy_result.second, copy_result.first).ToBe(1);
+                  ExpectWithContext(copy_result.second, copy_result.first).ToBe(255);
                 
-
+                  // requires --recursive
+                  copy_result = copy_cmd(source_dir, target_dir, "--follow-symlinks --no-preserve-permissions");
+                  ExpectWithContext(copy_result.second, copy_result.first).ToBe(255);
                 });
 
                 it("running with and without preserved file attributes", [&](){
@@ -201,7 +251,9 @@ void zowex_uss_tests()
 
                 });
 
-                it("copying with permission restrictions", [&](){});
+                it("copying with permission restrictions", [&](){
+
+                });
 
               });
 

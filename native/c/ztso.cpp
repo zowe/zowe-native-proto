@@ -26,47 +26,9 @@
 #include <string>
 #include <sstream>
 #include "ztype.h"
+#include "zut.hpp"
 
 using namespace std;
-
-int run_shell_command(string command, string &response)
-{
-  int rc = 0;
-  string response_raw;
-  FILE *cmd = popen(command.c_str(), "r");
-  if (nullptr == cmd)
-  {
-    return RTNCD_FAILURE;
-  }
-
-  char buffer[256] = {0};
-  while (fgets(buffer, sizeof(buffer), cmd) != nullptr)
-  {
-    response_raw += string(buffer);
-  }
-
-  stringstream response_ss(response_raw);
-
-  string line;
-  auto index = 0;
-
-  while (getline(response_ss, line))
-  {
-    index++;
-    if (index > 1)
-    {
-      response += line + '\n';
-    }
-  }
-
-  rc = pclose(cmd);
-  if (0 != rc)
-  {
-    return WEXITSTATUS(rc);
-  }
-
-  return rc;
-}
 
 // NOTE(Kelosky): alternatives we'll likely use / consider in the future
 // - CEA, probably needed to achieve z/OSMF parity (allows starting, stopping TSO address spaces)
@@ -79,5 +41,5 @@ int ztso_issue(string command, string &response)
   // appear to allow access to stderr and tsocmd always writes the input parameters
   // to stderr
   string tso_cmd = "tsocmd " + command + " 2>&1"; // combine stderr
-  return run_shell_command(tso_cmd, response);
+  return zut_run_shell_command(tso_cmd, response);
 }

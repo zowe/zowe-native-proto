@@ -37,7 +37,7 @@ typedef struct ZConvData
  * @param response Reference to a string where the result will be stored
  * @returns The return code from running the command, or non-zero for error submitting
  */
-int run_shell_command(std::string command, std::string &response);
+int zut_run_shell_command(std::string command, std::string &response);
 
 /**
  * @brief Search for a specific string

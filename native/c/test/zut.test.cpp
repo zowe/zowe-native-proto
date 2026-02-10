@@ -25,6 +25,13 @@ void zut_tests()
   describe("zut tests",
            []() -> void
            {
+             it("should run shell command",
+                []() -> void
+                {
+                  string output;
+                  zut_run_shell_command("echo 'hello world'", output);
+                  expect(output).ToBe("'hello world'");
+                });
              it("should upper case and truncate a long string",
                 []() -> void
                 {

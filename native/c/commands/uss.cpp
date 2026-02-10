@@ -35,11 +35,11 @@ int handle_uss_copy(InvocationContext &context)
 
   bool recursive = context.get<bool>("recursive", false);
   bool follow_symlinks = context.get<bool>("follow-symlinks", false);
-  bool preserve_attributes = !context.get<bool>("ignore-attributes", false); // default = true
+  bool preserve_attributes = !context.get<bool>("no-preserve-attributes", false); // default = true
 
   if (follow_symlinks && !recursive)
   {
-    context.error_stream() << "Error: the --follow-symlinks flag must be used with the --recursive flag" << endl;
+    context.error_stream() << "Error: follow symlinks option requires setting the recursive flag" << endl;
     return RTNCD_FAILURE;
   }
 
@@ -536,7 +536,7 @@ void register_commands(parser::Command &root_command)
   uss_copy_cmd->add_positional_arg(FILE_PATH_DEST);
   uss_copy_cmd->add_keyword_arg("follow-symlinks", make_aliases("--follow-symlinks", "-L"), "follows symlinks within a directory tree. requires \"--recursive\"", ArgType_Flag, false);
   uss_copy_cmd->add_keyword_arg("recursive", make_aliases("--recursive", "-r"), "recursively copies if the source is a directory", ArgType_Flag, false);
-  uss_copy_cmd->add_keyword_arg("ignore-permissions", make_aliases("--ignore-permissions", "-i"), "does not preserve permission bits or ownership on copy to destination", ArgType_Flag, false);
+  uss_copy_cmd->add_keyword_arg("no-preserve-permissions", make_aliases("--no-preserve-permissions", "-i"), "does not preserve permission bits or ownership on copy to destination", ArgType_Flag, false);
   uss_copy_cmd->set_handler(handle_uss_copy);
   uss_group->add_command(uss_copy_cmd);
 

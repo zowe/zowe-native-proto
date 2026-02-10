@@ -9,6 +9,10 @@
  *
  */
 
+#ifndef _XOPEN_SOURCE
+#define _XOPEN_SOURCE
+#endif
+ 
 #define _OPEN_SYS_EXT
 #include <sys/ps.h>
 #include <stdio.h>
@@ -28,6 +32,45 @@
 #include <_Nascii.h>
 
 using namespace std;
+
+int zut_run_shell_command(string command, string &response)
+{
+  int rc = 0;
+  string response_raw;
+  FILE *cmd = popen(command.c_str(), "r");
+  if (nullptr == cmd)
+  {
+    return RTNCD_FAILURE;
+  }
+
+  char buffer[256] = {0};
+  while (fgets(buffer, sizeof(buffer), cmd) != nullptr)
+  {
+    response_raw += string(buffer);
+  }
+
+  stringstream response_ss(response_raw);
+
+  string line;
+  auto index = 0;
+
+  while (getline(response_ss, line))
+  {
+    index++;
+    if (index > 1)
+    {
+      response += line + '\n';
+    }
+  }
+
+  rc = pclose(cmd);
+  if (0 != rc)
+  {
+    return WEXITSTATUS(rc);
+  }
+
+  return rc;
+}
 
 int zut_search(string parms)
 {
