@@ -504,8 +504,8 @@ int zds_compress_dsn(ZDS *zds, const string &dsn)
   vector<string> dds;
   dds.push_back("alloc dd(A) da('" + dsn + "') shr");
   dds.push_back("alloc dd(B) da('" + dsn + "') shr");
-  dds.push_back("alloc dd(sysprint) lrecl(80) recfm(f,b) blksize(80)");
-  dds.push_back("alloc dd(sysin) lrecl(80) recfm(f,b) blksize(80)");
+  dds.push_back("alloc dd(sysprint) lrecl(121) recfm(f,b,a) blksize(1210)");
+  dds.push_back("alloc dd(sysin) lrecl(80) recfm(f,b) blksize(800)");
 
   return run_iebcopy(zds, dds, "        COPY OUTDD=B,INDD=A");
 }
