@@ -17,8 +17,8 @@ import { RenameMemberDefinition } from "./data-set-members/DataSetMembers.defini
 
 const RenameDefinition: ICommandDefinition = {
     name: "rename",
-    summary: "Rename a data set or PDS/PDSE member",
-    description: "Rename a data set or a PDS/PDSE member",
+    summary: "Rename a data set or a data set member",
+    description: "Rename a data set or a data set member",
     type: "group",
     children: [RenameDataSetDefinition, RenameMemberDefinition],
     passOn: [
