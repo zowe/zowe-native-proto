@@ -872,7 +872,6 @@ int zusf_copy_file_or_dir(ZUSF *zusf, const string &source_path, const string &d
   {
     command_flags += "-p ";
   }
-  command_flags += "-B ";
   string cp_command = "cp " + command_flags + " \"" + source_path + "\" \"" + destination_path + "\"";
   string response;
   int rc = zut_run_shell_command(cp_command, response);

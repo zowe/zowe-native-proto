@@ -140,7 +140,8 @@ void zowex_uss_tests()
                   ExpectWithContext(list_file_result.second, list_file_result.first).ToBe(0);
 
                   // copy with --no-preserve-pemissions
-                  zut_run_shell_command("chmod 777 " + source_file);
+                  string output;
+                  zut_run_shell_command("chmod 777 " + source_file, output);
                   copy_result = copy_cmd(source_file, target_file, "--no-preserve-permissions");
                   ExpectWithContext(copy_result.second, copy_result.first).ToBe(0);
                   //TODO: list show permissions
@@ -241,8 +242,8 @@ void zowex_uss_tests()
                   copy_result = copy_cmd(source_dir, target_dir, "--follow-symlinks");
                   ExpectWithContext(copy_result.second, copy_result.first).ToBe(255);
                 
-                  // requires --recursive
-                  copy_result = copy_cmd(source_dir, target_dir, "--follow-symlinks --no-preserve-permissions");
+                  // still requires --recursive
+                  copy_result = copy_cmd(source_dir, target_dir, "--follow-symlinks --dont-preserve-permissions");
                   ExpectWithContext(copy_result.second, copy_result.first).ToBe(255);
                 });
 
