@@ -10,6 +10,29 @@
  */
 
 import { describe, expect, it, vi, beforeEach } from "vitest";
+
+// Mock vscode before importing SshMvsApi (which imports @zowe/zowe-explorer-api)
+vi.mock("vscode", () => ({
+    Disposable: vi.fn(),
+    window: {
+        showInformationMessage: vi.fn(),
+        showErrorMessage: vi.fn(),
+        showWarningMessage: vi.fn(),
+    },
+    workspace: {
+        getConfiguration: vi.fn(() => ({
+            get: vi.fn(),
+        })),
+    },
+    Uri: {
+        file: vi.fn(),
+    },
+    EventEmitter: vi.fn(() => ({
+        event: vi.fn(),
+        fire: vi.fn(),
+    })),
+}));
+
 import { SshMvsApi } from "../src/api/SshMvsApi";
 import type { ds, ZSshClient } from "zowe-native-proto-sdk";
 
@@ -57,10 +80,7 @@ describe("SshMvsApi", () => {
             };
             mockCopyDataset.mockResolvedValue(mockResponse);
 
-            const result = await api.copyDataSetMember(
-                { dsn: "SOURCE.DATA.SET" },
-                { dsn: "TARGET.DATA.SET" },
-            );
+            const result = await api.copyDataSetMember({ dsn: "SOURCE.DATA.SET" }, { dsn: "TARGET.DATA.SET" });
 
             expect(mockCopyDataset).toHaveBeenCalledWith({
                 fromDataset: "SOURCE.DATA.SET",
@@ -134,10 +154,7 @@ describe("SshMvsApi", () => {
             };
             mockCopyDataset.mockResolvedValue(mockResponse);
 
-            await api.copyDataSetMember(
-                { dsn: "SOURCE.DATA.SET" },
-                { dsn: "TARGET.DATA.SET" },
-            );
+            await api.copyDataSetMember({ dsn: "SOURCE.DATA.SET" }, { dsn: "TARGET.DATA.SET" });
 
             expect(mockCopyDataset).toHaveBeenCalledWith(
                 expect.objectContaining({
@@ -152,10 +169,7 @@ describe("SshMvsApi", () => {
             };
             mockCopyDataset.mockResolvedValue(mockResponse);
 
-            await api.copyDataSetMember(
-                { dsn: "SOURCE.PDS", member: "MEMBER1" },
-                { dsn: "TARGET.DATA.SET" },
-            );
+            await api.copyDataSetMember({ dsn: "SOURCE.PDS", member: "MEMBER1" }, { dsn: "TARGET.DATA.SET" });
 
             expect(mockCopyDataset).toHaveBeenCalledWith({
                 fromDataset: "SOURCE.PDS(MEMBER1)",
@@ -170,10 +184,7 @@ describe("SshMvsApi", () => {
             };
             mockCopyDataset.mockResolvedValue(mockResponse);
 
-            await api.copyDataSetMember(
-                { dsn: "SOURCE.DATA.SET" },
-                { dsn: "TARGET.PDS", member: "MEMBER1" },
-            );
+            await api.copyDataSetMember({ dsn: "SOURCE.DATA.SET" }, { dsn: "TARGET.PDS", member: "MEMBER1" });
 
             expect(mockCopyDataset).toHaveBeenCalledWith({
                 fromDataset: "SOURCE.DATA.SET",
@@ -188,10 +199,7 @@ describe("SshMvsApi", () => {
             };
             mockCopyDataset.mockResolvedValue(mockResponse);
 
-            const result = await api.copyDataSetMember(
-                { dsn: "SOURCE.DATA.SET" },
-                { dsn: "TARGET.DATA.SET" },
-            );
+            const result = await api.copyDataSetMember({ dsn: "SOURCE.DATA.SET" }, { dsn: "TARGET.DATA.SET" });
 
             expect(result.success).toBe(true); // buildZosFilesResponse defaults to success: true
         });
@@ -202,10 +210,7 @@ describe("SshMvsApi", () => {
             };
             mockCopyDataset.mockResolvedValue(mockResponse);
 
-            const result = await api.copyDataSetMember(
-                { dsn: "SOURCE.DATA.SET" },
-                { dsn: "TARGET.DATA.SET" },
-            );
+            const result = await api.copyDataSetMember({ dsn: "SOURCE.DATA.SET" }, { dsn: "TARGET.DATA.SET" });
 
             expect(result).toHaveProperty("success");
             expect(result).toHaveProperty("commandResponse");

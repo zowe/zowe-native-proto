@@ -6,6 +6,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## `0.2.3`
 
+- Added `zowex ds copy` command to copy data sets and members with optional `--replace` and `--overwrite` flags for overwrite protection. Supports PDS-to-PDS, member-to-member, and sequential-to-sequential copies. Note: RECFM=U data sets are not supported.[#778](https://github.com/zowe/zowe-native-proto/pull/778)
 - Added the rename data set command to the CLI. [#376](https://github.com/zowe/zowe-native-proto/issues/376).
 - Added `owner` field to the table returned by the `zssh list jobs` and `zssh view job-status` commands. [#749](https://github.com/zowe/zowe-native-proto/pull/749)
 - Updated the `zssh server install` command to locate server PAX bundled in the SDK package. [#760](https://github.com/zowe/zowe-native-proto/pull/760)
