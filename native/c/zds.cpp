@@ -265,6 +265,9 @@ static int copy_pds_to_pds(ZDS *zds, const ZDSTypeInfo &src, const ZDSTypeInfo &
 }
 
 // Copy sequential data set or member using binary I/O
+// Note: RECFM=U data sets are not explicitly checked here because fldata() returns
+// unreliable RECFM information when files are opened in binary mode. The write
+// operation will fail naturally if the target is truly RECFM=U.
 static int copy_sequential(ZDS *zds, const string &src_dsn, const string &dst_dsn)
 {
   string src_path = "//'" + src_dsn + "'";
@@ -277,36 +280,11 @@ static int copy_sequential(ZDS *zds, const string &src_dsn, const string &dst_ds
     return RTNCD_FAILURE;
   }
 
-  // Check source RECFM using fldata - more reliable than catalog lookup
-  fldata_t src_info = {0};
-  char src_filename[64] = {0};
-  if (fldata(fin, src_filename, &src_info) == 0 && src_info.__recfmU)
-  {
-    fclose(fin);
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg,
-                                  "Cannot copy RECFM=U data set '%s'. Writing to RECFM=U data sets is not supported.",
-                                  src_dsn.c_str());
-    return RTNCD_FAILURE;
-  }
-
   FILE *fout = fopen(dst_path.c_str(), "wb");
   if (!fout)
   {
     fclose(fin);
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open target '%s'", dst_dsn.c_str());
-    return RTNCD_FAILURE;
-  }
-
-  // Check target RECFM using fldata
-  fldata_t dst_info = {0};
-  char dst_filename[64] = {0};
-  if (fldata(fout, dst_filename, &dst_info) == 0 && dst_info.__recfmU)
-  {
-    fclose(fin);
-    fclose(fout);
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg,
-                                  "Cannot copy to RECFM=U data set '%s'. Writing to RECFM=U data sets is not supported.",
-                                  dst_dsn.c_str());
     return RTNCD_FAILURE;
   }
 
