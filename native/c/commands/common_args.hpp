@@ -78,16 +78,6 @@ const ArgTemplate FILE_PATH_DEST = {
     make_aliases()};
 
 // Keyword Arguments
-const ArgTemplate ENCODING_NEW = {
-    "encoding",
-    make_aliases("--encoding-new", "--ec"),
-    "return contents in given encoding",
-    ArgType_Single,
-    false,
-    ArgValue(),
-    make_aliases()};
-
-// Keyword Arguments
 const ArgTemplate ENCODING = {
     "encoding",
     make_aliases("--encoding", "--ec"),
