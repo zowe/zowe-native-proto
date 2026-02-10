@@ -112,11 +112,9 @@ async function main() {
     console.log(`Icon written to ${OUTPUT} (${buffer.length} bytes)`);
 }
 
-(async () => {
-    try {
-        await main();
-    } catch (err) {
-        console.error("Failed to generate icon:", err);
-        process.exit(1);
-    }
-})();
+// Top-level await is not supported because tsx transpiles to CJS format.
+// Using .catch() is the correct pattern for scripts in this project.
+main().catch((err) => { // NOSONAR
+    console.error("Failed to generate icon:", err);
+    process.exit(1);
+});
