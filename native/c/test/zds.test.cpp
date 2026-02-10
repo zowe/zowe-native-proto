@@ -712,12 +712,10 @@ void zds_tests()
                       });
 
              // IEBCOPY invoked via ZUTRUN (LOAD/CALL) can 0C4 on some systems
-             // These tests are disabled because many systems cannot reliably create
-             // classic PDSes (SMS overrides DSNTYPE to LIBRARY/PDSE)
              describe("compress",
                       [&]() -> void
                       {
-                        xit("should compress a PDS",
+                        it("should compress a PDS",
                            [&]() -> void
                            {
                              CompressTestContext tc(created_dsns);
@@ -732,7 +730,7 @@ void zds_tests()
                              Expect(tc.compress()).ToBe(0);
                            });
 
-                        xit("should compress PDS with multiple members",
+                        it("should compress PDS with multiple members",
                            [&]() -> void
                            {
                              CompressTestContext tc(created_dsns);
@@ -747,7 +745,7 @@ void zds_tests()
                              Expect(tc.compress()).ToBe(0);
                            });
 
-                        xit("should compress empty PDS",
+                        it("should compress empty PDS",
                            [&]() -> void
                            {
                              CompressTestContext tc(created_dsns);
@@ -788,7 +786,7 @@ void zds_tests()
                              Expect(string(z.diag.e_msg)).ToContain("not a PDS");
                            });
 
-                        xit("should preserve member content after compression",
+                        it("should preserve member content after compression",
                            [&]() -> void
                            {
                              CompressTestContext tc(created_dsns);
