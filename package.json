@@ -50,6 +50,7 @@
     "@zowe/cli": "^8.29.4",
     "@zowe/imperative": "^8.29.4",
     "@zowe/secrets-for-zowe-sdk": "^8.24.2",
+    "canvas": "^3.2.1",
     "chokidar": "^3",
     "clang-format-node": "^2.0.2",
     "concurrently": "^9.1.2",

@@ -7,6 +7,7 @@
 !out/*
 
 !CHANGELOG.md
+!icon.png
 !LICENSE
 !log4jsconfig.json
 !package*.json
