@@ -763,7 +763,8 @@ int handle_data_set_copy(InvocationContext &context)
 
   ZDS zds = {};
   bool target_created = false;
-  int rc = zds_copy_dsn(&zds, source, target, replace, overwrite, &target_created);
+  bool member_created = false;
+  int rc = zds_copy_dsn(&zds, source, target, replace, overwrite, &target_created, &member_created);
 
   if (rc != RTNCD_SUCCESS)
   {
@@ -778,6 +779,10 @@ int handle_data_set_copy(InvocationContext &context)
   if (target_created)
   {
     context.output_stream() << "New data set '" << target << "' created and copied from '" << source << "'" << endl;
+  }
+  else if (member_created)
+  {
+    context.output_stream() << "New member '" << target << "' created and copied from '" << source << "'" << endl;
   }
   else if (overwrite)
   {

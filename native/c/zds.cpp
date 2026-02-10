@@ -304,11 +304,13 @@ static int copy_sequential(ZDS *zds, const string &src_dsn, const string &dst_ds
   return RTNCD_SUCCESS;
 }
 
-int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2, bool replace, bool overwrite, bool *target_created)
+int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2, bool replace, bool overwrite, bool *target_created, bool *member_created)
 {
   int rc = 0;
   if (target_created)
     *target_created = false;
+  if (member_created)
+    *member_created = false;
   ZDSTypeInfo info1 = {};
   ZDSTypeInfo info2 = {};
 
@@ -318,6 +320,25 @@ int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2, bool replace,
   if (!info1.exists)
   {
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Source data set '%s' not found", info1.base_dsn.c_str());
+    return RTNCD_FAILURE;
+  }
+
+  // Check if source is RECFM=U - copying from RECFM=U is not supported because
+  // we cannot write to the target (even if newly created with RECFM=U attributes)
+  if (info1.entry.recfm == ZDS_RECFM_U)
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg,
+                                  "Cannot copy RECFM=U data set '%s'. Writing to RECFM=U data sets is not supported.",
+                                  info1.base_dsn.c_str());
+    return RTNCD_FAILURE;
+  }
+
+  // Check if target is RECFM=U - copying to RECFM=U is not supported (same as write)
+  if (info2.exists && info2.entry.recfm == ZDS_RECFM_U)
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg,
+                                  "Cannot copy to RECFM=U data set '%s'. Writing to RECFM=U data sets is not supported.",
+                                  info2.base_dsn.c_str());
     return RTNCD_FAILURE;
   }
 
@@ -410,11 +431,12 @@ int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2, bool replace,
     if (target_created)
       *target_created = true;
   }
-  else if (!replace && !overwrite && !is_pds_full_copy)
+  // Track if target member exists (for member_created reporting)
+  bool target_member_exists = target_is_member && member_exists_in_pds(info2.base_dsn, info2.member_name);
+
+  if (!replace && !overwrite && !is_pds_full_copy)
   {
-    bool target_actually_exists = target_is_member
-                                      ? member_exists_in_pds(info2.base_dsn, info2.member_name)
-                                      : true;
+    bool target_actually_exists = target_is_member ? target_member_exists : true;
 
     if (target_actually_exists)
     {
@@ -446,10 +468,19 @@ int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2, bool replace,
       // Same PDS: copy member to member using binary I/O
       string src_mem_dsn = info1.base_dsn + "(" + info1.member_name + ")";
       string dst_mem_dsn = info2.base_dsn + "(" + info2.member_name + ")";
-      return copy_sequential(zds, src_mem_dsn, dst_mem_dsn);
+      rc = copy_sequential(zds, src_mem_dsn, dst_mem_dsn);
+    }
+    else
+    {
+      rc = copy_sequential(zds, dsn1, dsn2);
     }
 
-    return copy_sequential(zds, dsn1, dsn2);
+    // Report if a new member was created
+    if (rc == RTNCD_SUCCESS && member_created && target_is_member && !target_member_exists)
+    {
+      *member_created = true;
+    }
+    return rc;
   }
 }
 
@@ -1619,8 +1650,9 @@ int zds_create_dsn(ZDS *zds, string dsn, DS_ATTRIBUTES attributes, string &respo
   if (!attributes.unit.empty())
     parm += " UNIT(" + attributes.unit + ")";
 
-  // Include BLKSIZE when set (>= 0) so target matches source; 0 is valid for RECFM U
-  if (attributes.blksize >= 0)
+  // For RECFM=U, BLKSIZE handling is system-dependent; some systems need it, others don't
+  // Skip BLKSIZE for RECFM=U to let the system determine the appropriate value
+  if (attributes.blksize >= 0 && !is_recfm_u)
   {
     memset(numberAsString, 0, sizeof(numberAsString));
     parm += " BLKSIZE(" + string(itoa(attributes.blksize, numberAsString, 10)) + ")";
