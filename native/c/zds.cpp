@@ -1586,14 +1586,17 @@ int zds_create_dsn(ZDS *zds, string dsn, DS_ATTRIBUTES attributes, string &respo
     parm += ") " + attributes.alcunit;
   }
 
-  if (attributes.lrecl >= 0)
+  if (!attributes.recfm.empty())
+    parm += " RECFM(" + attributes.recfm + ")";
+
+  // For RECFM=U, LRECL should be 0 or omitted; specifying non-zero LRECL can cause
+  // the system to override RECFM to FB
+  bool is_recfm_u = (attributes.recfm == "U" || attributes.recfm == ZDS_RECFM_U);
+  if (attributes.lrecl >= 0 && !is_recfm_u)
   {
     memset(numberAsString, 0, sizeof(numberAsString));
     parm += " LRECL(" + string(itoa(attributes.lrecl, numberAsString, 10)) + ")";
   }
-
-  if (!attributes.recfm.empty())
-    parm += " RECFM(" + attributes.recfm + ")";
 
   if (attributes.dirblk > 0)
   {
