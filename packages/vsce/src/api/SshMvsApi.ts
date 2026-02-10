@@ -230,14 +230,9 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
         const baseName = path.basename(filePath, path.extname(filePath));
 
         // Convert to uppercase and remove invalid characters
-        let memberName = baseName
-            .toUpperCase()
-            .replace(/[^A-Z0-9@#$]/g, "");
+        let memberName = baseName.toUpperCase().replace(/[^A-Z0-9@#$]/g, "");
 
-        // Ensure it starts with a valid character (letter or national)
-        if (memberName.length > 0 && /^[0-9]/.test(memberName)) {
-            memberName = "$" + memberName;
-        }
+        memberName = memberName.replace(/[\d]/gy, "");
 
         // Truncate to 8 characters max
         memberName = memberName.substring(0, 8);
