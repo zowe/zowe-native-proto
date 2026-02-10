@@ -10,6 +10,7 @@
  */
 
 import { createReadStream, createWriteStream } from "node:fs";
+import * as path from "node:path";
 import type * as zosfiles from "@zowe/zos-files-for-zowe-sdk";
 import {
     type AttributeEntryInfo,
@@ -169,13 +170,84 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
         dataSetName: string,
         options?: zosfiles.IUploadOptions,
     ): Promise<zosfiles.IZosFilesResponse> {
+        // Determine if we need to generate a member name for PDS uploads
+        const dsname = await this.resolveDataSetName(inputFilePath, dataSetName);
+
         const response = await (await this.client).ds.writeDataset({
-            dsname: dataSetName,
+            dsname,
             encoding: options?.encoding,
             stream: createReadStream(inputFilePath),
             etag: options?.etag,
         });
         return this.buildZosFilesResponse({ etag: response.etag });
+    }
+
+    /**
+     * Resolves the full data set name, including member name if uploading to a PDS.
+     * When uploading a file to a PDS without specifying a member name, the member name
+     * is generated from the input file path (similar to z/OSMF's pathToDataSet behavior).
+     *
+     * @param inputFilePath - The local file path being uploaded
+     * @param dataSetName - The target data set name (may or may not include member)
+     * @returns The resolved data set name with member if applicable
+     */
+    private async resolveDataSetName(inputFilePath: string, dataSetName: string): Promise<string> {
+        const openParens = dataSetName.indexOf("(");
+
+        // If member name is already specified, use it as-is
+        if (openParens > 0) {
+            return dataSetName;
+        }
+
+        // Check if the target is a PDS by fetching data set attributes
+        const dsInfo = await (await this.client).ds.listDatasets({
+            pattern: dataSetName,
+            attributes: true,
+        });
+
+        const dsorg = dsInfo.items[0]?.dsorg;
+        const isPds = dsorg?.startsWith("PO");
+
+        if (isPds) {
+            // Generate member name from the input file path
+            const memberName = this.generateMemberName(inputFilePath);
+            return `${dataSetName}(${memberName})`;
+        }
+
+        return dataSetName;
+    }
+
+    /**
+     * Generates a valid z/OS member name from a file path.
+     * Member names must be 1-8 characters, start with a letter or national character,
+     * and contain only letters, numbers, or national characters (@, #, $).
+     *
+     * @param filePath - The file path to generate a member name from
+     * @returns A valid z/OS member name
+     */
+    private generateMemberName(filePath: string): string {
+        // Get the base filename without extension
+        const baseName = path.basename(filePath, path.extname(filePath));
+
+        // Convert to uppercase and remove invalid characters
+        let memberName = baseName
+            .toUpperCase()
+            .replace(/[^A-Z0-9@#$]/g, "");
+
+        // Ensure it starts with a valid character (letter or national)
+        if (memberName.length > 0 && /^[0-9]/.test(memberName)) {
+            memberName = "$" + memberName;
+        }
+
+        // Truncate to 8 characters max
+        memberName = memberName.substring(0, 8);
+
+        // If empty, use a default
+        if (memberName.length === 0) {
+            memberName = "MEMBER";
+        }
+
+        return memberName;
     }
 
     public async createDataSet(
