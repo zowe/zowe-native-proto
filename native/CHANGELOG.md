@@ -7,6 +7,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 ## `0.2.3`
 
 - `c`: Added `zowex ds copy` command to copy data sets and members with optional `--replace` and `--overwrite` flags for overwrite protection. Supports PDS-to-PDS, member-to-member, and sequential-to-sequential copies. [#750](https://github.com/zowe/zowe-native-proto/pull/750)
+- `c`: The `zowex ds copy` command now reports when a new member is created (e.g., "New member 'DSN(MEM)' created and copied from..."). clear error message when attempting to copy from or to a RECFM=U data set, consistent with the existing read-only restriction for RECFM=U data sets.
 - `c`: Implement `zowex job watch` command to watch spool output for a string or regex until terminating.
 - `c`: Implement `zut_bpxwdyn_rtdsn` to obtain and return a system allocated data set name.
 - `c`: Implement command `zowex job view-file` to print contents of a job output data set.

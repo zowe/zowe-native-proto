@@ -161,7 +161,8 @@ ZJSON_SCHEMA(WriteDatasetResponse,
 struct CopyDatasetResponse {};
 ZJSON_SCHEMA(CopyDatasetResponse,
     FIELD_REQUIRED(success, BOOL),
-    FIELD_OPTIONAL(targetCreated, BOOL)
+    FIELD_OPTIONAL(targetCreated, BOOL),
+    FIELD_OPTIONAL(memberCreated, BOOL)
 );
 
 struct CancelJobResponse {};

@@ -205,6 +205,11 @@ export interface WriteDatasetResponse extends common.CommandResponse {
     truncationWarning?: string;
 }
 
+/**
+ * Request to copy a data set or member.
+ * Supports PDS-to-PDS, member-to-member, and sequential-to-sequential copies.
+ * Note: RECFM=U data sets are not supported.
+ */
 export interface CopyDatasetRequest extends common.CommandRequest<"copyDataset"> {
     /**
      * Source data set name (can include member in parentheses)
@@ -215,18 +220,26 @@ export interface CopyDatasetRequest extends common.CommandRequest<"copyDataset">
      */
     toDataset: string;
     /**
-     * Replace existing members with the same name (keeps target members not in source)
+     * Replace existing data.
+     * For PDS-to-PDS: replaces matching members, preserves target-only members.
+     * For sequential or member-to-member: overwrites the target (same as overwrite).
      */
     replace?: boolean;
     /**
-     * Overwrite target completely (delete all target members first, then copy)
+     * Overwrite target completely.
+     * For PDS-to-PDS: deletes all target members before copying.
+     * For sequential or member-to-member: overwrites the target (same as replace).
      */
     overwrite?: boolean;
 }
 
 export interface CopyDatasetResponse extends common.CommandResponse {
     /**
-     * If a new target data set was created
+     * True if a new target data set was created
      */
     targetCreated?: boolean;
+    /**
+     * True if a new target member was created
+     */
+    memberCreated?: boolean;
 }

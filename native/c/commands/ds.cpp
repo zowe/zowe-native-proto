@@ -776,12 +776,16 @@ int handle_data_set_copy(InvocationContext &context)
     return RTNCD_FAILURE;
   }
 
+  // Build response object for RPC
+  auto result = obj();
   if (target_created)
   {
+    result->set("targetCreated", true);
     context.output_stream() << "New data set '" << target << "' created and copied from '" << source << "'" << endl;
   }
-  else if (member_created)
+  if (member_created)
   {
+    result->set("memberCreated", true);
     context.output_stream() << "New member '" << target << "' created and copied from '" << source << "'" << endl;
   }
   else if (overwrite)
@@ -792,10 +796,11 @@ int handle_data_set_copy(InvocationContext &context)
   {
     context.output_stream() << "Data set '" << target << "' has been updated with contents of '" << source << "'" << endl;
   }
-  else
+  else if (!target_created && !member_created)
   {
     context.output_stream() << "Data set '" << source << "' copied to '" << target << "'" << endl;
   }
+  context.set_object(result);
   return RTNCD_SUCCESS;
 }
 
@@ -938,13 +943,14 @@ void register_commands(parser::Command &root_command)
   data_set_cmd->add_command(ds_compress_cmd);
 
   // Copy subcommand
-  auto ds_copy_cmd = command_ptr(new Command("copy", "copy data set"));
+  auto ds_copy_cmd = command_ptr(new Command("copy", "copy data set (RECFM=U not supported)"));
   ds_copy_cmd->add_positional_arg("source", "source data set to copy from", ArgType_Single, true);
   ds_copy_cmd->add_positional_arg("target", "target data set to copy to", ArgType_Single, true);
   ds_copy_cmd->add_keyword_arg("replace", make_aliases("--replace", "-r"),
-                               "when source and target have matching names/members, overwrite with source data. Will keep target members not in source.", ArgType_Flag, false, ArgValue(false));
+                               "for PDS: replace matching members, keep target-only members. For PS/member: overwrite target (same as --overwrite)",
+                               ArgType_Flag, false, ArgValue(false));
   ds_copy_cmd->add_keyword_arg("overwrite", make_aliases("--overwrite", "-o"),
-                               "delete all target members first, then copy source (target matches source exactly)",
+                               "for PDS: delete all target members first, then copy. For PS/member: overwrite target (same as --replace)",
                                ArgType_Flag, false, ArgValue(false));
   ds_copy_cmd->set_handler(handle_data_set_copy);
   data_set_cmd->add_command(ds_copy_cmd);

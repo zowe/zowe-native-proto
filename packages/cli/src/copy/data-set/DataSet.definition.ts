@@ -13,7 +13,10 @@ import type { ICommandDefinition } from "@zowe/imperative";
 
 export const CopyDataSetDefinition: ICommandDefinition = {
     handler: `${__dirname}/DataSet.handler`,
-    description: "Copy a data set or member to another data set or member",
+    description:
+        "Copy a data set or member to another data set or member. " +
+        "Supports PDS-to-PDS, member-to-member, and sequential-to-sequential copies. " +
+        "Note: RECFM=U data sets are not supported.",
     type: "command",
     name: "data-set",
     aliases: ["ds"],
@@ -59,7 +62,8 @@ export const CopyDataSetDefinition: ICommandDefinition = {
             name: "replace",
             aliases: ["r"],
             description:
-                "Replace existing members with the same name. Target members not in source are preserved.",
+                "Replace existing data. For PDS-to-PDS: replaces matching members, preserves target-only members. " +
+                "For sequential or member-to-member: overwrites the target (same as --overwrite).",
             type: "boolean",
             defaultValue: false,
         },
@@ -67,7 +71,8 @@ export const CopyDataSetDefinition: ICommandDefinition = {
             name: "overwrite",
             aliases: ["o"],
             description:
-                "Overwrite the target completely. For PDS, deletes all target members before copying.",
+                "Overwrite the target completely. For PDS-to-PDS: deletes all target members before copying. " +
+                "For sequential or member-to-member: overwrites the target (same as --replace).",
             type: "boolean",
             defaultValue: false,
         },
