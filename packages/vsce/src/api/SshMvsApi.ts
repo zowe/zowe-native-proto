@@ -232,7 +232,7 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
         // Convert to uppercase and remove invalid characters
         let memberName = baseName.toUpperCase().replace(/[^A-Z0-9@#$]/g, "");
 
-        memberName = memberName.replace(/[\d]/gy, "");
+        memberName = memberName.replace(/^\d*/, "");
 
         // Truncate to 8 characters max
         memberName = memberName.substring(0, 8);
