@@ -147,9 +147,7 @@ void zowex_ds_tests()
                              Expect(response).ToContain("Error: data set '" + ds + "' is not a PDS");
                            });
 
-                        // Disabled: Many systems cannot reliably create classic PDSes
-                        // (SMS overrides DSNTYPE to LIBRARY/PDSE), causing IEBCOPY to fail/ABEND
-                        xit("should compress a data set",
+                        it("should compress a data set",
                            [&]() -> void
                            {
                              string ds = _ds.back();

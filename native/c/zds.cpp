@@ -277,11 +277,36 @@ static int copy_sequential(ZDS *zds, const string &src_dsn, const string &dst_ds
     return RTNCD_FAILURE;
   }
 
+  // Check source RECFM using fldata - more reliable than catalog lookup
+  fldata_t src_info = {0};
+  char src_filename[64] = {0};
+  if (fldata(fin, src_filename, &src_info) == 0 && src_info.__recfmU)
+  {
+    fclose(fin);
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg,
+                                  "Cannot copy RECFM=U data set '%s'. Writing to RECFM=U data sets is not supported.",
+                                  src_dsn.c_str());
+    return RTNCD_FAILURE;
+  }
+
   FILE *fout = fopen(dst_path.c_str(), "wb");
   if (!fout)
   {
     fclose(fin);
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open target '%s'", dst_dsn.c_str());
+    return RTNCD_FAILURE;
+  }
+
+  // Check target RECFM using fldata
+  fldata_t dst_info = {0};
+  char dst_filename[64] = {0};
+  if (fldata(fout, dst_filename, &dst_info) == 0 && dst_info.__recfmU)
+  {
+    fclose(fin);
+    fclose(fout);
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg,
+                                  "Cannot copy to RECFM=U data set '%s'. Writing to RECFM=U data sets is not supported.",
+                                  dst_dsn.c_str());
     return RTNCD_FAILURE;
   }
 
@@ -304,11 +329,13 @@ static int copy_sequential(ZDS *zds, const string &src_dsn, const string &dst_ds
   return RTNCD_SUCCESS;
 }
 
-int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2, bool replace, bool overwrite, bool *target_created)
+int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2, bool replace, bool overwrite, bool *target_created, bool *member_created)
 {
   int rc = 0;
   if (target_created)
     *target_created = false;
+  if (member_created)
+    *member_created = false;
   ZDSTypeInfo info1 = {};
   ZDSTypeInfo info2 = {};
 
@@ -359,44 +386,44 @@ int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2, bool replace,
     string create_resp;
     DS_ATTRIBUTES attrs = {0};
 
+    // Common attributes for all data set types
+    attrs.recfm = info1.entry.recfm.c_str();
+    attrs.lrecl = info1.entry.lrecl;
+    attrs.blksize = info1.entry.blksize;
+
+    // Preserve space unit (CYLINDERS or TRACKS)
+    if (info1.entry.spacu == "CYLINDERS" || info1.entry.spacu == "CYL")
+    {
+      attrs.alcunit = "CYL";
+    }
+    else
+    {
+      attrs.alcunit = "TRACKS";
+    }
+
+    // Preserve primary/secondary allocation
+    if (info1.entry.primary >= 0 && info1.entry.secondary >= 0)
+    {
+      attrs.primary = info1.entry.primary > INT_MAX ? INT_MAX : static_cast<int>(info1.entry.primary);
+      attrs.secondary = info1.entry.secondary > INT_MAX ? INT_MAX : static_cast<int>(info1.entry.secondary);
+    }
+    else
+    {
+      attrs.primary = 1;
+      attrs.secondary = 1;
+    }
+
     if (info1.type == ZDS_TYPE_PDS || info1.type == ZDS_TYPE_MEMBER)
     {
       // PDS -> PDS or Member -> Member: create PDS with source attributes
       attrs.dsorg = "PO";
-      attrs.recfm = info1.entry.recfm.c_str();
-      attrs.lrecl = info1.entry.lrecl;
-      attrs.blksize = info1.entry.blksize;
       attrs.dirblk = 5;
       attrs.dsntype = info1.entry.dsntype.c_str();
     }
     else
     {
-      // PS -> PS: copy attributes from source (space unit, primary/secondary, block size)
+      // PS -> PS: create sequential data set with source attributes
       attrs.dsorg = "PS";
-      attrs.recfm = info1.entry.recfm.c_str();
-      attrs.lrecl = info1.entry.lrecl;
-      attrs.blksize = info1.entry.blksize;
-      // Keep same space unit (CYLINDERS or TRACKS)
-      if (info1.entry.spacu == "CYLINDERS" || info1.entry.spacu == "CYL")
-      {
-        attrs.alcunit = "CYL";
-      }
-      else
-      {
-        attrs.alcunit = "TRACKS";
-      }
-      // Preserve primary/secondary when source used CYLINDERS or TRACKS
-      if ((info1.entry.spacu == "CYLINDERS" || info1.entry.spacu == "TRACKS" || info1.entry.spacu == "CYL") &&
-          info1.entry.primary >= 0 && info1.entry.secondary >= 0)
-      {
-        attrs.primary = info1.entry.primary > INT_MAX ? INT_MAX : static_cast<int>(info1.entry.primary);
-        attrs.secondary = info1.entry.secondary > INT_MAX ? INT_MAX : static_cast<int>(info1.entry.secondary);
-      }
-      else
-      {
-        attrs.primary = 1;
-        attrs.secondary = 1;
-      }
     }
 
     rc = zds_create_dsn(&create_zds, info2.base_dsn, attrs, create_resp);
@@ -410,11 +437,12 @@ int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2, bool replace,
     if (target_created)
       *target_created = true;
   }
-  else if (!replace && !overwrite && !is_pds_full_copy)
+  // Track if target member exists (for member_created reporting)
+  bool target_member_exists = target_is_member && member_exists_in_pds(info2.base_dsn, info2.member_name);
+
+  if (!replace && !overwrite && !is_pds_full_copy)
   {
-    bool target_actually_exists = target_is_member
-                                      ? member_exists_in_pds(info2.base_dsn, info2.member_name)
-                                      : true;
+    bool target_actually_exists = target_is_member ? target_member_exists : true;
 
     if (target_actually_exists)
     {
@@ -446,10 +474,19 @@ int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2, bool replace,
       // Same PDS: copy member to member using binary I/O
       string src_mem_dsn = info1.base_dsn + "(" + info1.member_name + ")";
       string dst_mem_dsn = info2.base_dsn + "(" + info2.member_name + ")";
-      return copy_sequential(zds, src_mem_dsn, dst_mem_dsn);
+      rc = copy_sequential(zds, src_mem_dsn, dst_mem_dsn);
+    }
+    else
+    {
+      rc = copy_sequential(zds, dsn1, dsn2);
     }
 
-    return copy_sequential(zds, dsn1, dsn2);
+    // Report if a new member was created
+    if (rc == RTNCD_SUCCESS && member_created && target_is_member && !target_member_exists)
+    {
+      *member_created = true;
+    }
+    return rc;
   }
 }
 
@@ -1586,14 +1623,17 @@ int zds_create_dsn(ZDS *zds, string dsn, DS_ATTRIBUTES attributes, string &respo
     parm += ") " + attributes.alcunit;
   }
 
-  if (attributes.lrecl >= 0)
+  if (!attributes.recfm.empty())
+    parm += " RECFM(" + attributes.recfm + ")";
+
+  // For RECFM=U, LRECL should be 0 or omitted; specifying non-zero LRECL can cause
+  // the system to override RECFM to FB
+  bool is_recfm_u = (attributes.recfm == "U" || attributes.recfm == ZDS_RECFM_U);
+  if (attributes.lrecl >= 0 && !is_recfm_u)
   {
     memset(numberAsString, 0, sizeof(numberAsString));
     parm += " LRECL(" + string(itoa(attributes.lrecl, numberAsString, 10)) + ")";
   }
-
-  if (!attributes.recfm.empty())
-    parm += " RECFM(" + attributes.recfm + ")";
 
   if (attributes.dirblk > 0)
   {
@@ -1616,8 +1656,9 @@ int zds_create_dsn(ZDS *zds, string dsn, DS_ATTRIBUTES attributes, string &respo
   if (!attributes.unit.empty())
     parm += " UNIT(" + attributes.unit + ")";
 
-  // Include BLKSIZE when set (>= 0) so target matches source; 0 is valid for RECFM U
-  if (attributes.blksize >= 0)
+  // For RECFM=U, BLKSIZE handling is system-dependent; some systems need it, others don't
+  // Skip BLKSIZE for RECFM=U to let the system determine the appropriate value
+  if (attributes.blksize >= 0 && !is_recfm_u)
   {
     memset(numberAsString, 0, sizeof(numberAsString));
     parm += " BLKSIZE(" + string(itoa(attributes.blksize, numberAsString, 10)) + ")";

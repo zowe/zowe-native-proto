@@ -132,7 +132,7 @@ int zds_get_type_info(const std::string &dsn, ZDSTypeInfo &info);
  * @return int 0 for success; non zero otherwise
  */
 int zds_copy_dsn(ZDS *zds, const std::string &dsn1, const std::string &dsn2, bool replace = false, bool overwrite = false,
-                 bool *target_created = nullptr);
+                 bool *target_created = nullptr, bool *member_created = nullptr);
 
 /**
  * @brief Compress a PDS data set
