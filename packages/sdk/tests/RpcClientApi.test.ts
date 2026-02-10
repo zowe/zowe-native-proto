@@ -9,9 +9,9 @@
  *
  */
 
-import { describe, expect, it, vi, beforeEach } from "vitest";
-import { RpcClientApi } from "../src/RpcClientApi";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ds } from "../src/doc/rpc";
+import { RpcClientApi } from "../src/RpcClientApi";
 
 // Create a concrete implementation for testing
 class TestRpcClient extends RpcClientApi {
