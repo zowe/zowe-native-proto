@@ -4,7 +4,7 @@ All notable changes to the "zowe-native-proto-vsce" extension will be documented
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## `0.2.4`
+## Recent Changes
 
 - Added a custom extension icon based on the Zowe Explorer icon with an SSH terminal prompt badge.
 
