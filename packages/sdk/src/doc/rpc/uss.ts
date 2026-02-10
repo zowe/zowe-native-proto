@@ -25,7 +25,7 @@ export interface ChmodFileRequest extends common.CommandRequest<"chmodFile"> {
     /**
      * Whether to change permissions recursively
      */
-    recursive: boolean;
+    recursive?: boolean;
 }
 
 export type ChmodFileResponse = common.CommandResponse;
@@ -42,7 +42,7 @@ export interface ChownFileRequest extends common.CommandRequest<"chownFile"> {
     /**
      * Whether to apply ownership to inner files and directories
      */
-    recursive: boolean;
+    recursive?: boolean;
 }
 
 export type ChownFileResponse = common.CommandResponse;
@@ -59,7 +59,7 @@ export interface ChtagFileRequest extends common.CommandRequest<"chtagFile"> {
     /**
      * Whether to apply the tag to inner files and directories
      */
-    recursive: boolean;
+    recursive?: boolean;
 }
 
 export type ChtagFileResponse = common.CommandResponse;
@@ -89,7 +89,7 @@ export interface DeleteFileRequest extends common.CommandRequest<"deleteFile"> {
     /**
      * Whether to delete the file recursively
      */
-    recursive: boolean;
+    recursive?: boolean;
 }
 
 export type DeleteFileResponse = common.CommandResponse;
