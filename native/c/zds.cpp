@@ -502,12 +502,12 @@ int zds_compress_dsn(ZDS *zds, const string &dsn)
   }
 
   vector<string> dds;
-  dds.push_back("alloc dd(A) da('" + dsn + "') shr");
-  dds.push_back("alloc dd(B) da('" + dsn + "') shr");
-  dds.push_back("alloc dd(sysprint) lrecl(121) recfm(f,b,a) blksize(1210)");
-  dds.push_back("alloc dd(sysin) lrecl(80) recfm(f,b) blksize(800)");
+  dds.push_back("alloc dd(SYSUT1) da('" + dsn + "') shr");
+  dds.push_back("alloc dd(SYSUT2) da('" + dsn + "') old");
+  dds.push_back("alloc dd(SYSPRINT) lrecl(121) recfm(f,b,a) blksize(1210)");
+  dds.push_back("alloc dd(SYSIN) lrecl(80) recfm(f,b) blksize(800)");
 
-  return run_iebcopy(zds, dds, "        COPY OUTDD=B,INDD=A");
+  return run_iebcopy(zds, dds, "        COPY OUTDD=SYSUT2,INDD=SYSUT1");
 }
 
 bool zds_dataset_exists(const string &dsn)
