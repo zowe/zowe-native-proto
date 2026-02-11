@@ -121,10 +121,10 @@ bool zds_dataset_exists(const string &dsn)
   return false;
 }
 
-bool zds_member_exists(string &dsn, string member_before)
+bool zds_member_exists(const string &dsn, const string &member_before)
 {
-  member_before = "//'" + dsn + "(" + member_before + ")'";
-  FILE *fp = fopen(member_before.c_str(), "r");
+  string mem_before = "//'" + dsn + "(" + member_before + ")'";
+  FILE *fp = fopen(mem_before.c_str(), "r");
   if (fp)
   {
     fclose(fp);
@@ -1381,7 +1381,7 @@ int zds_rename_dsn(ZDS *zds, string dsn_before, string dsn_after)
   return 0;
 }
 
-int zds_rename_members(ZDS *zds, string dsname, string member_before, string member_after)
+int zds_rename_members(ZDS *zds, const string &dsname, const string &member_before, const string &member_after)
 {
   int rc = 0;
   if (dsname.empty())
@@ -1419,17 +1419,18 @@ int zds_rename_members(ZDS *zds, string dsname, string member_before, string mem
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Target member already exists");
     return RTNCD_FAILURE;
   }
-  member_before = "//'" + dsname + "(" + member_before + ")'";
-  member_after = "//'" + dsname + "(" + member_after + ")'";
-  rc = rename(member_before.c_str(), member_after.c_str());
 
+  std::string source_member = "//'" + dsname + "(" + member_before + ")'";
+  std::string target_member = "//'" + dsname + "(" + member_after + ")'";
   errno = 0;
+  rc = rename(source_member.c_str(), target_member.c_str());
+
   if (rc != 0)
   {
     int err = errno;
     strcpy(zds->diag.service_name, "rename_members");
     zds->diag.service_rc = rc;
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not rename member '%s', errno: '%d'", member_before.c_str(), err);
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not rename member '%s', errno: '%d'", source_member.c_str(), err);
     zds->diag.detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
     return RTNCD_FAILURE;
   }

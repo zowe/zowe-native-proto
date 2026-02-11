@@ -182,7 +182,7 @@ int zds_rename_dsn(ZDS *zds, std::string dsn_before, std::string dsn_after);
  * @param member_after
  * @return int 0 for success; non zero otherwise
  */
-int zds_rename_members(ZDS *zds, std::string dsn, std::string member_before, std::string member_after);
+int zds_rename_members(ZDS *zds, const std::string &dsn, const std::string &member_before, const std::string &member_after);
 
 /**
  * @brief Obtain list of members in a z/OS data set
