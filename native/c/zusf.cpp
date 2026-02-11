@@ -944,7 +944,14 @@ int zusf_move_uss_file_or_dir(ZUSF *zusf, const string &source, const string &ta
     return RTNCD_FAILURE;
   }
 
-  // resolve paths
+  // simple string compare for source and target
+  if (strcmp(source.c_str(), target.c_str()) == 0)
+  {
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Source '%s' and target '%s' are identical", source.c_str(), target.c_str());
+    return RTNCD_FAILURE;
+  }
+
+  // resolve source path
   char resolved_source[1024]; // PATH_MAX = 1024 is defined in limits.h, but not in xlc
   if (realpath(source.c_str(), resolved_source) == nullptr)
   {

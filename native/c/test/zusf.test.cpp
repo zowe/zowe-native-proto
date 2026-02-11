@@ -1446,17 +1446,27 @@ void zusf_tests()
              it("should fail when source does not exist",
                 [&]() -> void
                 {
-                  int result = zusf_move_uss_file_or_dir(&zusf, "nonexistent_file.txt", "test_file.txt");
+                  string source = get_random_uss(zusf_test_dir);
+                  int result = zusf_move_uss_file_or_dir(&zusf, source, "test_file.txt");
                   Expect(result).ToBe(RTNCD_FAILURE);
-                  Expect(string(zusf.diag.e_msg)).ToContain("Source path '/tmp/nonexistent_file.txt' does not exist");
+                  Expect(string(zusf.diag.e_msg)).ToContain("Source path '" + source + "' does not exist");
                 });
 
              it("should return early with success when source and target are the same",
                 [&]() -> void
                 {
-                  int result = zusf_move_uss_file_or_dir(&zusf, "test_file.txt", "test_file.txt");
-                  Expect(result).ToBe(RTNCD_SUCCESS);
-                  Expect(string(zusf.diag.e_msg)).ToContain("Source 'test_file.txt' and target 'test_file.txt' are identical");
+                  string source = get_random_uss(zusf_test_dir);
+
+                  mkdir(zusf_test_dir.c_str(), 0755);
+                  ofstream file(source);
+                  file.close();
+
+                  int result = zusf_move_uss_file_or_dir(&zusf, source, source);
+                  Expect(result).ToBe(RTNCD_FAILURE);
+                  Expect(string(zusf.diag.e_msg)).ToContain("Source '" + source + "' and target '" + source + "' are identical");
+
+                  unlink(source.c_str());
+                  rmdir(zusf_test_dir.c_str());
                 });
 
              it("should fail when source is a directory and target is not a directory",
@@ -1472,8 +1482,8 @@ void zusf_tests()
                   Expect(result).ToBe(RTNCD_FAILURE);
                   Expect(string(zusf.diag.e_msg)).ToContain("Cannot move directory '" + zusf_test_dir + "'. Target '" + target + "' is not a directory");
 
-                  rmdir(zusf_test_dir.c_str());
                   unlink(target.c_str());
+                  rmdir(zusf_test_dir.c_str());
                 });
            });
 }
