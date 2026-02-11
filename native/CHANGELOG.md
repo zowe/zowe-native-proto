@@ -4,6 +4,11 @@ All notable changes to the native code for "zowe-native-proto" are documented in
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## Recent Changes
+
+- `c`: Implemented `zowex uss move` command to move files and directories in z/OS Unix.
+- `python`: Implemented basic move APIs and fixed build issues.
+
 ## `0.2.3`
 
 - `c`: Implement `zowex job watch` command to watch spool output for a string or regex until terminating.
