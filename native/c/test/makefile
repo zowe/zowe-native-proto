@@ -28,12 +28,12 @@ C_FLAGS=$(C_FLAGS_BASE) -I./chdsect
 DLL_CPP_FLAGS=$(DLL_CPP_FLAGS_BASE) -I./chdsect
 CPP_FLAGS=$(CPP_FLAGS_BASE)
 CXXLANG_FLAGS=$(CXXLANG_FLAGS_BASE) -I../ -I../chdsect -std=c++14
-CXXLANG_BND_FLAGS=-W "l,lp64"
+CXXLANG_BND_FLAGS=
 
 # make -DBuildType=DEBUG
 .IF $(BuildType) == DEBUG
 # -g generates debugging information
-DEBUGGER_FLAGS=-qSOURCE -qDEBUG
+DEBUGGER_FLAGS=-g
 CPP_BND_FLAGS=$(CPP_BND_DEBUG_FLAGS) $(DEBUGGER_FLAGS)
 CPP_BND_FLAGS_AUTH=$(CPP_BND_DEBUG_FLAGS_AUTH) $(DEBUGGER_FLAGS)
 C_FLAGS+=$(DEBUGGER_FLAGS)
@@ -41,19 +41,19 @@ DLL_BND_FLAGS=$(DLL_BND_DEBUG_FLAGS) $(DEBUGGER_FLAGS)
 MTL_FLAGS+=$(DEBUGGER_FLAGS) -qSHOWINC
 MTL_FLAGS64+=$(DEBUGGER_FLAGS) -qSHOWINC
 ASM_FLAGS+=--verbose
-# List output flags for debugging
-CPP_LIST_FLAG=-qlist=$*.cpp.lst
+# List output flags for debugging (disabled for ibm-clang++64 compatibility)
+CPP_LIST_FLAG=
 MTL_LIST_FLAG=-qlist=$*.mtl.lst
 ASM_LIST_FLAG=-a=$*.s.lst
 .ELSE
-PRODUCTION_FLAGS=-qNOSOURCE -qNODEBUG
+PRODUCTION_FLAGS=-g0
 CPP_BND_FLAGS=$(CPP_BND_BASE_FLAGS) $(PRODUCTION_FLAGS)
 CPP_BND_FLAGS_AUTH=$(CPP_BND_BASE_FLAGS_AUTH) $(PRODUCTION_FLAGS)
 C_FLAGS+=$(PRODUCTION_FLAGS)
 DLL_BND_FLAGS=$(DLL_BND_BASE_FLAGS) $(PRODUCTION_FLAGS)
-DLL_CPP_FLAGS+=$(PRODUCTION_FLAGS) -qNOSHOWINC
-MTL_FLAGS+=$(PRODUCTION_FLAGS) -qNOSHOWINC
-MTL_FLAGS64+=$(PRODUCTION_FLAGS) -qNOSHOWINC
+DLL_CPP_FLAGS+=$(PRODUCTION_FLAGS)
+MTL_FLAGS+=-qNOSOURCE -qNODEBUG -qNOSHOWINC
+MTL_FLAGS64+=-qNOSOURCE -qNODEBUG -qNOSHOWINC
 ASM_FLAGS+=--noverbose
 # No list output for production builds
 CPP_LIST_FLAG=
@@ -131,10 +131,10 @@ build-out/zlogger.test.o \
 build-out/zlogger_metal.o \
 build-out/zjson.test.o \
 build-out/zjsonm.o
-	$(OCXX) $(CXXLANG_BND_FLAGS) -o $@ $^ > $*.bind.lst
+	$(OCXX) $(CXXLANG_BND_FLAGS) -o $@ $^
 
 build-out/zut.o:
-	ln -sf ../../build-out/xlclang/zut.o build-out/zut.o
+	ln -sf ../../build-out/ibm-clang/zut.o build-out/zut.o
 
 build-out/zutm.o:
 	ln -sf ../../build-out/zutm.o build-out/zutm.o
@@ -143,7 +143,7 @@ build-out/zutm31.o:
 	ln -sf ../../build-out/zutm31.o build-out/zutm31.o
 
 build-out/zds.o:
-	ln -sf ../../build-out/xlclang/zds.o build-out/zds.o
+	ln -sf ../../build-out/ibm-clang/zds.o build-out/zds.o
 
 build-out/zdsm.o:
 	ln -sf ../../build-out/zdsm.o build-out/zdsm.o
@@ -152,7 +152,7 @@ build-out/zam.o:
 	ln -sf ../../build-out/zam.o build-out/zam.o
 
 build-out/zjb.o:
-	ln -sf ../../build-out/xlclang/zjb.o build-out/zjb.o
+	ln -sf ../../build-out/ibm-clang/zjb.o build-out/zjb.o
 
 build-out/zjbm.o:
 	ln -sf ../../build-out/zjbm.o build-out/zjbm.o
@@ -164,7 +164,7 @@ build-out/zssi31.o:
 	ln -sf ../../build-out/zssi31.o build-out/zssi31.o
 
 build-out/zcn.o:
-	ln -sf ../../build-out/xlclang/zcn.o build-out/zcn.o
+	ln -sf ../../build-out/ibm-clang/zcn.o build-out/zcn.o
 
 build-out/zcnm.o:
 	ln -sf ../../build-out/zcnm.o build-out/zcnm.o
@@ -173,7 +173,7 @@ build-out/zcnm31.o:
 	ln -sf ../../build-out/zcnm31.o build-out/zcnm31.o
 
 build-out/zusf.o:
-	ln -sf ../../build-out/xlclang/zusf.o build-out/zusf.o
+	ln -sf ../../build-out/ibm-clang/zusf.o build-out/zusf.o
 
 build-out/zowex.ds.test.o: zowex.ds.test.cpp
 	$(OCXX) $(CXXLANG_FLAGS) $(CPP_LIST_FLAG) -c $^ -o $@

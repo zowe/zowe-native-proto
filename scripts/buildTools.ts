@@ -400,7 +400,7 @@ class WatchUtils {
                     .stderr.on("data", (data: Buffer) => {
                         // Filter out INFO level messages and ones about compiler optimizations
                         const str = data.toString().trim();
-                        if (/IGD\d{5}I /.test(str) || /WARNING CLC1145:/.test(str)) return;
+                        if (/IGD\d{5}I /.test(str) || /WARNING CLC\d+:/.test(str)) return;
                         if (str.length > 0) {
                             errText += (errText.length > 0 ? "\n" : "") + str;
                         }

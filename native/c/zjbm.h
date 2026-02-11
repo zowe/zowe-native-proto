@@ -16,8 +16,8 @@
 #include "zssitype.h"
 #include "zjbtype.h"
 
-#if (defined(__IBMCPP__) || defined(__IBMC__))
-#if defined(__clang__)
+#if defined(__MVS__)
+#if defined(__clang__) || defined(__open_xl__)
 #pragma pack(1)
 #else
 #pragma pack(packed)
@@ -30,11 +30,11 @@ typedef struct
   char subsystem[4 + 1];
 } ZJB_JOB_INFO;
 
-#if (defined(__IBMCPP__) || defined(__IBMC__))
+#if defined(__MVS__)
 #pragma pack(reset)
 #endif
 
-#if defined(__cplusplus) && (defined(__IBMCPP__) || defined(__IBMC__))
+#if defined(__cplusplus) && defined(__MVS__)
 extern "OS"
 {
 #elif defined(__cplusplus)

@@ -18,6 +18,8 @@ You should be able to find the `startup.mk` file in `/samples`
 
 ## Building zut.o - FSUM3221 xlc++: Cannot spawn program /usr/lpp/cbclib/xlc/exe/ccndrvr
 
+> **Note:** This error is specific to the legacy `xlc++` compiler. Since the project now uses `ibm-clang++64` for C++ compilation, this issue should no longer occur for C++ builds. It may still occur for Metal C builds which continue to use `xlc`.
+
 One workaround is to add `CBC.SCCNCMP` to your system LINKLIST concatenation. Below is an example of doing this via SYSVIEW commands.
 
 :warning: These commands could ruin your system if the linklist is corrupted. Do not modify the linklist unless you know what you are doing. :warning:

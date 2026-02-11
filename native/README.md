@@ -62,7 +62,7 @@ Longer term, we may be able to make use of [Catch2](https://github.com/catchorg/
 - `ztest.hpp`
 - `ztest.cpp`
 
-This infrastructure requires `xlclang` compiler to enable "new" language features (lambdas) in order to provide a ~[Jest](https://jestjs.io/) testing syntax.
+This infrastructure requires `ibm-clang` (or `xlclang`) compiler to enable "new" language features (lambdas) in order to provide a ~[Jest](https://jestjs.io/) testing syntax.
 
 #### Format
 

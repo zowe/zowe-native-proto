@@ -10,18 +10,18 @@
 #
 
 XLC_FLAGS=_CC_ACCEPTABLE_RC=0 _C89_ACCEPTABLE_RC=0 _CXX_ACCEPTABLE_RC=0
-CXX=$(XLC_FLAGS) xlc++
-CXXLANG=xlclang++
+CXX=ibm-clang++64
+CXXLANG=ibm-clang++64
 CC=$(XLC_FLAGS) xlc
 ASM=as
 
-CPP_BND_BASE_FLAGS=-W "l,lp64,xplink,map"
-CPP_BND_BASE_FLAGS_AUTH=-W "l,lp64,xplink,map,ac=1"
-CPP_BND_DEBUG_FLAGS=-W "l,lp64,xplink,map,list"
-CPP_BND_DEBUG_FLAGS_AUTH=-W "l,lp64,xplink,map,list,ac=1"
+CPP_BND_BASE_FLAGS=-Wl,-bMAP
+CPP_BND_BASE_FLAGS_AUTH=-Wl,-bMAP -Wl,-bAC=1
+CPP_BND_DEBUG_FLAGS=-Wl,-bMAP -Wl,-bLIST
+CPP_BND_DEBUG_FLAGS_AUTH=-Wl,-bMAP -Wl,-bLIST -Wl,-bAC=1
 
-DLL_BND_BASE_FLAGS=-W "l,lp64,dll,dynam=dll,xplink,map"
-DLL_BND_DEBUG_FLAGS=-W "l,lp64,dll,dynam=dll,xplink,map,list"
+DLL_BND_BASE_FLAGS=-shared -Wl,-bMAP
+DLL_BND_DEBUG_FLAGS=-shared -Wl,-bMAP -Wl,-bLIST
 
 #
 # Metal C compilation options
@@ -61,11 +61,11 @@ ASM_FLAGS=-mRENT
 #
 # Compilation flags
 #
-C_FLAGS_BASE=-W "c,lp64,langlvl(extended),xplink,exportall" -c
-DLL_CPP_FLAGS_BASE=-W "c,lp64,langlvl(extended0x),dll,xplink,exportall" -c
-CPP_FLAGS_BASE=-W "c,lp64,langlvl(extended0x),dll,xplink" -c -D__IBMCPP_TR1__=1
-CXXLANG_FLAGS_BASE=-W "c,lp64" -c
-SWIG_FLAGS_BASE=-W "c,lp64,define(SWIG)" -c -DSWIG
+C_FLAGS_BASE=-fvisibility=default -c
+DLL_CPP_FLAGS_BASE=-fvisibility=default -c -std=c++11 -fno-aligned-allocation
+CPP_FLAGS_BASE=-fvisibility=default -c -std=c++11 -fno-aligned-allocation
+CXXLANG_FLAGS_BASE=-c -std=c++11 -fno-aligned-allocation
+SWIG_FLAGS_BASE=-DSWIG -c -std=c++11 -fno-aligned-allocation
 
 #
 # Logging support
@@ -79,6 +79,6 @@ LOG_FLAGS=-DZLOG_ENABLE
 #
 .IF $(BuildType) == DEBUG
 LOG_FLAGS=-DZLOG_ENABLE
-DEBUGGER_FLAGS=-qSOURCE -g9
-OTHER_C_FLAGS=-qSHOWINC -qSHOWMACROS
+DEBUGGER_FLAGS=-g
+OTHER_C_FLAGS=-H -dM
 .END

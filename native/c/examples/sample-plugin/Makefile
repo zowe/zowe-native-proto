@@ -1,7 +1,6 @@
-XLC_FLAGS=_CC_ACCEPTABLE_RC=0 _C89_ACCEPTABLE_RC=0 _CXX_ACCEPTABLE_RC=0
-CXX=$(XLC_FLAGS) xlc++
-CXX_FLAGS=-W "c,lp64,langlvl(extended0x),dll,xplink,exportall" -D__IBMCPP_TR1__=1 -I../../
-CXX_LINK_FLAGS=-W "l,lp64,dll,dynam=dll,xplink"
+CXX=ibm-clang++64
+CXX_FLAGS=-std=c++11 -fvisibility=default -fno-aligned-allocation -I../../
+CXX_LINK_FLAGS=-shared
 
 all: sample_plugin.so
 

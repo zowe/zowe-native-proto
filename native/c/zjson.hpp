@@ -65,13 +65,13 @@ typedef integral_constant<bool, false> false_type;
  *     Only dynamic JSON with zjson::Value is supported, making this a minimal
  *     header-only library with faster compilation times.
  *
- *   - Full mode: Requires xlclang (C++11/14)
+ *   - Full mode: Requires ibm-clang or xlclang (C++11/14)
  *     Enables automatic struct serialization/deserialization with ZJSON_DERIVE
  *     and ZJSON_SERIALIZABLE macros.
  *
  * ==================== QUICK REFERENCE ====================
  *
- * Parsing (from struct requires xlclang):
+ * Parsing (from struct requires ibm-clang or xlclang):
  *   zjson::Value data = zjson::from_str(json_string);
  *   auto result = zjson::from_str<MyStruct>(json_string);
  *
@@ -79,7 +79,7 @@ typedef integral_constant<bool, false> false_type;
  *   std::string json = zjson::to_string(obj);
  *   std::string pretty = zjson::to_string_pretty(obj);
  *
- * Struct Registration (requires xlclang):
+ * Struct Registration (requires ibm-clang or xlclang):
  *   ZJSON_DERIVE(StructName, field1, field2, ...)
  *   ZJSON_SERIALIZABLE(StructName, ZJSON_FIELD(StructName, field).rename("name"))
  *
@@ -88,7 +88,7 @@ typedef integral_constant<bool, false> false_type;
  *   zjson::Value arr = zjson::Value::create_array();
  *   obj["name"] = "John"; arr[0] = "item";
  *
- * Type Conversion (requires xlclang):
+ * Type Conversion (requires ibm-clang or xlclang):
  *   zjson::Value val = zjson::to_value(obj);
  *   auto obj = zjson::from_value<MyStruct>(val);
  *
@@ -101,7 +101,7 @@ typedef integral_constant<bool, false> false_type;
  *   auto result = zjson::from_str<MyStruct>(json);
  *   if (result.has_value()) { auto obj = result.value(); }
  *
- * Field Attributes (requires xlclang):
+ * Field Attributes (requires ibm-clang or xlclang):
  *   .rename("newName")        // JSON field name
  *   .skip()                   // Skip serialization/deserialization
  *   .skip_serializing_if_none()  // Skip if optional field is empty
@@ -2711,10 +2711,10 @@ using detail::serialize_fields;
 #else
 // XLC (minimal mode) - struct serialization macros not supported
 #define ZJSON_DERIVE(StructType, ...) \
-  typedef zjson::ERROR_ZJSON_DERIVE_requires_xlclang_compiler ZJSON_DERIVE_ERROR
+  typedef zjson::ERROR_ZJSON_DERIVE_requires_clang_compiler ZJSON_DERIVE_ERROR
 
 #define ZJSON_SERIALIZABLE(StructType, ...) \
-  typedef zjson::ERROR_ZJSON_SERIALIZABLE_requires_xlclang_compiler ZJSON_SERIALIZABLE_ERROR
+  typedef zjson::ERROR_ZJSON_SERIALIZABLE_requires_clang_compiler ZJSON_SERIALIZABLE_ERROR
 #endif
 
 } // namespace zjson

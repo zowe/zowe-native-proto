@@ -9,8 +9,8 @@
  *
  */
 
-#ifndef _OPEN_SYS_ITOA_EXT
-#define _OPEN_SYS_ITOA_EXT
+#ifndef _OPEN_SYS_FILE_EXT
+#define _OPEN_SYS_FILE_EXT 1
 #endif
 #ifndef _POSIX_SOURCE
 #define _POSIX_SOURCE
@@ -1173,8 +1173,6 @@ int zds_create_dsn(ZDS *zds, string dsn, DS_ATTRIBUTES attributes, string &respo
     attributes.lrecl = 80; // Record Length
   }
 
-  char numberAsString[6];
-
   // Required options, default to PS if not specified
   if (!attributes.dsorg.empty())
     parm += " DSORG(" + attributes.dsorg + ")";
@@ -1185,13 +1183,11 @@ int zds_create_dsn(ZDS *zds, string dsn, DS_ATTRIBUTES attributes, string &respo
 
   if (attributes.primary > 0)
   {
-    memset(numberAsString, 0, sizeof(numberAsString));
-    parm += " SPACE(" + string(itoa(attributes.primary, numberAsString, 10));
+    parm += " SPACE(" + to_string(attributes.primary);
 
     if (attributes.secondary > 0)
     {
-      memset(numberAsString, 0, sizeof(numberAsString));
-      parm += "," + string(itoa(attributes.secondary, numberAsString, 10));
+      parm += "," + to_string(attributes.secondary);
     }
 
     parm += ") " + attributes.alcunit;
@@ -1199,8 +1195,7 @@ int zds_create_dsn(ZDS *zds, string dsn, DS_ATTRIBUTES attributes, string &respo
 
   if (attributes.lrecl > 0)
   {
-    memset(numberAsString, 0, sizeof(numberAsString));
-    parm += " LRECL(" + string(itoa(attributes.lrecl, numberAsString, 10)) + ")";
+    parm += " LRECL(" + to_string(attributes.lrecl) + ")";
   }
 
   if (!attributes.recfm.empty())
@@ -1208,8 +1203,7 @@ int zds_create_dsn(ZDS *zds, string dsn, DS_ATTRIBUTES attributes, string &respo
 
   if (attributes.dirblk > 0)
   {
-    memset(numberAsString, 0, sizeof(numberAsString));
-    parm += " DIR(" + string(itoa(attributes.dirblk, numberAsString, 10)) + ")";
+    parm += " DIR(" + to_string(attributes.dirblk) + ")";
   }
 
   parm += " NEW CATALOG";
@@ -1229,8 +1223,7 @@ int zds_create_dsn(ZDS *zds, string dsn, DS_ATTRIBUTES attributes, string &respo
 
   if (attributes.blksize > 0)
   {
-    memset(numberAsString, 0, sizeof(numberAsString));
-    parm += " BLKSIZE(" + string(itoa(attributes.blksize, numberAsString, 10)) + ")";
+    parm += " BLKSIZE(" + to_string(attributes.blksize) + ")";
   }
 
   return alloc_and_free(parm, dsn, &code, response);
@@ -1241,7 +1234,7 @@ int zds_create_dsn_fb(ZDS *zds, const string &dsn, string &response)
   int rc = 0;
   unsigned int code = 0;
 
-  DS_ATTRIBUTES attributes = {0};
+  DS_ATTRIBUTES attributes = {};
   attributes.dsorg = "PO";
   attributes.primary = 5;
   attributes.secondary = 5;
@@ -1257,7 +1250,7 @@ int zds_create_dsn_vb(ZDS *zds, const string &dsn, string &response)
 {
   int rc = 0;
   unsigned int code = 0;
-  DS_ATTRIBUTES attributes = {0};
+  DS_ATTRIBUTES attributes = {};
   attributes.dsorg = "PO";
   attributes.primary = 5;
   attributes.secondary = 5;
@@ -1273,7 +1266,7 @@ int zds_create_dsn_adata(ZDS *zds, const string &dsn, string &response)
 {
   int rc = 0;
   unsigned int code = 0;
-  DS_ATTRIBUTES attributes = {0};
+  DS_ATTRIBUTES attributes = {};
   attributes.dsorg = "PO";
   attributes.primary = 5;
   attributes.secondary = 5;
@@ -1290,7 +1283,7 @@ int zds_create_dsn_loadlib(ZDS *zds, const string &dsn, string &response)
 {
   int rc = 0;
   unsigned int code = 0;
-  DS_ATTRIBUTES attributes = {0};
+  DS_ATTRIBUTES attributes = {};
   attributes.dsorg = "PO";
   attributes.primary = 5;
   attributes.secondary = 5;
@@ -1444,7 +1437,7 @@ int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &members)
           }
         }
 
-        ZDSMem mem = {0};
+        ZDSMem mem = {};
         mem.name = string(name);
         members.push_back(mem);
 
@@ -2360,7 +2353,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &datasets, bool sh
 
     while (work_area_total > 0)
     {
-      ZDSEntry entry = {0};
+      ZDSEntry entry = {};
       f = (ZDS_CSI_ENTRY *)p;
 
       if (ERROR == f->flag)

@@ -28,8 +28,8 @@
 #define ZUSF_DEFAULT_MAX_JOBS 100
 #define ZUSF_DEFAULT_MAX_DDS 100
 
-#if (defined(__IBMCPP__) || defined(__IBMC__))
-#if defined(__clang__)
+#if defined(__MVS__)
+#if defined(__clang__) || defined(__open_xl__)
 #pragma pack(1)
 #else
 #pragma pack(packed)
@@ -61,7 +61,7 @@ typedef struct
 #endif
 } ZUSF;
 
-#if (defined(__IBMCPP__) || defined(__IBMC__))
+#if defined(__MVS__)
 #pragma pack(reset)
 #endif
 

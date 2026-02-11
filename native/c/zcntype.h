@@ -27,8 +27,8 @@
 #define ZCN_POST_TIMEOUT 1
 #define ZCN_POST_ABEND 2
 
-#if (defined(__IBMCPP__) || defined(__IBMC__))
-#if defined(__clang__)
+#if defined(__MVS__)
+#if defined(__clang__) || defined(__open_xl__)
 #pragma pack(1)
 #else
 #pragma pack(packed)
@@ -66,7 +66,7 @@ typedef struct
 
 } ZCN;
 
-#if (defined(__IBMCPP__) || defined(__IBMC__))
+#if defined(__MVS__)
 #pragma pack(reset)
 #endif
 

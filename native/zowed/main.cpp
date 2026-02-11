@@ -17,7 +17,7 @@
  * for the zowed executable. It delegates to the libzowed library for
  * the actual server implementation.
  *
- * This file is compiled with xlc++ while the library is compiled with xlclang++.
+ * Both this file and the library are compiled with ibm-clang++64.
  */
 
 #pragma runopts("TRAP(ON,NOSPIE)")

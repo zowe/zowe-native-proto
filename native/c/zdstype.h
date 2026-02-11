@@ -82,8 +82,8 @@
 #define ZDS_DEVTYPE_3390 0x0F
 #define ZDS_DEVTYPE_9345 0x04
 
-#if (defined(__IBMCPP__) || defined(__IBMC__))
-#if defined(__clang__)
+#if defined(__MVS__)
+#if defined(__clang__) || defined(__open_xl__)
 #pragma pack(1)
 #else
 #pragma pack(packed)
@@ -113,11 +113,11 @@ typedef struct
 
 } ZDS;
 
-#if (defined(__IBMCPP__) || defined(__IBMC__))
+#if defined(__MVS__)
 #pragma pack(reset)
 #endif
 
-#if (defined(__IBMCPP__) || defined(__IBMC__))
+#if defined(__MVS__)
 #pragma pack(1)
 #endif
 
@@ -160,7 +160,7 @@ typedef struct IndexableDSCBFormat1
   DSCBFormat1 dscb1; // Contents of DSCB-1
 } IndexableDSCBFormat1;
 
-#if (defined(__IBMCPP__) || defined(__IBMC__))
+#if defined(__MVS__)
 #pragma pack(reset)
 #endif
 

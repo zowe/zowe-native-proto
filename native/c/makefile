@@ -10,7 +10,7 @@
 #
 
 OUT_DIR=build-out
-OUT_DIR_CXXLANG=$(OUT_DIR)/xlclang
+OUT_DIR_CXXLANG=$(OUT_DIR)/ibm-clang
 OUT_DIR_SWIG=$(OUT_DIR)/swig
 OUT_DIRS=$(OUT_DIR_CXXLANG) $(OUT_DIR_SWIG)
 
@@ -75,7 +75,8 @@ XLCLANG_EXTENDER_OBJS = $(OUT_DIR_CXXLANG)/zut.o $(OUT_DIR_CXXLANG)/zds.o $(OUT_
 SWIG_EXTENDER_OBJS = $(OUT_DIR_SWIG)/zut.o $(OUT_DIR_SWIG)/zds.o $(OUT_DIR_SWIG)/zjb.o $(OUT_DIR_SWIG)/zcn.o $(OUT_DIR_SWIG)/zusf.o $(OUT_DIR_SWIG)/ztso.o
 
 all: libzut.so libzut.a libzds.so libzds.a libzusf.so libzusf.a libzcn.so libzcn.a libzjb.so libzjb.a zowex zoweax
-xlclang-extenders: $(XLCLANG_EXTENDER_OBJS)
+extenders: $(XLCLANG_EXTENDER_OBJS)
+xlclang-extenders: extenders
 # SWIG extenders: compile C++ files with SWIG macro defined for Python bindings
 swig-extenders: $(SWIG_EXTENDER_OBJS)
 zowed-tests:
@@ -96,15 +97,15 @@ $(OUT_DIRS):
 #
 $(OUT_DIR)/zut.o: zut.cpp
 	@echo 'Building $(OUT_DIR)/zut.o'
-	$(CXX) $(DLL_CPP_FLAGS) -qlist=$*.cpp.lst -o $@ $^
+	$(CXX) $(DLL_CPP_FLAGS) -o $@ $^
 
 $(OUT_DIR_CXXLANG)/zut.o: $(OUT_DIRS) zut.cpp
 	@echo '$(OUT_DIR_CXXLANG)/zut.o'
-	$(CXXLANG) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -o $@ $^
+	$(CXXLANG) $(CXXLANG_FLAGS) -o $@ zut.cpp
 
 $(OUT_DIR_SWIG)/zut.o: $(OUT_DIRS) zut.cpp
 	@echo 'Building $(OUT_DIR_SWIG)/zut.o with SWIG macro'
-	$(CXXLANG) $(SWIG_FLAGS) -qlist=$*.cpp.lst -o $@ $^
+	$(CXXLANG) $(SWIG_FLAGS) -o $@ zut.cpp
 
 $(OUT_DIR)/zutm.s: zutm.c
 	@echo 'Building $(OUT_DIR)/zutm.s'
@@ -141,7 +142,7 @@ LIBZUT_LOGGER_OBJ=
 
 $(OUT_DIR)/libzut.so: $(OUT_DIR)/zut.o $(OUT_DIR)/zutm.o $(OUT_DIR)/zam.o $(OUT_DIR)/zutm31.o $(LIBZUT_LOGGER_OBJ)
 	@echo 'Building $(OUT_DIR)/libzut.so'
-	$(CXX) $(DLL_BND_FLAGS) -o $@ $^ > $*.bind.lst
+	$(CXX) $(DLL_BND_FLAGS) -o $@ $^
 
 libzut.so: $(OUT_DIRS) $(OUT_DIR)/libzut.so
 
@@ -172,19 +173,19 @@ $(OUT_DIR)/zdsm.o: $(OUT_DIR)/zdsm.s
 
 $(OUT_DIR)/zds.o: zds.cpp
 	@echo 'Building $(OUT_DIR)/zds.o'
-	$(CXX) $(DLL_CPP_FLAGS) -qlist=$*.cpp.lst -o $@ $^
+	$(CXX) $(DLL_CPP_FLAGS) -o $@ $^
 
 $(OUT_DIR_CXXLANG)/zds.o: $(OUT_DIRS) zds.cpp
 	@echo '$(OUT_DIR_CXXLANG)/zds.o'
-	$(CXXLANG) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -o $@ $^
+	$(CXXLANG) $(CXXLANG_FLAGS) -o $@ zds.cpp
 
 $(OUT_DIR_SWIG)/zds.o: $(OUT_DIRS) zds.cpp
 	@echo 'Building $(OUT_DIR_SWIG)/zds.o with SWIG macro'
-	$(CXXLANG) $(SWIG_FLAGS) -qlist=$*.cpp.lst -o $@ $^
+	$(CXXLANG) $(SWIG_FLAGS) -o $@ zds.cpp
 
 $(OUT_DIR)/libzds.so: $(OUT_DIR)/zds.o $(OUT_DIR)/zdsm.o $(OUT_DIR)/zam.o $(OUT_DIR)/libzut.a
-	$(CXX) $(DLL_BND_FLAGS) -o $@ $^ > $*.bind.lst
 	@echo 'Building $(OUT_DIR)/libzds.so'
+	$(CXX) $(DLL_BND_FLAGS) -o $@ $^
 
 libzds.so: $(OUT_DIRS) $(OUT_DIR)/libzds.so
 
@@ -207,15 +208,15 @@ $(OUT_DIR)/zjbm.o: $(OUT_DIR)/zjbm.s
 
 $(OUT_DIR)/zjb.o: zjb.cpp
 	@echo 'Building $(OUT_DIR)/zjb.o'
-	$(CXX) $(DLL_CPP_FLAGS) -qlist=$*.cpp.lst -o $@ $^
+	$(CXX) $(DLL_CPP_FLAGS) -o $@ $^
 
 $(OUT_DIR_CXXLANG)/zjb.o: $(OUT_DIRS) zjb.cpp
 	@echo '$(OUT_DIR_CXXLANG)/zjb.o'
-	$(CXXLANG) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -o $@ $^
+	$(CXXLANG) $(CXXLANG_FLAGS) -o $@ zjb.cpp
 
 $(OUT_DIR_SWIG)/zjb.o: $(OUT_DIRS) zjb.cpp
 	@echo 'Building $(OUT_DIR_SWIG)/zjb.o with SWIG macro'
-	$(CXXLANG) $(SWIG_FLAGS) -qlist=$*.cpp.lst -o $@ $^
+	$(CXXLANG) $(SWIG_FLAGS) -o $@ zjb.cpp
 
 $(OUT_DIR)/zjbm31.s: zjbm31.c
 	@echo 'Building $(OUT_DIR)/zjbm31.s'
@@ -235,7 +236,7 @@ $(OUT_DIR)/zssi31.o: $(OUT_DIR)/zssi31.s
 
 $(OUT_DIR)/libzjb.so: $(OUT_DIR)/zjb.o $(OUT_DIR)/zjbm.o $(OUT_DIR)/zssi31.o $(OUT_DIR)/zjbm31.o $(OUT_DIR)/libzds.a $(OUT_DIR)/libzut.a
 	@echo 'Building $(OUT_DIR)/libzjb.so'
-	$(CXX) $(DLL_BND_FLAGS) -o $@ $^ > $*.bind.lst
+	$(CXX) $(DLL_BND_FLAGS) -o $@ $^
 
 libzjb.so: $(OUT_DIRS) $(OUT_DIR)/libzjb.so
 
@@ -249,15 +250,15 @@ libzjb.a: $(OUT_DIRS) $(OUT_DIR)/libzjb.a
 # Console
 #
 $(OUT_DIR)/zcn.o: zcn.cpp
-	$(CXX) $(DLL_CPP_FLAGS) -qlist=$*.cpp.lst -o $@ $^
+	$(CXX) $(DLL_CPP_FLAGS) -o $@ $^
 
 $(OUT_DIR_CXXLANG)/zcn.o: $(OUT_DIRS) zcn.cpp
 	@echo '$(OUT_DIR_CXXLANG)/zcn.o'
-	$(CXXLANG) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -o $@ $^
+	$(CXXLANG) $(CXXLANG_FLAGS) -o $@ zcn.cpp
 
 $(OUT_DIR_SWIG)/zcn.o: $(OUT_DIRS) zcn.cpp
 	@echo 'Building $(OUT_DIR_SWIG)/zcn.o with SWIG macro'
-	$(CXXLANG) $(SWIG_FLAGS) -qlist=$*.cpp.lst -o $@ $^
+	$(CXXLANG) $(SWIG_FLAGS) -o $@ zcn.cpp
 
 $(OUT_DIR)/zcnm.s: zcnm.c
 	$(CC) $(MTL_FLAGS64) -qlist=$*.mtl.lst $(MTL_HEADERS) -o $@ $^
@@ -273,7 +274,7 @@ $(OUT_DIR)/zcnm31.o: $(OUT_DIR)/zcnm31.s
 
 $(OUT_DIR)/libzcn.so: $(OUT_DIR)/zcn.o $(OUT_DIR)/zcnm.o $(OUT_DIR)/zcnm31.o $(OUT_DIR)/libzut.a
 	@echo 'Building $(OUT_DIR)/libzcn.so'
-	$(CXX) $(DLL_BND_FLAGS) -o $@ $^ > $*.bind.lst
+	$(CXX) $(DLL_BND_FLAGS) -o $@ $^
 
 libzcn.so: $(OUT_DIRS) $(OUT_DIR)/libzcn.so
 
@@ -288,19 +289,19 @@ libzcn.a: $(OUT_DIRS) $(OUT_DIR)/libzcn.a
 #
 $(OUT_DIR)/zusf.o: zusf.cpp
 	@echo 'Building $(OUT_DIR)/zusf.o'
-	$(CXX) $(DLL_CPP_FLAGS) -qlist=$*.cpp.lst -o $@ $^
+	$(CXX) $(DLL_CPP_FLAGS) -o $@ $^
 
 $(OUT_DIR_CXXLANG)/zusf.o: $(OUT_DIRS) zusf.cpp
 	@echo '$(OUT_DIR_CXXLANG)/zusf.o'
-	$(CXXLANG) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -o $@ $^
+	$(CXXLANG) $(CXXLANG_FLAGS) -o $@ zusf.cpp
 
 $(OUT_DIR_SWIG)/zusf.o: $(OUT_DIRS) zusf.cpp
 	@echo 'Building $(OUT_DIR_SWIG)/zusf.o with SWIG macro'
-	$(CXXLANG) $(SWIG_FLAGS) -qlist=$*.cpp.lst -o $@ $^
+	$(CXXLANG) $(SWIG_FLAGS) -o $@ zusf.cpp
 
 $(OUT_DIR)/libzusf.so: $(OUT_DIR)/zusf.o $(OUT_DIR)/libzut.a
 	@echo 'Building $(OUT_DIR)/libzusf.so'
-	$(CXX) $(DLL_BND_FLAGS) -o $@ $^ > $*.bind.lst
+	$(CXX) $(DLL_BND_FLAGS) -o $@ $^
 
 libzusf.so: $(OUT_DIRS) $(OUT_DIR)/libzusf.so
 
@@ -315,19 +316,19 @@ libzusf.a: $(OUT_DIRS) $(OUT_DIR)/libzusf.a
 #
 $(OUT_DIR)/ztso.o: ztso.cpp
 	@echo 'Building $(OUT_DIR)/ztso.o'
-	$(CXX) $(DLL_CPP_FLAGS) -qlist=$*.cpp.lst -o $@ $^
+	$(CXX) $(DLL_CPP_FLAGS) -o $@ $^
 
 $(OUT_DIR_CXXLANG)/ztso.o: $(OUT_DIRS) ztso.cpp
 	@echo '$(OUT_DIR_CXXLANG)/ztso.o'
-	$(CXXLANG) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -o $@ $^
+	$(CXXLANG) $(CXXLANG_FLAGS) -o $@ ztso.cpp
 
 $(OUT_DIR_SWIG)/ztso.o: $(OUT_DIRS) ztso.cpp
 	@echo 'Building $(OUT_DIR_SWIG)/ztso.o with SWIG macro'
-	$(CXXLANG) $(SWIG_FLAGS) -qlist=$*.cpp.lst -o $@ $^
+	$(CXXLANG) $(SWIG_FLAGS) -o $@ ztso.cpp
 
 $(OUT_DIR)/libztso.so: ztso
 	@echo 'Building $(OUT_DIR)/libztso.so'
-	$(CXX) $(DLL_BND_FLAGS) -o $@ $^ > $*.bind.lst
+	$(CXX) $(DLL_BND_FLAGS) -o $@ $^
 
 libztso.so: $(OUT_DIRS) $(OUT_DIR)/libztso.so
 
@@ -342,7 +343,7 @@ libztso.a: $(OUT_DIRS) $(OUT_DIR)/libztso.a
 $(OUT_DIR)/commands/%.o: commands/%.cpp
 	@echo 'Building $@'
 	@mkdir -p $(@D)
-	$(CXX) $(CPP_FLAGS) -qlist=$(OUT_DIR)/commands/$*.cpp.lst -c $< -o $@
+	$(CXX) $(CPP_FLAGS) -c $< -o $@
 
 #
 # Extensibility
@@ -351,7 +352,7 @@ $(OUT_DIR)/commands/%.o: commands/%.cpp
 $(OUT_DIR)/extend/plugin.o: extend/plugin.cpp
 	@echo 'Building $@'
 	@mkdir -p $(@D)
-	$(CXX) $(CPP_FLAGS) -qlist=$*.cpp.lst -c $< -o $@
+	$(CXX) $(CPP_FLAGS) -c $< -o $@
 
 #
 # Test CLI
@@ -359,13 +360,13 @@ $(OUT_DIR)/extend/plugin.o: extend/plugin.cpp
 # zowex: zowex.o zcn.o zcnm.o zcnm31.o zut.o zutm.o zutm31.o zjb.o zjbm.o zssi31.o zjbm31.o zds.o
 $(OUT_DIR)/zowex: $(OUT_DIR)/zowex.o $(OUT_DIR)/extend/plugin.o $(COMMAND_OBJS) $(OUT_DIR)/libzcn.a $(OUT_DIR)/libzut.a $(OUT_DIR)/libzjb.a $(OUT_DIR)/libzds.a $(OUT_DIR)/libzusf.a $(OUT_DIR)/libztso.a
 	@echo 'Building zowex'
-	$(CXX) $(CPP_BND_FLAGS) -o $@ $^ > $*.bind.lst
+	$(CXX) $(CPP_BND_FLAGS) -o $@ $^
 
 zowex: $(OUT_DIRS) $(OUT_DIR)/zowex
 
 $(OUT_DIR)/zoweax: $(OUT_DIR)/zowex.o $(OUT_DIR)/extend/plugin.o $(COMMAND_OBJS) $(OUT_DIR)/libzcn.a $(OUT_DIR)/libzut.a $(OUT_DIR)/libzjb.a $(OUT_DIR)/libzds.a $(OUT_DIR)/libzusf.a $(OUT_DIR)/libztso.a
 	@echo 'Building zoweax'
-	$(CXX) $(CPP_BND_FLAGS_AUTH) -o $@ $^ > $*.bind.lst
+	$(CXX) $(CPP_BND_FLAGS_AUTH) -o $@ $^
 	extattr +ap $@
 
 zoweax: $(OUT_DIRS) $(OUT_DIR)/zoweax
@@ -375,10 +376,10 @@ $(OUT_DIR)/zowex.o: zowex.cpp
 	@if [ -f ../package.json ]; then \
 		PACKAGE_VERSION=$$(grep '"version"' ../package.json | sed 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/'); \
 		echo "Extracted version: $$PACKAGE_VERSION"; \
-		$(CXX) $(CPP_FLAGS) -DPACKAGE_VERSION="\"$$PACKAGE_VERSION\"" -qlist=$*.cpp.lst -c $^ -o $@; \
+		$(CXX) $(CPP_FLAGS) -DPACKAGE_VERSION="\"$$PACKAGE_VERSION\"" -c $^ -o $@; \
 	else \
 		echo "package.json not found, building without version"; \
-		$(CXX) $(CPP_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@; \
+		$(CXX) $(CPP_FLAGS) -c $^ -o $@; \
 	fi
 
 #
@@ -399,5 +400,5 @@ clean:
 	rm -f CEEDUMP.*
 	rm -rf $(OUT_DIR)
 
-# Include auto-generated dependency files for xlclang
+# Include auto-generated dependency files for ibm-clang
 .INCLUDE .IGNORE: $(XLCLANG_EXTENDER_OBJS:.o=.d) $(SWIG_EXTENDER_OBJS:.o=.d)

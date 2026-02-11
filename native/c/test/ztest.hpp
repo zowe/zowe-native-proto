@@ -233,7 +233,7 @@ private:
     sa.sa_sigaction = signal_handler;
     sa.sa_flags = SA_SIGINFO;
 
-#if defined(__IBMCPP__) || defined(__IBMC__)
+#if defined(__MVS__)
     sigaction(SIGABND, &sa, NULL);
 #endif
     sigaction(SIGABRT, &sa, NULL);
@@ -244,7 +244,7 @@ private:
   {
     sa.sa_flags = 0;
     sa.sa_handler = SIG_DFL;
-#if defined(__IBMCPP__) || defined(__IBMC__)
+#if defined(__MVS__)
     sigaction(SIGABND, &sa, NULL);
 #endif
     sigaction(SIGABRT, &sa, NULL);

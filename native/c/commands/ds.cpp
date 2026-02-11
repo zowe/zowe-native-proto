@@ -9,6 +9,10 @@
  *
  */
 
+#ifndef _OPEN_SYS_FILE_EXT
+#define _OPEN_SYS_FILE_EXT 1
+#endif
+
 #include "ds.hpp"
 #include "common_args.hpp"
 #include "../zds.hpp"
