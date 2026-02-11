@@ -114,34 +114,18 @@ struct ZDSTypeInfo
 };
 
 /**
- * @brief Get detailed type and existence information for a data set string
- *
- * @param dsn data set name string (possibly with member)
- * @param info populated type info structure
- * @return int 0 for success; non zero otherwise
- */
-int zds_get_type_info(const std::string &dsn, ZDSTypeInfo &info);
-
-/**
  * @brief Copy a data set or member
  *
  * @param zds data set returned attributes and error information
  * @param dsn1 source data set name
  * @param dsn2 destination data set name
  * @param replace if true, replace like-named members in target (for PDS copy)
+ * @param target_created optional output: set to true if target data set was created
+ * @param member_created optional output: set to true if target member was created
  * @return int 0 for success; non zero otherwise
  */
-int zds_copy_dsn(ZDS *zds, const std::string &dsn1, const std::string &dsn2, bool replace = false, bool overwrite = false,
+int zds_copy_dsn(ZDS *zds, const std::string &dsn1, const std::string &dsn2, bool replace = false,
                  bool *target_created = nullptr, bool *member_created = nullptr);
-
-/**
- * @brief Compress a PDS data set
- *
- * @param zds data set returned attributes and error information
- * @param dsn data set name to compress
- * @return int 0 for success; non zero otherwise
- */
-int zds_compress_dsn(ZDS *zds, const std::string &dsn);
 
 /**
  * @brief Check if a data set exists

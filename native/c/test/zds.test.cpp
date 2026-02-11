@@ -27,7 +27,9 @@ struct DataSetTestContextBase
 {
   vector<string> &cleanup_list;
 
-  explicit DataSetTestContextBase(vector<string> &list) : cleanup_list(list) {}
+  explicit DataSetTestContextBase(vector<string> &list) : cleanup_list(list)
+  {
+  }
 
   void create_pds_at(const string &dsn)
   {
@@ -62,11 +64,26 @@ struct CopyTestContext : DataSetTestContextBase
     cleanup_list.push_back(target_dsn);
   }
 
-  void create_source_pds() { create_pds_at(source_dsn); }
-  void create_source_pdse() { create_pdse_at(source_dsn); }
-  void create_source_seq() { create_seq_at(source_dsn); }
-  void create_target_pds() { create_pds_at(target_dsn); }
-  void create_target_seq() { create_seq_at(target_dsn); }
+  void create_source_pds()
+  {
+    create_pds_at(source_dsn);
+  }
+  void create_source_pdse()
+  {
+    create_pdse_at(source_dsn);
+  }
+  void create_source_seq()
+  {
+    create_seq_at(source_dsn);
+  }
+  void create_target_pds()
+  {
+    create_pds_at(target_dsn);
+  }
+  void create_target_seq()
+  {
+    create_seq_at(target_dsn);
+  }
 
   void write_source_member(const string &member, const string &data)
   {
@@ -128,53 +145,6 @@ struct CopyTestContext : DataSetTestContextBase
         return true;
     }
     return false;
-  }
-};
-
-struct CompressTestContext : DataSetTestContextBase
-{
-  string pds_dsn;
-
-  explicit CompressTestContext(vector<string> &list) : DataSetTestContextBase(list)
-  {
-    pds_dsn = get_random_ds(3);
-    cleanup_list.push_back(pds_dsn);
-  }
-
-  void create_pds() { create_pds_at(pds_dsn); }
-  void create_pdse() { create_pdse_at(pds_dsn); }
-  void create_seq() { create_seq_at(pds_dsn); }
-  void write_member(const string &member, const string &data)
-  {
-    write_to_dsn(pds_dsn + "(" + member + ")", data);
-  }
-
-  // Check if system actually created a PDS (some systems override DSNTYPE via SMS)
-  bool is_actual_pds()
-  {
-    ZDS zds = {0};
-    vector<ZDSEntry> entries;
-    int rc = zds_list_data_sets(&zds, pds_dsn, entries, true);
-    if (rc != 0 || entries.empty())
-    {
-      TestLog("is_actual_pds: list failed or empty, rc=" + to_string(rc));
-      return false;
-    }
-    string dsntype = entries[0].dsntype;
-    TestLog("is_actual_pds: dsntype='" + dsntype + "' dsorg='" + entries[0].dsorg + "'");
-    // Check for both dsntype and dsorg to be safe
-    return dsntype == "PDS" && entries[0].dsorg != "POE";
-  }
-
-  int compress()
-  {
-    ZDS z = {0};
-    return zds_compress_dsn(&z, pds_dsn);
-  }
-
-  int compress_with_context(ZDS &z)
-  {
-    return zds_compress_dsn(&z, pds_dsn);
   }
 };
 
@@ -711,101 +681,6 @@ void zds_tests()
                            });
                       });
 
-             // IEBCOPY invoked via ZUTRUN (LOAD/CALL) can 0C4 on some systems
-             describe("compress",
-                      [&]() -> void
-                      {
-                        it("should compress a PDS",
-                           [&]() -> void
-                           {
-                             CompressTestContext tc(created_dsns);
-                             tc.create_pds();
-                             if (!tc.is_actual_pds())
-                             {
-                               TestLog("Skipping - system created PDSE instead of PDS (SMS override)");
-                               return;
-                             }
-                             tc.write_member("MEM1", "Data 1");
-                             tc.write_member("MEM2", "Data 2");
-                             Expect(tc.compress()).ToBe(0);
-                           });
-
-                        it("should compress PDS with multiple members",
-                           [&]() -> void
-                           {
-                             CompressTestContext tc(created_dsns);
-                             tc.create_pds();
-                             if (!tc.is_actual_pds())
-                             {
-                               TestLog("Skipping - system created PDSE instead of PDS (SMS override)");
-                               return;
-                             }
-                             for (int i = 1; i <= 5; i++)
-                               tc.write_member("MEM" + to_string(i), "Data " + to_string(i));
-                             Expect(tc.compress()).ToBe(0);
-                           });
-
-                        it("should compress empty PDS",
-                           [&]() -> void
-                           {
-                             CompressTestContext tc(created_dsns);
-                             tc.create_pds();
-                             if (!tc.is_actual_pds())
-                             {
-                               TestLog("Skipping - system created PDSE instead of PDS (SMS override)");
-                               return;
-                             }
-                             Expect(tc.compress()).ToBe(0);
-                           });
-
-                        it("should fail when compressing a sequential data set",
-                           [&]() -> void
-                           {
-                             CompressTestContext tc(created_dsns);
-                             tc.create_seq();
-                             ZDS z = {0};
-                             Expect(tc.compress_with_context(z)).Not().ToBe(0);
-                             Expect(string(z.diag.e_msg)).ToContain("not a PDS");
-                           });
-
-                        it("should fail when compressing a PDSE",
-                           [&]() -> void
-                           {
-                             CompressTestContext tc(created_dsns);
-                             tc.create_pdse();
-                             ZDS z = {0};
-                             Expect(tc.compress_with_context(z)).Not().ToBe(0);
-                             Expect(string(z.diag.e_msg).length()).ToBeGreaterThan(0);
-                           });
-
-                        it("should fail when compressing nonexistent data set",
-                           []() -> void
-                           {
-                             ZDS z = {0};
-                             Expect(zds_compress_dsn(&z, "NONEXISTENT.DATASET.NAME")).Not().ToBe(0);
-                             Expect(string(z.diag.e_msg)).ToContain("not a PDS");
-                           });
-
-                        it("should preserve member content after compression",
-                           [&]() -> void
-                           {
-                             CompressTestContext tc(created_dsns);
-                             tc.create_pds();
-                             if (!tc.is_actual_pds())
-                             {
-                               TestLog("Skipping - system created PDSE instead of PDS (SMS override)");
-                               return;
-                             }
-                             string test_data = "Test data for compression";
-                             tc.write_member("MEMBER", test_data);
-                             Expect(tc.compress()).ToBe(0);
-
-                             string read_data;
-                             ZDS z = {0};
-                             zds_read_from_dsn(&z, tc.pds_dsn + "(MEMBER)", read_data);
-                             Expect(read_data).ToContain(test_data);
-                           });
-                      });
              describe("rename",
                       [&]() -> void
                       {
