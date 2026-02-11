@@ -54,21 +54,6 @@ vector<ZJob> list_jobs_by_owner(string owner_name)
   return jobs;
 }
 
-// vector<ZJob> list_jobs_by_owner(string owner_name, string prefix)
-// {
-//   vector<ZJob> jobs;
-//   ZJB zjb = {0};
-
-//   a2e_inplace(owner_name);
-//   a2e_inplace(prefix);
-//   int rc = zjb_list_by_owner(&zjb, owner_name, prefix, jobs);
-
-//   handle_zjb_error(zjb, rc);
-//   convert_jobs_to_ascii(jobs);
-
-//   return jobs;
-// }
-
 vector<ZJob> list_jobs_by_owner(string owner_name, string prefix, string status)
 {
   vector<ZJob> jobs;
