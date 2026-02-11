@@ -21,12 +21,14 @@
 #include <time.h>
 
 #include "ztest.hpp"
-#include "zusf.hpp"
+#include "../zusf.hpp"
 #include "ztype.h"
 #include "zutils.hpp"
 
 using namespace std;
 using namespace ztst;
+
+const string zusf_test_dir = "/tmp/zusf_test_dir_" + get_random_string(10);
 
 void zusf_tests()
 {
@@ -1430,27 +1432,48 @@ void zusf_tests()
                 {
                   int result = zusf_move_uss_file_or_dir(&zusf, "", "");
                   Expect(result).ToBe(RTNCD_FAILURE);
-                  Expect(string(zusf.diag.e_msg)).ToContain("Source or destination is empty");
+                  Expect(string(zusf.diag.e_msg)).ToContain("Source or target is empty");
 
-                  result = zusf_move_uss_file_or_dir(&zusf, "/tmp/test_move_dir/test_file.txt", "");
+                  result = zusf_move_uss_file_or_dir(&zusf, "test_file.txt", "");
                   Expect(result).ToBe(RTNCD_FAILURE);
-                  Expect(string(zusf.diag.e_msg)).ToContain("Source or destination is empty");
+                  Expect(string(zusf.diag.e_msg)).ToContain("Source or target is empty");
+
+                  result = zusf_move_uss_file_or_dir(&zusf, "", "test_file.txt");
+                  Expect(result).ToBe(RTNCD_FAILURE);
+                  Expect(string(zusf.diag.e_msg)).ToContain("Source or target is empty");
                 });
 
              it("should fail when source does not exist",
                 [&]() -> void
                 {
-                  int result = zusf_move_uss_file_or_dir(&zusf, "/tmp/nonexistent_file.txt", "/tmp/test_move_dir/test_file.txt");
+                  int result = zusf_move_uss_file_or_dir(&zusf, "nonexistent_file.txt", "test_file.txt");
                   Expect(result).ToBe(RTNCD_FAILURE);
                   Expect(string(zusf.diag.e_msg)).ToContain("Source path '/tmp/nonexistent_file.txt' does not exist");
                 });
 
-             it("should return early with success when source and destination are the same",
+             it("should return early with success when source and target are the same",
                 [&]() -> void
                 {
-                  int result = zusf_move_uss_file_or_dir(&zusf, "/tmp/test_move_dir/test_file.txt", "/tmp/test_move_dir/test_file.txt");
+                  int result = zusf_move_uss_file_or_dir(&zusf, "test_file.txt", "test_file.txt");
                   Expect(result).ToBe(RTNCD_SUCCESS);
-                  Expect(string(zusf.diag.e_msg)).ToContain("Source and destination are the same");
+                  Expect(string(zusf.diag.e_msg)).ToContain("Source 'test_file.txt' and target 'test_file.txt' are identical");
+                });
+
+             it("should fail when source is a directory and target is not a directory",
+                [&]() -> void
+                {
+                  string target = get_random_uss(zusf_test_dir);
+
+                  mkdir(zusf_test_dir.c_str(), 0755);
+                  ofstream file(target);
+                  file.close();
+
+                  int result = zusf_move_uss_file_or_dir(&zusf, zusf_test_dir, target);
+                  Expect(result).ToBe(RTNCD_FAILURE);
+                  Expect(string(zusf.diag.e_msg)).ToContain("Cannot move directory '" + zusf_test_dir + "'. Target '" + target + "' is not a directory");
+
+                  rmdir(zusf_test_dir.c_str());
+                  unlink(target.c_str());
                 });
            });
 }

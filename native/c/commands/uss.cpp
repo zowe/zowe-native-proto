@@ -518,6 +518,7 @@ void register_commands(parser::Command &root_command)
 
   // Move subcommand
   auto uss_move_cmd = command_ptr(new Command("move", "move a USS file or directory"));
+  uss_move_cmd->add_alias("mv");
   uss_move_cmd->add_positional_arg("source", "source path", ArgType_Single, true);
   uss_move_cmd->add_positional_arg("target", "target path", ArgType_Single, true);
   uss_move_cmd->add_keyword_arg("force", make_aliases("--force", "-f"), "force overwrite", ArgType_Flag, false, ArgValue(true));

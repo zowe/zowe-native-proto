@@ -927,7 +927,7 @@ int zusf_create_uss_file_or_dir(ZUSF *zusf, const string &file, mode_t mode, boo
   return RTNCD_FAILURE;
 }
 
-int zusf_move_uss_file_or_dir(ZUSF *zusf, const string &source, const string &target, bool force = true)
+int zusf_move_uss_file_or_dir(ZUSF *zusf, const string &source, const string &target, bool force)
 {
   // check if source or target is empty
   if (source.empty() || target.empty())
@@ -946,18 +946,15 @@ int zusf_move_uss_file_or_dir(ZUSF *zusf, const string &source, const string &ta
 
   // resolve paths
   char resolved_source[1024]; // PATH_MAX = 1024 is defined in limits.h, but not in xlc
-  char resolved_target[1024]; // PATH_MAX = 1024 is defined in limits.h, but not in xlc
   if (realpath(source.c_str(), resolved_source) == nullptr)
   {
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to resolve source path '%s'", source.c_str());
     return RTNCD_FAILURE;
   }
-  // auto is_symlink =[&](const string &path) -> bool
-  // {
-  //   char destination[1024]; // PATH_MAX = 1024 is defined in limits.h, but not in xlc
-  //   return readlink(path.c_str(), destination, sizeof(destination)) != -1;
-  // };
-  // bool source_is_symlink = is_symlink(source);
+
+  // target related variables
+  char resolved_target[1024]; // PATH_MAX = 1024 is defined in limits.h, but not in xlc
+  bool target_is_dir = false;
 
   // check if target exists
   struct stat target_stats;
@@ -984,8 +981,9 @@ int zusf_move_uss_file_or_dir(ZUSF *zusf, const string &source, const string &ta
       return RTNCD_FAILURE;
     }
 
+    target_is_dir = S_ISDIR(target_stats.st_mode);
     // check if source is a directory and target is not
-    if (S_ISDIR(source_stats.st_mode) && !S_ISDIR(target_stats.st_mode))
+    if (S_ISDIR(source_stats.st_mode) && !target_is_dir)
     {
       zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Cannot move directory '%s'. Target '%s' is not a directory", source.c_str(), target.c_str());
       return RTNCD_FAILURE;
@@ -999,7 +997,14 @@ int zusf_move_uss_file_or_dir(ZUSF *zusf, const string &source, const string &ta
     }
   }
 
-  if (rename(source.c_str(), target.c_str()) == -1)
+  // handle target being a folder, which means we have to "move" contents around
+  string new_target = target;
+  if (target_is_dir)
+  {
+    new_target = zusf_join_path(resolved_target, source.substr(source.find_last_of("/") + 1));
+  }
+
+  if (rename(source.c_str(), new_target.c_str()) == -1)
   {
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to move file or directory from '%s' to '%s'", source.c_str(), target.c_str());
     return RTNCD_FAILURE;
