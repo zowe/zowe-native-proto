@@ -12,24 +12,10 @@
 #include "zjb_py.hpp"
 #include <iostream>
 
-std::vector<ZJob> list_jobs_by_owner(std::string owner_name)
+using namespace std;
+
+void convert_jobs_to_ascii(vector<ZJob> &jobs)
 {
-  std::vector<ZJob> jobs;
-  ZJB zjb = {0};
-
-  a2e_inplace(owner_name);
-  int rc = zjb_list_by_owner(&zjb, owner_name, "", jobs);
-
-  if (rc != 0 && rc != RTNCD_WARNING)
-  {
-    std::string diag(zjb.diag.e_msg, zjb.diag.e_msg_len);
-    diag.push_back('\0');
-    e2a_inplace(diag);
-    diag.pop_back();
-    std::cerr << "ZJB list_jobs_by_owner failed, rc=" << rc
-              << ", diag=\"" << diag << "\"\n";
-  }
-
   for (auto &job : jobs)
   {
     e2a_inplace(job.jobname);
@@ -40,19 +26,10 @@ std::vector<ZJob> list_jobs_by_owner(std::string owner_name)
     e2a_inplace(job.retcode);
     e2a_inplace(job.correlator);
   }
-
-  return jobs;
 }
 
-std::vector<ZJob> list_jobs_by_owner(std::string owner_name, std::string prefix)
+void handle_zjb_error(const ZJB &zjb, int rc)
 {
-  std::vector<ZJob> jobs;
-  ZJB zjb = {0};
-
-  a2e_inplace(owner_name);
-  a2e_inplace(prefix);
-  int rc = zjb_list_by_owner(&zjb, owner_name, prefix, jobs);
-
   if (rc != 0)
   {
     std::string diag(zjb.diag.e_msg, zjb.diag.e_msg_len);
@@ -61,22 +38,54 @@ std::vector<ZJob> list_jobs_by_owner(std::string owner_name, std::string prefix)
     diag.pop_back();
     throw std::runtime_error(diag);
   }
+}
 
-  for (auto &job : jobs)
-  {
-    e2a_inplace(job.jobname);
-    e2a_inplace(job.jobid);
-    e2a_inplace(job.owner);
-    e2a_inplace(job.status);
-    e2a_inplace(job.full_status);
-    e2a_inplace(job.retcode);
-    e2a_inplace(job.correlator);
-  }
+vector<ZJob> list_jobs_by_owner(string owner_name)
+{
+  vector<ZJob> jobs;
+  ZJB zjb = {0};
+
+  a2e_inplace(owner_name);
+  int rc = zjb_list_by_owner(&zjb, owner_name, "", jobs);
+
+  handle_zjb_error(zjb, rc);
+  convert_jobs_to_ascii(jobs);
 
   return jobs;
 }
 
-ZJob get_job_status(std::string jobid)
+vector<ZJob> list_jobs_by_owner(string owner_name, string prefix)
+{
+  vector<ZJob> jobs;
+  ZJB zjb = {0};
+
+  a2e_inplace(owner_name);
+  a2e_inplace(prefix);
+  int rc = zjb_list_by_owner(&zjb, owner_name, prefix, jobs);
+
+  handle_zjb_error(zjb, rc);
+  convert_jobs_to_ascii(jobs);
+
+  return jobs;
+}
+
+vector<ZJob> list_jobs_by_owner(string owner_name, string prefix, string status)
+{
+  vector<ZJob> jobs;
+  ZJB zjb = {0};
+
+  a2e_inplace(owner_name);
+  a2e_inplace(prefix);
+  a2e_inplace(status);
+  int rc = zjb_list_by_owner(&zjb, owner_name, prefix, status, jobs);
+
+  handle_zjb_error(zjb, rc);
+  convert_jobs_to_ascii(jobs);
+
+  return jobs;
+}
+
+ZJob get_job_status(string jobid)
 {
   ZJob job = {0};
   ZJB zjb = {0};
@@ -84,42 +93,22 @@ ZJob get_job_status(std::string jobid)
   a2e_inplace(jobid);
   int rc = zjb_view(&zjb, jobid, job);
 
-  if (rc != 0)
-  {
-    std::string diag(zjb.diag.e_msg, zjb.diag.e_msg_len);
-    diag.push_back('\0');
-    e2a_inplace(diag);
-    diag.pop_back();
-    throw std::runtime_error(diag);
-  }
-
-  e2a_inplace(job.jobname);
-  e2a_inplace(job.jobid);
-  e2a_inplace(job.owner);
-  e2a_inplace(job.status);
-  e2a_inplace(job.full_status);
-  e2a_inplace(job.retcode);
-  e2a_inplace(job.correlator);
+  handle_zjb_error(zjb, rc);
+  vector<ZJob> jobs = {job};
+  convert_jobs_to_ascii(jobs);
 
   return job;
 }
 
-std::vector<ZJobDD> list_spool_files(std::string jobid)
+vector<ZJobDD> list_spool_files(string jobid)
 {
-  std::vector<ZJobDD> jobDDs;
+  vector<ZJobDD> jobDDs;
   ZJB zjb = {0};
 
   a2e_inplace(jobid);
   int rc = zjb_list_dds(&zjb, jobid, jobDDs);
 
-  if (rc != 0)
-  {
-    std::string diag(zjb.diag.e_msg, zjb.diag.e_msg_len);
-    diag.push_back('\0');
-    e2a_inplace(diag);
-    diag.pop_back();
-    throw std::runtime_error(diag);
-  }
+  handle_zjb_error(zjb, rc);
 
   for (auto &dd : jobDDs)
   {
@@ -133,85 +122,55 @@ std::vector<ZJobDD> list_spool_files(std::string jobid)
   return jobDDs;
 }
 
-std::string read_spool_file(std::string jobid, int key)
+string read_spool_file(string jobid, int key)
 {
-  std::string response;
+  string response;
   ZJB zjb = {0};
 
   a2e_inplace(jobid);
   int rc = zjb_read_jobs_output_by_key(&zjb, jobid, key, response);
 
-  if (rc != 0)
-  {
-    std::string diag(zjb.diag.e_msg, zjb.diag.e_msg_len);
-    diag.push_back('\0');
-    e2a_inplace(diag);
-    diag.pop_back();
-    throw std::runtime_error(diag);
-  }
-
+  handle_zjb_error(zjb, rc);
   e2a_inplace(response);
 
   return response;
 }
 
-std::string get_job_jcl(std::string jobid)
+string get_job_jcl(string jobid)
 {
-  std::string response;
+  string response;
   ZJB zjb = {0};
 
   a2e_inplace(jobid);
   int rc = zjb_read_job_jcl(&zjb, jobid, response);
 
-  if (rc != 0)
-  {
-    std::string diag(zjb.diag.e_msg, zjb.diag.e_msg_len);
-    diag.push_back('\0');
-    e2a_inplace(diag);
-    diag.pop_back();
-    throw std::runtime_error(diag);
-  }
-
+  handle_zjb_error(zjb, rc);
   e2a_inplace(response);
 
   return response;
 }
 
-std::string submit_job(std::string jcl_content)
+string submit_job(string jcl_content)
 {
-  std::string jobid;
+  string jobid;
   ZJB zjb = {0};
 
   a2e_inplace(jcl_content);
   int rc = zjb_submit(&zjb, jcl_content, jobid);
 
-  if (rc != 0)
-  {
-    std::string diag(zjb.diag.e_msg, zjb.diag.e_msg_len);
-    diag.push_back('\0');
-    e2a_inplace(diag);
-    diag.pop_back();
-    throw std::runtime_error(diag);
-  }
+  handle_zjb_error(zjb, rc);
   e2a_inplace(jobid);
   return jobid;
 }
 
-bool delete_job(std::string jobid)
+bool delete_job(string jobid)
 {
   ZJB zjb = {0};
 
   a2e_inplace(jobid);
   int rc = zjb_delete(&zjb, jobid);
 
-  if (rc != 0)
-  {
-    std::string diag(zjb.diag.e_msg, zjb.diag.e_msg_len);
-    diag.push_back('\0');
-    e2a_inplace(diag);
-    diag.pop_back();
-    throw std::runtime_error(diag);
-  }
+  handle_zjb_error(zjb, rc);
 
   return true;
 }

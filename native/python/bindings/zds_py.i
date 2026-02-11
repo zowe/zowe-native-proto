@@ -39,7 +39,7 @@ struct ZDSEntry {
 	std::string dsorg;
 	std::string volser;
 	std::string recfm;
-	bool migr;
+	bool migrated;
 };
 
 struct ZDSMem {

@@ -20,6 +20,7 @@
 
 std::vector<ZJob> list_jobs_by_owner(std::string owner_name);
 std::vector<ZJob> list_jobs_by_owner(std::string owner_name, std::string prefix);
+std::vector<ZJob> list_jobs_by_owner(std::string owner_name, std::string prefix, std::string status);
 
 ZJob get_job_status(std::string jobid);
 
