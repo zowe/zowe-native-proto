@@ -198,7 +198,9 @@ static int zds_get_type_info(const string &dsn, ZDSTypeInfo &info)
 
 static int copy_sequential(ZDS *zds, const string &src_dsn, const string &dst_dsn);
 
-// PDS-to-PDS copy by copying each member with binary I/O (avoids IEBCOPY LOAD/call 0C4)
+// PDS-to-PDS copy using member-by-member binary I/O.
+// This approach provides granular control for --replace semantics (skip/overwrite individual members)
+// and naturally supports --delete-target-members workflow.
 static int copy_pds_to_pds(ZDS *zds, const ZDSTypeInfo &src, const ZDSTypeInfo &dst, bool replace)
 {
   vector<string> src_members = get_member_names(src.base_dsn);
@@ -1595,7 +1597,7 @@ int zds_create_dsn_fb(ZDS *zds, const string &dsn, string &response)
   attributes.lrecl = 80;
   attributes.recfm = "F,B";
   attributes.dirblk = 5;
-  attributes.dsntype = "LIBRARY";
+  attributes.dsntype = ZDS_DSNTYPE_LIBRARY;
   return zds_create_dsn(zds, dsn, attributes, response);
 }
 
@@ -1611,7 +1613,7 @@ int zds_create_dsn_vb(ZDS *zds, const string &dsn, string &response)
   attributes.lrecl = 255;
   attributes.recfm = "V,B";
   attributes.dirblk = 5;
-  attributes.dsntype = "LIBRARY";
+  attributes.dsntype = ZDS_DSNTYPE_LIBRARY;
   return zds_create_dsn(zds, dsn, attributes, response);
 }
 
@@ -1628,7 +1630,7 @@ int zds_create_dsn_adata(ZDS *zds, const string &dsn, string &response)
   attributes.blksize = 32760;
   attributes.recfm = "V,B";
   attributes.dirblk = 5;
-  attributes.dsntype = "LIBRARY";
+  attributes.dsntype = ZDS_DSNTYPE_LIBRARY;
   return zds_create_dsn(zds, dsn, attributes, response);
 }
 
@@ -1645,7 +1647,7 @@ int zds_create_dsn_loadlib(ZDS *zds, const string &dsn, string &response)
   attributes.blksize = 32760;
   attributes.recfm = "U";
   attributes.dirblk = 5;
-  attributes.dsntype = "LIBRARY";
+  attributes.dsntype = ZDS_DSNTYPE_LIBRARY;
   return zds_create_dsn(zds, dsn, attributes, response);
 }
 
@@ -2248,11 +2250,11 @@ void load_general_attrs_from_dscb(const DSCBFormat1 *dscb, ZDSEntry &entry)
 
   if (is_partitioned && is_pdse)
   {
-    entry.dsntype = "LIBRARY";
+    entry.dsntype = ZDS_DSNTYPE_LIBRARY;
   }
   else if (is_partitioned)
   {
-    entry.dsntype = "PDS";
+    entry.dsntype = ZDS_DSNTYPE_PDS;
   }
   else
   {

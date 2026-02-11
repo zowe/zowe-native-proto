@@ -151,22 +151,11 @@ void zowex_ds_tests()
                            [&]() -> void
                            {
                              string ds = _ds.back();
-                             _create_ds(ds, "--dsorg PO --dirblk 2 --dsntype PDS");
+                             _create_ds(ds, "--dsorg PO --dirblk 2");
 
-                             // Verify the data set was created as PDS (not PDSE) - some systems override DSNTYPE
                              string response;
-                             string command = zowex_command + " data-set list " + ds + " -a --rfc";
+                             string command = zowex_command + " data-set compress " + ds;
                              int rc = execute_command_with_output(command, response);
-                             ExpectWithContext(rc, response).ToBe(0);
-                             vector<string> tokens = parse_rfc_response(response, ",");
-                             if (tokens[9] != "PDS")
-                             {
-                               TestLog("Skipping compress test - system created PDSE instead of PDS (SMS override)");
-                               return; // Skip test on systems that don't honor DSNTYPE(PDS)
-                             }
-
-                             command = zowex_command + " data-set compress " + ds;
-                             rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain("Data set");
                              Expect(response).ToContain("compressed");
