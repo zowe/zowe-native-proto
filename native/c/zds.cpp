@@ -107,6 +107,26 @@ string zds_get_recfm(const fldata_t &file_info)
   return recfm;
 }
 
+// Internal enum for data set type classification (used only by copy functions)
+enum ZDS_TYPE
+{
+  ZDS_TYPE_UNKNOWN = 0,
+  ZDS_TYPE_PS,     // Sequential
+  ZDS_TYPE_PDS,    // Partitioned (including PDSE)
+  ZDS_TYPE_MEMBER, // Member of a PDS
+  ZDS_TYPE_VSAM    // VSAM
+};
+
+// Internal struct for data set type information (used only by copy functions)
+struct ZDSTypeInfo
+{
+  bool exists;
+  ZDS_TYPE type;
+  string base_dsn;
+  string member_name;
+  ZDSEntry entry; // Basic attributes if it exists
+};
+
 static vector<string> get_member_names(const string &pds_dsn)
 {
   vector<string> names;

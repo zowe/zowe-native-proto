@@ -95,24 +95,6 @@ extern "C"
 {
 #endif
 
-enum ZDS_TYPE
-{
-  ZDS_TYPE_UNKNOWN = 0,
-  ZDS_TYPE_PS,     // Sequential
-  ZDS_TYPE_PDS,    // Partitioned (including PDSE)
-  ZDS_TYPE_MEMBER, // Member of a PDS
-  ZDS_TYPE_VSAM    // VSAM
-};
-
-struct ZDSTypeInfo
-{
-  bool exists;
-  ZDS_TYPE type;
-  std::string base_dsn;
-  std::string member_name;
-  ZDSEntry entry; // Basic attributes if it exists
-};
-
 /**
  * @brief Copy a data set or member
  *
