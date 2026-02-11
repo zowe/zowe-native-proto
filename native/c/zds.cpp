@@ -259,7 +259,25 @@ static int copy_sequential(ZDS *zds, const string &src_dsn, const string &dst_ds
   return RTNCD_SUCCESS;
 }
 
-int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2, bool replace, bool *target_created, bool *member_created)
+// Delete all members from a PDS
+static int delete_all_members(ZDS *zds, const string &pds_dsn)
+{
+  vector<string> members = get_member_names(pds_dsn);
+  for (size_t i = 0; i < members.size(); i++)
+  {
+    string member_dsn = pds_dsn + "(" + members[i] + ")";
+    int rc = zds_delete_dsn(zds, member_dsn);
+    if (rc != RTNCD_SUCCESS)
+    {
+      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to delete member '%s'", member_dsn.c_str());
+      return RTNCD_FAILURE;
+    }
+  }
+  return RTNCD_SUCCESS;
+}
+
+int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2, bool replace, bool delete_target_members,
+                 bool *target_created, bool *member_created)
 {
   int rc = 0;
   if (NULL != target_created)
@@ -389,9 +407,20 @@ int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2, bool replace,
   bool same_pds = (info1.type == ZDS_TYPE_MEMBER && target_is_member &&
                    info1.base_dsn == info2.base_dsn);
 
+  // Delete all target members if requested (only for PDS-to-PDS copy)
+  if (delete_target_members && is_pds_full_copy && target_base_exists)
+  {
+    rc = delete_all_members(zds, info2.base_dsn);
+    if (rc != RTNCD_SUCCESS)
+    {
+      return rc;
+    }
+  }
+
   if (is_pds_full_copy)
   {
-    return copy_pds_to_pds(zds, info1, info2, replace);
+    // When delete_target_members is used, always replace since target is now empty
+    return copy_pds_to_pds(zds, info1, info2, replace || delete_target_members);
   }
   else
   {

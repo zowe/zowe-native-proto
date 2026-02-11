@@ -828,11 +828,12 @@ int handle_data_set_copy(InvocationContext &context)
   string source = context.get<string>("source", "");
   string target = context.get<string>("target", "");
   bool replace = context.get<bool>("replace", false);
+  bool delete_target_members = context.get<bool>("delete-target-members", false);
 
   ZDS zds = {};
   bool target_created = false;
   bool member_created = false;
-  int rc = zds_copy_dsn(&zds, source, target, replace, &target_created, &member_created);
+  int rc = zds_copy_dsn(&zds, source, target, replace, delete_target_members, &target_created, &member_created);
 
   if (rc != RTNCD_SUCCESS)
   {
@@ -851,6 +852,10 @@ int handle_data_set_copy(InvocationContext &context)
   else if (member_created)
   {
     context.output_stream() << "New member '" << target << "' created and copied from '" << source << "'" << endl;
+  }
+  else if (delete_target_members)
+  {
+    context.output_stream() << "Target members deleted and data set '" << target << "' replaced with contents of '" << source << "'" << endl;
   }
   else if (replace)
   {
@@ -1007,6 +1012,9 @@ void register_commands(parser::Command &root_command)
   ds_copy_cmd->add_positional_arg("target", "target data set to copy to", ArgType_Single, true);
   ds_copy_cmd->add_keyword_arg("replace", make_aliases("--replace", "-r"),
                                "replace matching members in target PDS with source members (keeps non-matching target members)",
+                               ArgType_Flag, false, ArgValue(false));
+  ds_copy_cmd->add_keyword_arg("delete-target-members", make_aliases("--delete-target-members", "-d"),
+                               "delete all members from target PDS before copying (PDS-to-PDS copy only, makes target match source exactly)",
                                ArgType_Flag, false, ArgValue(false));
   ds_copy_cmd->set_handler(handle_data_set_copy);
   data_set_cmd->add_command(ds_copy_cmd);

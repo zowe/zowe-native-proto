@@ -120,12 +120,13 @@ struct ZDSTypeInfo
  * @param dsn1 source data set name
  * @param dsn2 destination data set name
  * @param replace if true, replace like-named members in target (for PDS copy)
+ * @param delete_target_members if true, delete all members from target PDS before copying (PDS-to-PDS only)
  * @param target_created optional output: set to true if target data set was created
  * @param member_created optional output: set to true if target member was created
  * @return int 0 for success; non zero otherwise
  */
 int zds_copy_dsn(ZDS *zds, const std::string &dsn1, const std::string &dsn2, bool replace = false,
-                 bool *target_created = nullptr, bool *member_created = nullptr);
+                 bool delete_target_members = false, bool *target_created = nullptr, bool *member_created = nullptr);
 
 /**
  * @brief Check if a data set exists
