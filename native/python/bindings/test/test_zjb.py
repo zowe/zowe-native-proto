@@ -61,7 +61,7 @@ class TestJobFunctions:
         prefix = "TSO"  # Common job prefix
         
         # List jobs with prefix filter
-        jobs = jb.list_jobs_by_owner(self.OWNER, prefix)
+        jobs = jb.list_jobs_by_owner(self.OWNER, prefix, "")
         
         # Verify response structure
         # assert isinstance(jobs, (list, jb.ZJobVector))
