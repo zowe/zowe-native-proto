@@ -800,7 +800,7 @@ int handle_data_set_copy(InvocationContext &context)
   {
     context.output_stream() << "Data set '" << source << "' copied to '" << target << "'" << endl;
   }
-  context.set_object(result);
+  static_cast<void>(context.set_object(result));
   return RTNCD_SUCCESS;
 }
 
