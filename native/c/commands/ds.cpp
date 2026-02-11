@@ -714,7 +714,7 @@ int handle_rename_member(InvocationContext &context)
   ZDS zds = {};
 
   rc = zds_rename_members(&zds, dsname, member_before, member_after);
-  std::string source_member = "//'" + dsname + "(" + member_before + ")'";
+  std::string source_member = dsname + "(" + member_before + ")";
   if (0 != rc)
   {
     context.error_stream() << "Error: Could not rename member: '" << source_member << "' rc: '" << rc << "'" << endl;
