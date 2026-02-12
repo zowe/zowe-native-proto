@@ -108,7 +108,7 @@ int handle_plugins_list(plugin::InvocationContext &context)
     struct dirent *entry;
     while ((entry = readdir(plugins_dir)) != nullptr)
     {
-      std::string name(entry->d_name ? entry->d_name : "");
+      std::string name(entry->d_name);
       if (name == "." || name == ".." || name.empty())
         continue;
       plugin_files.push_back(name);

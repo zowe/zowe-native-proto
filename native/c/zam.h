@@ -407,8 +407,8 @@ typedef void (*PTR32 EODAD)() ATTRIBUTE(amode31);
 static void set_dcb_dcbe(IHADCB *PTR32 dcb)
 {
   // get space for DCBE + buffer
-  short ctrl_len = sizeof(FILE_CTRL) + dcb->dcbblksi;
-  FILE_CTRL *fc = storage_obtain31(ctrl_len);
+  int ctrl_len = (int)sizeof(FILE_CTRL) + (int)dcb->dcbblksi;
+  FILE_CTRL *PTR32 fc = storage_obtain31(ctrl_len);
   memset(fc, 0x00, ctrl_len);
 
   // init file control
