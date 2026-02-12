@@ -20,6 +20,7 @@ on:
         required: true
       SSH_MARIST_USERNAME:
         required: true
+  workflow_dispatch:
 
 permissions:
   checks: write
