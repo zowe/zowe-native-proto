@@ -1,3 +1,4 @@
+
 /**
  * This program and the accompanying materials are made available under the terms of the
  * Eclipse Public License v2.0 which accompanies this distribution, and is available at
@@ -11,6 +12,7 @@
 
 #ifndef _OPEN_SYS_ITOA_EXT
 #define _OPEN_SYS_ITOA_EXT
+#include <cctype>
 #endif
 #ifndef _POSIX_SOURCE
 #define _POSIX_SOURCE
@@ -111,6 +113,18 @@ bool zds_dataset_exists(const string &dsn)
   const auto member_idx = dsn.find('(');
   const string dsn_without_member = member_idx == string::npos ? dsn : dsn.substr(0, member_idx);
   FILE *fp = fopen(("//'" + dsn_without_member + "'").c_str(), "r");
+  if (fp)
+  {
+    fclose(fp);
+    return true;
+  }
+  return false;
+}
+
+bool zds_member_exists(const string &dsn, const string &member_before)
+{
+  string mem_before = "//'" + dsn + "(" + member_before + ")'";
+  FILE *fp = fopen(mem_before.c_str(), "r");
   if (fp)
   {
     fclose(fp);
@@ -1360,6 +1374,63 @@ int zds_rename_dsn(ZDS *zds, string dsn_before, string dsn_after)
     strcpy(zds->diag.service_name, "rename");
     zds->diag.service_rc = rc;
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not rename data set '%s', errno: '%d'", dsn_before.c_str(), err);
+    zds->diag.detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
+    return RTNCD_FAILURE;
+  }
+
+  return 0;
+}
+
+int zds_rename_members(ZDS *zds, const string &dsname, const string &member_before, const string &member_after)
+{
+  int rc = 0;
+  if (dsname.empty())
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Data set name must be valid");
+    return RTNCD_FAILURE;
+  }
+  if (member_before.empty() || member_after.empty())
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Member name cannot be empty");
+    return RTNCD_FAILURE;
+  }
+  if (!isalpha(member_before[0]) || !isalpha(member_after[0]))
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Member name must begin with an alphabetic character");
+    return RTNCD_FAILURE;
+  }
+  if (member_before.length() > 8 || member_after.length() > 8)
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Member name must not exceed 8 characters");
+    return RTNCD_FAILURE;
+  }
+  if (!zds_dataset_exists(dsname))
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Data set does not exist");
+    return RTNCD_FAILURE;
+  }
+  if (!zds_member_exists(dsname, member_before))
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Source member does not exist");
+    return RTNCD_FAILURE;
+  }
+  if (zds_member_exists(dsname, member_after))
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Target member already exists");
+    return RTNCD_FAILURE;
+  }
+
+  std::string source_member = "//'" + dsname + "(" + member_before + ")'";
+  std::string target_member = "//'" + dsname + "(" + member_after + ")'";
+  errno = 0;
+  rc = rename(source_member.c_str(), target_member.c_str());
+
+  if (rc != 0)
+  {
+    int err = errno;
+    strcpy(zds->diag.service_name, "rename_members");
+    zds->diag.service_rc = rc;
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not rename member '%s', errno: '%d'", source_member.c_str(), err);
     zds->diag.detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
     return RTNCD_FAILURE;
   }
