@@ -9,8 +9,6 @@
  *
  */
 
-#include <cstdlib>
-#include <cstdio>
 #include "uss.hpp"
 #include "common_args.hpp"
 #include "../parser.hpp"
