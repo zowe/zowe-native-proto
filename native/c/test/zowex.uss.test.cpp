@@ -172,7 +172,7 @@ void zowex_uss_tests()
                 it("copy file->dir smoke", [&](){
                   string source_file = file_a;
                   string target_dir = dir_a;
-                  string output_file = target_dir + "/test_file_a";
+                  string output_file = target_dir + "/" + get_basename(source_file);
                   create_test_dir_cmd(source_file);
                   create_test_file_cmd(target_dir);
                   std::pair<string, int> copy_result, list_file_result;

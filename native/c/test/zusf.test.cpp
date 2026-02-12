@@ -101,7 +101,7 @@ void zusf_tests()
               const std::string source_file = file_a;
               const std::string dest_dir = dir_b;
               std::string list_response;
-              const std::string dest_copied_file = dest_dir + "/test_file_a"; // TODO: any easy way to path.basename(file_a) ?
+              const std::string dest_copied_file = dest_dir + "/" + get_basename(file_a);
               zusf_create_uss_file_or_dir(&zusf, source_file, 0664, false);
               zusf_create_uss_file_or_dir(&zusf, dest_dir, 0775, true);
               int rc;
@@ -212,7 +212,7 @@ void zusf_tests()
               rc = zusf_list_uss_file_path(&zusf, dest_dir, list_response, short_list_opts, false);
               Expect(rc).ToBe(0);
               zusf_delete_uss_item(&zusf, dest_dir, true);
-              
+
               // nested dirs and symlinks
               const std::string symlink_nested_dir = tmp_base + "/find/me/with/symlink";
               const std::string symlink_target = tmp_base + "/find";
