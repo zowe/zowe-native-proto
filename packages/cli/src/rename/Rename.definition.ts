@@ -13,13 +13,14 @@ import type { ICommandDefinition } from "@zowe/imperative";
 import { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import { Constants } from "../Constants";
 import { RenameDataSetDefinition } from "./data-set/DataSet.definition";
+import { RenameMemberDefinition } from "./data-set-members/DataSetMembers.definition";
 
 const RenameDefinition: ICommandDefinition = {
     name: "rename",
-    summary: "Rename a sequential or partitioned data set",
-    description: "Rename a sequential or partitioned data set",
+    summary: "Rename a data set or a data set member",
+    description: "Rename a data set or a data set member",
     type: "group",
-    children: [RenameDataSetDefinition],
+    children: [RenameDataSetDefinition, RenameMemberDefinition],
     passOn: [
         {
             property: "options",
