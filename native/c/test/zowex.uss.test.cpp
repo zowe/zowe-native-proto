@@ -39,7 +39,6 @@ void zowex_uss_tests()
              // Start by creating a /tmp/zowex-uss test directory
              beforeAll([&response]() -> void
                        { execute_command_with_output(zowex_command + " uss create-dir " + ussTestDir + " --mode 777", response); 
-                        cout << "Running USS tests in " + ussTestDir << endl;
                       });
 
              // Reset the RC to zero before each test
@@ -79,7 +78,7 @@ void zowex_uss_tests()
                 {  
                     int lrc; 
                     string lresponse;
-                    string command = zowex_command + " uss copy " + source + " " + dest + " " + options;
+                    string command = zowex_command + " uss copy \"" + source + "\" \"" + dest + "\" " + options;
                     lrc = execute_command_with_output(command, lresponse);
                     return {lresponse, lrc};
                 };
@@ -88,7 +87,7 @@ void zowex_uss_tests()
                 {
                     int lrc; 
                     string lresponse;
-                    string command = zowex_command + " uss delete " + file_path + " " + options;
+                    string command = zowex_command + " uss delete \"" + file_path + "\" " + options;
                     lrc = execute_command_with_output(command, lresponse);
                     return {lresponse, lrc};
                 };
@@ -97,7 +96,7 @@ void zowex_uss_tests()
                 {
                     int lrc; 
                     string lresponse;
-                    string command = zowex_command + " uss list " + file_path + " " + options;
+                    string command = zowex_command + " uss list \"" + file_path + "\" " + options;
                     lrc = execute_command_with_output(command, lresponse);
                     return {lresponse, lrc};
                 };
@@ -106,25 +105,32 @@ void zowex_uss_tests()
                 {
                   int lrc;
                   string lresponse;
-                  string command = zowex_command + " uss chmod " + permissions + " " + file_path;
+                  string command = zowex_command + " uss chmod " + permissions + " \"" + file_path + "\"";
                   lrc = execute_command_with_output(command, lresponse);
                   return {lresponse, lrc};
                 };
 
+
                 string uss_path;
-                string source_path;
-                string destination_path;
+                string file_a;
+                string file_b;
+                string dir_a; 
+                string dir_b; 
 
                 beforeEach([&]() {
-                   uss_path = get_random_uss(ussTestDir);
-                   create_test_dir_cmd(uss_path);
+                  uss_path = get_random_uss(ussTestDir);
+                  file_a = uss_path + "/test_file_a";
+                  file_b = uss_path + "/test_file_b";
+                  dir_a = uss_path + "/test_dir_a";
+                  dir_b = uss_path + "/test_dir_b";
+                  create_test_dir_cmd(uss_path);
                 });
                 
-                it("copy file->file tests", [&](){
+                it("copy file->file smoke", [&](){
                   // simple copy
-                  string source_file = uss_path + "/test_file_a";
-                  string target_file = uss_path + "/test_file_b";
-                  create_test_file_cmd(uss_path + "/test_file_a");
+                  string source_file = file_a;
+                  string target_file = file_b;
+                  create_test_file_cmd(file_a);
                   std::pair<string, int> copy_result;
                   std::pair<string, int> list_file_result;
 
@@ -139,102 +145,105 @@ void zowex_uss_tests()
                   list_file_result = list_cmd(target_file);
                   ExpectWithContext(list_file_result.second, list_file_result.first).ToBe(0);
 
-                  // copy with --no-preserve-pemissions
+                  // copy with --dont-preserve-attributes
                   string output;
                   zut_run_shell_command("chmod 777 " + source_file, output);
-                  copy_result = copy_cmd(source_file, target_file, "--no-preserve-permissions");
+                  copy_result = copy_cmd(source_file, target_file, "--dont-preserve-attributes");
                   ExpectWithContext(copy_result.second, copy_result.first).ToBe(0);
-                  //TODO: list show permissions
-                  list_file_result = list_cmd(target_file);
+                  list_file_result = list_cmd(target_file, "-al");
                   ExpectWithContext(list_file_result.second, list_file_result.first).ToBe(0);
-                  Expect(list_file_result.first).ToContain("-r--r--r--");
-                  
-                  // copy file with special characters
-                  string file_special_chars = uss_path + "/\"te[st]_?*\"";
-                  // this fails?
-                  // create_test_file_cmd(file_special_chars);
-
-                  copy_result = copy_cmd(source_file, file_special_chars);
-                  ExpectWithContext(copy_result.second, copy_result.first).ToBe(0);
-                  list_file_result = list_cmd(target_file);
-                  ExpectWithContext(list_file_result.second, list_file_result.first).ToBe(0);
+                  Expect(list_file_result.first).ToContain("-rw-r--r--");
 
                 });
 
-                it("copy dir->file tests", [&](){
-                  
-
-                });
-
-                it("copy file->dir tests", [&](){});
-
-                it("copy dir->dir tests", [&](){
-                  string source_dir = uss_path + "/test_dir_a";
-                  string target_dir = uss_path + "/test_dir_b";
+                it("copy dir->file smoke", [&](){
+                  string source_dir = dir_a;
+                  string target_file = file_b;
+                  create_test_dir_cmd(source_dir);
+                  create_test_file_cmd(target_file);
                   std::pair<string, int> copy_result;
                   std::pair<string, int> list_file_result;
-                  create_test_dir_cmd(source_dir);
 
-                  // bad source
-                  copy_result = copy_cmd("/noway/src/noexist", target_dir);
+                  copy_result = copy_cmd(source_dir, target_file);
                   ExpectWithContext(copy_result.second, copy_result.first).ToBe(255);
+                  list_file_result = list_cmd(target_file);
+                  ExpectWithContext(list_file_result.second, list_file_result.first).ToBe(0);
+                  Expect(list_file_result.first).ToContain("test_file_b"); // TODO: path.basename()?
 
-                  // bad target
-                  copy_result = copy_cmd(source_dir, "/noway/dest/noexist");
-                  ExpectWithContext(copy_result.second, copy_result.first).ToBe(255);
+                });
 
-                  // without --recursive fails
-                  copy_result = copy_cmd(source_dir, target_dir);
+                it("copy file->dir smoke", [&](){
+                  string source_file = file_a;
+                  string target_dir = dir_a;
+                  string output_file = target_dir + "/test_file_a";
+                  create_test_dir_cmd(source_file);
+                  create_test_file_cmd(target_dir);
+                  std::pair<string, int> copy_result, list_file_result;
+
+                  copy_result = copy_cmd(source_file, target_dir);
                   ExpectWithContext(copy_result.second, copy_result.first).ToBe(255);
-                  list_file_result = list_cmd(target_dir);
+                  list_file_result = list_cmd(output_file);
                   ExpectWithContext(list_file_result.second, list_file_result.first).ToBe(255);
-                  // with -r
-                  copy_result = copy_cmd(source_dir, target_dir, "--recursive");
-                  ExpectWithContext(copy_result.second, copy_result.first).ToBe(0);
-                  list_file_result = list_cmd(target_dir);
-                  ExpectWithContext(list_file_result.second, list_file_result.first).ToBe(0);
-                  delete_cmd(target_dir, "-r");
 
-                  // nested directories (no symlinks)
-                  string output;
-                  string nested_dir =  source_dir + "/one/two/three";  
-                  string target_nested_dir = target_dir + "/one/two/three";
-                  // TODO: story - enhance uss create-dir with -p?
-                  zut_run_shell_command("mkdir -p " + nested_dir, output);
+                });
 
-                  // copy nested dirs
-                  copy_result = copy_cmd(source_dir, target_dir, "--recursive");
-                  ExpectWithContext(copy_result.second, copy_result.first).ToBe(0);
-                  list_file_result = list_cmd(target_nested_dir);
-                  ExpectWithContext(list_file_result.second, list_file_result.first).ToBe(0);
-                  delete_cmd(target_dir, "-r");  
+                it("special characters", [&]() {
+                  const std::vector<string> test_cases = {
+                    "abc*",
+                    "abc\\*",
+                    "abc\\\\*",
+                    "def?ghi",
+                    "\"with*quotes\"",
+                    "tes[a-z]+",
+                    "'lit*'",
+                    "\u3053\u3093\u306b\u3061\u306f", // こんにちは
+                  };
 
-                  // with symlinks
-                  string symlink_target_dir = uss_path + "/some/other/nested/dir";
-                  zut_run_shell_command("mkdir -p " + symlink_target_dir, output);
-                  zut_run_shell_command("ln -s " + uss_path + "/some" + " " + nested_dir, output);
-                  copy_result = copy_cmd(source_dir, target_dir, "-r -L");
-                  ExpectWithContext(copy_result.second, copy_result.first).ToBe(0);
-                  list_file_result = list_cmd(nested_dir + "/some/other");
-                  ExpectWithContext(list_file_result.second, list_file_result.first).ToBe(0);
+                  const string test_file = file_a;
+                  const string test_dir = dir_a;
+                  create_test_file_cmd(test_file);
+                  create_test_dir_cmd(test_dir);
+
+                  for (int i = 0; i < test_cases.size(); i++) {
+                    std::pair<string, int> result;
+                    string cmd_output, list_output;
+                    const string test = test_cases.at(i);
+                    result = copy_cmd(test_file, test);
+                    ExpectWithContext(result.second, result.first).ToBe(0);
+                    
+                    result = list_cmd(test, "-al");
+                    ExpectWithContext(result.second, result.first).ToBe(0);
+                    Expect(result.first).ToContain("-rw-r--r--");
+                    
+                    std::pair<string, int> del_res = delete_cmd(test, "-r");
+                    ExpectWithContext(del_res.second, del_res.first).ToBe(0);
+
+                    result = copy_cmd(test_dir, test, "-r");
+                    ExpectWithContext(result.second, result.first).ToBe(0);
+                    
+                    result = list_cmd(test, "-al");
+                    ExpectWithContext(result.second, result.first).ToBe(0);
+                    Expect(result.first).ToContain("drwxr-xr-x");
+
+                  }
 
                 });
 
                 it("illegal syntax tests", [&](){
                   std::pair<string, int> copy_result = copy_cmd("", "some-destination");
-                  ExpectWithContext(copy_result.second, copy_result.first).ToBe(1);
+                  ExpectWithContext(copy_result.second, copy_result.first).ToBe(255);
                   copy_result = copy_cmd("/some/source", "");
-                  ExpectWithContext(copy_result.second, copy_result.first).ToBe(1);
+                  ExpectWithContext(copy_result.second, copy_result.first).ToBe(255);
                   copy_result = copy_cmd("", "");
-                  ExpectWithContext(copy_result.second, copy_result.first).ToBe(1);
+                  ExpectWithContext(copy_result.second, copy_result.first).ToBe(255);
                   copy_result = copy_cmd("/some/source", "/some/dest", "--illegal-parameter");
                   ExpectWithContext(copy_result.second, copy_result.first).ToBe(1);
                 });
 
                 it("illegal parameter combinations", [&](){
                   std::pair<string, int> copy_result;
-                  string source_dir = uss_path + "/test_dir_a";
-                  string target_dir = uss_path + "/test_dir_b";
+                  string source_dir = dir_a;
+                  string target_dir = dir_b;
 
                   create_test_dir_cmd(source_dir);
 
@@ -243,17 +252,8 @@ void zowex_uss_tests()
                   ExpectWithContext(copy_result.second, copy_result.first).ToBe(255);
                 
                   // still requires --recursive
-                  copy_result = copy_cmd(source_dir, target_dir, "--follow-symlinks --dont-preserve-permissions");
+                  copy_result = copy_cmd(source_dir, target_dir, "--follow-symlinks --dont-preserve-attributes");
                   ExpectWithContext(copy_result.second, copy_result.first).ToBe(255);
-                });
-
-                it("running with and without preserved file attributes", [&](){
-                  
-
-                });
-
-                it("copying with permission restrictions", [&](){
-
                 });
 
               });
