@@ -43,7 +43,7 @@ int handle_uss_copy(InvocationContext &context)
   int rc = zusf_copy_file_or_dir(&zusf, source_path, destination_path, recursive, follow_symlinks, preserve_attributes);
 
   if (rc != 0) {
-    context.error_stream() << "Error occurred while trying to copy %s to %s." << endl;
+    context.error_stream() << "Error occurred while trying to copy \"" << source_path << "\" to \"" << destination_path << "\"" << endl;
     context.error_stream() << "  Details:" << zusf.diag.e_msg << endl;
   }
 
