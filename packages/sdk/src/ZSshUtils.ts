@@ -74,25 +74,30 @@ export class ZSshUtils {
         };
     }
 
-    public static async mkdirRecursive(sftp: SFTPWrapper, dir: string) {
-        const directory = dir.split("/").filter(Boolean);
-        let cur = directory[0];
-        for (let i = 1; i < directory.length; i++) {
-            cur += `/${directory[i]}`;
-            await promisify(sftp.mkdir.bind(sftp))(cur, { mode: 0o700 }).catch((err: SftpError) => {
-                if (err.code !== 4) throw err;
-                Logger.getAppLogger().debug(`Remote directory already exists: ${dir}`);
-            });
-        }
-    }
-
-    public static async installServer(session: SshSession, serverPath: string, options?: ISshCallbacks): Promise<void> {
+    public static async installServer(
+        session: SshSession,
+        serverPath: string,
+        options?: ISshCallbacks,
+    ): Promise<boolean> {
         Logger.getAppLogger().debug(`Installing server to ${session.ISshSession.hostname} at path: ${serverPath}`);
         const localDir = ZSshUtils.getBinDir(__dirname);
         const remoteDir = serverPath.replace(/^~/, ".");
 
         return ZSshUtils.sftp(session, async (sftp, ssh) => {
-            await ZSshUtils.mkdirRecursive(sftp, remoteDir);
+            const execReturn = await ssh.execCommand(`mkdir -p ${remoteDir}`);
+            if (execReturn.code !== 0) {
+                const errMsg = `Failed to create deploy directory with RC ${execReturn.code}: ${execReturn.stderr}`;
+                Logger.getAppLogger().error(errMsg);
+                if (options?.onError) {
+                    const shouldRetry = await options.onError(new Error(errMsg), "deploy");
+                    if (!shouldRetry) {
+                        return false;
+                    }
+                    return ZSshUtils.installServer(session, serverPath, options);
+                } else {
+                    return false;
+                }
+            }
 
             // Track the previous progress percentage
             let previousPercentage = 0;
@@ -123,11 +128,11 @@ export class ZSshUtils {
                 if (options?.onError) {
                     const shouldRetry = await options.onError(new Error(errMsg), "upload");
                     if (!shouldRetry) {
-                        throw new Error(errMsg);
+                        return false;
                     }
                     return ZSshUtils.installServer(session, serverPath, options);
                 } else {
-                    throw new Error(errMsg);
+                    return false;
                 }
             }
 
@@ -141,10 +146,10 @@ export class ZSshUtils {
                 if (options?.onError) {
                     const shouldContinue = await options.onError(new Error(errMsg), "extract");
                     if (!shouldContinue) {
-                        throw new Error(errMsg);
+                        return false;
                     }
                 } else {
-                    throw new Error(errMsg);
+                    return false;
                 }
             }
 
@@ -162,6 +167,7 @@ export class ZSshUtils {
                     Logger.getAppLogger().debug("Cleanup error is non-fatal, continuing...");
                 }
             }
+            return true;
         });
     }
 
