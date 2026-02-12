@@ -75,6 +75,13 @@ ZJSON_SCHEMA(RenameDatasetRequest,
     FIELD_REQUIRED(dsnameAfter, STRING)
 );
 
+struct RenameMemberRequest {};
+ZJSON_SCHEMA(RenameMemberRequest,
+    FIELD_REQUIRED(dsname, STRING),
+    FIELD_REQUIRED(memberBefore, STRING),
+    FIELD_REQUIRED(memberAfter, STRING)
+);
+
 struct ListDatasetsRequest {};
 ZJSON_SCHEMA(ListDatasetsRequest,
     FIELD_OPTIONAL(maxItems, NUMBER),
@@ -191,21 +198,21 @@ struct ChmodFileRequest {};
 ZJSON_SCHEMA(ChmodFileRequest,
     FIELD_REQUIRED(mode, STRING),
     FIELD_REQUIRED(fspath, STRING),
-    FIELD_REQUIRED(recursive, BOOL)
+    FIELD_OPTIONAL(recursive, BOOL)
 );
 
 struct ChownFileRequest {};
 ZJSON_SCHEMA(ChownFileRequest,
     FIELD_REQUIRED(owner, STRING),
     FIELD_REQUIRED(fspath, STRING),
-    FIELD_REQUIRED(recursive, BOOL)
+    FIELD_OPTIONAL(recursive, BOOL)
 );
 
 struct ChtagFileRequest {};
 ZJSON_SCHEMA(ChtagFileRequest,
     FIELD_REQUIRED(fspath, STRING),
     FIELD_REQUIRED(tag, STRING),
-    FIELD_REQUIRED(recursive, BOOL)
+    FIELD_OPTIONAL(recursive, BOOL)
 );
 
 struct CreateFileRequest {};
@@ -218,7 +225,7 @@ ZJSON_SCHEMA(CreateFileRequest,
 struct DeleteFileRequest {};
 ZJSON_SCHEMA(DeleteFileRequest,
     FIELD_REQUIRED(fspath, STRING),
-    FIELD_REQUIRED(recursive, BOOL)
+    FIELD_OPTIONAL(recursive, BOOL)
 );
 
 struct ListFilesRequest {};

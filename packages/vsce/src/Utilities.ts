@@ -21,7 +21,7 @@ import { SshErrorHandler } from "./SshErrorHandler";
 
 const EXTENSION_NAME = "zowe-native-proto-vsce";
 
-export function deployWithProgress(session: SshSession, serverPath: string): Thenable<void> {
+export function deployWithProgress(session: SshSession, serverPath: string): Thenable<boolean> {
     return Gui.withProgress(
         {
             location: vscode.ProgressLocation.Notification,
@@ -35,7 +35,7 @@ export function deployWithProgress(session: SshSession, serverPath: string): The
             );
 
             // Pass callbacks for both progress and error handling
-            await ZSshUtils.installServer(session, serverPath, {
+            return await ZSshUtils.installServer(session, serverPath, {
                 onProgress: (progressIncrement) => {
                     progress.report({ increment: progressIncrement });
                 },
@@ -84,7 +84,10 @@ export function registerCommands(context: vscode.ExtensionContext): vscode.Dispo
             if (!deployDirectory) return;
 
             const sshSession = ZSshUtils.buildSession(profile.profile);
-            await deployWithProgress(sshSession, deployDirectory);
+            const deployStatus = await deployWithProgress(sshSession, deployDirectory);
+            if (!deployStatus) {
+                return;
+            }
 
             await ConfigUtils.showSessionInTree(profile.name!, true);
             const infoMsg = `Installed Zowe SSH server on ${profile.profile.host ?? profile.name}`;
