@@ -29,7 +29,7 @@ using namespace std;
 
 namespace core
 {
-std::tr1::shared_ptr<ArgumentParser> g_arg_parser;
+std::shared_ptr<ArgumentParser> g_arg_parser;
 namespace
 {
 plugin::PluginManager *g_plugin_manager = nullptr;
@@ -189,7 +189,7 @@ int execute_command(int argc, char *argv[])
 
 Command &setup_root_command(int argc, char *argv[])
 {
-  g_arg_parser = std::tr1::shared_ptr<ArgumentParser>(new ArgumentParser(argv[0], "Zowe Native CLI"));
+  g_arg_parser = std::shared_ptr<ArgumentParser>(new ArgumentParser(argv[0], "Zowe Native CLI"));
   auto &root_command = g_arg_parser->get_root_command();
 
   root_command.add_keyword_arg("interactive",
