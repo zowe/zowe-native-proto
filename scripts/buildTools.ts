@@ -552,7 +552,9 @@ class WatchUI {
                     }
 
                     if (remainingCount > 0) {
-                        lines.push(`      ${ANSI.DIM}... ${remainingCount} more line${remainingCount > 1 ? "s" : ""}${ANSI.RESET}`);
+                        lines.push(
+                            `      ${ANSI.DIM}... ${remainingCount} more line${remainingCount > 1 ? "s" : ""}${ANSI.RESET}`,
+                        );
                     }
 
                     if (task.errorLogPath) {
@@ -963,10 +965,10 @@ async function make(connection: Client, inDir?: string) {
     console.log(response);
 }
 
-async function test(connection: Client) {
+async function test(connection: Client, { preBuildCmd }: IConfig) {
     console.log("Testing native/c ...");
     const testEnv = '_CEE_RUNOPTS="TRAP(ON,NOSPIE)"';
-    const cTestCmd = `cd ${deployDirs.cTestDir} && ${testEnv} ./build-out/ztest_runner ${args[1] ?? ""}`;
+    const cTestCmd = `${preBuildCmd ? `${preBuildCmd} && ` : ""}cd ${deployDirs.cTestDir} && ${testEnv} ./build-out/ztest_runner ${args[1] ?? ""}`;
     const zowedTestCmd = `cd ${path.posix.relative(deployDirs.cTestDir, deployDirs.zowedTestDir)} && ${testEnv} ./build-out/zowed_test_runner ${args[1] ?? ""}`;
     const exitMaxRc = `[ "$rc1" -gt "$rc2" ] && exit "$rc1" || exit "$rc2"`;
     await runCommandInShell(connection, `${cTestCmd}; rc1=$?; ${zowedTestCmd}; rc2=$?; ${exitMaxRc}\n`, true);
@@ -1207,7 +1209,7 @@ async function main() {
                 await build(sshClient, config);
                 break;
             case "test":
-                await test(sshClient);
+                await test(sshClient, config);
                 break;
             case "test:python":
                 await make(sshClient, deployDirs.pythonTestDir);
