@@ -1604,9 +1604,11 @@ async function main() {
             case "watch":
                 await watch(sshClient, config.sshProfile as IProfile);
                 break;
-            case "watch:test":
-                await watchTest(sshClient, config.sshProfile as IProfile, args[1]);
+            case "watch:test": {
+                const scope = args.splice(1, 1)[0];
+                await watchTest(sshClient, config.sshProfile as IProfile, scope);
                 break;
+            }
             default:
                 console.error(`Unsupported command "${args[0]}". See README for instructions.`);
                 break;
