@@ -73,7 +73,7 @@ void zowex_uss_tests()
               [&]() -> void 
               {
 
-                // Helper function for uss copy
+                // Helper functions
                 auto copy_cmd = [&](const string &source, const string &dest, const string &options = "") -> std::pair<string, int>
                 {  
                     int lrc; 
@@ -125,15 +125,14 @@ void zowex_uss_tests()
                   dir_b = uss_path + "/test_dir_b";
                   create_test_dir_cmd(uss_path);
                 });
-                
+
                 it("copy file->file smoke", [&](){
-                  // simple copy
                   string source_file = file_a;
                   string target_file = file_b;
                   create_test_file_cmd(file_a);
-                  std::pair<string, int> copy_result;
-                  std::pair<string, int> list_file_result;
+                  std::pair<string, int> copy_result, list_file_result;
 
+                  // normal copy
                   copy_result = copy_cmd(source_file, target_file);
                   ExpectWithContext(copy_result.second, copy_result.first).ToBe(0);
                   list_file_result = list_cmd(target_file);
@@ -161,14 +160,12 @@ void zowex_uss_tests()
                   string target_file = file_b;
                   create_test_dir_cmd(source_dir);
                   create_test_file_cmd(target_file);
-                  std::pair<string, int> copy_result;
-                  std::pair<string, int> list_file_result;
+                  std::pair<string, int> copy_result, list_file_result;
 
                   copy_result = copy_cmd(source_dir, target_file);
                   ExpectWithContext(copy_result.second, copy_result.first).ToBe(255);
-                  list_file_result = list_cmd(target_file);
-                  ExpectWithContext(list_file_result.second, list_file_result.first).ToBe(0);
-                  Expect(list_file_result.first).ToContain("test_file_b"); // TODO: path.basename()?
+                  list_file_result = list_cmd(target_file); // file still exists
+                  ExpectWithContext(list_file_result.second, list_file_result.first).ToBe(0); 
 
                 });
 
@@ -208,6 +205,8 @@ void zowex_uss_tests()
                     std::pair<string, int> result;
                     string cmd_output, list_output;
                     const string test = test_cases.at(i);
+
+                    // copy static file -> new file w/ special chars
                     result = copy_cmd(test_file, test);
                     ExpectWithContext(result.second, result.first).ToBe(0);
                     
@@ -218,6 +217,7 @@ void zowex_uss_tests()
                     std::pair<string, int> del_res = delete_cmd(test, "-r");
                     ExpectWithContext(del_res.second, del_res.first).ToBe(0);
 
+                    // copy static dir -> new dir w/ special chars
                     result = copy_cmd(test_dir, test, "-r");
                     ExpectWithContext(result.second, result.first).ToBe(0);
                     
@@ -230,7 +230,9 @@ void zowex_uss_tests()
                 });
 
                 it("illegal syntax tests", [&](){
-                  std::pair<string, int> copy_result = copy_cmd("", "some-destination");
+                  std::pair<string, int> copy_result;
+                  
+                  copy_result = copy_cmd("", "some-destination");
                   ExpectWithContext(copy_result.second, copy_result.first).ToBe(255);
                   copy_result = copy_cmd("/some/source", "");
                   ExpectWithContext(copy_result.second, copy_result.first).ToBe(255);

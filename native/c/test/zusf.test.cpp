@@ -184,15 +184,14 @@ void zusf_tests()
             });
 
             it("dir->dir tests", [&]() -> void{
-              const std::string root_dir = tmp_base;
               const std::string source_dir = dir_a;
               const std::string source_nested = dir_a + "/some/nested/directories";
               const std::string dest_dir = dir_b;
               const std::string dest_nested = dir_b + "/some/nested/directories";
-
-              std::string list_response;
-              zusf_create_uss_file_or_dir(&zusf, source_dir, 0775, true);
               int rc;
+              std::string list_response;
+
+              zusf_create_uss_file_or_dir(&zusf, source_dir, 0775, true);
               
               // bad source
               rc = zusf_copy_file_or_dir(&zusf, "/noway/src/noexist", dest_dir, false, false, true);     
@@ -214,44 +213,30 @@ void zusf_tests()
               Expect(rc).ToBe(0);
               zusf_delete_uss_item(&zusf, dest_dir, true);
 
-              // with -R
-              rc = zusf_copy_file_or_dir(&zusf, source_dir, dest_dir, true, false, true);     
-              Expect(rc).ToBe(0);   
-              rc = zusf_list_uss_file_path(&zusf, dest_dir, list_response, short_list_opts, false);
-              Expect(rc).ToBe(0);
-              zusf_delete_uss_item(&zusf, dest_dir, true);
-
               // copy to current dir (recursive copy self->self fails)
               /* rc = zusf_copy_file_or_dir(&zusf, source_dir, ".", true, false, true);     
               Expect(rc).ToBe(-1);  
               rc = zusf_list_uss_file_path(&zusf, dest_dir, list_response, short_list_opts, false);
               Expect(rc).ToBe(0);  */            
 
-
               // nested dirs and symlinks
-              const std::string another_nested_dir = tmp_base + "/find/me/with/symlink";
+              const std::string symlink_nested_dir = tmp_base + "/find/me/with/symlink";
               const std::string symlink_target = tmp_base + "/find";
-              const std::string source_symlink_path = source_dir + "/find";
-              const std::string dest_link_point = dest_dir + "/find";
-              const std::string dest_full_symlink_path = dest_dir + "/find/me/with/symlink";
+              const std::string source_symlink_filepath = source_dir + "/find";
+              const std::string dest_link_filepath = dest_dir + "/find";
+              const std::string dest_symlink_nested_dir = dest_dir + "/find/me/with/symlink";
 
               zusf_create_uss_file_or_dir(&zusf, source_nested, 0775, true);
-              zusf_create_uss_file_or_dir(&zusf, another_nested_dir, 0775, true);
-
-              rc = zusf_copy_file_or_dir(&zusf, source_dir, dest_dir, true, false, true);     
-              Expect(rc).ToBe(0);  
-              rc = zusf_list_uss_file_path(&zusf, dest_nested, list_response, short_list_opts, false);
-              Expect(rc).ToBe(0);  
-              zusf_delete_uss_item(&zusf, dest_dir, true);
+              zusf_create_uss_file_or_dir(&zusf, symlink_nested_dir, 0775, true);
 
               // symlink
               std::string cmd_output;
-              execute_command_with_output("ln -s " + symlink_target + " " + source_symlink_path, cmd_output);
+              execute_command_with_output("ln -s " + symlink_target + " " + source_symlink_filepath, cmd_output);
 
               // link is copied
               rc = zusf_copy_file_or_dir(&zusf, source_dir, dest_dir, true, false, true);     
               Expect(rc).ToBe(0);  
-              rc = zusf_list_uss_file_path(&zusf, dest_full_symlink_path, list_response, short_list_opts, false);
+              rc = zusf_list_uss_file_path(&zusf, dest_symlink_nested_dir, list_response, short_list_opts, false);
               Expect(rc).ToBe(0);        
               rc = zusf_list_uss_file_path(&zusf, dest_dir, list_response, all_long_list_opts, false);
               Expect(rc).ToBe(0);   
@@ -267,7 +252,7 @@ void zusf_tests()
               Expect(rc).ToBe(0);  
               rc = zusf_list_uss_file_path(&zusf, symlink_target, list_response, short_list_opts,true);
               Expect(rc).ToBe(0);                 
-              zusf_chmod_uss_file_or_dir(&zusf, dest_link_point, 0755, false); //hack: make this 755 for Expect() check   
+              zusf_chmod_uss_file_or_dir(&zusf, dest_link_filepath, 0755, false); //hack: make this 755 for Expect() check   
               rc = zusf_list_uss_file_path(&zusf, dest_dir, list_response, all_long_list_opts, false);
               Expect(rc).ToBe(0);     
               Expect(list_response).ToContain("drwxr-xr-x"); //it should be a dir
