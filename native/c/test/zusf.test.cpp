@@ -212,13 +212,7 @@ void zusf_tests()
               rc = zusf_list_uss_file_path(&zusf, dest_dir, list_response, short_list_opts, false);
               Expect(rc).ToBe(0);
               zusf_delete_uss_item(&zusf, dest_dir, true);
-
-              // copy to current dir (recursive copy self->self fails)
-              /* rc = zusf_copy_file_or_dir(&zusf, source_dir, ".", true, false, true);     
-              Expect(rc).ToBe(-1);  
-              rc = zusf_list_uss_file_path(&zusf, dest_dir, list_response, short_list_opts, false);
-              Expect(rc).ToBe(0);  */            
-
+              
               // nested dirs and symlinks
               const std::string symlink_nested_dir = tmp_base + "/find/me/with/symlink";
               const std::string symlink_target = tmp_base + "/find";
