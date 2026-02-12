@@ -234,7 +234,7 @@ int handle_job_view_status(InvocationContext &context)
 {
   int rc = 0;
   ZJB zjb = {};
-  ZJob job = {0};
+  ZJob job = {};
   string jobid = context.get<std::string>("jobid", "");
 
   bool emit_csv = context.get<bool>("response-format-csv", false);

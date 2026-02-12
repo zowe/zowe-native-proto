@@ -82,7 +82,7 @@ private:
   std::map<string, string> load_checksums()
   {
     std::map<string, string> checksums;
-    ZUSF zusf = {.encoding_opts = {.data_type = eDataTypeText, .source_codepage = "IBM-1047"}};
+    ZUSF zusf = {.encoding_opts = {.source_codepage = "IBM-1047", .data_type = eDataTypeText}};
     string checksums_file = exec_dir + "/checksums.asc";
     string checksums_content;
 

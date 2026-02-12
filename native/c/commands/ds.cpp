@@ -66,7 +66,7 @@ int create_with_attributes(InvocationContext &context)
   int rc = 0;
   string dsn = context.get<string>("dsn", "");
   ZDS zds = {};
-  DS_ATTRIBUTES attributes = {0};
+  DS_ATTRIBUTES attributes = {};
 
   // Extract all the optional creation attributes
   if (context.has("alcunit"))
