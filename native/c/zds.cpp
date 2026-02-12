@@ -2105,7 +2105,7 @@ void load_date_attrs_from_dscb(const DSCBFormat1 *dscb, ZDSEntry &entry)
 }
 
 // Load storage management attributes from catalog fields
-void load_volsers_from_catalog(unsigned char *&data, int field_len, ZDSEntry &entry)
+void load_volsers_from_catalog(const unsigned char *&data, const int field_len, int &csi_offset, ZDSEntry &entry)
 {
   int num_volumes = field_len / MAX_VOLSER_LENGTH;
   entry.multivolume = num_volumes > 1;
@@ -2115,7 +2115,7 @@ void load_volsers_from_catalog(unsigned char *&data, int field_len, ZDSEntry &en
   for (int i = 0; i < num_volumes; i++)
   {
     memset(buffer, 0x00, sizeof(buffer)); // clear buffer
-    memcpy(buffer, data + (i * MAX_VOLSER_LENGTH), MAX_VOLSER_LENGTH);
+    memcpy(buffer, data + csi_offset + (i * MAX_VOLSER_LENGTH), MAX_VOLSER_LENGTH);
     std::string vol = string(buffer, MAX_VOLSER_LENGTH);
     zut_rtrim(vol);
     if (!vol.empty())
@@ -2138,33 +2138,26 @@ void load_volsers_from_catalog(unsigned char *&data, int field_len, ZDSEntry &en
       entry.volser = value;
     }
   }
+
+  csi_offset += field_len;
 }
 
-void load_devtype_from_catalog(unsigned char *data, int field_len, uint16_t &attr)
+void load_devtype_from_catalog(const unsigned char *&data, const int field_len, int &csi_offset, uint16_t &attr)
 {
   if (field_len >= 4)
   {
-    uint32_t devtyp = (static_cast<unsigned char>(data[0]) << 24) |
-                      (static_cast<unsigned char>(data[1]) << 16) |
-                      (static_cast<unsigned char>(data[2]) << 8) |
-                      static_cast<unsigned char>(data[3]);
+    const uint8_t *bytes = &data[csi_offset];
+    uint32_t devtyp = (bytes[0] << 24) | (bytes[1] << 16) | (bytes[2] << 8) | bytes[3];
 
+    // Extract the device type code (last byte of UCB) and map to device type
     // If devtyp is all zeros, default to 3390 (most common modern DASD)
-    if (devtyp == 0x00000000)
-    {
-      attr = 0x3390;
-    }
-    else
-    {
-      // Extract the device type code (last byte of UCB) and map to device type
-      attr = ucb_to_devtype(static_cast<uint8_t>(data[3]));
-    }
+    attr = devtyp != 0x00000000 ? ucb_to_devtype(bytes[3]) : 0x3390;
   }
 
-  data += field_len;
+  csi_offset += field_len;
 }
 
-void load_storage_attrs_from_catalog(unsigned char *data, int *field_lens, ZDSEntry &entry)
+void load_storage_attrs_from_catalog(const unsigned char *&data, const int *field_lens, int &csi_offset, ZDSEntry &entry)
 {
   std::string *attrs[3] = {
       &entry.dataclass,
@@ -2177,13 +2170,14 @@ void load_storage_attrs_from_catalog(unsigned char *data, int *field_lens, ZDSEn
     if (field_lens[i] > 2)
     {
       // First 2 bytes are a length prefix, extract actual length
-      uint16_t actual_len = (static_cast<unsigned char>(data[0]) << 8) | static_cast<unsigned char>(data[1]);
+      uint16_t actual_len = (static_cast<unsigned char>(data[csi_offset]) << 8) |
+                            static_cast<unsigned char>(data[csi_offset + 1]);
       if (actual_len > 0 && actual_len <= (field_lens[i] - 2))
       {
-        *attrs[i] = string((char *)(data + 2), actual_len);
+        *attrs[i] = string((char *)(data + csi_offset + 2), actual_len);
       }
     }
-    data += field_lens[i];
+    csi_offset += field_lens[i];
   }
 }
 
@@ -2424,12 +2418,12 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &datasets, bool sh
       // Only process catalog fields and DSCB if show_attributes is true
       if (show_attributes)
       {
-        int *field_lens = f->response.field.field_lens;
-        unsigned char *csi_ptr = (unsigned char *)&f->response.field.field_lens + sizeof(f->response.field.field_lens);
+        const int *field_lens = f->response.field.field_lens;
+        const unsigned char *data = (unsigned char *)&f->response.field.field_lens + sizeof(f->response.field.field_lens);
+        int csi_offset = 0;
 
         // Load volume serials from catalog and check if migrated
-        load_volsers_from_catalog(csi_ptr, field_lens[0], entry);
-        csi_ptr += field_lens[0];
+        load_volsers_from_catalog(data, field_lens[0], csi_offset, entry);
 
 #define MIGRAT_VOLUME "MIGRAT"
 #define ARCIVE_VOLUME "ARCIVE"
@@ -2445,8 +2439,8 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &datasets, bool sh
         }
 
         // Parse storage management attributes (dataclass, mgmtclass, storclass, devtype)
-        load_devtype_from_catalog(csi_ptr, field_lens[1], entry.devtype);
-        load_storage_attrs_from_catalog(csi_ptr, &field_lens[2], entry);
+        load_devtype_from_catalog(data, field_lens[1], csi_offset, entry.devtype);
+        load_storage_attrs_from_catalog(data, &field_lens[2], csi_offset, entry);
 
         // Load detailed attributes from DSCB if not migrated
         // This needs to happen before the switch statement as it sets entry.dsorg
@@ -2455,6 +2449,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &datasets, bool sh
           zds_get_attrs_from_dscb(zds, entry);
         }
 
+        string old_volser = entry.volser;
         switch (f->type)
         {
         case NON_VSAM_DATA_SET:
@@ -2462,24 +2457,18 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &datasets, bool sh
           break;
         case GENERATION_DATA_GROUP:
           entry.volser = ZDS_VOLSER_GDG;
-          entry.volsers.clear();
-          entry.volsers.push_back(entry.volser);
           break;
         case CLUSTER:
         case DATA_COMPONENT:
         case INDEX_COMPONENT:
           entry.dsorg = ZDS_DSORG_VSAM;
           entry.volser = ZDS_VOLSER_VSAM;
-          entry.volsers.clear();
-          entry.volsers.push_back(entry.volser);
           break;
         case GENERATION_DATA_SET:
           break;
         case ALIAS:
           entry.dsorg = ZDS_DSORG_UNKNOWN;
           entry.volser = ZDS_VOLSER_ALIAS;
-          entry.volsers.clear();
-          entry.volsers.push_back(entry.volser);
           break;
         case ALTERNATE_INDEX:
         case ATL_LIBRARY_ENTRY:
@@ -2494,6 +2483,12 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &datasets, bool sh
           zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Unsupported entry type '%x' ", f->type);
           return RTNCD_FAILURE;
         };
+
+        if (old_volser != entry.volser)
+        {
+          entry.volsers.clear();
+          entry.volsers.push_back(entry.volser);
+        }
       }
 
       if (datasets.size() + 1 > zds->max_entries)
