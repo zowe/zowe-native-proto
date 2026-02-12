@@ -2105,55 +2105,44 @@ void load_date_attrs_from_dscb(const DSCBFormat1 *dscb, ZDSEntry &entry)
 }
 
 // Load storage management attributes from catalog fields
-void load_storage_attrs_from_catalog(unsigned char *&data, int *&field_len, ZDSEntry &entry)
+void load_volsers_from_catalog(unsigned char *&data, int field_len, ZDSEntry &entry)
 {
-  // Parse DATACLAS field (8 bytes)
-  data += *field_len;
-  field_len++;
-  entry.dataclass = "";
-  if (*field_len > 2)
+  int num_volumes = field_len / MAX_VOLSER_LENGTH;
+  entry.multivolume = num_volumes > 1;
+  entry.volsers.reserve(num_volumes);
+
+  char buffer[MAX_VOLSER_LENGTH + 1] = {0};
+  for (int i = 0; i < num_volumes; i++)
   {
-    // First 2 bytes are a length prefix, extract actual length
-    uint16_t actual_len = (static_cast<unsigned char>(data[0]) << 8) | static_cast<unsigned char>(data[1]);
-    if (actual_len > 0 && actual_len <= (*field_len - 2))
-    {
-      entry.dataclass = string((char *)(data + 2), actual_len);
-    }
+    memset(buffer, 0x00, sizeof(buffer)); // clear buffer
+    memcpy(buffer, data + (i * MAX_VOLSER_LENGTH), MAX_VOLSER_LENGTH);
+    std::string vol = string(buffer, MAX_VOLSER_LENGTH);
+    zut_rtrim(vol);
+    if (!vol.empty())
+      entry.volsers.push_back(vol);
   }
 
-  // Parse MGMTCLAS field (8 bytes)
-  data += *field_len;
-  field_len++;
-  entry.mgmtclass = "";
-  if (*field_len > 2)
+  // Use the first volume as the primary, or set unknown if empty
+  entry.volser = entry.volsers.empty() ? ZDS_VOLSER_UNKNOWN : entry.volsers[0];
+
+#define IPL_VOLUME "******"
+#define IPL_VOLUME_SYMBOL "&SYSR1" // https://www.ibm.com/docs/en/zos/3.1.0?topic=symbols-static-system
+
+  if (0 == strcmp(IPL_VOLUME, entry.volser.c_str()))
   {
-    // First 2 bytes are a length prefix, extract actual length
-    uint16_t actual_len = (static_cast<unsigned char>(data[0]) << 8) | static_cast<unsigned char>(data[1]);
-    if (actual_len > 0 && actual_len <= (*field_len - 2))
+    string symbol(IPL_VOLUME_SYMBOL);
+    string value;
+    int rc = zut_substitute_symbol(symbol, value);
+    if (0 == rc)
     {
-      entry.mgmtclass = string((char *)(data + 2), actual_len);
+      entry.volser = value;
     }
   }
+}
 
-  // Parse STORCLAS field (8 bytes)
-  data += *field_len;
-  field_len++;
-  entry.storclass = "";
-  if (*field_len > 2)
-  {
-    // First 2 bytes are a length prefix, extract actual length
-    uint16_t actual_len = (static_cast<unsigned char>(data[0]) << 8) | static_cast<unsigned char>(data[1]);
-    if (actual_len > 0 && actual_len <= (*field_len - 2))
-    {
-      entry.storclass = string((char *)(data + 2), actual_len);
-    }
-  }
-
-  // Parse DEVTYP field (4-byte UCB device type)
-  data += *field_len;
-  field_len++;
-
-  if (*field_len >= 4)
+void load_devtype_from_catalog(unsigned char *data, int field_len, uint16_t &attr)
+{
+  if (field_len >= 4)
   {
     uint32_t devtyp = (static_cast<unsigned char>(data[0]) << 24) |
                       (static_cast<unsigned char>(data[1]) << 16) |
@@ -2163,13 +2152,38 @@ void load_storage_attrs_from_catalog(unsigned char *&data, int *&field_len, ZDSE
     // If devtyp is all zeros, default to 3390 (most common modern DASD)
     if (devtyp == 0x00000000)
     {
-      entry.devtype = 0x3390;
+      attr = 0x3390;
     }
     else
     {
       // Extract the device type code (last byte of UCB) and map to device type
-      entry.devtype = ucb_to_devtype(static_cast<uint8_t>(data[3]));
+      attr = ucb_to_devtype(static_cast<uint8_t>(data[3]));
     }
+  }
+
+  data += field_len;
+}
+
+void load_storage_attrs_from_catalog(unsigned char *data, int *field_lens, ZDSEntry &entry)
+{
+  std::string *attrs[3] = {
+      &entry.dataclass,
+      &entry.mgmtclass,
+      &entry.storclass,
+  };
+  for (int i = 0; i < 3; i++)
+  {
+    *attrs[i] = "";
+    if (field_lens[i] > 2)
+    {
+      // First 2 bytes are a length prefix, extract actual length
+      uint16_t actual_len = (static_cast<unsigned char>(data[0]) << 8) | static_cast<unsigned char>(data[1]);
+      if (actual_len > 0 && actual_len <= (field_lens[i] - 2))
+      {
+        *attrs[i] = string((char *)(data + 2), actual_len);
+      }
+    }
+    data += field_lens[i];
   }
 }
 
@@ -2214,7 +2228,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &datasets, bool sh
   zds->csi = NULL;
 
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=directory-catalog-field-names
-  string fields_long[CSI_FIELD_COUNT][CSI_FIELD_LEN] = {{"VOLSER"}, {"DATACLAS"}, {"MGMTCLAS"}, {"STORCLAS"}, {"DEVTYP"}};
+  string fields_long[CSI_FIELD_COUNT][CSI_FIELD_LEN] = {{"VOLSER"}, {"DEVTYP"}, {"DATACLAS"}, {"MGMTCLAS"}, {"STORCLAS"}};
 
   string(*fields)[CSI_FIELD_LEN] = nullptr;
   int number_of_fields = 0;
@@ -2410,40 +2424,12 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &datasets, bool sh
       // Only process catalog fields and DSCB if show_attributes is true
       if (show_attributes)
       {
-        int *field_len = f->response.field.field_lens;
-        unsigned char *data = (unsigned char *)&f->response.field.field_lens;
-        data += sizeof(f->response.field.field_lens);
+        int *field_lens = f->response.field.field_lens;
+        unsigned char *csi_ptr = (unsigned char *)&f->response.field.field_lens + sizeof(f->response.field.field_lens);
 
-        int num_volumes = field_len[0] / MAX_VOLSER_LENGTH;
-        entry.multivolume = num_volumes > 1;
-        entry.volsers.reserve(num_volumes);
-
-        for (int i = 0; i < num_volumes; i++)
-        {
-          memset(buffer, 0x00, sizeof(buffer)); // clear buffer
-          memcpy(buffer, data + (i * MAX_VOLSER_LENGTH), MAX_VOLSER_LENGTH);
-          std::string vol = string(buffer, MAX_VOLSER_LENGTH);
-          zut_rtrim(vol);
-          if (!vol.empty())
-            entry.volsers.push_back(vol);
-        }
-
-        // Use the first volume as the primary, or set unknown if empty
-        entry.volser = entry.volsers.empty() ? ZDS_VOLSER_UNKNOWN : entry.volsers[0];
-
-#define IPL_VOLUME "******"
-#define IPL_VOLUME_SYMBOL "&SYSR1" // https://www.ibm.com/docs/en/zos/3.1.0?topic=symbols-static-system
-
-        if (0 == strcmp(IPL_VOLUME, entry.volser.c_str()))
-        {
-          string symbol(IPL_VOLUME_SYMBOL);
-          string value;
-          rc = zut_substitute_symbol(symbol, value);
-          if (0 == rc)
-          {
-            entry.volser = value;
-          }
-        }
+        // Load volume serials from catalog and check if migrated
+        load_volsers_from_catalog(csi_ptr, field_lens[0], entry);
+        csi_ptr += field_lens[0];
 
 #define MIGRAT_VOLUME "MIGRAT"
 #define ARCIVE_VOLUME "ARCIVE"
@@ -2459,7 +2445,8 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &datasets, bool sh
         }
 
         // Parse storage management attributes (dataclass, mgmtclass, storclass, devtype)
-        load_storage_attrs_from_catalog(data, field_len, entry);
+        load_devtype_from_catalog(csi_ptr, field_lens[1], entry.devtype);
+        load_storage_attrs_from_catalog(csi_ptr, &field_lens[2], entry);
 
         // Load detailed attributes from DSCB if not migrated
         // This needs to happen before the switch statement as it sets entry.dsorg
@@ -2475,18 +2462,24 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &datasets, bool sh
           break;
         case GENERATION_DATA_GROUP:
           entry.volser = ZDS_VOLSER_GDG;
+          entry.volsers.clear();
+          entry.volsers.push_back(entry.volser);
           break;
         case CLUSTER:
         case DATA_COMPONENT:
         case INDEX_COMPONENT:
           entry.dsorg = ZDS_DSORG_VSAM;
           entry.volser = ZDS_VOLSER_VSAM;
+          entry.volsers.clear();
+          entry.volsers.push_back(entry.volser);
           break;
         case GENERATION_DATA_SET:
           break;
         case ALIAS:
           entry.dsorg = ZDS_DSORG_UNKNOWN;
           entry.volser = ZDS_VOLSER_ALIAS;
+          entry.volsers.clear();
+          entry.volsers.push_back(entry.volser);
           break;
         case ALTERNATE_INDEX:
         case ATL_LIBRARY_ENTRY:
@@ -2501,9 +2494,6 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &datasets, bool sh
           zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Unsupported entry type '%x' ", f->type);
           return RTNCD_FAILURE;
         };
-
-        if (entry.volsers.empty())
-          entry.volsers.push_back(entry.volser);
       }
 
       if (datasets.size() + 1 > zds->max_entries)

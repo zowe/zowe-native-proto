@@ -192,7 +192,7 @@ const ast::Node build_ds_object(const ZDSEntry &entry, bool attributes)
     obj_entry->set("usedx", i64(entry.usedx));
   obj_entry->set("volser", str(entry.volser));
   const auto volsers_array = arr();
-  for (const auto it = entry.volsers.begin(); it != entry.volsers.end(); ++it)
+  for (auto it = entry.volsers.begin(); it != entry.volsers.end(); ++it)
     volsers_array->push(str(*it));
   obj_entry->set("volsers", volsers_array);
 
@@ -451,8 +451,8 @@ int handle_data_set_list(InvocationContext &context)
           fields.push_back(it->recfm);
           fields.push_back(it->lrecl == -1 ? "" : zut_int_to_string(it->lrecl));
           fields.push_back(it->blksize == -1 ? "" : zut_int_to_string(it->blksize));
-          fields.push_back(zut_int_to_string(it->primary));
-          fields.push_back(zut_int_to_string(it->secondary));
+          fields.push_back(it->primary == -1 ? "" : zut_int_to_string(it->primary));
+          fields.push_back(it->secondary == -1 ? "" : zut_int_to_string(it->secondary));
           fields.push_back(it->dsntype);
           fields.push_back(it->migrated ? "YES" : "NO");
         }
@@ -471,8 +471,8 @@ int handle_data_set_list(InvocationContext &context)
                                   << setw(6) << it->recfm << " "
                                   << setw(6) << (it->lrecl == -1 ? "" : zut_int_to_string(it->lrecl)) << " "
                                   << setw(6) << (it->blksize == -1 ? "" : zut_int_to_string(it->blksize)) << " "
-                                  << setw(10) << it->primary << " "
-                                  << setw(10) << it->secondary << " "
+                                  << setw(10) << (it->primary == -1 ? "" : zut_int_to_string(it->primary)) << " "
+                                  << setw(10) << (it->secondary == -1 ? "" : zut_int_to_string(it->secondary)) << " "
                                   << setw(8) << it->dsntype << " "
                                   << (it->migrated ? "YES" : "NO")
                                   << endl;
