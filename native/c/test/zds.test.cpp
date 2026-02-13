@@ -12,7 +12,6 @@
 #include <cstring>
 #include <iostream>
 #include <vector>
-#include <cstring>
 
 #include "ztest.hpp"
 #include "zds.hpp"
@@ -697,6 +696,43 @@ void zds_tests()
                              int rc = zds_copy_dsn(&zds, tc.source_dsn, tc.target_dsn + "(EXISTING)", &options);
                              Expect(rc).Not().ToBe(0);
                              Expect(string(zds.diag.e_msg)).ToContain("must be a sequential data set");
+                           });
+
+                        it("should set member_created when copying to new member",
+                           [&]() -> void
+                           {
+                             CopyTestContext tc(created_dsns);
+                             tc.create_source_pds();
+                             tc.create_target_pds();
+                             tc.write_source_member("SRC", "source content");
+
+                             ZDS zds = {0};
+                             bool target_created = false;
+                             bool member_created = false;
+                             int rc = zds_copy_dsn(&zds, tc.source_dsn + "(SRC)", tc.target_dsn + "(NEW)",
+                                                   false, false, &target_created, &member_created);
+                             Expect(rc).ToBe(0);
+                             Expect(target_created).ToBe(false); // PDS already existed
+                             Expect(member_created).ToBe(true);  // Member was newly created
+                           });
+
+                        it("should not set member_created when overwriting existing member",
+                           [&]() -> void
+                           {
+                             CopyTestContext tc(created_dsns);
+                             tc.create_source_pds();
+                             tc.create_target_pds();
+                             tc.write_source_member("SRC", "source content");
+                             tc.write_target_member("EXIST", "existing content");
+
+                             ZDS zds = {0};
+                             bool target_created = false;
+                             bool member_created = false;
+                             int rc = zds_copy_dsn(&zds, tc.source_dsn + "(SRC)", tc.target_dsn + "(EXIST)",
+                                                   true, false, &target_created, &member_created);
+                             Expect(rc).ToBe(0);
+                             Expect(target_created).ToBe(false);
+                             Expect(member_created).ToBe(false); // Member already existed
                            });
                       });
 
