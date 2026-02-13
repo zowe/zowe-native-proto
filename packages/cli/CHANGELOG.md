@@ -4,6 +4,10 @@ All notable changes to the Client code for "zowe-native-proto-cli" are documente
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## Recent Changes
+
+- Added the `zssh rename data-set-member` command to the CLI. [#765] (https://github.com/zowe/zowe-native-proto/pull/765).
+
 ## `0.2.3`
 
 - Added `zowex ds copy` command to copy data sets and members with optional `--replace` and `--overwrite` flags for overwrite protection. Supports PDS-to-PDS, member-to-member, and sequential-to-sequential copies. Note: RECFM=U data sets are not supported.[#778](https://github.com/zowe/zowe-native-proto/pull/778)

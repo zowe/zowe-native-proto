@@ -32,13 +32,15 @@ export default class ServerInstallHandler implements ICommandHandler {
         };
 
         params.response.progress.startBar({ task });
+        let caughtError: Error;
         try {
-            await ZSshUtils.installServer(session, serverPath, {
+            const installStatus = await ZSshUtils.installServer(session, serverPath, {
                 onProgress: (progressIncrement) => {
                     task.percentComplete += progressIncrement;
                 },
                 onError: async (error: Error, context: string) => {
                     // Log the error for CLI users
+                    caughtError = error;
                     const translatedError = translateCliError(error);
                     if ("summary" in translatedError) {
                         SshBaseHandler.logTranslatedError(params, translatedError);
@@ -50,6 +52,9 @@ export default class ServerInstallHandler implements ICommandHandler {
                     return false;
                 },
             });
+            if (!installStatus && caughtError) {
+                throw caughtError;
+            }
         } catch (error) {
             throw translateCliError(error as Error);
         } finally {

@@ -705,6 +705,27 @@ int handle_data_set_rename(InvocationContext &context)
   return rc;
 }
 
+int handle_rename_member(InvocationContext &context)
+{
+  int rc = 0;
+  string dsname = context.get<string>("dsn", "");
+  string member_before = context.get<string>("member-before", "");
+  string member_after = context.get<string>("member-after", "");
+  ZDS zds = {};
+
+  rc = zds_rename_members(&zds, dsname, member_before, member_after);
+  std::string source_member = dsname + "(" + member_before + ")";
+  if (0 != rc)
+  {
+    context.error_stream() << "Error: Could not rename member: '" << source_member << "' rc: '" << rc << "'" << endl;
+    context.error_stream() << " Details: " << zds.diag.e_msg << endl;
+    return RTNCD_FAILURE;
+  }
+  context.output_stream() << "Data set member '" << member_before << "' renamed to '" << member_after << "'" << endl;
+
+  return rc;
+}
+
 int handle_data_set_restore(InvocationContext &context)
 {
   int rc = 0;
@@ -732,39 +753,108 @@ int handle_data_set_restore(InvocationContext &context)
 
 int handle_data_set_compress(InvocationContext &context)
 {
+  int rc = 0;
   string dsn = context.get<string>("dsn", "");
 
-  ZDS zds = {};
-  int rc = zds_compress_dsn(&zds, dsn);
+  transform(dsn.begin(), dsn.end(), dsn.begin(), ::toupper);
 
-  if (rc != RTNCD_SUCCESS)
+  bool is_pds = false;
+
+  string dsn_formatted = "//'" + dsn + "'";
+  FILE *dir = fopen(dsn_formatted.c_str(), "r");
+  if (dir)
   {
-    if (zds.diag.e_msg_len > 0)
+    fldata_t file_info = {0};
+    char file_name[64] = {0};
+    if (0 == fldata(dir, file_name, &file_info))
     {
-      context.error_stream() << "Error: " << zds.diag.e_msg << endl;
+      if (file_info.__dsorgPDSdir && !file_info.__dsorgPDSE)
+      {
+        is_pds = true;
+      }
     }
-    else
-    {
-      context.error_stream() << "Error: compress failed" << endl;
-    }
+    fclose(dir);
+  }
+
+  if (!is_pds)
+  {
+    context.error_stream() << "Error: data set '" << dsn << "' is not a PDS" << endl;
     return RTNCD_FAILURE;
   }
 
+  // perform dynalloc
+  vector<string> dds;
+  dds.reserve(4);
+  dds.push_back("alloc dd(a) da('" + dsn + "') shr");
+  dds.push_back("alloc dd(b) da('" + dsn + "') shr");
+  dds.push_back("alloc dd(sysprint) lrecl(80) recfm(f,b) blksize(80)");
+  dds.push_back("alloc dd(sysin) lrecl(80) recfm(f,b) blksize(80)");
+
+  ZDIAG diag = {};
+  rc = zut_loop_dynalloc(diag, dds);
+  if (0 != rc)
+  {
+    context.error_stream() << "Error: allocation failed" << endl;
+    context.error_stream() << "  Details: " << diag.e_msg << endl;
+    return RTNCD_FAILURE;
+  }
+
+  // write control statements
+  ZDS zds = {};
+  rc = zds_write_to_dd(&zds, "sysin", "        COPY OUTDD=B,INDD=A");
+  if (0 != rc)
+  {
+    context.error_stream() << "Error: could not write to dd: '" << "sysin" << "' rc: '" << rc << "'" << endl;
+    context.error_stream() << "  Details: " << zds.diag.e_msg << endl;
+    zut_free_dynalloc_dds(diag, dds);
+    return RTNCD_FAILURE;
+  }
+
+  // perform compress
+  rc = zut_run("IEBCOPY");
+  if (RTNCD_SUCCESS != rc)
+  {
+    context.error_stream() << "Error: could not invoke IEBCOPY rc: '" << rc << "'" << endl;
+    zut_free_dynalloc_dds(diag, dds);
+    return RTNCD_FAILURE;
+  }
+
+  // read output from iebcopy
+  string output;
+  rc = zds_read_from_dd(&zds, "sysprint", output);
+  if (0 != rc)
+  {
+    context.error_stream() << "Error: could not read from dd: '" << "sysprint" << "' rc: '" << rc << "'" << endl;
+    context.error_stream() << "  Details: " << zds.diag.e_msg << endl;
+    context.error_stream() << output << endl;
+    zut_free_dynalloc_dds(diag, dds);
+    return RTNCD_FAILURE;
+  }
   context.output_stream() << "Data set '" << dsn << "' compressed" << endl;
+
+  // free dynalloc dds
+  rc = zut_free_dynalloc_dds(diag, dds);
+  if (0 != rc)
+  {
+    context.error_stream() << "Error: allocation failed" << endl;
+    context.error_stream() << "  Details: " << diag.e_msg << endl;
+    return RTNCD_FAILURE;
+  }
+
   return RTNCD_SUCCESS;
 }
 
 int handle_data_set_copy(InvocationContext &context)
 {
-  string source = context.get<string>("source", "");
-  string target = context.get<string>("target", "");
-  bool replace = context.get<bool>("replace", false);
-  bool overwrite = context.get<bool>("overwrite", false);
+  const string source = context.get<string>("source", "");
+  const string target = context.get<string>("target", "");
 
   ZDS zds = {};
-  bool target_created = false;
-  bool member_created = false;
-  int rc = zds_copy_dsn(&zds, source, target, replace, overwrite, &target_created, &member_created);
+  ZDSCopyOptions options;
+  options.replace = context.get<bool>("replace", false);
+  options.delete_target_members = context.get<bool>("delete-target-members", false);
+
+  int rc = zds_copy_dsn(&zds, source, target, &options);
 
   if (rc != RTNCD_SUCCESS)
   {
@@ -776,23 +866,21 @@ int handle_data_set_copy(InvocationContext &context)
     return RTNCD_FAILURE;
   }
 
-  // Build response object for RPC
-  auto result = obj();
-  if (target_created)
+  if (options.target_created)
   {
     result->set("targetCreated", true);
     context.output_stream() << "New data set '" << target << "' created and copied from '" << source << "'" << endl;
   }
-  if (member_created)
+  else if (options.member_created)
   {
     result->set("memberCreated", true);
     context.output_stream() << "New member '" << target << "' created and copied from '" << source << "'" << endl;
   }
-  else if (overwrite)
+  else if (options.delete_target_members)
   {
-    context.output_stream() << "Data set '" << target << "' has been overwritten with contents of '" << source << "'" << endl;
+    context.output_stream() << "Target members deleted and data set '" << target << "' replaced with contents of '" << source << "'" << endl;
   }
-  else if (replace)
+  else if (options.replace)
   {
     context.output_stream() << "Data set '" << target << "' has been updated with contents of '" << source << "'" << endl;
   }
@@ -936,6 +1024,14 @@ void register_commands(parser::Command &root_command)
   ds_rename_cmd->set_handler(handle_data_set_rename);
   data_set_cmd->add_command(ds_rename_cmd);
 
+  // Rename member subcommand
+  auto ds_rename_members_cmd = command_ptr(new Command("rename-member", "rename a member"));
+  ds_rename_members_cmd->add_positional_arg(DSN);
+  ds_rename_members_cmd->add_positional_arg("member-before", "member to rename", ArgType_Single, true);
+  ds_rename_members_cmd->add_positional_arg("member-after", "new member name", ArgType_Single, true);
+  ds_rename_members_cmd->set_handler(handle_rename_member);
+  data_set_cmd->add_command(ds_rename_members_cmd);
+
   // Compress subcommand
   auto ds_compress_cmd = command_ptr(new Command("compress", "compress data set"));
   ds_compress_cmd->add_positional_arg("dsn", "data set to compress", ArgType_Single, true);
@@ -947,10 +1043,10 @@ void register_commands(parser::Command &root_command)
   ds_copy_cmd->add_positional_arg("source", "source data set to copy from", ArgType_Single, true);
   ds_copy_cmd->add_positional_arg("target", "target data set to copy to", ArgType_Single, true);
   ds_copy_cmd->add_keyword_arg("replace", make_aliases("--replace", "-r"),
-                               "for PDS: replace matching members, keep target-only members. For PS/member: overwrite target (same as --overwrite)",
+                               "replace matching members in target PDS with source members (keeps non-matching target members)",
                                ArgType_Flag, false, ArgValue(false));
-  ds_copy_cmd->add_keyword_arg("overwrite", make_aliases("--overwrite", "-o"),
-                               "for PDS: delete all target members first, then copy. For PS/member: overwrite target (same as --replace)",
+  ds_copy_cmd->add_keyword_arg("delete-target-members", make_aliases("--delete-target-members", "-d"),
+                               "delete all members from target PDS before copying (PDS-to-PDS copy only, makes target match source exactly)",
                                ArgType_Flag, false, ArgValue(false));
   ds_copy_cmd->set_handler(handle_data_set_copy);
   data_set_cmd->add_command(ds_copy_cmd);

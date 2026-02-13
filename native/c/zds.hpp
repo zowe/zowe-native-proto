@@ -95,32 +95,23 @@ extern "C"
 {
 #endif
 
-enum ZDS_TYPE
-{
-  ZDS_TYPE_UNKNOWN = 0,
-  ZDS_TYPE_PS,     // Sequential
-  ZDS_TYPE_PDS,    // Partitioned (including PDSE)
-  ZDS_TYPE_MEMBER, // Member of a PDS
-  ZDS_TYPE_VSAM    // VSAM
-};
-
-struct ZDSTypeInfo
-{
-  bool exists;
-  ZDS_TYPE type;
-  std::string base_dsn;
-  std::string member_name;
-  ZDSEntry entry; // Basic attributes if it exists
-};
-
 /**
- * @brief Get detailed type and existence information for a data set string
- *
- * @param dsn data set name string (possibly with member)
- * @param info populated type info structure
- * @return int 0 for success; non zero otherwise
+ * @brief Options and results for data set copy operation
  */
-int zds_get_type_info(const std::string &dsn, ZDSTypeInfo &info);
+struct ZDSCopyOptions
+{
+  // Input options
+  bool replace;               // Replace like-named members in target (for PDS copy)
+  bool delete_target_members; // Delete all members from target PDS before copying (PDS-to-PDS only)
+
+  // Output results
+  bool target_created; // Set to true if target data set was created
+  bool member_created; // Set to true if target member was created
+
+  ZDSCopyOptions() : replace(false), delete_target_members(false), target_created(false), member_created(false)
+  {
+  }
+};
 
 /**
  * @brief Copy a data set or member
@@ -128,20 +119,10 @@ int zds_get_type_info(const std::string &dsn, ZDSTypeInfo &info);
  * @param zds data set returned attributes and error information
  * @param dsn1 source data set name
  * @param dsn2 destination data set name
- * @param replace if true, replace like-named members in target (for PDS copy)
+ * @param options copy options and results (optional, uses defaults if nullptr)
  * @return int 0 for success; non zero otherwise
  */
-int zds_copy_dsn(ZDS *zds, const std::string &dsn1, const std::string &dsn2, bool replace = false, bool overwrite = false,
-                 bool *target_created = nullptr, bool *member_created = nullptr);
-
-/**
- * @brief Compress a PDS data set
- *
- * @param zds data set returned attributes and error information
- * @param dsn data set name to compress
- * @return int 0 for success; non zero otherwise
- */
-int zds_compress_dsn(ZDS *zds, const std::string &dsn);
+int zds_copy_dsn(ZDS *zds, const std::string &dsn1, const std::string &dsn2, ZDSCopyOptions *options = nullptr);
 
 /**
  * @brief Check if a data set exists
@@ -230,6 +211,16 @@ int zds_delete_dsn(ZDS *zds, std::string dsn);
  * @return int 0 for success; non zero otherwise
  */
 int zds_rename_dsn(ZDS *zds, std::string dsn_before, std::string dsn_after);
+
+/**
+ * @brief Rename a data set member
+ *
+ * @param zds
+ * @param member_before
+ * @param member_after
+ * @return int 0 for success; non zero otherwise
+ */
+int zds_rename_members(ZDS *zds, const std::string &dsn, const std::string &member_before, const std::string &member_after);
 
 /**
  * @brief Obtain list of members in a z/OS data set

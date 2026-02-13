@@ -36,6 +36,7 @@ export abstract class RpcClientApi implements IRpcClient {
         restoreDataset: this.rpc<ds.RestoreDatasetRequest, ds.RestoreDatasetResponse>("restoreDataset"),
         writeDataset: this.rpc<ds.WriteDatasetRequest, ds.WriteDatasetResponse>("writeDataset"),
         renameDataset: this.rpc<ds.RenameDatasetRequest, ds.RenameDatasetResponse>("renameDataset"),
+        renameMember: this.rpc<ds.RenameMemberRequest, ds.RenameMemberResponse>("renameMember"),
     };
 
     public jobs = {

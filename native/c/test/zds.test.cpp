@@ -9,9 +9,9 @@
  *
  */
 
+#include <cstring>
 #include <iostream>
 #include <vector>
-#include <cstring>
 
 #include "ztest.hpp"
 #include "zds.hpp"
@@ -105,16 +105,22 @@ struct CopyTestContext : DataSetTestContextBase
     write_to_dsn(target_dsn, data);
   }
 
-  int copy(bool replace = false, bool overwrite = false)
+  int copy(bool replace = false, bool delete_target_members = false)
   {
     ZDS zds = {0};
-    return zds_copy_dsn(&zds, source_dsn, target_dsn, replace, overwrite);
+    ZDSCopyOptions options;
+    options.replace = replace;
+    options.delete_target_members = delete_target_members;
+    return zds_copy_dsn(&zds, source_dsn, target_dsn, &options);
   }
 
-  int copy_member(const string &src_mem, const string &tgt_mem, bool replace = false, bool overwrite = false)
+  int copy_member(const string &src_mem, const string &tgt_mem, bool replace = false, bool delete_target_members = false)
   {
     ZDS zds = {0};
-    return zds_copy_dsn(&zds, source_dsn + "(" + src_mem + ")", target_dsn + "(" + tgt_mem + ")", replace, overwrite);
+    ZDSCopyOptions options;
+    options.replace = replace;
+    options.delete_target_members = delete_target_members;
+    return zds_copy_dsn(&zds, source_dsn + "(" + src_mem + ")", target_dsn + "(" + tgt_mem + ")", &options);
   }
 
   bool target_has_member(const string &member)
@@ -145,62 +151,6 @@ struct CopyTestContext : DataSetTestContextBase
         return true;
     }
     return false;
-  }
-};
-
-struct CompressTestContext : DataSetTestContextBase
-{
-  string pds_dsn;
-
-  explicit CompressTestContext(vector<string> &list) : DataSetTestContextBase(list)
-  {
-    pds_dsn = get_random_ds(3);
-    cleanup_list.push_back(pds_dsn);
-  }
-
-  void create_pds()
-  {
-    create_pds_at(pds_dsn);
-  }
-  void create_pdse()
-  {
-    create_pdse_at(pds_dsn);
-  }
-  void create_seq()
-  {
-    create_seq_at(pds_dsn);
-  }
-  void write_member(const string &member, const string &data)
-  {
-    write_to_dsn(pds_dsn + "(" + member + ")", data);
-  }
-
-  // Check if system actually created a PDS (some systems override DSNTYPE via SMS)
-  bool is_actual_pds()
-  {
-    ZDS zds = {0};
-    vector<ZDSEntry> entries;
-    int rc = zds_list_data_sets(&zds, pds_dsn, entries, true);
-    if (rc != 0 || entries.empty())
-    {
-      TestLog("is_actual_pds: list failed or empty, rc=" + to_string(rc));
-      return false;
-    }
-    string dsntype = entries[0].dsntype;
-    TestLog("is_actual_pds: dsntype='" + dsntype + "' dsorg='" + entries[0].dsorg + "'");
-    // Check for both dsntype and dsorg to be safe
-    return dsntype == "PDS" && entries[0].dsorg != "POE";
-  }
-
-  int compress()
-  {
-    ZDS z = {0};
-    return zds_compress_dsn(&z, pds_dsn);
-  }
-
-  int compress_with_context(ZDS &z)
-  {
-    return zds_compress_dsn(&z, pds_dsn);
   }
 };
 
@@ -447,7 +397,7 @@ void zds_tests()
                              tc.write_source_member("MEMBER", "Member content");
 
                              ZDS zds = {0};
-                             int rc = zds_copy_dsn(&zds, tc.source_dsn + "(MEMBER)", tc.target_dsn);
+                             int rc = zds_copy_dsn(&zds, tc.source_dsn + "(MEMBER)", tc.target_dsn, nullptr);
                              Expect(rc).Not().ToBe(0);
                              Expect(string(zds.diag.e_msg)).ToContain("must specify a member name");
                            });
@@ -479,7 +429,7 @@ void zds_tests()
                              tc.write_source("Sequential data");
 
                              ZDS zds = {0};
-                             int rc = zds_copy_dsn(&zds, tc.source_dsn, tc.target_dsn + "(MEMBER)");
+                             int rc = zds_copy_dsn(&zds, tc.source_dsn, tc.target_dsn + "(MEMBER)", nullptr);
                              Expect(rc).Not().ToBe(0);
                              Expect(string(zds.diag.e_msg)).ToContain("must be a sequential data set");
                            });
@@ -503,7 +453,7 @@ void zds_tests()
                              string source_dsn = "NONEXISTENT.DATASET.NAME";
                              string target_dsn = get_random_ds(3);
                              created_dsns.push_back(target_dsn);
-                             int rc = zds_copy_dsn(&zds, source_dsn, target_dsn);
+                             int rc = zds_copy_dsn(&zds, source_dsn, target_dsn, nullptr);
                              Expect(rc).Not().ToBe(0);
                              Expect(string(zds.diag.e_msg)).ToContain("not found");
                            });
@@ -549,7 +499,9 @@ void zds_tests()
                              tc.write_target("Old target data");
 
                              ZDS zds = {0};
-                             int rc = zds_copy_dsn(&zds, tc.source_dsn, tc.target_dsn, false);
+                             ZDSCopyOptions options;
+                             options.replace = false;
+                             int rc = zds_copy_dsn(&zds, tc.source_dsn, tc.target_dsn, &options);
                              Expect(rc).Not().ToBe(0);
                              Expect(string(zds.diag.e_msg)).ToContain("already exists");
                            });
@@ -590,7 +542,7 @@ void zds_tests()
                              Expect(tc.copy(true)).ToBe(0);
                            });
 
-                        it("should overwrite entire PDS with overwrite flag",
+                        it("should overwrite entire PDS with delete_target_members flag",
                            [&]() -> void
                            {
                              CopyTestContext tc(created_dsns);
@@ -600,7 +552,9 @@ void zds_tests()
                              tc.write_target_member("MEM2", "Target member to be deleted");
 
                              ZDS zds = {0};
-                             int rc = zds_copy_dsn(&zds, tc.source_dsn, tc.target_dsn, false, true);
+                             ZDSCopyOptions options;
+                             options.delete_target_members = true;
+                             int rc = zds_copy_dsn(&zds, tc.source_dsn, tc.target_dsn, &options);
                              ExpectWithContext(rc, zds.diag.e_msg).ToBe(0);
 
                              Expect(tc.target_has_member("MEM1")).ToBe(true);
@@ -617,7 +571,9 @@ void zds_tests()
                              tc.write_target_member("MEM", "Old target data");
 
                              ZDS zds = {0};
-                             int rc = zds_copy_dsn(&zds, tc.source_dsn + "(MEM)", tc.target_dsn + "(MEM)", false);
+                             ZDSCopyOptions options;
+                             options.replace = false;
+                             int rc = zds_copy_dsn(&zds, tc.source_dsn + "(MEM)", tc.target_dsn + "(MEM)", &options);
                              Expect(rc).Not().ToBe(0);
                              Expect(string(zds.diag.e_msg)).ToContain("already exists");
                            });
@@ -642,7 +598,9 @@ void zds_tests()
 
                              // Copy within same PDS
                              ZDS zds = {0};
-                             int rc = zds_copy_dsn(&zds, tc.source_dsn + "(SRC)", tc.source_dsn + "(DST)", false);
+                             ZDSCopyOptions options;
+                             options.replace = false;
+                             int rc = zds_copy_dsn(&zds, tc.source_dsn + "(SRC)", tc.source_dsn + "(DST)", &options);
                              ExpectWithContext(rc, zds.diag.e_msg).ToBe(0);
 
                              // Verify both members exist
@@ -660,7 +618,9 @@ void zds_tests()
 
                              // Copy and replace within same PDS
                              ZDS zds = {0};
-                             int rc = zds_copy_dsn(&zds, tc.source_dsn + "(ORIG)", tc.source_dsn + "(COPY)", true);
+                             ZDSCopyOptions options;
+                             options.replace = true;
+                             int rc = zds_copy_dsn(&zds, tc.source_dsn + "(ORIG)", tc.source_dsn + "(COPY)", &options);
                              ExpectWithContext(rc, zds.diag.e_msg).ToBe(0);
                            });
 
@@ -731,7 +691,9 @@ void zds_tests()
                              tc.write_target_member("EXISTING", "Old member data");
 
                              ZDS zds = {0};
-                             int rc = zds_copy_dsn(&zds, tc.source_dsn, tc.target_dsn + "(EXISTING)", true);
+                             ZDSCopyOptions options;
+                             options.replace = true;
+                             int rc = zds_copy_dsn(&zds, tc.source_dsn, tc.target_dsn + "(EXISTING)", &options);
                              Expect(rc).Not().ToBe(0);
                              Expect(string(zds.diag.e_msg)).ToContain("must be a sequential data set");
                            });
@@ -774,103 +736,8 @@ void zds_tests()
                            });
                       });
 
-             // IEBCOPY invoked via ZUTRUN (LOAD/CALL) can 0C4 on some systems
-             describe("compress",
-                      [&]() -> void
-                      {
-                        it("should compress a PDS",
-                           [&]() -> void
-                           {
-                             CompressTestContext tc(created_dsns);
-                             tc.create_pds();
-                             if (!tc.is_actual_pds())
-                             {
-                               TestLog("Skipping - system created PDSE instead of PDS (SMS override)");
-                               return;
-                             }
-                             tc.write_member("MEM1", "Data 1");
-                             tc.write_member("MEM2", "Data 2");
-                             Expect(tc.compress()).ToBe(0);
-                           });
-
-                        it("should compress PDS with multiple members",
-                           [&]() -> void
-                           {
-                             CompressTestContext tc(created_dsns);
-                             tc.create_pds();
-                             if (!tc.is_actual_pds())
-                             {
-                               TestLog("Skipping - system created PDSE instead of PDS (SMS override)");
-                               return;
-                             }
-                             for (int i = 1; i <= 5; i++)
-                               tc.write_member("MEM" + to_string(i), "Data " + to_string(i));
-                             Expect(tc.compress()).ToBe(0);
-                           });
-
-                        it("should compress empty PDS",
-                           [&]() -> void
-                           {
-                             CompressTestContext tc(created_dsns);
-                             tc.create_pds();
-                             if (!tc.is_actual_pds())
-                             {
-                               TestLog("Skipping - system created PDSE instead of PDS (SMS override)");
-                               return;
-                             }
-                             Expect(tc.compress()).ToBe(0);
-                           });
-
-                        it("should fail when compressing a sequential data set",
-                           [&]() -> void
-                           {
-                             CompressTestContext tc(created_dsns);
-                             tc.create_seq();
-                             ZDS z = {0};
-                             Expect(tc.compress_with_context(z)).Not().ToBe(0);
-                             Expect(string(z.diag.e_msg)).ToContain("not a PDS");
-                           });
-
-                        it("should fail when compressing a PDSE",
-                           [&]() -> void
-                           {
-                             CompressTestContext tc(created_dsns);
-                             tc.create_pdse();
-                             ZDS z = {0};
-                             Expect(tc.compress_with_context(z)).Not().ToBe(0);
-                             Expect(string(z.diag.e_msg).length()).ToBeGreaterThan(0);
-                           });
-
-                        it("should fail when compressing nonexistent data set",
-                           []() -> void
-                           {
-                             ZDS z = {0};
-                             Expect(zds_compress_dsn(&z, "NONEXISTENT.DATASET.NAME")).Not().ToBe(0);
-                             Expect(string(z.diag.e_msg)).ToContain("not a PDS");
-                           });
-
-                        it("should preserve member content after compression",
-                           [&]() -> void
-                           {
-                             CompressTestContext tc(created_dsns);
-                             tc.create_pds();
-                             if (!tc.is_actual_pds())
-                             {
-                               TestLog("Skipping - system created PDSE instead of PDS (SMS override)");
-                               return;
-                             }
-                             string test_data = "Test data for compression";
-                             tc.write_member("MEMBER", test_data);
-                             Expect(tc.compress()).ToBe(0);
-
-                             string read_data;
-                             ZDS z = {0};
-                             zds_read_from_dsn(&z, tc.pds_dsn + "(MEMBER)", read_data);
-                             Expect(read_data).ToContain(test_data);
-                           });
-                      });
-             describe("rename",
-                      [&]() -> void
+             describe("rename data sets",
+                      []() -> void
                       {
                         it("should fail if source or target data sets are empty",
                            []() -> void
@@ -936,6 +803,135 @@ void zds_tests()
                              create_seq(&zds, before);
                              int rc = zds_rename_dsn(&zds, before, after);
                              ExpectWithContext(rc, zds.diag.e_msg).ToBe(0);
+                           });
+                      });
+             describe("rename members",
+                      [&]() -> void
+                      {
+                        const string M1 = "M1";
+                        const string M2 = "M2";
+                        DS_ATTRIBUTES attr = {0};
+
+                        attr.dsorg = "PO";
+                        attr.recfm = "FB";
+                        attr.lrecl = 80;
+                        attr.blksize = 6160;
+                        attr.alcunit = "TRACKS";
+                        attr.primary = 1;
+                        attr.secondary = 1;
+                        attr.dirblk = 10;
+                        string response;
+
+                        it("should fail if data set name is empty",
+                           [&]() -> void
+                           {
+                             ZDS zds = {0};
+                             string ds = get_random_ds(3);
+                             int rc = zds_rename_members(&zds, "", M1, M2);
+                             Expect(rc).ToBe(RTNCD_FAILURE);
+                             Expect(string(zds.diag.e_msg)).ToContain("Data set name must be valid");
+                           });
+
+                        it("should fail if member names are empty",
+                           [&]() -> void
+                           {
+                             ZDS zds = {0};
+                             string ds = get_random_ds(3);
+                             int rc = zds_create_dsn(&zds, ds, attr, response);
+                             Expect(rc).ToBe(0);
+
+                             rc = zds_rename_members(&zds, ds, "", M2);
+                             Expect(rc).ToBe(RTNCD_FAILURE);
+                             Expect(string(zds.diag.e_msg)).ToContain("Member name cannot be empty");
+
+                             ZDS zds2 = {0};
+                             rc = zds_rename_members(&zds2, ds, M1, "");
+                             Expect(rc).ToBe(RTNCD_FAILURE);
+                             Expect(string(zds.diag.e_msg)).ToContain("Member name cannot be empty");
+                           });
+                        it("should fail if member name is too long",
+                           [&]() -> void
+                           {
+                             ZDS zds = {0};
+                             string longName = "USER.TEST.TEST.TEST";
+                             string ds = get_random_ds(3);
+                             int rc = zds_create_dsn(&zds, ds, attr, response);
+                             rc = zds_rename_members(&zds, ds, M1, longName);
+                             Expect(rc).ToBe(RTNCD_FAILURE);
+                             Expect(string(zds.diag.e_msg)).ToContain("Member name must not exceed 8 characters");
+                           });
+
+                        it("should fail if data set does not exist",
+                           [&]() -> void
+                           {
+                             ZDS zds = {0};
+                             string ds = get_random_ds(3);
+                             int rc = zds_rename_members(&zds, ds, M1, M2);
+                             Expect(rc).ToBe(RTNCD_FAILURE);
+                             Expect(string(zds.diag.e_msg)).ToContain("Data set does not exist");
+                           });
+
+                        it("should fail if source member does not exist",
+                           [&]() -> void
+                           {
+                             ZDS zds = {0};
+                             string ds = get_random_ds(3);
+                             int rc = zds_create_dsn(&zds, ds, attr, response);
+                             rc = zds_rename_members(&zds, ds, M1, "M3");
+                             Expect(rc).ToBe(RTNCD_FAILURE);
+                             Expect(string(zds.diag.e_msg)).ToContain("Source member does not exist");
+                           });
+
+                        it("should fail if target member already exists",
+                           [&]() -> void
+                           {
+                             ZDS zds = {};
+
+                             string ds = get_random_ds(3);
+                             int rc = zds_create_dsn(&zds, ds, attr, response);
+
+                             string empty = "";
+                             rc = zds_write_to_dsn(&zds, ds + "(M1)", empty);
+                             Expect(rc).ToBe(0);
+                             memset(zds.etag, 0, 8);
+                             rc = zds_write_to_dsn(&zds, ds + "(M2)", empty);
+                             Expect(rc).ToBe(0);
+
+                             rc = zds_rename_members(&zds, ds, M1, M2);
+                             Expect(rc).ToBe(RTNCD_FAILURE);
+                             Expect(string(zds.diag.e_msg)).ToContain("Target member already exists");
+                           });
+
+                        it("should rename dataset successfully when valid",
+                           [&]() -> void
+                           {
+                             ZDS zds = {};
+                             string ds = get_random_ds(3);
+                             int rc = zds_create_dsn(&zds, ds, attr, response);
+
+                             string empty = "";
+                             rc = zds_write_to_dsn(&zds, ds + "(M1)", empty);
+                             Expect(rc).ToBe(0);
+
+                             rc = zds_rename_members(&zds, ds, M1, "M3");
+                             Expect(rc).ToBe(0);
+                             rc = zds_delete_dsn(&zds, ds);
+                           });
+
+                        it("should fail if member name begins with a non alphabetic character",
+                           [&]() -> void
+                           {
+                             ZDS zds = {};
+                             string ds = get_random_ds(3);
+                             int rc = zds_create_dsn(&zds, ds, attr, response);
+
+                             string empty = "";
+                             rc = zds_write_to_dsn(&zds, ds + "(M1)", empty);
+                             Expect(rc).ToBe(0);
+
+                             rc = zds_rename_members(&zds, ds, M1, "123");
+                             Expect(rc).ToBe(RTNCD_FAILURE);
+                             Expect(string(zds.diag.e_msg)).ToContain("Member name must begin with an alphabetic character");
                            });
                       });
            });
