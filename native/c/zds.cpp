@@ -19,6 +19,7 @@
 #endif
 #include <unistd.h>
 #include <stdio.h>
+#include <cstdio>
 #include <stdlib.h>
 #include <climits>
 #include <cstring>
@@ -400,10 +401,10 @@ int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2, ZDSCopyOption
     rc = zds_create_dsn(&create_zds, info2.base_dsn, attrs, create_resp);
     if (rc != RTNCD_SUCCESS)
     {
-      zds->diag.e_msg_len = snprintf(zds->diag.e_msg, sizeof(zds->diag.e_msg),
-                                     "Failed to create target data set '%s': %s",
-                                     info2.base_dsn.c_str(),
-                                     create_zds.diag.e_msg_len > 0 ? create_zds.diag.e_msg : create_resp.c_str());
+      zds->diag.e_msg_len = std::snprintf(zds->diag.e_msg, sizeof(zds->diag.e_msg),
+                                          "Failed to create target data set '%s': %s",
+                                          info2.base_dsn.c_str(),
+                                          create_zds.diag.e_msg_len > 0 ? create_zds.diag.e_msg : create_resp.c_str());
       // Ensure e_msg_len doesn't exceed buffer size (snprintf may return larger value if truncated)
       if (zds->diag.e_msg_len >= (int)sizeof(zds->diag.e_msg))
       {
@@ -1312,8 +1313,8 @@ int zds_validate_etag(ZDS *zds, const string &dsn, bool has_encoding)
   const auto read_rc = zds_read_from_dsn(&read_ds, dsn, current_contents);
   if (0 != read_rc)
   {
-    zds->diag.e_msg_len = snprintf(zds->diag.e_msg, sizeof(zds->diag.e_msg),
-                                   "Failed to read contents of data set for e-tag comparison: %s", read_ds.diag.e_msg);
+    zds->diag.e_msg_len = std::snprintf(zds->diag.e_msg, sizeof(zds->diag.e_msg),
+                                        "Failed to read contents of data set for e-tag comparison: %s", read_ds.diag.e_msg);
     if (zds->diag.e_msg_len >= (int)sizeof(zds->diag.e_msg))
     {
       zds->diag.e_msg_len = sizeof(zds->diag.e_msg) - 1;
