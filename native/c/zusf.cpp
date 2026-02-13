@@ -1035,7 +1035,8 @@ static int zusf_collect_directory_entries_recursive(ZUSF *zusf, const string &di
     {
       string child_path = zusf_join_path(dir_path, name);
       struct stat child_stats;
-      if (stat(child_path.c_str(), &child_stats) == 0 && S_ISDIR(child_stats.st_mode))
+      // Use lstat so symlinked directories are reported as links, not traversed as directories.
+      if (lstat(child_path.c_str(), &child_stats) == 0 && S_ISDIR(child_stats.st_mode))
       {
         vector<string> subdir_entries;
         if (zusf_collect_directory_entries_recursive(zusf, child_path, subdir_entries, options, current_depth + 1) == RTNCD_SUCCESS)
@@ -1133,7 +1134,11 @@ int zusf_list_uss_file_path(ZUSF *zusf, string file, string &response, ListOptio
     const auto name = entry_names.at(i);
     string child_path = zusf_join_path(file, name);
     struct stat child_stats;
-    stat(child_path.c_str(), &child_stats);
+    if (lstat(child_path.c_str(), &child_stats) != 0)
+    {
+      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not stat child path '%s'", child_path.c_str());
+      return RTNCD_FAILURE;
+    }
 
     response += zusf_format_file_entry(zusf, child_stats, child_path, name, options, use_csv_format);
   }

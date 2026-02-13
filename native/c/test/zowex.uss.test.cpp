@@ -715,6 +715,25 @@ void zowex_uss_tests()
                              Expect(response).ToContain("drwxrwxrwx,");
                              Expect(response).ToContain(",subDir1");
                            });
+                        it("should preserve symlink file type in long listing",
+                           [&]() -> void
+                           {
+                             string linkTargetDir = get_random_uss(ussTestDir) + "_target";
+                             string linkPath = get_random_uss(ussTestDir) + "_link";
+
+                             create_test_dir_cmd(linkTargetDir, "--mode 777");
+                             rc = symlink(linkTargetDir.c_str(), linkPath.c_str());
+                             ExpectWithContext(rc, "Failed to create symlink").ToBe(0);
+
+                             string listCommand = zowex_command + " uss ls " + ussTestDir + " -l";
+                             rc = execute_command_with_output(listCommand, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+                             Expect(response).ToContain("lrwx");
+                             Expect(response).ToContain(linkPath.substr(linkPath.find_last_of("/") + 1));
+
+                             unlink(linkPath.c_str());
+                             execute_command_with_output(zowex_command + " uss delete " + linkTargetDir + " --recursive", response);
+                           });
                         it("should properly handle missing options",
                            [&]() -> void
                            {
