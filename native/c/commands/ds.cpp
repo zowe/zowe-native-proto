@@ -846,15 +846,15 @@ int handle_data_set_compress(InvocationContext &context)
 
 int handle_data_set_copy(InvocationContext &context)
 {
-  string source = context.get<string>("source", "");
-  string target = context.get<string>("target", "");
-  bool replace = context.get<bool>("replace", false);
-  bool delete_target_members = context.get<bool>("delete-target-members", false);
+  const string source = context.get<string>("source", "");
+  const string target = context.get<string>("target", "");
 
   ZDS zds = {};
-  bool target_created = false;
-  bool member_created = false;
-  int rc = zds_copy_dsn(&zds, source, target, replace, delete_target_members, &target_created, &member_created);
+  ZDSCopyOptions options;
+  options.replace = context.get<bool>("replace", false);
+  options.delete_target_members = context.get<bool>("delete-target-members", false);
+
+  int rc = zds_copy_dsn(&zds, source, target, &options);
 
   if (rc != RTNCD_SUCCESS)
   {
@@ -866,19 +866,19 @@ int handle_data_set_copy(InvocationContext &context)
     return RTNCD_FAILURE;
   }
 
-  if (target_created)
+  if (options.target_created)
   {
     context.output_stream() << "New data set '" << target << "' created and copied from '" << source << "'" << endl;
   }
-  else if (member_created)
+  else if (options.member_created)
   {
     context.output_stream() << "New member '" << target << "' created and copied from '" << source << "'" << endl;
   }
-  else if (delete_target_members)
+  else if (options.delete_target_members)
   {
     context.output_stream() << "Target members deleted and data set '" << target << "' replaced with contents of '" << source << "'" << endl;
   }
-  else if (replace)
+  else if (options.replace)
   {
     context.output_stream() << "Data set '" << target << "' has been updated with contents of '" << source << "'" << endl;
   }

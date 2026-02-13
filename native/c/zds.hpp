@@ -96,19 +96,33 @@ extern "C"
 #endif
 
 /**
+ * @brief Options and results for data set copy operation
+ */
+struct ZDSCopyOptions
+{
+  // Input options
+  bool replace;               // Replace like-named members in target (for PDS copy)
+  bool delete_target_members; // Delete all members from target PDS before copying (PDS-to-PDS only)
+
+  // Output results
+  bool target_created; // Set to true if target data set was created
+  bool member_created; // Set to true if target member was created
+
+  ZDSCopyOptions() : replace(false), delete_target_members(false), target_created(false), member_created(false)
+  {
+  }
+};
+
+/**
  * @brief Copy a data set or member
  *
  * @param zds data set returned attributes and error information
  * @param dsn1 source data set name
  * @param dsn2 destination data set name
- * @param replace if true, replace like-named members in target (for PDS copy)
- * @param delete_target_members if true, delete all members from target PDS before copying (PDS-to-PDS only)
- * @param target_created optional output: set to true if target data set was created
- * @param member_created optional output: set to true if target member was created
+ * @param options copy options and results (optional, uses defaults if nullptr)
  * @return int 0 for success; non zero otherwise
  */
-int zds_copy_dsn(ZDS *zds, const std::string &dsn1, const std::string &dsn2, bool replace = false,
-                 bool delete_target_members = false, bool *target_created = nullptr, bool *member_created = nullptr);
+int zds_copy_dsn(ZDS *zds, const std::string &dsn1, const std::string &dsn2, ZDSCopyOptions *options = nullptr);
 
 /**
  * @brief Check if a data set exists
