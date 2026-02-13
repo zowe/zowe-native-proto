@@ -122,15 +122,16 @@ public:
 
   // Validate both request and response using separate schemas
   template <typename RequestT, typename ResponseT>
-  CommandBuilder &validate(bool allow_unknown_fields = false)
+  CommandBuilder &validate()
   {
-    request_validator_ = [allow_unknown_fields](const zjson::Value &params) -> validator::ValidationResult
+    // Allow unknown fields in requests for forward compatibility but not in responses
+    request_validator_ = [](const zjson::Value &params) -> validator::ValidationResult
     {
-      return validator::validate_schema(params, validator::SchemaRegistry<RequestT>::fields, validator::SchemaRegistry<RequestT>::field_count, allow_unknown_fields);
+      return validator::validate_schema(params, validator::SchemaRegistry<RequestT>::fields, validator::SchemaRegistry<RequestT>::field_count, true);
     };
-    response_validator_ = [allow_unknown_fields](const zjson::Value &params) -> validator::ValidationResult
+    response_validator_ = [](const zjson::Value &params) -> validator::ValidationResult
     {
-      return validator::validate_schema(params, validator::SchemaRegistry<ResponseT>::fields, validator::SchemaRegistry<ResponseT>::field_count, allow_unknown_fields);
+      return validator::validate_schema(params, validator::SchemaRegistry<ResponseT>::fields, validator::SchemaRegistry<ResponseT>::field_count, false);
     };
     return *this;
   }

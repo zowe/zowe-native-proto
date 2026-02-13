@@ -14,6 +14,7 @@
 #define _UNIX03_SOURCE
 #include <dirent.h>
 #include <dlfcn.h>
+#include <iostream>
 #include "commands/console.hpp"
 #include "commands/core.hpp"
 #include "commands/ds.hpp"
@@ -28,20 +29,28 @@ using namespace std;
 
 int main(int argc, char *argv[])
 {
-  auto &root_cmd = core::setup_root_command(argc, argv);
+  try
+  {
+    auto &root_cmd = core::setup_root_command(argc, argv);
 
-  plugin::PluginManager pm;
-  core::set_plugin_manager(&pm);
-  pm.load_plugins();
+    plugin::PluginManager pm;
+    core::set_plugin_manager(&pm);
+    pm.load_plugins();
 
-  console::register_commands(root_cmd);
-  ds::register_commands(root_cmd);
-  job::register_commands(root_cmd);
-  tool::register_commands(root_cmd);
-  tso::register_commands(root_cmd);
-  uss::register_commands(root_cmd);
+    console::register_commands(root_cmd);
+    ds::register_commands(root_cmd);
+    job::register_commands(root_cmd);
+    tool::register_commands(root_cmd);
+    tso::register_commands(root_cmd);
+    uss::register_commands(root_cmd);
 
-  pm.register_commands(root_cmd);
+    pm.register_commands(root_cmd);
 
-  return core::execute_command(argc, argv);
+    return core::execute_command(argc, argv);
+  }
+  catch (const std::exception &e)
+  {
+    std::cerr << "Fatal error encountered in zowex: " << e.what() << std::endl;
+    return 1;
+  }
 }
