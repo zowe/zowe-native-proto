@@ -17,6 +17,7 @@
 #include <cstring>
 #include <chrono>
 #include <thread>
+#include <unistd.h>
 
 using namespace std;
 
@@ -199,4 +200,42 @@ bool wait_for_job(const string &jobid, int max_retries, int delay_ms)
     this_thread::sleep_for(chrono::milliseconds(delay_ms));
   }
   return false;
+}
+
+TestFileGuard::TestFileGuard(const char *_filename, const char &mode)
+    : fp()
+{
+  fp = FileGuard(_filename, string(1, mode).c_str());
+  filename = _filename;
+}
+
+TestFileGuard::~TestFileGuard()
+{
+  unlink(filename.c_str());
+}
+
+TestFileGuard::operator FILE *() const
+{
+  return fp;
+}
+
+TestFileGuard::operator bool() const
+{
+  return fp != nullptr;
+}
+
+TestDirGuard::TestDirGuard(const char *_dirname, const mode_t mode)
+    : dirname(_dirname)
+{
+  mkdir(_dirname, mode);
+}
+
+TestDirGuard::~TestDirGuard()
+{
+  rmdir(dirname);
+}
+
+TestDirGuard::operator std::string() const
+{
+  return std::string(dirname);
 }

@@ -28,8 +28,6 @@
 using namespace std;
 using namespace ztst;
 
-const string zusf_test_dir = "/tmp/zusf_test_dir_" + get_random_string(10);
-
 void zusf_tests()
 {
   describe("zusf_chown_uss_file_or_dir tests",
@@ -1423,6 +1421,9 @@ void zusf_tests()
   describe("zusf_move_uss_file_or_dir tests",
            [&]() -> void
            {
+             string zusf_test_dir = "/tmp/zusf_test_dir_" + get_random_string(10);
+             TestDirGuard test_dir(zusf_test_dir.c_str());
+
              ZUSF zusf;
              beforeEach([&]() -> void
                         { memset(&zusf, 0, sizeof(zusf)); });
@@ -1456,34 +1457,22 @@ void zusf_tests()
                 [&]() -> void
                 {
                   string source = get_random_uss(zusf_test_dir);
-
-                  mkdir(zusf_test_dir.c_str(), 0755);
-                  ofstream file(source);
-                  file.close();
+                  TestFileGuard file(source.c_str());
 
                   int result = zusf_move_uss_file_or_dir(&zusf, source, source);
                   Expect(result).ToBe(RTNCD_FAILURE);
                   Expect(string(zusf.diag.e_msg)).ToContain("Source '" + source + "' and target '" + source + "' are identical");
-
-                  unlink(source.c_str());
-                  rmdir(zusf_test_dir.c_str());
                 });
 
              it("should fail when source is a directory and target is not a directory",
                 [&]() -> void
                 {
                   string target = get_random_uss(zusf_test_dir);
-
-                  mkdir(zusf_test_dir.c_str(), 0755);
-                  ofstream file(target);
-                  file.close();
+                  TestFileGuard file(target.c_str());
 
                   int result = zusf_move_uss_file_or_dir(&zusf, zusf_test_dir, target);
                   Expect(result).ToBe(RTNCD_FAILURE);
                   Expect(string(zusf.diag.e_msg)).ToContain("Cannot move directory '" + zusf_test_dir + "'. Target '" + target + "' is not a directory");
-
-                  unlink(target.c_str());
-                  rmdir(zusf_test_dir.c_str());
                 });
            });
 }
