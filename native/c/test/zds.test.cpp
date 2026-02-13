@@ -707,13 +707,13 @@ void zds_tests()
                              tc.write_source_member("SRC", "source content");
 
                              ZDS zds = {0};
-                             bool target_created = false;
-                             bool member_created = false;
-                             int rc = zds_copy_dsn(&zds, tc.source_dsn + "(SRC)", tc.target_dsn + "(NEW)",
-                                                   false, false, &target_created, &member_created);
+                             ZDSCopyOptions options;
+                             options.replace = false;
+                             options.delete_target_members = false;
+                             int rc = zds_copy_dsn(&zds, tc.source_dsn + "(SRC)", tc.target_dsn + "(NEW)", &options);
                              Expect(rc).ToBe(0);
-                             Expect(target_created).ToBe(false); // PDS already existed
-                             Expect(member_created).ToBe(true);  // Member was newly created
+                             Expect(options.target_created).ToBe(false); // PDS already existed
+                             Expect(options.member_created).ToBe(true);  // Member was newly created
                            });
 
                         it("should not set member_created when overwriting existing member",
@@ -726,18 +726,18 @@ void zds_tests()
                              tc.write_target_member("EXIST", "existing content");
 
                              ZDS zds = {0};
-                             bool target_created = false;
-                             bool member_created = false;
-                             int rc = zds_copy_dsn(&zds, tc.source_dsn + "(SRC)", tc.target_dsn + "(EXIST)",
-                                                   true, false, &target_created, &member_created);
+                             ZDSCopyOptions options;
+                             options.replace = true;
+                             options.delete_target_members = false;
+                             int rc = zds_copy_dsn(&zds, tc.source_dsn + "(SRC)", tc.target_dsn + "(EXIST)", &options);
                              Expect(rc).ToBe(0);
-                             Expect(target_created).ToBe(false);
-                             Expect(member_created).ToBe(false); // Member already existed
+                             Expect(options.target_created).ToBe(false);
+                             Expect(options.member_created).ToBe(false); // Member already existed
                            });
                       });
 
              describe("rename data sets",
-                      []() -> void
+                      [&]() -> void
                       {
                         it("should fail if source or target data sets are empty",
                            []() -> void
