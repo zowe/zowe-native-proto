@@ -207,3 +207,20 @@ export interface WriteFileResponse extends common.CommandResponse {
      */
     contentLen?: number;
 }
+
+export interface MoveFileRequest extends common.CommandRequest<"moveFile"> {
+    /**
+     * Source path to move
+     */
+    source: string;
+    /**
+     * Target path to move to
+     */
+    target: string;
+    /**
+     * Whether to force the move
+     */
+    force?: boolean; // default: true
+}
+
+export type MoveFileResponse = common.CommandResponse;

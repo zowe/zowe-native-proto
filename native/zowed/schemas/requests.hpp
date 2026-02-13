@@ -250,4 +250,11 @@ ZJSON_SCHEMA(WriteFileRequest,
     FIELD_OPTIONAL(contentLen, NUMBER)
 );
 
+struct MoveFileRequest {};
+ZJSON_SCHEMA(MoveFileRequest,
+    FIELD_REQUIRED(source, STRING),
+    FIELD_REQUIRED(target, STRING),
+    FIELD_OPTIONAL(force, BOOL)
+);
+
 #endif

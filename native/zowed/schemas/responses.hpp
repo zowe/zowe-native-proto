@@ -289,4 +289,9 @@ ZJSON_SCHEMA(WriteFileResponse,
     FIELD_OPTIONAL(contentLen, NUMBER)
 );
 
+struct MoveFileResponse {};
+ZJSON_SCHEMA(MoveFileResponse,
+    FIELD_REQUIRED(success, BOOL)
+);
+
 #endif

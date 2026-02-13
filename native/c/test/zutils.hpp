@@ -16,19 +16,21 @@
 #include "../zut.hpp"
 #include <sys/stat.h>
 
-const std::string zowex_command = "./../build-out/zowex";
-const std::string zoweax_command = "./../build-out/zoweax";
+using namespace std;
 
-int execute_command_with_input(const std::string &command, const std::string &input, bool suppress_output = true);
-int execute_command_with_output(const std::string &command, std::string &output);
-std::string get_random_string(const int length = 7, const bool allNumbers = true);
-std::string get_random_uss(const std::string base_dir);
-std::string get_random_ds(const int qualifier_count = 4, const std::string hlq = "");
-std::string get_user();
-std::string parse_etag_from_output(const std::string &output);
-std::vector<std::string> parse_rfc_response(const std::string input, const char *delim = ",");
+const string zowex_command = "./../build-out/zowex";
+const string zoweax_command = "./../build-out/zoweax";
+
+int execute_command_with_input(const string &command, const string &input, bool suppress_output = true);
+int execute_command_with_output(const string &command, string &output);
+string get_random_string(const int length = 7, const bool allNumbers = true);
+string get_random_uss(const string base_dir);
+string get_random_ds(const int qualifier_count = 4, const string hlq = "");
+string get_user();
+string parse_etag_from_output(const string &output);
+vector<string> parse_rfc_response(const string input, const char *delim = ",");
 // Wait for a job to be visible in JES (returns true if found, false if timeout)
-bool wait_for_job(const std::string &jobid, int max_retries = 30, int delay_ms = 100);
+bool wait_for_job(const string &jobid, int max_retries = 30, int delay_ms = 100);
 
 /**
  * @brief RAII class to manage FILE* pointers
@@ -39,7 +41,7 @@ bool wait_for_job(const std::string &jobid, int max_retries = 30, int delay_ms =
 class TestFileGuard
 {
   FILE *fp;
-  std::string filename;
+  string _file;
 
 public:
   TestFileGuard(const char *_filename, const char &mode = 'w');
@@ -66,7 +68,7 @@ public:
  */
 class TestDirGuard
 {
-  const char *dirname;
+  string _dir;
 
 public:
   TestDirGuard(const char *_dirname, const mode_t mode = 0755);
@@ -81,7 +83,7 @@ public:
   void reset(const char *_dirname, const mode_t mode = 0755);
   void reset();
 
-  operator std::string() const;
+  operator string() const;
 };
 
 #endif

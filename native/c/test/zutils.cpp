@@ -21,9 +21,9 @@
 
 using namespace std;
 
-int execute_command_with_input(const std::string &command, const std::string &input, bool suppress_output)
+int execute_command_with_input(const string &command, const string &input, bool suppress_output)
 {
-  std::string final_command = command;
+  string final_command = command;
   if (suppress_output)
   {
     final_command += " > /dev/null";
@@ -32,7 +32,7 @@ int execute_command_with_input(const std::string &command, const std::string &in
   FILE *pipe = popen(final_command.c_str(), "w");
   if (!pipe)
   {
-    throw std::runtime_error("Failed to open pipe for writing");
+    throw runtime_error("Failed to open pipe for writing");
   }
 
   if (!input.empty())
@@ -40,7 +40,7 @@ int execute_command_with_input(const std::string &command, const std::string &in
     if (fprintf(pipe, "%s", input.c_str()) < 0)
     {
       pclose(pipe);
-      throw std::runtime_error("Failed to write to pipe");
+      throw runtime_error("Failed to write to pipe");
     }
   }
 
@@ -48,7 +48,7 @@ int execute_command_with_input(const std::string &command, const std::string &in
   return WEXITSTATUS(exit_status);
 }
 
-int execute_command_with_output(const std::string &command, std::string &output)
+int execute_command_with_output(const string &command, string &output)
 {
   output = "";
 
@@ -56,7 +56,7 @@ int execute_command_with_output(const std::string &command, std::string &output)
   FILE *pipe = popen((command + " 2>&1").c_str(), "r");
   if (!pipe)
   {
-    throw std::runtime_error("Failed to open pipe for reading");
+    throw runtime_error("Failed to open pipe for reading");
   }
 
   char buffer[256];
@@ -114,7 +114,7 @@ string get_random_uss(const string base_dir)
   return ret;
 }
 
-static std::string s_user = "";
+static string s_user = "";
 string get_user()
 {
   if (s_user.empty())
@@ -205,13 +205,21 @@ bool wait_for_job(const string &jobid, int max_retries, int delay_ms)
 TestFileGuard::TestFileGuard(const char *_filename, const char &mode)
     : fp()
 {
-  fp = FileGuard(_filename, string(1, mode).c_str());
-  filename = _filename;
+  if (mode == 'p')
+  {
+    mkfifo(_filename, 0666);
+    _file = string(_filename);
+  }
+  else
+  {
+    _file = string(_filename);
+    fp = FileGuard(_filename, string(1, mode).c_str());
+  }
 }
 
 TestFileGuard::~TestFileGuard()
 {
-  unlink(filename.c_str());
+  unlink(_file.c_str());
 }
 
 TestFileGuard::operator FILE *() const
@@ -225,17 +233,17 @@ TestFileGuard::operator bool() const
 }
 
 TestDirGuard::TestDirGuard(const char *_dirname, const mode_t mode)
-    : dirname(_dirname)
+    : _dir(string(_dirname))
 {
-  mkdir(_dirname, mode);
+  mkdir(_dir.c_str(), mode);
 }
 
 TestDirGuard::~TestDirGuard()
 {
-  rmdir(dirname);
+  rmdir(_dir.c_str());
 }
 
-TestDirGuard::operator std::string() const
+TestDirGuard::operator string() const
 {
-  return std::string(dirname);
+  return _dir;
 }

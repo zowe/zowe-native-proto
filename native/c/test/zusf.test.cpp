@@ -1474,5 +1474,18 @@ void zusf_tests()
                   Expect(result).ToBe(RTNCD_FAILURE);
                   Expect(string(zusf.diag.e_msg)).ToContain("Cannot move directory '" + zusf_test_dir + "'. Target '" + target + "' is not a directory");
                 });
+
+             it("should fail when source is a pipe and target is not a pipe",
+                [&]() -> void
+                {
+                  string source = get_random_uss(zusf_test_dir);
+                  string target = get_random_uss(zusf_test_dir);
+                  TestFileGuard file(source.c_str(), 'p');
+                  TestFileGuard target_file(target.c_str());
+
+                  int result = zusf_move_uss_file_or_dir(&zusf, source, target);
+                  Expect(result).ToBe(RTNCD_FAILURE);
+                  Expect(string(zusf.diag.e_msg)).ToContain("Cannot move pipe '" + source + "'. Target 'test_file.txt' is not a pipe");
+                });
            });
 }
