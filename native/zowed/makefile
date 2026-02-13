@@ -15,7 +15,7 @@ CXX_MAIN = $(CXXLANG)
 
 CXXFLAGS_LIB = -std=gnu++11 -Wall -Werror -MMD -MP -O2 -I../c -I../c/chdsect -fvisibility=default -fno-aligned-allocation -D_EXT -D_OPEN_SYS_FILE_EXT=1
 CXXFLAGS_MAIN = -std=gnu++11 -O2 -I../c -I../c/chdsect
-LDFLAGS = $(CPP_BND_DEBUG_FLAGS)
+CPP_BND_FLAGS = $(CPP_BND_DEBUG_FLAGS)
 DLL_BND_FLAGS = $(DLL_BND_DEBUG_FLAGS)
 
 MACLIBS= -I../asmmac $(MACLIBS_BASE)
@@ -57,7 +57,7 @@ $(XLCLANG_OBJECTS): xlclang-deps
 
 # Build the executable (dynamically loads shared library)
 $(OUT_DIR)/$(TARGET): $(OUT_DIR) $(OUT_DIR)/main.o
-	$(CXX_MAIN) $(LDFLAGS) -o $(OUT_DIR)/$(TARGET) $(OUT_DIR)/main.o
+	$(CXX_MAIN) $(CPP_BND_FLAGS) -o $(OUT_DIR)/$(TARGET) $(OUT_DIR)/main.o
 
 # Compile library source files with ibm-clang++64
 $(OUT_DIR)/%.o: %.cpp
