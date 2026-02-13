@@ -368,9 +368,12 @@ void zds_tests()
                              string longName = "USER.TEST.TEST.TEST";
                              string ds = get_random_ds(3);
                              int rc = zds_create_dsn(&zds, ds, attr, response);
+                             string empty = "";
+                             rc = zds_write_to_dsn(&zds, ds + "(M1)", empty);
+                             Expect(rc).ToBe(0);
                              rc = zds_rename_members(&zds, ds, M1, longName);
                              Expect(rc).ToBe(RTNCD_FAILURE);
-                             Expect(string(zds.diag.e_msg)).ToContain("Member name must not exceed 8 characters");
+                             Expect(string(zds.diag.e_msg)).ToContain("Member name must start with A-Z,#,@,$ and contain only A-Z,0-9,#,@,$ (max 8 chars)");
                            });
 
                         it("should fail if data set does not exist",
@@ -430,7 +433,7 @@ void zds_tests()
                              rc = zds_delete_dsn(&zds, ds);
                            });
 
-                        it("should fail if member name begins with a non alphabetic character",
+                        it("should fail if member name begins with a digit",
                            [&]() -> void
                            {
                              ZDS zds = {};
@@ -443,7 +446,7 @@ void zds_tests()
 
                              rc = zds_rename_members(&zds, ds, M1, "123");
                              Expect(rc).ToBe(RTNCD_FAILURE);
-                             Expect(string(zds.diag.e_msg)).ToContain("Member name must begin with an alphabetic character");
+                             Expect(string(zds.diag.e_msg)).ToContain("Member name must start with A-Z,#,@,$ and contain only A-Z,0-9,#,@,$ (max 8 chars)");
                            });
                       });
            });
