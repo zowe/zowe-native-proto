@@ -1,0 +1,9 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "plugin": ["typedoc-plugin-markdown"],
+  "entryPoints": ["src/index.ts"],
+  "out": "../../doc/typedoc-md/zowe-native-proto-sdk",
+  "excludePrivate": true,
+  "excludeProtected": true,
+  "flattenOutputFiles": true
+}

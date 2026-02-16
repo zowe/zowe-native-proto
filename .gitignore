@@ -12,6 +12,7 @@ listings
 node_modules
 out
 typedoc
+typedoc-md
 zowe-native-proto-package
 
 # Files
