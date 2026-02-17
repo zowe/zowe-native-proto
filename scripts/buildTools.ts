@@ -130,13 +130,16 @@ class WatchUtils {
     private sftp: SFTPWrapper | null = null;
     private readonly ui: WatchUI = new WatchUI();
     private watcher: chokidar.FSWatcher;
+    private readonly testScope?: "zowex" | "zowed" | "all";
 
     constructor(
         private readonly connection: Client,
         sshProfile: IProfile,
+        options?: { testScope?: "zowex" | "zowed" | "all" },
     ) {
         this.cacheFile = path.resolve(this.cacheDir, `${sshProfile.user}_${sshProfile.host}.json`);
         this.rootDir = path.resolve(__dirname, localDeployDir);
+        this.testScope = options?.testScope;
         this.loadCache();
     }
 
@@ -322,31 +325,76 @@ class WatchUtils {
     }
 
     private async executeBuild(...paths: string[]) {
-        const cSourceChanged = paths.some((filePath) => toPosixPath(filePath).split("/")[0] === "c");
-        const zowedSourceChanged = paths.some((filePath) => toPosixPath(filePath).split("/")[0] === "zowed");
+        // Distinguish between source and test file changes
+        const cSourceChanged = paths.some((filePath) => {
+            const parts = toPosixPath(filePath).split("/");
+            return parts[0] === "c" && parts[1] !== "test";
+        });
+        const zowedSourceChanged = paths.some((filePath) => {
+            const parts = toPosixPath(filePath).split("/");
+            return parts[0] === "zowed" && parts[1] !== "test";
+        });
+        const cTestChanged = paths.some((filePath) => toPosixPath(filePath).startsWith("c/test/"));
+        const zowedTestChanged = paths.some((filePath) => toPosixPath(filePath).startsWith("zowed/test/"));
 
-        // Determine which tasks need to run
+        // Determine which source build tasks need to run
         const tasksToRun = [
             ...(cSourceChanged ? ["c"] : []),
             ...(zowedSourceChanged || cSourceChanged ? ["zowed"] : []),
         ];
 
+        // Determine which test tasks need to run (if in test mode)
+        const shouldRunZowexTests =
+            this.testScope &&
+            (this.testScope === "zowex" || this.testScope === "all") &&
+            (cSourceChanged || cTestChanged);
+        const shouldRunZowedTests =
+            this.testScope &&
+            (this.testScope === "zowed" || this.testScope === "all") &&
+            (zowedSourceChanged || zowedTestChanged || cSourceChanged);
+
+        if (shouldRunZowexTests) {
+            tasksToRun.push("c:test:make", "c:test:run");
+        }
+        if (shouldRunZowedTests) {
+            tasksToRun.push("zowed:test:make", "zowed:test:run");
+        }
+
         // Add tasks to UI and start spinner
         for (const task of tasksToRun) {
             this.ui.addTask(task);
         }
-        this.ui.setFooter("building...");
+        this.ui.setFooter("");
         this.ui.startSpinner();
 
-        let result: number | string; // number for failing exit code or string for successful output
-        if (cSourceChanged) {
-            result = await this.makeTask("c");
-        }
-        if (zowedSourceChanged || typeof result === "string" || result === 0) {
-            await this.makeTask("zowed", deployDirs.zowedDir);
-        }
+        try {
+            let result: number | string; // number for failing exit code or string for successful output
+            if (cSourceChanged) {
+                result = await this.makeTask("c");
+            }
+            if (zowedSourceChanged || typeof result === "string" || result === 0) {
+                await this.makeTask("zowed", deployDirs.zowedDir);
+            }
 
-        this.ui.stopSpinner();
+            // Run tests if enabled and builds succeeded (or only test files changed)
+            const buildSucceeded = typeof result === "string" || result === 0 || result === undefined;
+            if (buildSucceeded && shouldRunZowexTests) {
+                const testMakeResult = await this.makeTask("c:test:make", deployDirs.cTestDir);
+                if (typeof testMakeResult === "string" || testMakeResult === 0) {
+                    await this.runTestTask("c:test:run", deployDirs.cTestDir, "ztest_runner");
+                }
+            }
+            if (buildSucceeded && shouldRunZowedTests) {
+                const testMakeResult = await this.makeTask("zowed:test:make", deployDirs.zowedTestDir);
+                if (typeof testMakeResult === "string" || testMakeResult === 0) {
+                    await this.runTestTask("zowed:test:run", deployDirs.zowedTestDir, "zowed_test_runner");
+                }
+            }
+        } finally {
+            this.ui.stopSpinner();
+            this.ui.setFooter("watching for changes...");
+            this.ui.render();
+        }
     }
 
     private makeTask(taskName: string, inDir?: string): Promise<number | string> {
@@ -408,6 +456,176 @@ class WatchUtils {
             });
         });
     }
+
+    private runTestTask(taskName: string, testDir: string, runner: string): Promise<number | string> {
+        this.ui.updateTask(taskName, "running");
+        this.ui.render();
+
+        return new Promise<number | string>((resolve, reject) => {
+            this.connection.shell(false, async (err, stream) => {
+                if (err) {
+                    this.ui.updateTask(taskName, "error", err.message);
+                    this.ui.render();
+                    reject(err);
+                    return;
+                }
+
+                // Capture initial shell output like MOTD before sending commands
+                stream.write("echo\n");
+                await new Promise<void>((resolve) => stream.once("data", resolve));
+
+                const testEnv = '_CEE_RUNOPTS="TRAP(ON,NOSPIE)"';
+                const cmd = `cd ${testDir}\n${testEnv} ./build-out/${runner}\nexit $?\n`;
+                stream.write(cmd);
+
+                let outText = "";
+                let outputBuffer = "";
+                let resolved = false;
+                let hasFailed = false;
+                let seenTimeLine = false;
+                // Collect failures as { suite: string, tests: string[] }
+                const failedSuites: { suite: string; tests: string[] }[] = [];
+                let currentFailSuite: { suite: string; tests: string[] } | null = null;
+
+                const finish = () => {
+                    if (resolved) return;
+                    resolved = true;
+                    stream.removeAllListeners();
+                    stream.stdout.removeAllListeners();
+                    stream.stderr.removeAllListeners();
+                    // End the shell so the SSH channel closes cleanly
+                    stream.end();
+
+                    if (hasFailed) {
+                        let errorMsg = "Tests failed";
+                        if (failedSuites.length > 0) {
+                            const lines = ["Tests failed:"];
+                            for (const { suite, tests } of failedSuites) {
+                                lines.push(`  • ${suite}`);
+                                for (const test of tests) {
+                                    lines.push(`      ${test}`);
+                                }
+                            }
+                            errorMsg = lines.join("\n");
+                        }
+                        this.ui.updateTask(taskName, "error", errorMsg);
+                        this.ui.render();
+                        resolve(1);
+                    } else {
+                        this.ui.updateTask(taskName, "success");
+                        this.ui.render();
+                        resolve(outText);
+                    }
+                };
+
+                // Detect test completion from stdout by matching the "Time:" summary line.
+                // The "exit" and "close" events do not fire reliably for shell sessions on z/OS.
+                //
+                // In the FAILED TESTS section, suite paths are unindented:
+                //   ✗ FAIL zowex > data-set > compress
+                // Individual tests are indented with 2 spaces:
+                //     ✗ FAIL should compress a data set (392.248ms)
+                const suiteFailPattern = /^[✗\-] FAIL\s+(.+)/;
+                const testFailPattern = /^\s+[✗\-] FAIL\s+(.+)/;
+                const timeLinePattern = /^Time:\s+[\d.]+ms/;
+
+                const processLine = (line: string) => {
+                    const trimmed = line.trim();
+                    if (trimmed.length > 0) {
+                        this.ui.appendTaskOutput(taskName, line);
+                    }
+                    // Suite path line (no leading whitespace before the cross char)
+                    const suiteMatch = suiteFailPattern.exec(line);
+                    if (suiteMatch) {
+                        currentFailSuite = { suite: suiteMatch[1].trim(), tests: [] };
+                        failedSuites.push(currentFailSuite);
+                    }
+                    // Individual test line (indented)
+                    else {
+                        const testMatch = testFailPattern.exec(line);
+                        if (testMatch && currentFailSuite) {
+                            currentFailSuite.tests.push(testMatch[1].trim());
+                        }
+                    }
+                    // Check for test failures from the "Tests:" summary line
+                    if (/Tests:\s+.*\d+ failed/.test(trimmed)) {
+                        hasFailed = true;
+                    }
+                    // The "Time:" line is the last line of the test summary
+                    if (timeLinePattern.test(trimmed)) {
+                        seenTimeLine = true;
+                    }
+                };
+
+                // After the "Time:" line is detected, wait briefly for any trailing
+                // data before finishing. This avoids resolving too early if the stream
+                // delivers additional chunks after the summary.
+                const finishAfterTimeLine = () => {
+                    setTimeout(() => {
+                        // Flush any leftover buffer content
+                        if (outputBuffer.length > 0) {
+                            processLine(outputBuffer);
+                            outputBuffer = "";
+                        }
+                        finish();
+                    }, 250);
+                };
+
+                stream.on("exit", () => {
+                    // Flush any remaining buffered output before finishing
+                    if (outputBuffer.length > 0) {
+                        processLine(outputBuffer);
+                        outputBuffer = "";
+                    }
+                    finish();
+                });
+                stream.on("error", (err: Error) => {
+                    if (resolved) return;
+                    resolved = true;
+                    this.ui.updateTask(taskName, "error", err.message);
+                    this.ui.render();
+                    reject(err);
+                });
+                stream.stdout.on("data", (data: Buffer) => {
+                    if (resolved) return;
+                    const str = data.toString();
+                    outText += str;
+
+                    // Process line by line for sliding window display
+                    outputBuffer += str;
+                    const lines = outputBuffer.split("\n");
+                    // Keep last incomplete line in buffer
+                    outputBuffer = lines.pop() || "";
+
+                    for (const line of lines) {
+                        processLine(line);
+                    }
+
+                    // Also check the incomplete buffer for the Time: pattern
+                    // (the line may arrive without a trailing newline)
+                    if (outputBuffer.length > 0 && timeLinePattern.test(outputBuffer.trim())) {
+                        processLine(outputBuffer);
+                        outputBuffer = "";
+                    }
+
+                    this.ui.render();
+
+                    if (seenTimeLine) {
+                        finishAfterTimeLine();
+                    }
+                });
+                stream.stderr.on("data", (data: Buffer) => {
+                    if (resolved) return;
+                    const str = data.toString().trim();
+                    if (str.length > 0) {
+                        // Surface stderr lines in the sliding window too
+                        this.ui.appendTaskOutput(taskName, str);
+                        this.ui.render();
+                    }
+                });
+            });
+        });
+    }
 }
 
 function DEBUG_MODE() {
@@ -439,6 +657,7 @@ interface TaskState {
     status: TaskStatus;
     error?: string;
     errorLogPath?: string;
+    outputLines?: string[]; // For streaming test output (sliding window)
 }
 
 class WatchUI {
@@ -453,7 +672,23 @@ class WatchUI {
     private readonly printedFallbackItems: Set<string> = new Set();
 
     private isInteractive(): boolean {
-        return process.stdout.isTTY === true && !DEBUG_MODE() && process.env.CI == null;
+        // Allow users to force simple output mode
+        if (process.env.ZOWE_WATCH_SIMPLE === "1" || process.env.ZOWE_WATCH_SIMPLE?.toUpperCase() === "TRUE") {
+            return false;
+        }
+
+        // Basic TTY check
+        if (process.stdout.isTTY !== true || DEBUG_MODE() || process.env.CI != null) {
+            return false;
+        }
+
+        // Check if terminal width is reasonable (indicates proper terminal emulation)
+        const columns = process.stdout.columns;
+        if (columns == null || columns < 20) {
+            return false;
+        }
+
+        return true;
     }
 
     setFiles(files: Map<string, { kind: FileChangeKind; mtime: Date }>) {
@@ -477,10 +712,25 @@ class WatchUI {
             if (error) {
                 const errorLogDir = path.resolve(__dirname, "../.cache/build-errors");
                 fs.mkdirSync(errorLogDir, { recursive: true });
-                const logPath = path.join(errorLogDir, `${name}.log`);
+                const logName = name.replace(/:/g, "_");
+                const logPath = path.join(errorLogDir, `${logName}.log`);
                 const logContent = `Build error log for [${name}]\nTimestamp: ${this.timestamp.toLocaleString()}\n${"─".repeat(50)}\n\n${error}`;
                 fs.writeFileSync(logPath, logContent);
-                task.errorLogPath = `.cache/build-errors/${name}.log`;
+                task.errorLogPath = `.cache/build-errors/${logName}.log`;
+            }
+        }
+    }
+
+    appendTaskOutput(name: string, line: string) {
+        const task = this.tasks.get(name);
+        if (task) {
+            if (!task.outputLines) {
+                task.outputLines = [];
+            }
+            // Keep only last 10 lines (sliding window)
+            task.outputLines.push(line);
+            if (task.outputLines.length > 10) {
+                task.outputLines.shift();
             }
         }
     }
@@ -535,7 +785,27 @@ class WatchUI {
 
             for (const [, task] of this.tasks.entries()) {
                 const icon = this.getStatusIcon(task.status);
-                lines.push(`    [${task.name}] make ${icon}`);
+                // Format task name for better readability
+                let taskLabel = "make";
+                if (task.name.includes(":test:make")) {
+                    taskLabel = "compile tests";
+                } else if (task.name.includes(":test:run")) {
+                    taskLabel = "run tests";
+                }
+                lines.push(`    [${task.name}] ${taskLabel} ${icon}`);
+
+                // Show streaming output for test tasks (sliding window of last 10 lines)
+                if (task.outputLines && task.outputLines.length > 0 && task.name.includes(":test:run")) {
+                    const columns = process.stdout.columns || 80;
+                    const indent = "      ";
+                    const maxContentWidth = columns - indent.length;
+                    for (const outputLine of task.outputLines) {
+                        const visible = WatchUI.stripAnsi(outputLine);
+                        const truncated =
+                            visible.length > maxContentWidth ? visible.slice(0, maxContentWidth - 3) + "..." : visible;
+                        lines.push(`${indent}${ANSI.DIM}${truncated}${ANSI.RESET}`);
+                    }
+                }
 
                 // Show error inline if present
                 if (task.error) {
@@ -552,7 +822,9 @@ class WatchUI {
                     }
 
                     if (remainingCount > 0) {
-                        lines.push(`      ${ANSI.DIM}... ${remainingCount} more line${remainingCount > 1 ? "s" : ""}${ANSI.RESET}`);
+                        lines.push(
+                            `      ${ANSI.DIM}... ${remainingCount} more line${remainingCount > 1 ? "s" : ""}${ANSI.RESET}`,
+                        );
                     }
 
                     if (task.errorLogPath) {
@@ -566,6 +838,28 @@ class WatchUI {
         lines.push("", `${ANSI.DIM}${this.footerMessage}${ANSI.RESET}`);
 
         return lines;
+    }
+
+    /**
+     * Strips ANSI escape sequences to get the visible length of a string.
+     */
+    private static stripAnsi(str: string): string {
+        // biome-ignore lint/suspicious/noControlCharactersInRegex: stripping ANSI escape codes
+        return str.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, "");
+    }
+
+    /**
+     * Counts the number of physical terminal rows a set of logical lines will occupy,
+     * accounting for line wrapping based on terminal width.
+     */
+    private countPhysicalRows(lines: string[]): number {
+        const columns = process.stdout.columns || 80;
+        let rows = 0;
+        for (const line of lines) {
+            const visibleLen = WatchUI.stripAnsi(line).length;
+            rows += visibleLen === 0 ? 1 : Math.ceil(visibleLen / columns);
+        }
+        return rows;
     }
 
     private clear() {
@@ -585,7 +879,7 @@ class WatchUI {
         this.clear();
         const lines = this.buildLines();
         process.stdout.write(lines.join("\n") + "\n");
-        this.lineCount = lines.length;
+        this.lineCount = this.countPhysicalRows(lines);
     }
 
     private renderFallback() {
@@ -607,8 +901,25 @@ class WatchUI {
 
             // Print "running" once when task starts
             if (task.status === "running" && !this.printedFallbackItems.has(runningKey)) {
-                console.log(`  [${task.name}] make running`);
+                let taskLabel = "make";
+                if (task.name.includes(":test:make")) {
+                    taskLabel = "compile tests";
+                } else if (task.name.includes(":test:run")) {
+                    taskLabel = "run tests";
+                }
+                console.log(`  [${task.name}] ${taskLabel} running`);
                 this.printedFallbackItems.add(runningKey);
+            }
+
+            // Stream test output as it comes in (for test:run tasks)
+            if (task.name.includes(":test:run") && task.outputLines) {
+                for (let i = 0; i < task.outputLines.length; i++) {
+                    const outputKey = `task:${task.name}:output:${i}`;
+                    if (!this.printedFallbackItems.has(outputKey)) {
+                        console.log(`    ${task.outputLines[i]}`);
+                        this.printedFallbackItems.add(outputKey);
+                    }
+                }
             }
 
             // Print final result once when task completes
@@ -627,9 +938,28 @@ class WatchUI {
                               : task.status === "warning"
                                 ? "!"
                                 : "—";
-                    console.log(`  [${task.name}] make ${statusText}`);
+                    let taskLabel = "make";
+                    if (task.name.includes(":test:make")) {
+                        taskLabel = "compile tests";
+                    } else if (task.name.includes(":test:run")) {
+                        taskLabel = "run tests";
+                    }
+                    console.log(`  [${task.name}] ${taskLabel} ${statusText}`);
                     if (task.error) {
-                        console.log(`    error: ${task.error}`);
+                        console.log("    error:");
+                        const errorLines = task.error.split("\n").filter((line) => line.trim().length > 0);
+                        const maxLines = 10;
+                        for (const line of errorLines.slice(0, maxLines)) {
+                            console.log(`      ${line}`);
+                        }
+                        if (errorLines.length > maxLines) {
+                            console.log(
+                                `      ... ${errorLines.length - maxLines} more line${errorLines.length - maxLines > 1 ? "s" : ""}`,
+                            );
+                        }
+                        if (task.errorLogPath) {
+                            console.log(`    full log: ${task.errorLogPath}`);
+                        }
                     }
                     this.printedFallbackItems.add(doneKey);
                 }
@@ -650,7 +980,7 @@ class WatchUI {
         this.spinnerInterval = setInterval(() => {
             this.spinnerFrame = (this.spinnerFrame + 1) % BRAILLE_FRAMES.length;
             this.render();
-        }, 80);
+        }, 160);
     }
 
     stopSpinner() {
@@ -689,9 +1019,9 @@ function startSpinner(text = "Loading...") {
     // Hide cursor
     process.stdout.write("\x1b[?25l");
     return setInterval(() => {
-        process.stdout.write(`\r${BRAILLE_FRAMES[frameIndex]} ${displayText}`);
+        process.stdout.write(`\x1b[2K\r${BRAILLE_FRAMES[frameIndex]} ${displayText}`);
         frameIndex = (frameIndex + 1) % BRAILLE_FRAMES.length;
-    }, 80);
+    }, 160);
 }
 
 function stopSpinner(spinner: NodeJS.Timeout | null, text = "Done!") {
@@ -809,6 +1139,7 @@ async function artifacts(connection: Client, packageAll: boolean) {
             `mv ${checksumFile} ../dist/${checksumFile}`,
             postPaxCmd,
         ].join("\n"),
+        { stepName: "Packaging artifacts" },
     );
     fs.mkdirSync(path.resolve(__dirname, `./../${localDir}`), { recursive: true });
     for (const localFile of localFiles) {
@@ -816,40 +1147,55 @@ async function artifacts(connection: Client, packageAll: boolean) {
     }
 }
 
-async function runCommandInShell(connection: Client, command: string, streamOutput = false) {
-    const spinner = streamOutput ? null : startSpinner(`$ ${command.trim()}`);
+interface RunCommandOpts {
+    streamOutput?: boolean;
+    stepName?: string;
+}
+
+async function runCommandInShell(connection: Client, command: string, opts?: RunCommandOpts) {
+    // For multi-line commands, show only the first line in the spinner
+    const firstLine = command.trim().split("\n")[0];
+    const spinnerText = opts?.stepName ?? (command.includes("\n") ? `$ ${firstLine}...` : `$ ${command.trim()}`);
+    const spinner = opts?.streamOutput ? null : startSpinner(spinnerText);
     return new Promise<string>((resolve, reject) => {
         let data = "";
         let error = "";
+        let hasError = false;
         const cb: ClientCallback = (err, stream) => {
             if (err) {
-                if (spinner) stopSpinner(spinner, `Error: runCommand connection.exec error ${err}`);
+                if (spinner) stopSpinner(spinner, `Error: ${err.message}`);
                 reject(err);
+                return;
             }
             stream.on("close", () => {
-                if (spinner) stopSpinner(spinner);
-                resolve(data);
+                if (!hasError && spinner) {
+                    stopSpinner(spinner);
+                }
+                if (!hasError) {
+                    resolve(data);
+                }
             });
             stream.on("data", (part: Buffer) => {
                 const output = part.toString();
                 data += output;
-                if (streamOutput) {
+                if (opts?.streamOutput) {
                     process.stdout.write(output);
                 }
             });
             stream.stderr.on("data", (err: Buffer) => {
                 const errOutput = err.toString();
                 error += errOutput;
-                if (streamOutput || DEBUG_MODE()) {
+                if (opts?.streamOutput || DEBUG_MODE()) {
                     process.stderr.write(errOutput);
                 }
             });
             stream.on("exit", (exitCode: number) => {
                 if (exitCode !== 0) {
-                    const fullError = `\nError: runCommand connection.exec error - stream.on exit: \n ${error || data}`;
-                    if (spinner) stopSpinner(spinner, fullError);
+                    hasError = true;
+                    const fullError = `${error || data}`.trim();
+                    if (spinner) stopSpinner(spinner, `\x1b[31m${opts?.stepName ?? "Command"} failed\x1b[0m`);
                     process.exitCode = exitCode;
-                    reject(fullError);
+                    reject(new Error(fullError));
                 }
             });
             stream.end(`${command}\nexit $?\n`);
@@ -937,16 +1283,16 @@ async function upload(connection: Client, sshProfile: IProfile) {
 
 async function build(connection: Client, { preBuildCmd }: IConfig) {
     preBuildCmd = preBuildCmd ? `${preBuildCmd} && ` : "";
-    console.log("Building native/c ...");
     let response = await runCommandInShell(
         connection,
         `${preBuildCmd}cd ${deployDirs.cDir} && make ${DEBUG_MODE() ? "-DBuildType=DEBUG" : ""}\n`,
+        { stepName: "Building native/c" },
     );
     DEBUG_MODE() && console.log(response);
-    console.log("Building native/zowed ...");
     response = await runCommandInShell(
         connection,
         `${preBuildCmd}cd ${deployDirs.zowedDir} && make ${DEBUG_MODE() ? "-DBuildType=DEBUG" : ""}\n`,
+        { stepName: "Building native/zowed" },
     );
     DEBUG_MODE() && console.log(response);
     console.log("Build complete!");
@@ -955,23 +1301,39 @@ async function build(connection: Client, { preBuildCmd }: IConfig) {
 async function make(connection: Client, inDir?: string) {
     const pwd = inDir ?? deployDirs.cDir;
     const targets = args.filter((arg, idx) => idx > 0 && !arg.startsWith("--")).join(" ");
-    console.log(`Running "make ${targets || "all"}"${inDir ? ` in ${pwd}` : ""}...`);
     const response = await runCommandInShell(
         connection,
         `cd ${pwd} && make ${targets} ${DEBUG_MODE() ? "-DBuildType=DEBUG" : ""}\n`,
+        { stepName: `Running make ${targets || "all"}` },
     );
     console.log(response);
 }
 
 async function test(connection: Client) {
-    console.log("Testing native/c ...");
     const testEnv = '_CEE_RUNOPTS="TRAP(ON,NOSPIE)"';
     const cTestCmd = `cd ${deployDirs.cTestDir} && ${testEnv} ./build-out/ztest_runner ${args[1] ?? ""}`;
     const zowedTestCmd = `cd ${path.posix.relative(deployDirs.cTestDir, deployDirs.zowedTestDir)} && ${testEnv} ./build-out/zowed_test_runner ${args[1] ?? ""}`;
     const exitMaxRc = `[ "$rc1" -gt "$rc2" ] && exit "$rc1" || exit "$rc2"`;
-    await runCommandInShell(connection, `${cTestCmd}; rc1=$?; ${zowedTestCmd}; rc2=$?; ${exitMaxRc}\n`, true);
+    await runCommandInShell(connection, `${cTestCmd}; rc1=$?; ${zowedTestCmd}; rc2=$?; ${exitMaxRc}\n`, {
+        streamOutput: true,
+        stepName: "Running tests",
+    });
     console.log("\nTesting complete!");
     await retrieve(connection, [`c/test/test-results.xml`, `zowed/test/test-results.xml`], "native", false, true);
+}
+
+async function testSingle(connection: Client, scope: "zowex" | "zowed") {
+    const testEnv = '_CEE_RUNOPTS="TRAP(ON,NOSPIE)"';
+    const testDir = scope === "zowex" ? deployDirs.cTestDir : deployDirs.zowedTestDir;
+    const runner = scope === "zowex" ? "ztest_runner" : "zowed_test_runner";
+    const testCmd = `cd ${testDir} && ${testEnv} ./build-out/${runner} ${args[1] ?? ""}`;
+    await runCommandInShell(connection, `${testCmd}\n`, {
+        streamOutput: true,
+        stepName: `Running ${scope} tests`,
+    });
+    console.log("\nTesting complete!");
+    const xmlPath = scope === "zowex" ? "c/test/test-results.xml" : "zowed/test/test-results.xml";
+    await retrieve(connection, [xmlPath], "native", false, true);
 }
 
 async function chdsect(connection: Client) {
@@ -997,6 +1359,7 @@ async function chdsect(connection: Client) {
                 response = await runCommandInShell(
                     connection,
                     `cd ${deployDirs.asmchdrDir} && make build-${args[1]} 2>&1 \n`,
+                    { stepName: `Building chdsect ${args[1]}` },
                 );
             } catch (err) {
                 console.log("Chdsect err");
@@ -1022,20 +1385,31 @@ async function chdsect(connection: Client) {
 }
 
 async function clean(connection: Client) {
-    console.log("Cleaning native/c ...");
-    console.log(await runCommandInShell(connection, `cd ${deployDirs.cDir} && make clean\n`));
-    console.log("Cleaning native/c/test ...");
-    console.log(await runCommandInShell(connection, `cd ${deployDirs.cTestDir} && make clean\n`));
-    console.log("Cleaning native/python ...");
-    console.log(await runCommandInShell(connection, `cd ${deployDirs.pythonDir} && make clean\n`));
-    console.log("Cleaning native/python/test ...");
-    console.log(await runCommandInShell(connection, `cd ${deployDirs.pythonTestDir} && make clean\n`));
+    console.log(
+        await runCommandInShell(connection, `cd ${deployDirs.cDir} && make clean\n`, { stepName: "Cleaning native/c" }),
+    );
+    console.log(
+        await runCommandInShell(connection, `cd ${deployDirs.cTestDir} && make clean\n`, {
+            stepName: "Cleaning native/c/test",
+        }),
+    );
+    console.log(
+        await runCommandInShell(connection, `cd ${deployDirs.pythonDir} && make clean\n`, {
+            stepName: "Cleaning native/python",
+        }),
+    );
+    console.log(
+        await runCommandInShell(connection, `cd ${deployDirs.pythonTestDir} && make clean\n`, {
+            stepName: "Cleaning native/python/test",
+        }),
+    );
     console.log("Clean complete");
 }
 
 async function rmdir(connection: Client, sshProfile: IProfile) {
-    console.log("Removing ROOT directory ...");
-    console.log(await runCommandInShell(connection, `rm -rf ${deployDirs.root}\n`));
+    console.log(
+        await runCommandInShell(connection, `rm -rf ${deployDirs.root}\n`, { stepName: "Removing deploy directory" }),
+    );
     console.log("Removal complete");
     const watcher = new WatchUtils(connection, sshProfile);
     watcher.cache = {};
@@ -1044,6 +1418,12 @@ async function rmdir(connection: Client, sshProfile: IProfile) {
 
 async function watch(connection: Client, sshProfile: IProfile) {
     await new WatchUtils(connection, sshProfile).start();
+    return new Promise<void>((resolve) => connection.on("close", () => resolve()));
+}
+
+async function watchTest(connection: Client, sshProfile: IProfile, scope?: string) {
+    const testScope = scope === "zowex" || scope === "zowed" ? scope : "all";
+    await new WatchUtils(connection, sshProfile, { testScope }).start();
     return new Promise<void>((resolve) => connection.on("close", () => resolve()));
 }
 
@@ -1209,6 +1589,12 @@ async function main() {
             case "test":
                 await test(sshClient);
                 break;
+            case "test:zowex":
+                await testSingle(sshClient, "zowex");
+                break;
+            case "test:zowed":
+                await testSingle(sshClient, "zowed");
+                break;
             case "test:python":
                 await make(sshClient, deployDirs.pythonTestDir);
                 break;
@@ -1218,6 +1604,11 @@ async function main() {
             case "watch":
                 await watch(sshClient, config.sshProfile as IProfile);
                 break;
+            case "watch:test": {
+                const scope = args.splice(1, 1)[0];
+                await watchTest(sshClient, config.sshProfile as IProfile, scope);
+                break;
+            }
             default:
                 console.error(`Unsupported command "${args[0]}". See README for instructions.`);
                 break;
@@ -1228,6 +1619,10 @@ async function main() {
 }
 
 main().catch((err) => {
-    console.error(err);
+    // Print error message without the Error object wrapper
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    if (errorMessage) {
+        console.error(`\n${errorMessage}`);
+    }
     process.exit(process.exitCode ?? 1);
 });

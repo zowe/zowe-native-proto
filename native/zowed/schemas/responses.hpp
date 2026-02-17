@@ -124,6 +124,11 @@ ZJSON_SCHEMA(RenameDatasetResponse,
     FIELD_REQUIRED(success, BOOL)
 );
 
+struct RenameMemberResponse {};
+ZJSON_SCHEMA(RenameMemberResponse,
+    FIELD_REQUIRED(success, BOOL)
+);
+
 struct ListDatasetsResponse {};
 ZJSON_SCHEMA(ListDatasetsResponse,
     FIELD_REQUIRED(success, BOOL),
