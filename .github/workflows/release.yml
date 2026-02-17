@@ -87,6 +87,9 @@ jobs:
           GIT_COMMITTER_EMAIL: ${{ secrets.ZOWE_ROBOT_EMAIL }}
           GIT_CREDENTIALS: x-access-token:${{ secrets.ZOWE_ROBOT_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_USERNAME: ${{ secrets.ARTIFACTORY_USERNAME }}
+          NPM_PASSWORD: ${{ secrets.ARTIFACTORY_PASSWORD }}
+          NPM_EMAIL: ${{ secrets.ZOWE_ROBOT_EMAIL }}
         with:
           config-dir: .github
           dry-run: ${{ inputs.dry-run }}

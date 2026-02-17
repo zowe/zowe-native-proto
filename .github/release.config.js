@@ -35,15 +35,14 @@ module.exports = {
                 publishCmd: "npm run package",
             },
         ],
-        // TODO Replace exec plugin with the following once we're ready to publish to npm
-        // [
-        //     "@octorelease/npm",
-        //     {
-        //         $cwd: "packages/cli",
-        //         npmPublish: false,
-        //         tarballDir: "dist",
-        //     },
-        // ],
+        [
+            "@octorelease/npm",
+            {
+                $cwd: "packages/sdk",
+                npmPublish: true,
+                tarballDir: "dist",
+            },
+        ],
         [
             "@octorelease/vsce",
             {
