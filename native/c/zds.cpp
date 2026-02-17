@@ -2157,28 +2157,22 @@ void load_devtype_from_catalog(const unsigned char *&data, const int field_len, 
   csi_offset += field_len;
 }
 
-void load_storage_attrs_from_catalog(const unsigned char *&data, const int *field_lens, int &csi_offset, ZDSEntry &entry)
+void load_storage_attr_from_catalog(const unsigned char *&data, const int field_len, int &csi_offset, string &attr)
 {
-  std::string *attrs[3] = {
-      &entry.dataclass,
-      &entry.mgmtclass,
-      &entry.storclass,
-  };
-  for (int i = 0; i < 3; i++)
+  attr = "";
+
+  if (field_len > 2)
   {
-    *attrs[i] = "";
-    if (field_lens[i] > 2)
+    // First 2 bytes are a length prefix, extract actual length
+    uint16_t actual_len = (static_cast<unsigned char>(data[csi_offset]) << 8) |
+                          static_cast<unsigned char>(data[csi_offset + 1]);
+    if (actual_len > 0 && actual_len <= (field_len - 2))
     {
-      // First 2 bytes are a length prefix, extract actual length
-      uint16_t actual_len = (static_cast<unsigned char>(data[csi_offset]) << 8) |
-                            static_cast<unsigned char>(data[csi_offset + 1]);
-      if (actual_len > 0 && actual_len <= (field_lens[i] - 2))
-      {
-        *attrs[i] = string((char *)(data + csi_offset + 2), actual_len);
-      }
+      attr = string((char *)(data + csi_offset + 2), actual_len);
     }
-    csi_offset += field_lens[i];
   }
+
+  csi_offset += field_len;
 }
 
 void zds_get_attrs_from_dscb(ZDS *zds, ZDSEntry &entry)
@@ -2438,9 +2432,11 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &datasets, bool sh
           entry.migrated = false;
         }
 
-        // Parse storage management attributes (dataclass, mgmtclass, storclass, devtype)
+        // Parse storage management attributes (devtype, dataclass, mgmtclass, storclass)
         load_devtype_from_catalog(data, field_lens[1], csi_offset, entry.devtype);
-        load_storage_attrs_from_catalog(data, &field_lens[2], csi_offset, entry);
+        load_storage_attr_from_catalog(data, field_lens[2], csi_offset, entry.dataclass);
+        load_storage_attr_from_catalog(data, field_lens[3], csi_offset, entry.mgmtclass);
+        load_storage_attr_from_catalog(data, field_lens[4], csi_offset, entry.storclass);
 
         // Load detailed attributes from DSCB if not migrated
         // This needs to happen before the switch statement as it sets entry.dsorg
