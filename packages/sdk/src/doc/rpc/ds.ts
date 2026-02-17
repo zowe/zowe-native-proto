@@ -58,6 +58,25 @@ export interface RenameDatasetRequest extends common.CommandRequest<"renameDatas
 
 export type RenameDatasetResponse = common.CommandResponse;
 
+export interface RenameMemberRequest extends common.CommandRequest<"renameMember"> {
+    /**
+     * Dataset name
+     */
+    dsname: string;
+
+    /**
+     * Member name before
+     */
+    memberBefore: string;
+
+    /**
+     * Member name after
+     */
+    memberAfter: string;
+}
+
+export type RenameMemberResponse = common.CommandResponse;
+
 export interface ListDatasetsRequest
     extends common.CommandRequest<"listDatasets">,
         common.ListOptions,
