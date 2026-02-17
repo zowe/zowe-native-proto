@@ -44,18 +44,15 @@ class TestFileGuard
   string _file;
 
 public:
-  TestFileGuard(const char *_filename, const char &mode = 'w');
+  TestFileGuard(const char *_filename, const char &mode = 'w', const char *_link = nullptr);
   ~TestFileGuard();
 
-  // Delete copy and move since ownership is non-transferable
   TestFileGuard(const TestFileGuard &) = delete;
   TestFileGuard &operator=(const TestFileGuard &) = delete;
   TestFileGuard(TestFileGuard &&) = delete;
   TestFileGuard &operator=(TestFileGuard &&) = delete;
 
-  // Allow reassignment via reset
-  void reset(const char *_filename, const char &mode = 'w');
-  void reset();
+  void reset(const char *_filename);
 
   operator FILE *() const;
   operator bool() const;
@@ -74,14 +71,12 @@ public:
   TestDirGuard(const char *_dirname, const mode_t mode = 0755);
   ~TestDirGuard();
 
-  // Delete copy and move since ownership is non-transferable
   TestDirGuard(const TestDirGuard &) = delete;
   TestDirGuard &operator=(const TestDirGuard &) = delete;
   TestDirGuard(TestDirGuard &&) = delete;
   TestDirGuard &operator=(TestDirGuard &&) = delete;
 
-  void reset(const char *_dirname, const mode_t mode = 0755);
-  void reset();
+  void reset(const char *_dirname);
 
   operator string() const;
 };

@@ -999,7 +999,7 @@ int zusf_move_uss_file_or_dir(ZUSF *zusf, const string &source, const string &ta
     // check if source is a pipe and target is not
     if (S_ISFIFO(source_stats.st_mode) && !S_ISFIFO(target_stats.st_mode))
     {
-      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Cannot move FIFO '%s'. Target '%s' is not a FIFO", source.c_str(), target.c_str());
+      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Cannot move pipe '%s'. Target '%s' is not a pipe", source.c_str(), target.c_str());
       return RTNCD_FAILURE;
     }
   }

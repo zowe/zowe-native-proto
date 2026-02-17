@@ -202,7 +202,7 @@ bool wait_for_job(const string &jobid, int max_retries, int delay_ms)
   return false;
 }
 
-TestFileGuard::TestFileGuard(const char *_filename, const char &mode)
+TestFileGuard::TestFileGuard(const char *_filename, const char &mode, const char *_link)
     : fp()
 {
   if (mode == 'p')
@@ -210,10 +210,36 @@ TestFileGuard::TestFileGuard(const char *_filename, const char &mode)
     mkfifo(_filename, 0666);
     _file = string(_filename);
   }
+  else if (mode == 'l')
+  {
+    symlink(_link, _filename);
+    _file = string(_filename);
+  }
   else
   {
     _file = string(_filename);
     fp = FileGuard(_filename, string(1, mode).c_str());
+  }
+}
+
+void TestFileGuard::reset(const char *_filename)
+{
+  struct stat file_stats;
+  if (stat(_file.c_str(), &file_stats) == 0)
+  {
+    if (S_ISDIR(file_stats.st_mode))
+    {
+      rmdir(_file.c_str());
+    }
+    else
+    {
+      unlink(_file.c_str());
+    }
+  }
+  _file = string(_filename);
+  if (stat(_file.c_str(), &file_stats) == -1)
+  {
+    fp = FileGuard(_file.c_str(), "w");
   }
 }
 
@@ -235,12 +261,49 @@ TestFileGuard::operator bool() const
 TestDirGuard::TestDirGuard(const char *_dirname, const mode_t mode)
     : _dir(string(_dirname))
 {
+  struct stat dir_stats;
+  if (stat(_dir.c_str(), &dir_stats) == 0 && S_ISDIR(dir_stats.st_mode))
+  {
+    rmdir(_dir.c_str());
+  }
   mkdir(_dir.c_str(), mode);
 }
 
 TestDirGuard::~TestDirGuard()
 {
-  rmdir(_dir.c_str());
+  struct stat dir_stats;
+  if (stat(_dir.c_str(), &dir_stats) == 0)
+  {
+    if (S_ISDIR(dir_stats.st_mode))
+    {
+      rmdir(_dir.c_str());
+    }
+    else
+    {
+      unlink(_dir.c_str());
+    }
+  }
+}
+
+void TestDirGuard::reset(const char *_dirname)
+{
+  struct stat dir_stats;
+  if (stat(_dir.c_str(), &dir_stats) == 0)
+  {
+    if (S_ISDIR(dir_stats.st_mode))
+    {
+      rmdir(_dir.c_str());
+    }
+    else
+    {
+      unlink(_dir.c_str());
+    }
+  }
+  _dir = string(_dirname);
+  if (stat(_dir.c_str(), &dir_stats) == -1)
+  {
+    mkdir(_dir.c_str(), 0755);
+  }
 }
 
 TestDirGuard::operator string() const
