@@ -113,6 +113,7 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
         const response = await (await this.client).ds.listDsMembers({
             dsname: dataSetName,
         });
+        this.attrProvider.cachedAttrs = undefined;
         return this.buildZosFilesResponse({
             items: response.items.map((item) => ({ member: item.name })),
             returnedRows: response.returnedRows,
