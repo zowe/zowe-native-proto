@@ -30,21 +30,21 @@ using namespace ztst;
 
 void zusf_tests()
 {
-  describe("zusf_copy_uss_file_or_dir tests", 
+  describe("zusf_copy_uss_file_or_dir tests",
            [&]() -> void
            {
-            ZUSF zusf;
-            ListOptions short_list_opts = { false, false, 1};
-            ListOptions long_list_opts = { false, true, 1};
-            ListOptions all_long_list_opts = { true, true, 1};
+             ZUSF zusf;
+             ListOptions short_list_opts = {false, false, 1};
+             ListOptions long_list_opts = {false, true, 1};
+             ListOptions all_long_list_opts = {true, true, 1};
 
-            const std::string tmp_base = "/tmp/zusf_chown_tests_" + get_random_string(10);
-            string file_a;
-            string file_b;
-            string dir_a; 
-            string dir_b; 
+             const std::string tmp_base = "/tmp/zusf_chown_tests_" + get_random_string(10);
+             string file_a;
+             string file_b;
+             string dir_a;
+             string dir_b;
 
-            beforeEach([&]() -> void
+             beforeEach([&]() -> void
                         { memset(&zusf, 0, sizeof(zusf));
                           // Ensure clean slate
                           zusf_delete_uss_item(&zusf, tmp_base, true);
@@ -52,226 +52,224 @@ void zusf_tests()
                           file_a = tmp_base + "/test_file_a";
                           file_b = tmp_base + "/test_file_b";
                           dir_a = tmp_base + "/test_dir_a";
-                          dir_b = tmp_base + "/test_dir_b";
-            });
+                          dir_b = tmp_base + "/test_dir_b"; });
 
-            it("file->file tests", [&]() -> void {
-              const std::string source_file = file_a;
-              const std::string dest_file = file_b;
-              std::string list_response;
-              zusf_create_uss_file_or_dir(&zusf, source_file, 0664, false);
-              zusf_create_uss_file_or_dir(&zusf, dest_file, 0775, true);
-              int rc;
-              rc = zusf_copy_file_or_dir(&zusf, source_file, dest_file, false, false, true);
-              Expect(rc).ToBe(0);
-              rc = zusf_list_uss_file_path(&zusf, dest_file, list_response, short_list_opts, false);
-              Expect(rc).ToBe(0);
-              // copy over an existing file
-              rc = zusf_copy_file_or_dir(&zusf, source_file, dest_file, false, false, true);
-              Expect(rc).ToBe(0);
-              rc = zusf_list_uss_file_path(&zusf, dest_file, list_response, short_list_opts, false);
-              Expect(rc).ToBe(0);
-              // copy over an existing file with -RL
-              rc = zusf_copy_file_or_dir(&zusf, source_file, dest_file, true, true, true);
-              Expect(rc).ToBe(0);
-              rc = zusf_list_uss_file_path(&zusf, dest_file, list_response, short_list_opts, false);
-              Expect(rc).ToBe(0);
+             it("file->file tests", [&]() -> void
+                {
+                  const std::string source_file = file_a;
+                  const std::string dest_file = file_b;
+                  std::string list_response;
+                  zusf_create_uss_file_or_dir(&zusf, source_file, 0664, false);
+                  zusf_create_uss_file_or_dir(&zusf, dest_file, 0775, true);
+                  int rc;
+                  rc = zusf_copy_file_or_dir(&zusf, source_file, dest_file, false, false, true);
+                  Expect(rc).ToBe(0);
+                  rc = zusf_list_uss_file_path(&zusf, dest_file, list_response, short_list_opts, false);
+                  Expect(rc).ToBe(0);
+                  // copy over an existing file
+                  rc = zusf_copy_file_or_dir(&zusf, source_file, dest_file, false, false, true);
+                  Expect(rc).ToBe(0);
+                  rc = zusf_list_uss_file_path(&zusf, dest_file, list_response, short_list_opts, false);
+                  Expect(rc).ToBe(0);
+                  // copy over an existing file with -RL
+                  rc = zusf_copy_file_or_dir(&zusf, source_file, dest_file, true, true, true);
+                  Expect(rc).ToBe(0);
+                  rc = zusf_list_uss_file_path(&zusf, dest_file, list_response, short_list_opts, false);
+                  Expect(rc).ToBe(0);
 
-              // copy a file to itself
-              rc = zusf_copy_file_or_dir(&zusf, source_file, source_file, false, false, true);
-              Expect(rc).ToBe(-1);
+                  // copy a file to itself
+                  rc = zusf_copy_file_or_dir(&zusf, source_file, source_file, false, false, true);
+                  Expect(rc).ToBe(-1);
 
-              // with and without -p
-              zusf_chmod_uss_file_or_dir(&zusf, source_file, 0777, false);
-              rc = zusf_copy_file_or_dir(&zusf, source_file, dest_file, false, false, false);
-              Expect(rc).ToBe(0);
-              rc = zusf_list_uss_file_path(&zusf, dest_file, list_response, { false, true, 1}, false);
-              Expect(rc).ToBe(0);
-              Expect(list_response).ToContain("-rw-rw-r--"); // NOT 777
+                  // with and without -p
+                  zusf_chmod_uss_file_or_dir(&zusf, source_file, 0777, false);
+                  rc = zusf_copy_file_or_dir(&zusf, source_file, dest_file, false, false, false);
+                  Expect(rc).ToBe(0);
+                  rc = zusf_list_uss_file_path(&zusf, dest_file, list_response, {false, true, 1}, false);
+                  Expect(rc).ToBe(0);
+                  Expect(list_response).ToContain("-rw-rw-r--"); // NOT 777
 
-              rc = zusf_copy_file_or_dir(&zusf, source_file, dest_file, false, false, true);
-              Expect(rc).ToBe(0);
-              rc = zusf_list_uss_file_path(&zusf, dest_file, list_response, { false, true, 1}, false);
-              Expect(rc).ToBe(0);
-              Expect(list_response).ToContain("-rwxrwxrwx"); // keeps 777
+                  rc = zusf_copy_file_or_dir(&zusf, source_file, dest_file, false, false, true);
+                  Expect(rc).ToBe(0);
+                  rc = zusf_list_uss_file_path(&zusf, dest_file, list_response, {false, true, 1}, false);
+                  Expect(rc).ToBe(0);
+                  Expect(list_response).ToContain("-rwxrwxrwx"); // keeps 777
+                });
 
-            });
+             it("file->dir tests", [&]() -> void
+                {
+                  const std::string source_file = file_a;
+                  const std::string dest_dir = dir_b;
+                  std::string list_response;
+                  const std::string dest_copied_file = dest_dir + "/" + get_basename(file_a);
+                  zusf_create_uss_file_or_dir(&zusf, source_file, 0664, false);
+                  zusf_create_uss_file_or_dir(&zusf, dest_dir, 0775, true);
+                  int rc;
+                  rc = zusf_copy_file_or_dir(&zusf, source_file, dest_dir, false, false, true);
+                  Expect(rc).ToBe(0);
 
-            it("file->dir tests", [&]() -> void {
-              const std::string source_file = file_a;
-              const std::string dest_dir = dir_b;
-              std::string list_response;
-              const std::string dest_copied_file = dest_dir + "/" + get_basename(file_a);
-              zusf_create_uss_file_or_dir(&zusf, source_file, 0664, false);
-              zusf_create_uss_file_or_dir(&zusf, dest_dir, 0775, true);
-              int rc;
-              rc = zusf_copy_file_or_dir(&zusf, source_file, dest_dir, false, false, true);
-              Expect(rc).ToBe(0);
+                  // overwrite
+                  rc = zusf_copy_file_or_dir(&zusf, source_file, dest_dir, false, false, true);
+                  Expect(rc).ToBe(0);
+                  rc = zusf_list_uss_file_path(&zusf, dest_copied_file, list_response, short_list_opts, false);
+                  Expect(rc).ToBe(0);
+                  // overwrite with -RL
+                  rc = zusf_copy_file_or_dir(&zusf, source_file, dest_dir, true, true, true);
+                  Expect(rc).ToBe(0);
+                  rc = zusf_list_uss_file_path(&zusf, dest_copied_file, list_response, short_list_opts, false);
+                  Expect(rc).ToBe(0);
 
-              // overwrite
-              rc = zusf_copy_file_or_dir(&zusf, source_file, dest_dir, false, false, true);
-              Expect(rc).ToBe(0);
-              rc = zusf_list_uss_file_path(&zusf, dest_copied_file, list_response, short_list_opts, false);
-              Expect(rc).ToBe(0);
-              // overwrite with -RL
-              rc = zusf_copy_file_or_dir(&zusf, source_file, dest_dir, true, true, true);
-              Expect(rc).ToBe(0);
-              rc = zusf_list_uss_file_path(&zusf, dest_copied_file, list_response, short_list_opts, false);
-              Expect(rc).ToBe(0);
+                  rc = zusf_copy_file_or_dir(&zusf, source_file, "/some/dir/doesnt/exist", false, false, true);
+                  Expect(rc).ToBe(-1);
 
-              rc = zusf_copy_file_or_dir(&zusf, source_file, "/some/dir/doesnt/exist", false, false, true);
-              Expect(rc).ToBe(-1);
+                  // with and without -p. dir is 0775 and file is 0664
+                  // file already exists from last tests: replacement does not change permissions
+                  rc = zusf_copy_file_or_dir(&zusf, source_file, dest_dir, false, false, false);
+                  Expect(rc).ToBe(0);
+                  rc = zusf_list_uss_file_path(&zusf, dest_copied_file, list_response, {false, true, 1}, false);
+                  Expect(rc).ToBe(0);
+                  Expect(list_response).ToContain("-rw-rw-r--"); // 0644
 
-              // with and without -p. dir is 0775 and file is 0664
-              // file already exists from last tests: replacement does not change permissions
-              rc = zusf_copy_file_or_dir(&zusf, source_file, dest_dir, false, false, false);
-              Expect(rc).ToBe(0);
-              rc = zusf_list_uss_file_path(&zusf, dest_copied_file, list_response, { false, true, 1}, false);
-              Expect(rc).ToBe(0);
-              Expect(list_response).ToContain("-rw-rw-r--"); // 0644
+                  // after removing, we should see 0644 (file attributes not preserved)
+                  rc = zusf_delete_uss_item(&zusf, dest_copied_file, false);
+                  rc = zusf_copy_file_or_dir(&zusf, source_file, dest_dir, false, false, false);
+                  Expect(rc).ToBe(0);
+                  rc = zusf_list_uss_file_path(&zusf, dest_copied_file, list_response, {false, true, 1}, false);
+                  Expect(rc).ToBe(0);
+                  Expect(list_response).ToContain("-rw-r--r--"); // 0644
 
-              // after removing, we should see 0644 (file attributes not preserved)
-              rc = zusf_delete_uss_item(&zusf, dest_copied_file, false);
-              rc = zusf_copy_file_or_dir(&zusf, source_file, dest_dir, false, false, false);
-              Expect(rc).ToBe(0);
-              rc = zusf_list_uss_file_path(&zusf, dest_copied_file, list_response, { false, true, 1}, false);
-              Expect(rc).ToBe(0);
-              Expect(list_response).ToContain("-rw-r--r--"); // 0644
+                  rc = zusf_copy_file_or_dir(&zusf, source_file, dest_dir, false, false, true);
+                  Expect(rc).ToBe(0);
+                  rc = zusf_list_uss_file_path(&zusf, dest_copied_file, list_response, {false, true, 1}, false);
+                  Expect(rc).ToBe(0);
+                  Expect(list_response).ToContain("-rw-rw-r--"); // keeps file's 0664
+                });
 
-              rc = zusf_copy_file_or_dir(&zusf, source_file, dest_dir, false, false, true);
-              Expect(rc).ToBe(0);
-              rc = zusf_list_uss_file_path(&zusf, dest_copied_file, list_response, { false, true, 1}, false);
-              Expect(rc).ToBe(0);
-              Expect(list_response).ToContain("-rw-rw-r--"); // keeps file's 0664
-            });
+             // Not allowed - all errors
+             it("dir->file tests", [&]() -> void
+                {
+                  const std::string source_dir = dir_a;
+                  const std::string dest_file = file_b;
+                  std::string list_response;
+                  zusf_create_uss_file_or_dir(&zusf, source_dir, 0775, true);
+                  zusf_create_uss_file_or_dir(&zusf, dest_file, 0664, false);
+                  int rc;
 
-            // Not allowed - all errors
-            it("dir->file tests", [&]() -> void{
-              const std::string source_dir = dir_a;
-              const std::string dest_file = file_b;
-              std::string list_response;
-              zusf_create_uss_file_or_dir(&zusf, source_dir, 0775, true);
-              zusf_create_uss_file_or_dir(&zusf, dest_file, 0664, false);
-              int rc;
-              
-              // copy to an existing file: error and no change to file/dir
-              rc = zusf_copy_file_or_dir(&zusf, source_dir, dest_file, false, false, true);
-              Expect(rc).ToBe(-1);
-              rc = zusf_list_uss_file_path(&zusf, dest_file, list_response, all_long_list_opts, false);
-              Expect(rc).ToBe(0);
-              Expect(list_response).ToContain("-rw-rw-r--");
-              rc = zusf_list_uss_file_path(&zusf, source_dir, list_response, all_long_list_opts, false);
-              Expect(rc).ToBe(0);
-              Expect(list_response).ToContain("drwxrwxr-x");
+                  // copy to an existing file: error and no change to file/dir
+                  rc = zusf_copy_file_or_dir(&zusf, source_dir, dest_file, false, false, true);
+                  Expect(rc).ToBe(-1);
+                  rc = zusf_list_uss_file_path(&zusf, dest_file, list_response, all_long_list_opts, false);
+                  Expect(rc).ToBe(0);
+                  Expect(list_response).ToContain("-rw-rw-r--");
+                  rc = zusf_list_uss_file_path(&zusf, source_dir, list_response, all_long_list_opts, false);
+                  Expect(rc).ToBe(0);
+                  Expect(list_response).ToContain("drwxrwxr-x");
 
-              // copy to an existing file with -RL, also fail
-              rc = zusf_copy_file_or_dir(&zusf, source_dir, dest_file, true, false, true);
-              Expect(rc).ToBe(-1);
-              rc = zusf_copy_file_or_dir(&zusf, source_dir, dest_file, true, true, true);
-              Expect(rc).ToBe(-1);
+                  // copy to an existing file with -RL, also fail
+                  rc = zusf_copy_file_or_dir(&zusf, source_dir, dest_file, true, false, true);
+                  Expect(rc).ToBe(-1);
+                  rc = zusf_copy_file_or_dir(&zusf, source_dir, dest_file, true, true, true);
+                  Expect(rc).ToBe(-1);
 
-              const std::string unused_path = file_a;
-              // copy to a non-existent file or dir (creates it)
-              rc = zusf_copy_file_or_dir(&zusf, source_dir, unused_path, false, false, true);
-              Expect(rc).ToBe(-1); // missing -R
+                  const std::string unused_path = file_a;
+                  // copy to a non-existent file or dir (creates it)
+                  rc = zusf_copy_file_or_dir(&zusf, source_dir, unused_path, false, false, true);
+                  Expect(rc).ToBe(-1); // missing -R
 
-              rc = zusf_copy_file_or_dir(&zusf, source_dir, unused_path, true, true, true);
-              Expect(rc).ToBe(0); // now exists
-              rc = zusf_list_uss_file_path(&zusf, unused_path, list_response, all_long_list_opts, false);
-              Expect(rc).ToBe(0);
-              Expect(list_response).ToContain("drwxrwxr-x"); 
+                  rc = zusf_copy_file_or_dir(&zusf, source_dir, unused_path, true, true, true);
+                  Expect(rc).ToBe(0); // now exists
+                  rc = zusf_list_uss_file_path(&zusf, unused_path, list_response, all_long_list_opts, false);
+                  Expect(rc).ToBe(0);
+                  Expect(list_response).ToContain("drwxrwxr-x"); });
 
-            });
+             it("dir->dir tests", [&]() -> void
+                {
+                  const std::string source_dir = dir_a;
+                  const std::string source_nested = dir_a + "/some/nested/directories";
+                  const std::string dest_dir = dir_b;
+                  const std::string dest_nested = dir_b + "/some/nested/directories";
+                  int rc;
+                  std::string list_response;
 
-            it("dir->dir tests", [&]() -> void{
-              const std::string source_dir = dir_a;
-              const std::string source_nested = dir_a + "/some/nested/directories";
-              const std::string dest_dir = dir_b;
-              const std::string dest_nested = dir_b + "/some/nested/directories";
-              int rc;
-              std::string list_response;
+                  zusf_create_uss_file_or_dir(&zusf, source_dir, 0775, true);
 
-              zusf_create_uss_file_or_dir(&zusf, source_dir, 0775, true);
-              
-              // bad source
-              rc = zusf_copy_file_or_dir(&zusf, "/noway/src/noexist", dest_dir, false, false, true);     
-              Expect(rc).ToBe(-1);
-              // bad target 
-              rc = zusf_copy_file_or_dir(&zusf, source_dir, "/noway/dest/noexist", false, false, true);     
-              Expect(rc).ToBe(-1);                
-            
-              // missing -R
-              rc = zusf_copy_file_or_dir(&zusf, source_dir, dest_dir, false, false, true);     
-              Expect(rc).ToBe(-1);   
-              rc = zusf_list_uss_file_path(&zusf, dest_dir, list_response, short_list_opts, false);
-              Expect(rc).ToBe(-1);
+                  // bad source
+                  rc = zusf_copy_file_or_dir(&zusf, "/noway/src/noexist", dest_dir, false, false, true);
+                  Expect(rc).ToBe(-1);
+                  // bad target
+                  rc = zusf_copy_file_or_dir(&zusf, source_dir, "/noway/dest/noexist", false, false, true);
+                  Expect(rc).ToBe(-1);
 
-              // with -R
-              rc = zusf_copy_file_or_dir(&zusf, source_dir, dest_dir, true, false, true);     
-              Expect(rc).ToBe(0);   
-              rc = zusf_list_uss_file_path(&zusf, dest_dir, list_response, short_list_opts, false);
-              Expect(rc).ToBe(0);
-              zusf_delete_uss_item(&zusf, dest_dir, true);
+                  // missing -R
+                  rc = zusf_copy_file_or_dir(&zusf, source_dir, dest_dir, false, false, true);
+                  Expect(rc).ToBe(-1);
+                  rc = zusf_list_uss_file_path(&zusf, dest_dir, list_response, short_list_opts, false);
+                  Expect(rc).ToBe(-1);
 
-              // nested dirs and symlinks
-              const std::string symlink_nested_dir = tmp_base + "/find/me/with/symlink";
-              const std::string symlink_target = tmp_base + "/find";
-              const std::string source_symlink_filepath = source_dir + "/find";
-              const std::string dest_link_filepath = dest_dir + "/find";
-              const std::string dest_symlink_nested_dir = dest_dir + "/find/me/with/symlink";
+                  // with -R
+                  rc = zusf_copy_file_or_dir(&zusf, source_dir, dest_dir, true, false, true);
+                  Expect(rc).ToBe(0);
+                  rc = zusf_list_uss_file_path(&zusf, dest_dir, list_response, short_list_opts, false);
+                  Expect(rc).ToBe(0);
+                  zusf_delete_uss_item(&zusf, dest_dir, true);
 
-              zusf_create_uss_file_or_dir(&zusf, source_nested, 0775, true);
-              zusf_create_uss_file_or_dir(&zusf, symlink_nested_dir, 0775, true);
+                  // nested dirs and symlinks
+                  const std::string symlink_nested_dir = tmp_base + "/find/me/with/symlink";
+                  const std::string symlink_target = tmp_base + "/find";
+                  const std::string source_symlink_filepath = source_dir + "/find";
+                  const std::string dest_link_filepath = dest_dir + "/find";
+                  const std::string dest_symlink_nested_dir = dest_dir + "/find/me/with/symlink";
 
-              // symlink
-              std::string cmd_output;
-              execute_command_with_output("ln -s " + symlink_target + " " + source_symlink_filepath, cmd_output);
+                  zusf_create_uss_file_or_dir(&zusf, source_nested, 0775, true);
+                  zusf_create_uss_file_or_dir(&zusf, symlink_nested_dir, 0775, true);
 
-              // link is copied
-              rc = zusf_copy_file_or_dir(&zusf, source_dir, dest_dir, true, false, true);     
-              Expect(rc).ToBe(0);  
-              rc = zusf_list_uss_file_path(&zusf, dest_symlink_nested_dir, list_response, short_list_opts, false);
-              Expect(rc).ToBe(0);        
-              rc = zusf_list_uss_file_path(&zusf, dest_dir, list_response, all_long_list_opts, false);
-              Expect(rc).ToBe(0);   
-              // chmod hack won't work here, can't modify symlink permissions  
-              // Expect(list_response).ToContain("lrwxr-xr-x"); //TODO: https://github.com/zowe/zowe-native-proto/issues/791
-              // rc = zusf_delete_uss_item(&zusf, dest_dir, true);
-              // Expect(rc).ToBe(-1); // TODO: https://github.com/zowe/zowe-native-proto/issues/792
+                  // symlink
+                  std::string cmd_output;
+                  execute_command_with_output("ln -s " + symlink_target + " " + source_symlink_filepath, cmd_output);
 
-              execute_command_with_output("rm -rf " + dest_dir, cmd_output);
-             
-              // data is copied (--follow-symlinks)
-              rc = zusf_copy_file_or_dir(&zusf, source_dir, dest_dir, true, true, true);     
-              Expect(rc).ToBe(0);  
-              rc = zusf_list_uss_file_path(&zusf, symlink_target, list_response, short_list_opts,true);
-              Expect(rc).ToBe(0);                 
-              zusf_chmod_uss_file_or_dir(&zusf, dest_link_filepath, 0755, false); //hack: make this 755 for Expect() check   
-              rc = zusf_list_uss_file_path(&zusf, dest_dir, list_response, all_long_list_opts, false);
-              Expect(rc).ToBe(0);     
-              Expect(list_response).ToContain("drwxr-xr-x"); //it should be a dir
+                  // link is copied
+                  rc = zusf_copy_file_or_dir(&zusf, source_dir, dest_dir, true, false, true);
+                  Expect(rc).ToBe(0);
+                  rc = zusf_list_uss_file_path(&zusf, dest_symlink_nested_dir, list_response, short_list_opts, false);
+                  Expect(rc).ToBe(0);
+                  rc = zusf_list_uss_file_path(&zusf, dest_dir, list_response, all_long_list_opts, false);
+                  Expect(rc).ToBe(0);
+                  // chmod hack won't work here, can't modify symlink permissions
+                  // Expect(list_response).ToContain("lrwxr-xr-x"); //TODO: https://github.com/zowe/zowe-native-proto/issues/791
+                  // rc = zusf_delete_uss_item(&zusf, dest_dir, true);
+                  // Expect(rc).ToBe(-1); // TODO: https://github.com/zowe/zowe-native-proto/issues/792
 
-            });
+                  execute_command_with_output("rm -rf " + dest_dir, cmd_output);
 
-            it("insufficient permissions tests", [&]() -> void{
-              const std::string source_file = file_a;
-              const std::string dest_dir = dir_b;
-              
-              zusf_create_uss_file_or_dir(&zusf, source_file, 0664, false);
-              zusf_create_uss_file_or_dir(&zusf, dest_dir, 0400, true); // TODO: this does not set permissions to 0400. why? `zowex uss create-dir test_dir --mode 0400` works!
-              zusf_chmod_uss_file_or_dir(&zusf, dest_dir, 0400, true);
-              int rc;
-              rc = zusf_copy_file_or_dir(&zusf, source_file, dest_dir, false, false, true);
-              Expect(rc).ToBe(-1);
+                  // data is copied (--follow-symlinks)
+                  rc = zusf_copy_file_or_dir(&zusf, source_dir, dest_dir, true, true, true);
+                  Expect(rc).ToBe(0);
+                  rc = zusf_list_uss_file_path(&zusf, symlink_target, list_response, short_list_opts, true);
+                  Expect(rc).ToBe(0);
+                  zusf_chmod_uss_file_or_dir(&zusf, dest_link_filepath, 0755, false); // hack: make this 755 for Expect() check
+                  rc = zusf_list_uss_file_path(&zusf, dest_dir, list_response, all_long_list_opts, false);
+                  Expect(rc).ToBe(0);
+                  Expect(list_response).ToContain("drwxr-xr-x"); // it should be a dir
+                });
 
-              zusf_chmod_uss_file_or_dir(&zusf, dest_dir, 0775, true);
-              rc = zusf_copy_file_or_dir(&zusf, source_file, dest_dir, false, false, true);
-              Expect(rc).ToBe(0);
+             it("insufficient permissions tests", [&]() -> void
+                {
+                  const std::string source_file = file_a;
+                  const std::string dest_dir = dir_b;
 
-            });
-           
+                  zusf_create_uss_file_or_dir(&zusf, source_file, 0664, false);
+                  zusf_create_uss_file_or_dir(&zusf, dest_dir, 0400, true); // TODO: this does not set permissions to 0400. why? `zowex uss create-dir test_dir --mode 0400` works!
+                  // chmod must succeed for copy to fail
+                  ExpectWithContext(zusf_chmod_uss_file_or_dir(&zusf, dest_dir, 0400, true), zusf.diag.e_msg).ToBe(0);
+                  int rc;
+                  rc = zusf_copy_file_or_dir(&zusf, source_file, dest_dir, false, false, true);
+                  ExpectWithContext(rc, zusf.diag.e_msg).ToBe(-1);
+
+                  zusf_chmod_uss_file_or_dir(&zusf, dest_dir, 0775, true);
+                  rc = zusf_copy_file_or_dir(&zusf, source_file, dest_dir, false, false, true);
+                  Expect(rc).ToBe(0); });
            }
-  
+
   );
   describe("zusf_chown_uss_file_or_dir tests",
            [&]() -> void
