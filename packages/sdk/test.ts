@@ -10,8 +10,7 @@
  */
 
 import { ProfileInfo } from "@zowe/imperative";
-import { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
-import { ZSshClient } from "./src";
+import { SshSession, ZSshClient } from "./src";
 
 (async () => {
     const profInfo = new ProfileInfo("zowe");
