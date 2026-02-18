@@ -12,6 +12,7 @@
 
 #ifndef _OPEN_SYS_ITOA_EXT
 #define _OPEN_SYS_ITOA_EXT
+#include "ztype.h"
 #include <cctype>
 #endif
 #ifndef _POSIX_SOURCE
@@ -132,6 +133,25 @@ bool zds_member_exists(const string &dsn, const string &member_before)
     return true;
   }
   return false;
+}
+
+bool zds_is_valid_member_name(const std::string &name)
+{
+  if (name.length() > 8)
+    return false;
+
+  char first = name[0];
+  if (!(isalpha(first) || first == '#' || first == '@' || first == '$'))
+    return false;
+
+  for (size_t i = 1; i < name.length(); ++i)
+  {
+    char c = name[i];
+    if (!(isalnum(c) || c == '#' || c == '@' || c == '$'))
+      return false;
+  }
+
+  return true;
 }
 
 int zds_read_from_dd(ZDS *zds, string ddname, string &response)
@@ -1395,16 +1415,6 @@ int zds_rename_members(ZDS *zds, const string &dsname, const string &member_befo
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Member name cannot be empty");
     return RTNCD_FAILURE;
   }
-  if (!isalpha(member_before[0]) || !isalpha(member_after[0]))
-  {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Member name must begin with an alphabetic character");
-    return RTNCD_FAILURE;
-  }
-  if (member_before.length() > 8 || member_after.length() > 8)
-  {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Member name must not exceed 8 characters");
-    return RTNCD_FAILURE;
-  }
   if (!zds_dataset_exists(dsname))
   {
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Data set does not exist");
@@ -1418,6 +1428,11 @@ int zds_rename_members(ZDS *zds, const string &dsname, const string &member_befo
   if (zds_member_exists(dsname, member_after))
   {
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Target member already exists");
+    return RTNCD_FAILURE;
+  }
+  if (!zds_is_valid_member_name(member_after) || !zds_is_valid_member_name(member_before))
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Member name must start with A-Z,#,@,$ and contain only A-Z,0-9,#,@,$ (max 8 chars)");
     return RTNCD_FAILURE;
   }
 
