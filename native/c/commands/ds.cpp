@@ -591,6 +591,18 @@ int handle_data_set_write(InvocationContext &context)
   if (context.has("etag"))
   {
     string etag_value = context.get<string>("etag", "");
+    if (etag_value.empty())
+    {
+      // Adler-32 etags that consist only of decimal digits (no a-f) are
+      // lexed as integers rather than strings, so fall back to numeric read
+      const long long *etag_int = context.get_if<long long>("etag");
+      if (etag_int)
+      {
+        stringstream ss;
+        ss << hex << *etag_int;
+        etag_value = ss.str();
+      }
+    }
     if (!etag_value.empty())
     {
       strcpy(zds.etag, etag_value.c_str());
