@@ -971,6 +971,7 @@ void register_commands(parser::Command &root_command)
 
   // Rename subcommand
   auto ds_rename_cmd = command_ptr(new Command("rename", "rename data set"));
+  ds_rename_cmd->add_alias("ren");
   ds_rename_cmd->add_positional_arg("dsname-before", "data set to rename", ArgType_Single, true);
   ds_rename_cmd->add_positional_arg("dsname-after", "new data set name", ArgType_Single, true);
   ds_rename_cmd->set_handler(handle_data_set_rename);
@@ -978,6 +979,7 @@ void register_commands(parser::Command &root_command)
 
   // Rename member subcommand
   auto ds_rename_members_cmd = command_ptr(new Command("rename-member", "rename a member"));
+  ds_rename_members_cmd->add_alias("ren-m");
   ds_rename_members_cmd->add_positional_arg(DSN);
   ds_rename_members_cmd->add_positional_arg("member-before", "member to rename", ArgType_Single, true);
   ds_rename_members_cmd->add_positional_arg("member-after", "new member name", ArgType_Single, true);
