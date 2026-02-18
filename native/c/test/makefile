@@ -27,7 +27,7 @@ MTL_HEADERS=$(MTL_HEADERS_BASE) -I../ -I../chdsect
 C_FLAGS=$(C_FLAGS_BASE) -I./chdsect
 DLL_CPP_FLAGS=$(DLL_CPP_FLAGS_BASE) -I./chdsect
 CPP_FLAGS=$(CPP_FLAGS_BASE)
-CXXLANG_FLAGS=$(CXXLANG_FLAGS_BASE) -I../ -I../chdsect -std=c++14
+CXXLANG_FLAGS=$(CXXLANG_FLAGS_BASE) -I../ -I../chdsect -std=c++17
 CXXLANG_BND_FLAGS=
 
 # make -DBuildType=DEBUG

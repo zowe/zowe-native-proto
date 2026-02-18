@@ -304,7 +304,7 @@ void CommandBuilder::apply_input_transforms(MiddlewareContext &context) const
           RpcNotification notification = RpcNotification{
               .jsonrpc = "2.0",
               .method = (transform.fifo_mode == FifoMode::GET) ? "receiveStream" : "sendStream",
-              .params = zstd::optional<zjson::Value>(params_obj),
+              .params = std::optional<zjson::Value>(params_obj),
           };
 
           // If defer is true, store the notification for later

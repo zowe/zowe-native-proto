@@ -1,5 +1,5 @@
 CXX=ibm-clang++64
-CXX_FLAGS=-std=c++11 -fvisibility=default -fno-aligned-allocation -I../../
+CXX_FLAGS=-std=c++17 -fvisibility=default -fno-aligned-allocation -I../../
 CXX_LINK_FLAGS=-shared
 
 all: sample_plugin.so

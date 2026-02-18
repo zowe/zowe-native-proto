@@ -33,7 +33,7 @@ struct StatusMessage
 {
   string status;
   string message;
-  zstd::optional<zjson::Value> data;
+  std::optional<zjson::Value> data;
 };
 ZJSON_DERIVE(StatusMessage, status, message, data);
 
@@ -123,7 +123,7 @@ private:
     StatusMessage status_msg{
         .status = "ready",
         .message = "zowed is ready to accept input",
-        .data = zstd::optional<zjson::Value>(data),
+        .data = std::optional<zjson::Value>(data),
     };
 
     string json_string = RpcServer::serialize_json(zjson::to_value(status_msg).value());

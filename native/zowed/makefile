@@ -13,8 +13,8 @@
 CXX_LIB = $(CXXLANG)
 CXX_MAIN = $(CXXLANG)
 
-CXXFLAGS_LIB = -std=gnu++11 -Wall -Werror -MMD -MP -O2 -I../c -I../c/chdsect -fvisibility=default -fno-aligned-allocation -D_EXT -D_OPEN_SYS_FILE_EXT=1
-CXXFLAGS_MAIN = -std=gnu++11 -O2 -I../c -I../c/chdsect
+CXXFLAGS_LIB = -std=gnu++17 -Wall -Werror -MMD -MP -O2 -I../c -I../c/chdsect -fvisibility=default -fno-aligned-allocation -D_EXT -D_OPEN_SYS_FILE_EXT=1
+CXXFLAGS_MAIN = -std=gnu++17 -O2 -I../c -I../c/chdsect
 CPP_BND_FLAGS = $(CPP_BND_DEBUG_FLAGS)
 DLL_BND_FLAGS = $(DLL_BND_DEBUG_FLAGS)
 

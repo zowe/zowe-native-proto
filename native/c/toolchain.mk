@@ -62,10 +62,10 @@ ASM_FLAGS=-mRENT
 # Compilation flags
 #
 C_FLAGS_BASE=-fvisibility=default -c
-DLL_CPP_FLAGS_BASE=-fvisibility=default -c -std=gnu++11 -fno-aligned-allocation -D_EXT -D_OPEN_SYS_FILE_EXT=1
-CPP_FLAGS_BASE=-fvisibility=default -c -std=gnu++11 -fno-aligned-allocation -D_EXT -D_OPEN_SYS_FILE_EXT=1
-CXXLANG_FLAGS_BASE=-c -std=gnu++11 -fno-aligned-allocation -D_EXT -D_OPEN_SYS_FILE_EXT=1
-SWIG_FLAGS_BASE=-DSWIG -c -std=gnu++11 -fno-aligned-allocation -D_EXT -D_OPEN_SYS_FILE_EXT=1
+DLL_CPP_FLAGS_BASE=-fvisibility=default -c -std=gnu++17 -fno-aligned-allocation -D_EXT -D_OPEN_SYS_FILE_EXT=1
+CPP_FLAGS_BASE=-fvisibility=default -c -std=gnu++17 -fno-aligned-allocation -D_EXT -D_OPEN_SYS_FILE_EXT=1
+CXXLANG_FLAGS_BASE=-c -std=gnu++17 -fno-aligned-allocation -D_EXT -D_OPEN_SYS_FILE_EXT=1
+SWIG_FLAGS_BASE=-DSWIG -c -std=gnu++17 -fno-aligned-allocation -D_EXT -D_OPEN_SYS_FILE_EXT=1
 
 #
 # Logging support

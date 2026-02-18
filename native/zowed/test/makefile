@@ -17,7 +17,7 @@ OUT_DIR=build-out
 TARGET=$(OUT_DIR)/zowed_test_runner
 
 INCLUDES=-I../../c/test -I../../c -I..
-CXXFLAGS=-c $(INCLUDES) -std=c++14
+CXXFLAGS=-c $(INCLUDES) -std=gnu++17
 BND_FLAGS=$(CPP_BND_BASE_FLAGS)
 
 .IF $(BuildType) == DEBUG
