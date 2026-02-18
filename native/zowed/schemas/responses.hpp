@@ -32,6 +32,7 @@ ZJSON_SCHEMA(Dataset,
     FIELD_OPTIONAL(lrecl, NUMBER),
     FIELD_OPTIONAL(mgmtclass, STRING),
     FIELD_OPTIONAL(migrated, BOOL),
+    FIELD_OPTIONAL(multivolume, BOOL),
     FIELD_OPTIONAL(primary, NUMBER),
     FIELD_OPTIONAL(rdate, STRING),
     FIELD_OPTIONAL(recfm, STRING),
@@ -40,7 +41,8 @@ ZJSON_SCHEMA(Dataset,
     FIELD_OPTIONAL(storclass, STRING),
     FIELD_OPTIONAL(usedp, NUMBER),
     FIELD_OPTIONAL(usedx, NUMBER),
-    FIELD_OPTIONAL(volser, STRING)
+    FIELD_OPTIONAL(volser, STRING),
+    FIELD_OPTIONAL_ARRAY(volsers, STRING)
 );
 
 struct DsMember {};
