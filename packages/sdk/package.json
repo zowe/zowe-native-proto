@@ -4,7 +4,7 @@
   "main": "lib/index.js",
   "scripts": {
     "build": "tsc -b",
-    "clean": "tsc -b --clean",
+    "clean": "tsc -b --clean && rimraf tsconfig.tsbuildinfo",
     "lint": "npx @biomejs/biome check --write src tests",
     "test": "vitest run --coverage",
     "test:ui": "vitest --ui --coverage",
