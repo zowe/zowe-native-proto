@@ -54,6 +54,30 @@ void zds_tests()
                              Expect(found).ToBe(dsn);
                            });
 
+                        it("should list data sets with a given DSN and show attributes",
+                           []() -> void
+                           {
+                             int rc = 0;
+                             ZDS zds = {0};
+                             vector<ZDSEntry> entries;
+                             string dsn = "SYS1.MACLIB";
+                             rc = zds_list_data_sets(&zds, dsn, entries, true);
+                             ExpectWithContext(rc, zds.diag.e_msg).ToBe(0);
+                             ZDSEntry *found = nullptr;
+                             for (vector<ZDSEntry>::iterator it = entries.begin(); it != entries.end(); ++it)
+                             {
+                               string trimmed_name = it->name;
+                               zut_rtrim(trimmed_name);
+                               if (trimmed_name == dsn)
+                               {
+                                 found = &(*it);
+                               }
+                             }
+                             Expect(found != nullptr).ToBe(true);
+                             Expect(zut_rtrim(found->name)).ToBe(dsn);
+                             Expect(found->volser.length()).ToBeGreaterThan(0);
+                           });
+
                         it("should find dsn (SYS1.MACLIB) based on a pattern: (SYS1.*)",
                            []() -> void
                            {
@@ -368,9 +392,12 @@ void zds_tests()
                              string longName = "USER.TEST.TEST.TEST";
                              string ds = get_random_ds(3);
                              int rc = zds_create_dsn(&zds, ds, attr, response);
+                             string empty = "";
+                             rc = zds_write_to_dsn(&zds, ds + "(M1)", empty);
+                             Expect(rc).ToBe(0);
                              rc = zds_rename_members(&zds, ds, M1, longName);
                              Expect(rc).ToBe(RTNCD_FAILURE);
-                             Expect(string(zds.diag.e_msg)).ToContain("Member name must not exceed 8 characters");
+                             Expect(string(zds.diag.e_msg)).ToContain("Member name must start with A-Z,#,@,$ and contain only A-Z,0-9,#,@,$ (max 8 chars)");
                            });
 
                         it("should fail if data set does not exist",
@@ -430,7 +457,7 @@ void zds_tests()
                              rc = zds_delete_dsn(&zds, ds);
                            });
 
-                        it("should fail if member name begins with a non alphabetic character",
+                        it("should fail if member name begins with a digit",
                            [&]() -> void
                            {
                              ZDS zds = {};
@@ -443,7 +470,7 @@ void zds_tests()
 
                              rc = zds_rename_members(&zds, ds, M1, "123");
                              Expect(rc).ToBe(RTNCD_FAILURE);
-                             Expect(string(zds.diag.e_msg)).ToContain("Member name must begin with an alphabetic character");
+                             Expect(string(zds.diag.e_msg)).ToContain("Member name must start with A-Z,#,@,$ and contain only A-Z,0-9,#,@,$ (max 8 chars)");
                            });
                       });
            });

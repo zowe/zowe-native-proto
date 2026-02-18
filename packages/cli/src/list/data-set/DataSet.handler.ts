@@ -50,7 +50,11 @@ export default class ListDataSetsHandler extends SshBaseHandler {
             params.arguments.pattern,
         );
         params.response.format.output({
-            output: response.items.map((item) => ({ ...item, migrated: item.migrated ? "YES" : "NO" })),
+            output: response.items.map((item) => ({
+                ...item,
+                migrated: item.migrated ? "YES" : "NO",
+                volser: item.multivolume ? `${item.volser}+` : item.volser,
+            })),
             format: "table",
             fields: [
                 "name",
