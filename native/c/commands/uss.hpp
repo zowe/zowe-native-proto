@@ -15,6 +15,7 @@
 namespace uss
 {
 using namespace plugin;
+int handle_uss_copy(InvocationContext &result);
 int handle_uss_create_file(InvocationContext &result);
 int handle_uss_create_dir(InvocationContext &result);
 int handle_uss_list(InvocationContext &result);

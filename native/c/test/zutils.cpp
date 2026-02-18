@@ -93,6 +93,15 @@ string get_random_string(const int length, const bool allNumbers)
   return ret;
 }
 
+string get_basename(const string fspath)
+{
+  if (fspath.empty()) return "";
+
+  auto lastSlash = fspath.find_last_of("/\\");
+
+  return (lastSlash == std::string::npos) ? fspath : fspath.substr(lastSlash + 1);
+} 
+
 string get_random_uss(const string base_dir)
 {
   static bool seeded = false;

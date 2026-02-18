@@ -59,7 +59,6 @@
 #include <iomanip>
 #include <sstream>
 #include <errno.h>
-
 using namespace std;
 
 /**
@@ -853,6 +852,34 @@ string zusf_build_mode_string(mode_t mode)
   mode_str += (mode & S_IWOTH ? "w" : "-");
   mode_str += (mode & S_IXOTH ? "x" : "-");
   return mode_str;
+}
+
+/**
+ * Copies a USS file or directory.
+ */
+int zusf_copy_file_or_dir(ZUSF *zusf, const string &source_path, const string &destination_path, bool recursive, bool follow_symlinks, bool preserve_attributes) {
+
+  string command_flags = "";
+  if (recursive)
+  {
+    command_flags += "-R ";
+  }
+  if (follow_symlinks)
+  {
+    command_flags += "-L ";
+  }
+  if (preserve_attributes)
+  {
+    command_flags += "-p ";
+  }
+  string cp_command = "cp " + command_flags + " \"" + source_path + "\" \"" + destination_path + "\" 2>&1";
+  string response;
+  int rc = zut_run_shell_command(cp_command, response);
+  if (rc > 0) {
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Error: %s\n\t return code: %d", response.c_str(), rc);
+    return RTNCD_FAILURE;
+  }
+  return rc;
 }
 
 /**
