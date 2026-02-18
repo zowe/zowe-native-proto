@@ -1123,24 +1123,23 @@ void zowex_ds_tests()
                              Expect(response).Not().ToContain("Wrote data to '" + ds + "'");
                            });
 
-                        // TODO: https://github.com/zowe/zowe-native-proto/issues/676
-                        xit("should fail if the provided etag is different and evaluates to a number",
-                            [&]() -> void
-                            {
-                              string ds = _ds.back();
-                              _create_ds(ds, "--dsorg PS");
-                              string response;
-                              string command = "echo 'zowe' | " + zowex_command + " data-set write " + ds;
-                              int rc = execute_command_with_output(command, response);
-                              ExpectWithContext(rc, response).ToBe(0);
-                              Expect(response).ToContain("Wrote data to '" + ds + "'");
+                        it("should fail if the provided etag is different and evaluates to a number",
+                           [&]() -> void
+                           {
+                             string ds = _ds.back();
+                             _create_ds(ds, "--dsorg PS");
+                             string response;
+                             string command = "echo 'zowe' | " + zowex_command + " data-set write " + ds;
+                             int rc = execute_command_with_output(command, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+                             Expect(response).ToContain("Wrote data to '" + ds + "'");
 
-                              command = "echo 'test' | " + zowex_command + " data-set write " + ds + " --etag 8890283"; // etag for "test"
-                              rc = execute_command_with_output(command, response);
-                              ExpectWithContext(rc, response).Not().ToBe(0);
-                              Expect(response).ToContain("Etag mismatch: expected 8890283, actual 8bb0280");
-                              Expect(response).Not().ToContain("Wrote data to '" + ds + "'");
-                            });
+                             command = "echo 'test' | " + zowex_command + " data-set write " + ds + " --etag 8890283"; // etag for "test"
+                             rc = execute_command_with_output(command, response);
+                             ExpectWithContext(rc, response).Not().ToBe(0);
+                             Expect(response).ToContain("Etag mismatch: expected 8890283, actual 8bb0280");
+                             Expect(response).Not().ToContain("Wrote data to '" + ds + "'");
+                           });
 
                         it("should write content to a data set with different encoding",
                            [&]() -> void

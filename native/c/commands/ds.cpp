@@ -594,12 +594,13 @@ int handle_data_set_write(InvocationContext &context)
     if (etag_value.empty())
     {
       // Adler-32 etags that consist only of decimal digits (no a-f) are
-      // lexed as integers rather than strings, so fall back to numeric read
+      // lexed as integers rather than strings; recover the original hex string
+      // by formatting the stored integer back as decimal (its digits are the etag)
       const long long *etag_int = context.get_if<long long>("etag");
       if (etag_int)
       {
         stringstream ss;
-        ss << hex << *etag_int;
+        ss << *etag_int;
         etag_value = ss.str();
       }
     }
