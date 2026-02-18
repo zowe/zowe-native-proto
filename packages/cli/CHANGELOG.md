@@ -5,13 +5,12 @@ All notable changes to the Client code for "zowe-native-proto-cli" are documente
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
 ## Recent Changes
-
+- Added `zssh copy data-set` command to copy data sets and members with optional `--replace` and `--delete-target-members`. Supports PDS-to-PDS, member-to-member, and sequential-to-sequential copies. Note: RECFM=U data sets are not supported.[#778](https://github.com/zowe/zowe-native-proto/pull/778)
 - Added the `zssh rename data-set-member` command to the CLI. [#765] (https://github.com/zowe/zowe-native-proto/pull/765).
 - Added `+` suffix after volser for multi-volume data sets when listing data sets with attributes. [#782](https://github.com/zowe/zowe-native-proto/pull/782)
 
 ## `0.2.3`
 
-- Added `zowex ds copy` command to copy data sets and members with optional `--replace` and `--overwrite` flags for overwrite protection. Supports PDS-to-PDS, member-to-member, and sequential-to-sequential copies. Note: RECFM=U data sets are not supported.[#778](https://github.com/zowe/zowe-native-proto/pull/778)
 - Added the rename data set command to the CLI. [#376](https://github.com/zowe/zowe-native-proto/issues/376).
 - Added `owner` field to the table returned by the `zssh list jobs` and `zssh view job-status` commands. [#749](https://github.com/zowe/zowe-native-proto/pull/749)
 - Updated the `zssh server install` command to locate server PAX bundled in the SDK package. [#760](https://github.com/zowe/zowe-native-proto/pull/760)

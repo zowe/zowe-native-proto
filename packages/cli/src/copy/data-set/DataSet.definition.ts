@@ -39,8 +39,8 @@ export const CopyDataSetDefinition: ICommandDefinition = {
             options: '"ibmuser.source.pds" "ibmuser.target.pds" --replace',
         },
         {
-            description: "Copy a PDS and overwrite the target completely",
-            options: '"ibmuser.source.pds" "ibmuser.target.pds" --overwrite',
+            description: "Copy a PDS and delete all target members before copying (makes target match source exactly)",
+            options: '"ibmuser.source.pds" "ibmuser.target.pds" --delete-target-members',
         },
     ],
     positionals: [
@@ -63,16 +63,16 @@ export const CopyDataSetDefinition: ICommandDefinition = {
             aliases: ["r"],
             description:
                 "Replace existing data. For PDS-to-PDS: replaces matching members, preserves target-only members. " +
-                "For sequential or member-to-member: overwrites the target (same as --overwrite).",
+                "For sequential or member-to-member: overwrites the target.",
             type: "boolean",
             defaultValue: false,
         },
         {
-            name: "overwrite",
-            aliases: ["o"],
+            name: "delete-target-members",
+            aliases: ["d"],
             description:
-                "Overwrite the target completely. For PDS-to-PDS: deletes all target members before copying. " +
-                "For sequential or member-to-member: overwrites the target (same as --replace).",
+                "Delete all members from target PDS before copying (PDS-to-PDS copy only). " +
+                "Makes the target match the source exactly.",
             type: "boolean",
             defaultValue: false,
         },

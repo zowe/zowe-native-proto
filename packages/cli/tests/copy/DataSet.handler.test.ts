@@ -60,7 +60,7 @@ describe("CopyDataSetHandler", () => {
                 fromDataset: "SOURCE.DATA.SET",
                 toDataset: "TARGET.DATA.SET",
                 replace: false,
-                overwrite: false,
+                deleteTargetMembers: false,
             });
             expect(mockParams.response.data.setMessage).toHaveBeenCalledWith(
                 'Data set "SOURCE.DATA.SET" copied to "TARGET.DATA.SET"',
@@ -85,8 +85,8 @@ describe("CopyDataSetHandler", () => {
             );
         });
 
-        it("should display message when overwrite is used", async () => {
-            mockParams.arguments.overwrite = true;
+        it("should display message when deleteTargetMembers is used", async () => {
+            mockParams.arguments.deleteTargetMembers = true;
             const mockResponse: ds.CopyDatasetResponse = {
                 success: true,
             };
@@ -98,10 +98,10 @@ describe("CopyDataSetHandler", () => {
                 fromDataset: "SOURCE.DATA.SET",
                 toDataset: "TARGET.DATA.SET",
                 replace: false,
-                overwrite: true,
+                deleteTargetMembers: true,
             });
             expect(mockParams.response.data.setMessage).toHaveBeenCalledWith(
-                'Data set "TARGET.DATA.SET" overwritten with contents of "SOURCE.DATA.SET"',
+                'Target members deleted and data set "TARGET.DATA.SET" replaced with contents of "SOURCE.DATA.SET"',
             );
         });
 
@@ -118,15 +118,15 @@ describe("CopyDataSetHandler", () => {
                 fromDataset: "SOURCE.DATA.SET",
                 toDataset: "TARGET.DATA.SET",
                 replace: true,
-                overwrite: false,
+                deleteTargetMembers: false,
             });
             expect(mockParams.response.data.setMessage).toHaveBeenCalledWith(
                 'Data set "TARGET.DATA.SET" updated with contents of "SOURCE.DATA.SET"',
             );
         });
 
-        it("should prioritize targetCreated message over overwrite", async () => {
-            mockParams.arguments.overwrite = true;
+        it("should prioritize targetCreated message over deleteTargetMembers", async () => {
+            mockParams.arguments.deleteTargetMembers = true;
             const mockResponse: ds.CopyDatasetResponse = {
                 success: true,
                 targetCreated: true,
@@ -154,7 +154,7 @@ describe("CopyDataSetHandler", () => {
                 fromDataset: "SOURCE.PDS(MEMBER1)",
                 toDataset: "TARGET.PDS(MEMBER2)",
                 replace: false,
-                overwrite: false,
+                deleteTargetMembers: false,
             });
         });
 
@@ -170,9 +170,9 @@ describe("CopyDataSetHandler", () => {
             expect(mockParams.response.console.log).not.toHaveBeenCalled();
         });
 
-        it("should handle both replace and overwrite options", async () => {
+        it("should handle both replace and deleteTargetMembers options", async () => {
             mockParams.arguments.replace = true;
-            mockParams.arguments.overwrite = true;
+            mockParams.arguments.deleteTargetMembers = true;
             const mockResponse: ds.CopyDatasetResponse = {
                 success: true,
             };
@@ -184,11 +184,11 @@ describe("CopyDataSetHandler", () => {
                 fromDataset: "SOURCE.DATA.SET",
                 toDataset: "TARGET.DATA.SET",
                 replace: true,
-                overwrite: true,
+                deleteTargetMembers: true,
             });
-            // Overwrite takes precedence in the message
+            // deleteTargetMembers takes precedence in the message
             expect(mockParams.response.data.setMessage).toHaveBeenCalledWith(
-                'Data set "TARGET.DATA.SET" overwritten with contents of "SOURCE.DATA.SET"',
+                'Target members deleted and data set "TARGET.DATA.SET" replaced with contents of "SOURCE.DATA.SET"',
             );
         });
     });

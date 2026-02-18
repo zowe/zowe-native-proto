@@ -69,7 +69,7 @@ describe("RpcClientApi", () => {
             });
         });
 
-        it("should pass overwrite option correctly", async () => {
+        it("should pass deleteTargetMembers option correctly", async () => {
             const mockResponse: ds.CopyDatasetResponse = {
                 success: true,
             };
@@ -78,14 +78,14 @@ describe("RpcClientApi", () => {
             await client.ds.copyDataset({
                 fromDataset: "SOURCE.PDS",
                 toDataset: "TARGET.PDS",
-                overwrite: true,
+                deleteTargetMembers: true,
             });
 
             expect(client.mockRequest).toHaveBeenCalledWith({
                 command: "copyDataset",
                 fromDataset: "SOURCE.PDS",
                 toDataset: "TARGET.PDS",
-                overwrite: true,
+                deleteTargetMembers: true,
             });
         });
 

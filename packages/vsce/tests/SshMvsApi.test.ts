@@ -86,6 +86,7 @@ describe("SshMvsApi", () => {
                 fromDataset: "SOURCE.DATA.SET",
                 toDataset: "TARGET.DATA.SET",
                 replace: false,
+                deleteTargetMembers: false,
             });
             expect(result.success).toBe(true);
         });
@@ -105,6 +106,7 @@ describe("SshMvsApi", () => {
                 fromDataset: "SOURCE.PDS(MEMBER1)",
                 toDataset: "TARGET.PDS(MEMBER2)",
                 replace: false,
+                deleteTargetMembers: false,
             });
             expect(result.success).toBe(true);
         });
@@ -124,6 +126,7 @@ describe("SshMvsApi", () => {
                 fromDataset: "SOURCE.PDS(MYMEMBER)",
                 toDataset: "TARGET.PDS(MYMEMBER)",
                 replace: false,
+                deleteTargetMembers: false,
             });
             expect(result.success).toBe(true);
         });
@@ -144,6 +147,7 @@ describe("SshMvsApi", () => {
                 fromDataset: "SOURCE.PDS(MEMBER)",
                 toDataset: "TARGET.PDS(MEMBER)",
                 replace: true,
+                deleteTargetMembers: false,
             });
             expect(result.success).toBe(true);
         });
@@ -163,6 +167,42 @@ describe("SshMvsApi", () => {
             );
         });
 
+        it("should pass deleteTargetMembers option when provided", async () => {
+            const mockResponse: ds.CopyDatasetResponse = {
+                success: true,
+            };
+            mockCopyDataset.mockResolvedValue(mockResponse);
+
+            const result = await api.copyDataSetMember(
+                { dsn: "SOURCE.PDS" },
+                { dsn: "TARGET.PDS" },
+                { deleteTargetMembers: true },
+            );
+
+            expect(mockCopyDataset).toHaveBeenCalledWith({
+                fromDataset: "SOURCE.PDS",
+                toDataset: "TARGET.PDS",
+                replace: false,
+                deleteTargetMembers: true,
+            });
+            expect(result.success).toBe(true);
+        });
+
+        it("should default deleteTargetMembers to false when not provided", async () => {
+            const mockResponse: ds.CopyDatasetResponse = {
+                success: true,
+            };
+            mockCopyDataset.mockResolvedValue(mockResponse);
+
+            await api.copyDataSetMember({ dsn: "SOURCE.DATA.SET" }, { dsn: "TARGET.DATA.SET" });
+
+            expect(mockCopyDataset).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    deleteTargetMembers: false,
+                }),
+            );
+        });
+
         it("should handle source with member and target without member", async () => {
             const mockResponse: ds.CopyDatasetResponse = {
                 success: true,
@@ -175,6 +215,7 @@ describe("SshMvsApi", () => {
                 fromDataset: "SOURCE.PDS(MEMBER1)",
                 toDataset: "TARGET.DATA.SET",
                 replace: false,
+                deleteTargetMembers: false,
             });
         });
 
@@ -190,6 +231,7 @@ describe("SshMvsApi", () => {
                 fromDataset: "SOURCE.DATA.SET",
                 toDataset: "TARGET.PDS(MEMBER1)",
                 replace: false,
+                deleteTargetMembers: false,
             });
         });
 

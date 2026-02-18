@@ -18,15 +18,15 @@ export default class CopyDataSetHandler extends SshBaseHandler {
         const fromDataset = params.arguments.fromDataset;
         const toDataset = params.arguments.toDataset;
         const replace = params.arguments.replace ?? false;
-        const overwrite = params.arguments.overwrite ?? false;
+        const deleteTargetMembers = params.arguments.deleteTargetMembers ?? false;
 
-        const response = await client.ds.copyDataset({ fromDataset, toDataset, replace, overwrite });
+        const response = await client.ds.copyDataset({ fromDataset, toDataset, replace, deleteTargetMembers });
 
         let dsMessage: string;
         if (response.targetCreated) {
             dsMessage = `Data set "${toDataset}" created and copied from "${fromDataset}"`;
-        } else if (overwrite) {
-            dsMessage = `Data set "${toDataset}" overwritten with contents of "${fromDataset}"`;
+        } else if (deleteTargetMembers) {
+            dsMessage = `Target members deleted and data set "${toDataset}" replaced with contents of "${fromDataset}"`;
         } else if (replace) {
             dsMessage = `Data set "${toDataset}" updated with contents of "${fromDataset}"`;
         } else {

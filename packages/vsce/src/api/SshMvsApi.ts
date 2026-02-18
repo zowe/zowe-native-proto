@@ -235,7 +235,7 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
     public async copyDataSetMember(
         { dsn: fromDataSetName, member: fromMemberName }: zosfiles.IDataSet,
         { dsn: toDataSetName, member: toMemberName }: zosfiles.IDataSet,
-        options?: { replace?: boolean },
+        options?: { replace?: boolean; deleteTargetMembers?: boolean },
     ): Promise<zosfiles.IZosFilesResponse> {
         const fromDataset = fromMemberName ? `${fromDataSetName}(${fromMemberName})` : fromDataSetName;
         const toDataset = toMemberName ? `${toDataSetName}(${toMemberName})` : toDataSetName;
@@ -243,6 +243,7 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
             fromDataset,
             toDataset,
             replace: options?.replace ?? false,
+            deleteTargetMembers: options?.deleteTargetMembers ?? false,
         });
         return this.buildZosFilesResponse({
             success: response.success,

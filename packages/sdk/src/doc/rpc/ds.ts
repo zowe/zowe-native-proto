@@ -241,15 +241,14 @@ export interface CopyDatasetRequest extends common.CommandRequest<"copyDataset">
     /**
      * Replace existing data.
      * For PDS-to-PDS: replaces matching members, preserves target-only members.
-     * For sequential or member-to-member: overwrites the target (same as overwrite).
+     * For sequential or member-to-member: overwrites the target.
      */
     replace?: boolean;
     /**
-     * Overwrite target completely.
-     * For PDS-to-PDS: deletes all target members before copying.
-     * For sequential or member-to-member: overwrites the target (same as replace).
+     * Delete all members from target PDS before copying (PDS-to-PDS copy only).
+     * Makes the target match the source exactly.
      */
-    overwrite?: boolean;
+    deleteTargetMembers?: boolean;
 }
 
 export interface CopyDatasetResponse extends common.CommandResponse {
