@@ -7,7 +7,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 ## Recent Changes
 
 - Added the functionality for the **Rename Member** option. [#765] (https://github.com/zowe/zowe-native-proto/pull/765).
-- Fixed an issue where using the "Upload Member" option with an SSH profile in Zowe Explorer caused an error. Now, the member name is provided to the backend for each member that's uploaded.
+- Fixed an issue where using the "Upload Member" option with an SSH profile in Zowe Explorer caused an error. Now, the member name is provided to the back end for each member that is uploaded.
 
 ## `0.2.3`
 
