@@ -346,6 +346,15 @@ int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2, ZDSCopyOption
     return RTNCD_FAILURE;
   }
 
+  // PDS -> PS is not supported (cannot copy PDS to existing sequential data set)
+  if (info1.type == ZDS_TYPE_PDS && info2.type == ZDS_TYPE_PS)
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg,
+                                  "Cannot copy PDS to a sequential data set. "
+                                  "Target must be a PDS.");
+    return RTNCD_FAILURE;
+  }
+
   bool is_pds_full_copy = (info1.type == ZDS_TYPE_PDS && info2.member_name.empty());
   bool target_is_member = !info2.member_name.empty();
   bool target_base_exists = zds_dataset_exists(info2.base_dsn);
