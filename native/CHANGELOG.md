@@ -9,6 +9,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - `c`: Fixed an issue where errors during `zowex` initialization and command execution were unhandled, causing abends as a result. Now, if a fatal error is encountered, the error is caught and its details are displayed before the process exits. [#784](https://github.com/zowe/zowe-native-proto/issues/784)
 - `c`: Fixed an issue where the `zowex uss list` command would return the file type `d` for symlinked directories instead of `l`. Now, symlinks in a file list are marked with file type `l`. [#791](https://github.com/zowe/zowe-native-proto/issues/791)
 - `c`: Fixed an issue where the `zowex uss delete` command could not remove symlinks or directories containing symlinks. Now, the command properly deletes a directory with a symlink in it, and treats the link as a file. No sub-directories or files in the target link are deleted. [#792](https://github.com/zowe/zowe-native-proto/issues/792)
+- `c`: Added support for `multivolume` attribute when listing data sets. [#782](https://github.com/zowe/zowe-native-proto/pull/782)
 
 ## `0.2.3`
 

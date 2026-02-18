@@ -173,6 +173,7 @@ const ast::Node build_ds_object(const ZDSEntry &entry, bool attributes)
   if (!entry.mgmtclass.empty())
     obj_entry->set("mgmtclass", str(entry.mgmtclass));
   obj_entry->set("migrated", boolean(entry.migrated));
+  obj_entry->set("multivolume", boolean(entry.multivolume));
   if (entry.primary != -1)
     obj_entry->set("primary", i64(entry.primary));
   if (!entry.rdate.empty())
@@ -190,6 +191,10 @@ const ast::Node build_ds_object(const ZDSEntry &entry, bool attributes)
   if (entry.usedx != -1)
     obj_entry->set("usedx", i64(entry.usedx));
   obj_entry->set("volser", str(entry.volser));
+  const auto volsers_array = arr();
+  for (auto it = entry.volsers.begin(); it != entry.volsers.end(); ++it)
+    volsers_array->push(str(*it));
+  obj_entry->set("volsers", volsers_array);
 
   return obj_entry;
 }
@@ -440,14 +445,14 @@ int handle_data_set_list(InvocationContext &context)
         fields.push_back(it->name);
         if (attributes)
         {
-          fields.push_back(it->volser);
+          fields.push_back(it->multivolume ? (it->volser + "+") : it->volser);
           fields.push_back(it->devtype != 0 ? zut_int_to_string(it->devtype, true) : "");
           fields.push_back(it->dsorg);
           fields.push_back(it->recfm);
           fields.push_back(it->lrecl == -1 ? "" : zut_int_to_string(it->lrecl));
           fields.push_back(it->blksize == -1 ? "" : zut_int_to_string(it->blksize));
-          fields.push_back(zut_int_to_string(it->primary));
-          fields.push_back(zut_int_to_string(it->secondary));
+          fields.push_back(it->primary == -1 ? "" : zut_int_to_string(it->primary));
+          fields.push_back(it->secondary == -1 ? "" : zut_int_to_string(it->secondary));
           fields.push_back(it->dsntype);
           fields.push_back(it->migrated ? "YES" : "NO");
         }
@@ -460,14 +465,14 @@ int handle_data_set_list(InvocationContext &context)
         {
           context.output_stream() << left
                                   << setw(44) << it->name << " "
-                                  << setw(6) << it->volser << " "
+                                  << setw(7) << (it->multivolume ? (it->volser + "+") : it->volser) << " "
                                   << setw(7) << (it->devtype != 0 ? zut_int_to_string(it->devtype, true) : "") << " "
                                   << setw(4) << it->dsorg << " "
                                   << setw(6) << it->recfm << " "
                                   << setw(6) << (it->lrecl == -1 ? "" : zut_int_to_string(it->lrecl)) << " "
                                   << setw(6) << (it->blksize == -1 ? "" : zut_int_to_string(it->blksize)) << " "
-                                  << setw(10) << it->primary << " "
-                                  << setw(10) << it->secondary << " "
+                                  << setw(10) << (it->primary == -1 ? "" : zut_int_to_string(it->primary)) << " "
+                                  << setw(10) << (it->secondary == -1 ? "" : zut_int_to_string(it->secondary)) << " "
                                   << setw(8) << it->dsntype << " "
                                   << (it->migrated ? "YES" : "NO")
                                   << endl;

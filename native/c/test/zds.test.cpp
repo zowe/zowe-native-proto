@@ -54,6 +54,30 @@ void zds_tests()
                              Expect(found).ToBe(dsn);
                            });
 
+                        it("should list data sets with a given DSN and show attributes",
+                           []() -> void
+                           {
+                             int rc = 0;
+                             ZDS zds = {0};
+                             vector<ZDSEntry> entries;
+                             string dsn = "SYS1.MACLIB";
+                             rc = zds_list_data_sets(&zds, dsn, entries, true);
+                             ExpectWithContext(rc, zds.diag.e_msg).ToBe(0);
+                             ZDSEntry *found = nullptr;
+                             for (vector<ZDSEntry>::iterator it = entries.begin(); it != entries.end(); ++it)
+                             {
+                               string trimmed_name = it->name;
+                               zut_rtrim(trimmed_name);
+                               if (trimmed_name == dsn)
+                               {
+                                 found = &(*it);
+                               }
+                             }
+                             Expect(found != nullptr).ToBe(true);
+                             Expect(zut_rtrim(found->name)).ToBe(dsn);
+                             Expect(found->volser.length()).ToBeGreaterThan(0);
+                           });
+
                         it("should find dsn (SYS1.MACLIB) based on a pattern: (SYS1.*)",
                            []() -> void
                            {
