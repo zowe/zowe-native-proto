@@ -115,7 +115,7 @@ void zowex_job_manage_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
              it("should handle view-status of non-existent job",
                 [&]()
                 {
-                  string fake_jobid = "JOB99999";
+                  string fake_jobid = "JOB9999999";
                   string response;
                   int rc = execute_command_with_output(zowex_command + " job view-status " + fake_jobid, response);
                   Expect(rc).Not().ToBe(0);
@@ -124,7 +124,7 @@ void zowex_job_manage_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
              it("should handle view-jcl of non-existent job",
                 [&]()
                 {
-                  string fake_jobid = "JOB99999";
+                  string fake_jobid = "JOB9999999";
                   string response;
                   int rc = execute_command_with_output(zowex_command + " job view-jcl " + fake_jobid, response);
                   Expect(rc).Not().ToBe(0);
@@ -515,7 +515,7 @@ void zowex_job_manage_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
              it("should handle view-file-by-id with non-existent job",
                 [&]()
                 {
-                  string fake_jobid = "JOB99999";
+                  string fake_jobid = "JOB9999999";
                   string file_id = "2";
                   string response;
                   int rc = execute_command_with_output(zowex_command + " job view-file-by-id " + fake_jobid + " " + file_id, response);
@@ -534,7 +534,7 @@ void zowex_job_manage_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
              it("should handle list-files with non-existent job",
                 [&]()
                 {
-                  string fake_jobid = "JOB99999";
+                  string fake_jobid = "JOB9999999";
                   string response;
                   int rc = execute_command_with_output(zowex_command + " job list-files " + fake_jobid, response);
                   Expect(rc).Not().ToBe(0);
@@ -667,7 +667,7 @@ void zowex_job_manage_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
              it("should handle delete of non-existent job",
                 [&]()
                 {
-                  string fake_jobid = "JOB99999";
+                  string fake_jobid = "JOB9999999";
                   string response;
                   int rc = execute_command_with_output(zowex_command + " job delete " + fake_jobid, response);
                   Expect(rc).Not().ToBe(0);
@@ -676,7 +676,7 @@ void zowex_job_manage_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
              it("should handle cancel of non-existent job",
                 [&]()
                 {
-                  string fake_jobid = "JOB99999";
+                  string fake_jobid = "JOB9999999";
                   string response;
                   int rc = execute_command_with_output(zowex_command + " job cancel " + fake_jobid, response);
                   Expect(rc).Not().ToBe(0);
@@ -685,7 +685,7 @@ void zowex_job_manage_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
              it("should handle hold of non-existent job",
                 [&]()
                 {
-                  string fake_jobid = "JOB99999";
+                  string fake_jobid = "JOB9999999";
                   string response;
                   int rc = execute_command_with_output(zowex_command + " job hold " + fake_jobid, response);
                   Expect(rc).Not().ToBe(0);
@@ -694,7 +694,7 @@ void zowex_job_manage_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
              it("should handle release of non-existent job",
                 [&]()
                 {
-                  string fake_jobid = "JOB99999";
+                  string fake_jobid = "JOB9999999";
                   string response;
                   int rc = execute_command_with_output(zowex_command + " job release " + fake_jobid, response);
                   Expect(rc).Not().ToBe(0);
