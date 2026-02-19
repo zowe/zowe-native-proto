@@ -10,15 +10,15 @@
  */
 
 import type { IHandlerParameters } from "@zowe/imperative";
-import type { cmds, ZSshClient } from "zowe-native-proto-sdk";
+import type { console, ZSshClient } from "zowe-native-proto-sdk";
 import { SshBaseHandler } from "../../SshBaseHandler";
 
 export default class ConsoleCommandHandler extends SshBaseHandler {
-    public async processWithClient(params: IHandlerParameters, client: ZSshClient): Promise<cmds.IssueConsoleResponse> {
+    public async processWithClient(params: IHandlerParameters, client: ZSshClient): Promise<console.IssueCmdResponse> {
         const commandText = params.arguments.command;
         const consoleName = params.arguments.consoleName;
 
-        const response = await client.cmds.issueConsole({ commandText, consoleName });
+        const response = await client.console.issueCmd({ commandText, consoleName });
 
         params.response.data.setMessage("Console: %s command: %s", consoleName, commandText);
         params.response.console.log(response.data);

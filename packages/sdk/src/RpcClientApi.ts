@@ -10,7 +10,7 @@
  */
 
 import type { IRpcClient } from "./doc/client";
-import type { CommandRequest, CommandResponse, cmds, ds, jobs, uss } from "./doc/rpc";
+import type { CommandRequest, CommandResponse, console, ds, jobs, tso, uss } from "./doc/rpc";
 import type { ProgressCallback } from "./doc/types";
 
 export abstract class RpcClientApi implements IRpcClient {
@@ -19,10 +19,12 @@ export abstract class RpcClientApi implements IRpcClient {
         progressCallback?: (percent: number) => void,
     ): Promise<RespT>;
 
-    public cmds = {
-        issueConsole: this.rpc<cmds.IssueConsoleRequest, cmds.IssueConsoleResponse>("consoleCommand"),
-        issueTso: this.rpc<cmds.IssueTsoRequest, cmds.IssueTsoResponse>("tsoCommand"),
-        issueUnix: this.rpc<cmds.IssueUnixRequest, cmds.IssueUnixResponse>("unixCommand"),
+    public tso = {
+        issueCmd: this.rpc<tso.IssueCmdRequest, tso.IssueCmdResponse>("tsoCommand"),
+    };
+
+    public console = {
+        issueCmd: this.rpc<console.IssueCmdRequest, console.IssueCmdResponse>("consoleCommand"),
     };
 
     public ds = {
@@ -62,6 +64,7 @@ export abstract class RpcClientApi implements IRpcClient {
         listFiles: this.rpc<uss.ListFilesRequest, uss.ListFilesResponse>("listFiles"),
         readFile: this.rpcWithProgress<uss.ReadFileRequest, uss.ReadFileResponse>("readFile"),
         writeFile: this.rpcWithProgress<uss.WriteFileRequest, uss.WriteFileResponse>("writeFile"),
+        issueCmd: this.rpc<uss.IssueCmdRequest, uss.IssueCmdResponse>("unixCommand"),
     };
 
     private rpc<ReqT extends CommandRequest, RespT extends CommandResponse>(command: ReqT["command"]) {
