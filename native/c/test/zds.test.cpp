@@ -296,7 +296,7 @@ void zds_tests()
                            []() -> void
                            {
                              ZDS zds = {0};
-                             DS_ATTRIBUTES attr = {0};
+                             DS_ATTRIBUTES attr{};
 
                              attr.dsorg = "PS";
                              attr.recfm = "FB";
@@ -322,7 +322,7 @@ void zds_tests()
                            []() -> void
                            {
                              ZDS zds = {0};
-                             DS_ATTRIBUTES attr = {0};
+                             DS_ATTRIBUTES attr{};
 
                              attr.dsorg = "PS";
                              attr.recfm = "FB";
@@ -346,7 +346,7 @@ void zds_tests()
                       {
                         const string M1 = "M1";
                         const string M2 = "M2";
-                        DS_ATTRIBUTES attr = {0};
+                        DS_ATTRIBUTES attr{};
 
                         attr.dsorg = "PO";
                         attr.recfm = "FB";
