@@ -279,9 +279,8 @@ void zut_tests()
                              ZDIAG diag = {0};
                              string input = "A";
                              string result = zut_encode(input, "IBM-1047", "ISO8859-1", diag);
-                             char iso8859_1_a[1] = {0x41};
 
-                             expect(result).ToBe(iso8859_1_a);
+                             expect(result).ToBe(string(1, 0x41)); // "A" in ISO8859-1
                              expect(result.length()).ToBe(1);
                              expect(diag.e_msg_len).ToBe(0);
                            });
@@ -294,7 +293,7 @@ void zut_tests()
                              string result = zut_encode(input, "IBM-1047", "ISO8859-1", diag);
                              char iso8859_1_1234567890[10] = {0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x30};
 
-                             expect(result).ToBe(iso8859_1_1234567890);
+                             expect(result).ToBe(string(iso8859_1_1234567890, 10));
                              expect(result.length()).ToBe(10);
                              expect(diag.e_msg_len).ToBe(0);
                            });
