@@ -54,16 +54,20 @@ vi.mock("@zowe/zowe-explorer-api", () => ({
     },
 }));
 
+// Mock the SDK - use importOriginal to preserve all exports and only override B64String
+vi.mock("zowe-native-proto-sdk", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("zowe-native-proto-sdk")>();
+    return {
+        ...actual,
+        B64String: {
+            decode: vi.fn((data: string) => Buffer.from(data, "base64")),
+            encode: vi.fn((buffer: Buffer) => buffer.toString("base64")),
+        },
+    };
+});
+
 import { SshMvsApi } from "../src/api/SshMvsApi";
 import type { ds, ZSshClient } from "zowe-native-proto-sdk";
-
-// Mock the client
-vi.mock("zowe-native-proto-sdk", () => ({
-    B64String: {
-        decode: vi.fn((data: string) => Buffer.from(data, "base64")),
-        encode: vi.fn((buffer: Buffer) => buffer.toString("base64")),
-    },
-}));
 
 describe("SshMvsApi", () => {
     let api: SshMvsApi;
