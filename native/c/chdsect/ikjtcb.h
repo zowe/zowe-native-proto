@@ -1,4 +1,4 @@
-#pragma pack(packed)
+#pragma pack(1)
  
 #ifndef __tcbfix__
 #define __tcbfix__
@@ -579,4 +579,4 @@ struct tcbxtnt2 {
  
 #endif
  
-#pragma pack(reset)
+#pragma pack()

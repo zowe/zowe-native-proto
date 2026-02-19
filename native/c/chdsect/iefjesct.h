@@ -1,4 +1,4 @@
-#pragma pack(packed)
+#pragma pack(1)
 
 #ifndef __jesct__
 #define __jesct__
@@ -168,4 +168,4 @@ struct jespext
 
 #endif
 
-#pragma pack(reset)
+#pragma pack()

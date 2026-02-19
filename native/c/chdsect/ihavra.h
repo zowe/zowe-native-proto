@@ -1,4 +1,4 @@
-#pragma pack(packed)
+#pragma pack(1)
  
 #ifndef __vramap__
 #define __vramap__
@@ -188,4 +188,4 @@ struct vramap {
  
 #endif
  
-#pragma pack(reset)
+#pragma pack()

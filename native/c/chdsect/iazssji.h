@@ -1,4 +1,4 @@
-#pragma pack(packed)
+#pragma pack(1)
 
 #ifndef __iazssji__
 #define __iazssji__
@@ -82,4 +82,4 @@ struct ssob
 
 #endif
 
-#pragma pack(reset)
+#pragma pack()

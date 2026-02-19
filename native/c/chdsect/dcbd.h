@@ -1,4 +1,4 @@
-#pragma pack(packed)
+#pragma pack(1)
  
 #ifndef __ihadcb__
 #define __ihadcb__
@@ -749,4 +749,4 @@ struct ihadcb {
  
 #endif
  
-#pragma pack(reset)
+#pragma pack()

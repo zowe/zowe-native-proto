@@ -1,4 +1,4 @@
-#pragma pack(packed)
+#pragma pack(1)
 
 #ifndef __tiot__
 #define __tiot__
@@ -84,4 +84,4 @@ struct tiot
 
 #endif
 
-#pragma pack(reset)
+#pragma pack()

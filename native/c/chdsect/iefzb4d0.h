@@ -1,4 +1,4 @@
-#pragma pack(packed)
+#pragma pack(1)
 
 #ifndef __s99rbp__
 #define __s99rbp__
@@ -192,4 +192,4 @@ struct s99rbx
 
 #endif
 
-#pragma pack(reset)
+#pragma pack()

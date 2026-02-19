@@ -1,4 +1,4 @@
-#pragma pack(packed)
+#pragma pack(1)
 
 #ifndef __cvt__
 #define __cvt__
@@ -896,4 +896,4 @@ struct cvtxtnt2
 
 #endif
 
-#pragma pack(reset)
+#pragma pack()

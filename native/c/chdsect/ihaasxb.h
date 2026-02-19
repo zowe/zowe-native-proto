@@ -1,4 +1,4 @@
-#pragma pack(packed)
+#pragma pack(1)
 
 #ifndef __asxb__
 #define __asxb__
@@ -140,4 +140,4 @@ struct asxb {
 
 #endif
 
-#pragma pack(reset)
+#pragma pack()

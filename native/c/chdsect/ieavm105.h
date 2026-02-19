@@ -1,4 +1,4 @@
-#pragma pack(packed)
+#pragma pack(1)
 
 #ifndef __mdb__
 #define __mdb__
@@ -388,4 +388,4 @@ struct mdbt
 
 #endif
 
-#pragma pack(reset)
+#pragma pack()

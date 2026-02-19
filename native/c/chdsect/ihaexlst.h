@@ -1,4 +1,4 @@
-#pragma pack(packed)
+#pragma pack(1)
 
 #ifndef __exlst__
 #define __exlst__
@@ -43,4 +43,4 @@ struct exlst {
 
 #endif
 
-#pragma pack(reset)
+#pragma pack()

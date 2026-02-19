@@ -1,4 +1,4 @@
-#pragma pack(packed)
+#pragma pack(1)
  
 #ifndef __saver__
 #define __saver__
@@ -223,4 +223,4 @@ struct savf8sa {
  
 #endif
  
-#pragma pack(reset)
+#pragma pack()

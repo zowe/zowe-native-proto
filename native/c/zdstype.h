@@ -83,11 +83,7 @@
 #define ZDS_DEVTYPE_9345 0x04
 
 #if defined(__MVS__)
-#if defined(__clang__) || defined(__open_xl__)
 #pragma pack(1)
-#else
-#pragma pack(packed)
-#endif
 #endif
 
 // NOTE(Kelosky): struct is padded to nearest double word boundary; ensure proper alignment for fields
@@ -114,7 +110,7 @@ typedef struct
 } ZDS;
 
 #if defined(__MVS__)
-#pragma pack(reset)
+#pragma pack()
 #endif
 
 #if defined(__MVS__)
@@ -161,7 +157,7 @@ typedef struct IndexableDSCBFormat1
 } IndexableDSCBFormat1;
 
 #if defined(__MVS__)
-#pragma pack(reset)
+#pragma pack()
 #endif
 
 #endif

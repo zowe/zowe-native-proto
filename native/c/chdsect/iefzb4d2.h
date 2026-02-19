@@ -1,4 +1,4 @@
-#pragma pack(packed)
+#pragma pack(1)
 
 #ifndef __svc99kys__
 #define __svc99kys__
@@ -250,4 +250,4 @@ struct svc99kys
 
 #endif
 
-#pragma pack(reset)
+#pragma pack()

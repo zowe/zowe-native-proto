@@ -1,4 +1,4 @@
-#pragma pack(packed)
+#pragma pack(1)
  
 #ifndef __jfcb__
 #define __jfcb__
@@ -522,4 +522,4 @@ struct jfcb {
  
 #endif
  
-#pragma pack(reset)
+#pragma pack()

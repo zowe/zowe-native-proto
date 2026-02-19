@@ -1,4 +1,4 @@
-#pragma pack(packed)
+#pragma pack(1)
 
 #ifndef __ssjm__
 #define __ssjm__
@@ -436,4 +436,4 @@ struct ssjmstor
 
 #endif
 
-#pragma pack(reset)
+#pragma pack()

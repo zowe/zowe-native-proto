@@ -1,4 +1,4 @@
-#pragma pack(packed)
+#pragma pack(1)
  
 #ifndef __tlkup__
 #define __tlkup__
@@ -37,4 +37,4 @@ struct tlkup {
  
 #endif
  
-#pragma pack(reset)
+#pragma pack()

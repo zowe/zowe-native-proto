@@ -1,4 +1,4 @@
-#pragma pack(packed)
+#pragma pack(1)
 
 #ifndef __ascb__
 #define __ascb__
@@ -400,4 +400,4 @@ struct ascb {
 
 #endif
 
-#pragma pack(reset)
+#pragma pack()

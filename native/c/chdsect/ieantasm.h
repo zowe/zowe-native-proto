@@ -1,7 +1,7 @@
 #ifndef IEANTASM_H
 #define IEANTASM_H
 
-#pragma pack(packed)
+#pragma pack(1)
 
 #ifndef __ieatasmw__
 #define __ieatasmw__
@@ -39,6 +39,6 @@ struct ieatasmw
 
 #endif
 
-#pragma pack(reset)
+#pragma pack()
 
 #endif // ieantasm.h

@@ -44,11 +44,7 @@
 #endif
 
 #if defined(__MVS__)
-#if defined(__clang__) || defined(__open_xl__)
 #pragma pack(1)
-#else
-#pragma pack(packed)
-#endif
 #endif
 
 // NOTE(Kelosky): struct is padded to nearest double word boundary; ensure proper alignment for fields
@@ -79,7 +75,7 @@ typedef struct
 } ZDIAG;
 
 #if defined(__MVS__)
-#pragma pack(reset)
+#pragma pack()
 #endif
 
 enum DataType

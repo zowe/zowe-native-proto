@@ -1,4 +1,4 @@
-#pragma pack(packed)
+#pragma pack(1)
  
 #ifndef __iezjscb__
 #define __iezjscb__
@@ -168,4 +168,4 @@ struct iezjscb {
  
 #endif
  
-#pragma pack(reset)
+#pragma pack()

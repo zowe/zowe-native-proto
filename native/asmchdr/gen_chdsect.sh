@@ -57,6 +57,11 @@ chtag -tc ISO8859-1 build-out/$filename_no_ext.h
 echo "Conversion completed."
 printf "\n"
 
+echo "Replacing xlc-specific pragmas for ibm-clang compatibility..."
+sed -i 's/#pragma pack(packed)/#pragma pack(1)/g; s/#pragma pack(reset)/#pragma pack()/g' build-out/$filename_no_ext.h
+echo "Pragma replacement completed."
+printf "\n"
+
 echo "Cleaning up..."
 rm "build-out/$filename_no_ext.h.u"
 echo "Cleanup completed."

@@ -35,4 +35,4 @@ struct csifield
 
 #endif
 
-#pragma pack(reset)
+#pragma pack()

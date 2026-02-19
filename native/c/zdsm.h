@@ -54,11 +54,7 @@ extern "C"
 #endif
 
 #if defined(__MVS__)
-#if defined(__clang__) || defined(__open_xl__)
 #pragma pack(1)
-#else
-#pragma pack(packed)
-#endif
 #endif
 
 typedef struct CamlstSearchParams
@@ -78,7 +74,7 @@ typedef struct ObtainParams
 } ObtainParams;
 
 #if defined(__MVS__)
-#pragma pack(reset)
+#pragma pack()
 #endif
 
 /**

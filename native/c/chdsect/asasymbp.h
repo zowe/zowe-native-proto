@@ -1,4 +1,4 @@
-#pragma pack(packed)
+#pragma pack(1)
  
 #ifndef __symbp__
 #define __symbp__
@@ -285,4 +285,4 @@ struct symbth {
  
 #endif
  
-#pragma pack(reset)
+#pragma pack()

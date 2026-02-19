@@ -1,5 +1,5 @@
 #if defined(__MVS__)
-#pragma pack(packed)
+#pragma pack(1)
 #endif
 
 #ifndef __ecb__
@@ -89,5 +89,5 @@ struct ecbe
 #endif
 
 #if defined(__MVS__)
-#pragma pack(reset)
+#pragma pack()
 #endif

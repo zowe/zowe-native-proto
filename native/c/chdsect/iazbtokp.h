@@ -1,4 +1,4 @@
-#pragma pack(packed)
+#pragma pack(1)
 
 #ifndef __iazbtokp__
 #define __iazbtokp__
@@ -44,4 +44,4 @@ struct iazbtokp
 
 #endif
 
-#pragma pack(reset)
+#pragma pack()

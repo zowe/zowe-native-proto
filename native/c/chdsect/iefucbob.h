@@ -1,4 +1,4 @@
-#pragma pack(packed)
+#pragma pack(1)
 
 #ifndef __ucb__
 #define __ucb__
@@ -725,4 +725,4 @@ struct ucbpdcta {
 
 #endif
 
-#pragma pack(reset)
+#pragma pack()

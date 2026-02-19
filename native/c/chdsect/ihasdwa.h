@@ -1,4 +1,4 @@
-#pragma pack(packed)
+#pragma pack(1)
  
 #ifndef __sdwa__
 #define __sdwa__
@@ -1447,4 +1447,4 @@ struct vramap {
  
 #endif
  
-#pragma pack(reset)
+#pragma pack()

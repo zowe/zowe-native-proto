@@ -1,4 +1,4 @@
-#pragma pack(packed)
+#pragma pack(1)
  
 #ifndef __dcbe__
 #define __dcbe__
@@ -76,4 +76,4 @@ struct dcbe {
  
 #endif
  
-#pragma pack(reset)
+#pragma pack()

@@ -1,8 +1,4 @@
-#if defined(__clang__)
 #pragma pack(1)
-#else
-#pragma pack(packed)
-#endif
 
 #ifndef __stat__
 #define __stat__
@@ -1823,4 +1819,4 @@ struct ssob
 
 #endif
 
-#pragma pack(reset)
+#pragma pack()

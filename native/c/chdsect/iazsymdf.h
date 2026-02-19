@@ -1,4 +1,4 @@
-#pragma pack(packed)
+#pragma pack(1)
 
 #ifndef __jsymparm__
 #define __jsymparm__
@@ -85,4 +85,4 @@ struct jsyentry
 
 #endif
 
-#pragma pack(reset)
+#pragma pack()

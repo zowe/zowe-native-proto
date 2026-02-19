@@ -1,4 +1,4 @@
-#pragma pack(packed)
+#pragma pack(1)
 
 #ifndef __jproc__
 #define __jproc__
@@ -225,4 +225,4 @@ struct jprdsinf
 
 #endif
 
-#pragma pack(reset)
+#pragma pack()

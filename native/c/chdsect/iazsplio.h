@@ -1,4 +1,4 @@
-#pragma pack(packed)
+#pragma pack(1)
 
 #ifndef __splio__
 #define __splio__
@@ -59,4 +59,4 @@ struct splio
 
 #endif
 
-#pragma pack(reset)
+#pragma pack()

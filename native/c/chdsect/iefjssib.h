@@ -1,4 +1,4 @@
-#pragma pack(packed)
+#pragma pack(1)
 
 #ifndef __ssib__
 #define __ssib__
@@ -30,4 +30,4 @@ struct ssib
 
 #endif
 
-#pragma pack(reset)
+#pragma pack()

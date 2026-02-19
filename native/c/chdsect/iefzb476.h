@@ -1,4 +1,4 @@
-#pragma pack(packed)
+#pragma pack(1)
 
 #ifndef __emdsect1__
 #define __emdsect1__
@@ -111,4 +111,4 @@ struct emdsect3
 
 #endif
 
-#pragma pack(reset)
+#pragma pack()

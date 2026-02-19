@@ -1,4 +1,4 @@
-#pragma pack(packed)
+#pragma pack(1)
 
 #ifndef __mcscsa__
 #define __mcscsa__
@@ -75,4 +75,4 @@ struct mcscsa
 
 #endif
 
-#pragma pack(reset)
+#pragma pack()

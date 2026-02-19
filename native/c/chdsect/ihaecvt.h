@@ -1,4 +1,4 @@
-#pragma pack(packed)
+#pragma pack(1)
 
 #ifndef __ecvt__
 #define __ecvt__
@@ -441,4 +441,4 @@ struct ecvt
 
 #endif
 
-#pragma pack(reset)
+#pragma pack()

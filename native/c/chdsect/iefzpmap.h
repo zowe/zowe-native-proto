@@ -1,4 +1,4 @@
-#pragma pack(packed)
+#pragma pack(1)
  
 #ifndef __prm___list___buffer__
 #define __prm___list___buffer__
@@ -137,4 +137,4 @@ struct prm___message___buffer {
  
 #endif
  
-#pragma pack(reset)
+#pragma pack()

@@ -1,4 +1,4 @@
-#pragma pack(packed)
+#pragma pack(1)
 
 #ifndef __iefzprc__
 #define __iefzprc__
@@ -48,4 +48,4 @@ struct iefzprc
 
 #endif
 
-#pragma pack(reset)
+#pragma pack()

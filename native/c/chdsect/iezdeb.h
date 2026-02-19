@@ -1,4 +1,4 @@
-#pragma pack(packed)
+#pragma pack(1)
 
 #ifndef __deb__
 #define __deb__
@@ -845,4 +845,4 @@ struct deb2xtn {
 
 #endif
 
-#pragma pack(reset)
+#pragma pack()

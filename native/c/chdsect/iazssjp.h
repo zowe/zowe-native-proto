@@ -1,4 +1,4 @@
-#pragma pack(packed)
+#pragma pack(1)
 
 #ifndef __ssjp__
 #define __ssjp__
@@ -83,4 +83,4 @@ struct ssob {
 
 #endif
 
-#pragma pack(reset)
+#pragma pack()

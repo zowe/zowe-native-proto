@@ -1,4 +1,4 @@
-#pragma pack(packed)
+#pragma pack(1)
 
 #ifndef __psa__
 #define __psa__
@@ -1605,4 +1605,4 @@ struct psa
 
 #endif
 
-#pragma pack(reset)
+#pragma pack()
