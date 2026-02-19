@@ -9,9 +9,9 @@
  *
  */
 
-import { describe, expect, it, vi, beforeEach } from "vitest";
 import type { IHandlerParameters } from "@zowe/imperative";
-import type { ZSshClient, ds } from "zowe-native-proto-sdk";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { ds, ZSshClient } from "zowe-native-proto-sdk";
 import CopyDataSetHandler from "../../src/copy/data-set/DataSet.handler";
 
 describe("CopyDataSetHandler", () => {

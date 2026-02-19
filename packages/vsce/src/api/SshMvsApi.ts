@@ -245,9 +245,7 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
             replace: options?.replace ?? false,
             deleteTargetMembers: options?.deleteTargetMembers ?? false,
         });
-        return this.buildZosFilesResponse({
-            success: response.success,
-        });
+        return this.buildZosFilesResponse(response, response.success);
     }
 
     public async renameDataSet(
