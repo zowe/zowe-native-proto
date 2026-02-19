@@ -476,7 +476,7 @@ class WatchUtils {
                 stream.write("echo\n");
                 await new Promise<void>((resolve) => stream.once("data", resolve));
 
-                const testEnv = '_CEE_RUNOPTS="TRAP(ON,NOSPIE)"';
+                const testEnv = '_CEE_RUNOPTS="TRAP(ON,NOSPIE) TERMTHDACT(UADUMP)"';
                 const cmd = `cd ${testDir}\n${testEnv} ./build-out/${runner}\nexit $?\n`;
                 stream.write(cmd);
 
@@ -1314,7 +1314,7 @@ async function make(connection: Client, inDir?: string) {
 }
 
 async function test(connection: Client) {
-    const testEnv = '_CEE_RUNOPTS="TRAP(ON,NOSPIE)"';
+    const testEnv = '_CEE_RUNOPTS="TRAP(ON,NOSPIE) TERMTHDACT(UADUMP)"';
     const cTestCmd = `cd ${deployDirs.cTestDir} && ${testEnv} ./build-out/ztest_runner ${args[1] ?? ""}`;
     const zowedTestCmd = `cd ${path.posix.relative(deployDirs.cTestDir, deployDirs.zowedTestDir)} && ${testEnv} ./build-out/zowed_test_runner ${args[1] ?? ""}`;
     const exitMaxRc = `[ "$rc1" -gt "$rc2" ] && exit "$rc1" || exit "$rc2"`;
@@ -1327,7 +1327,7 @@ async function test(connection: Client) {
 }
 
 async function testSingle(connection: Client, scope: "zowex" | "zowed") {
-    const testEnv = '_CEE_RUNOPTS="TRAP(ON,NOSPIE)"';
+    const testEnv = '_CEE_RUNOPTS="TRAP(ON,NOSPIE) TERMTHDACT(UADUMP)"';
     const testDir = scope === "zowex" ? deployDirs.cTestDir : deployDirs.zowedTestDir;
     const runner = scope === "zowex" ? "ztest_runner" : "zowed_test_runner";
     const testCmd = `cd ${testDir} && ${testEnv} ./build-out/${runner} ${args[1] ?? ""}`;
