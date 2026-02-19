@@ -43,6 +43,7 @@ function localeCompare(a: string, b: string): number {
 
 const localDeployDir = "./../native";
 const args = process.argv.slice(2);
+let preBuildCmd: string | undefined;
 let deployDirs: {
     root: string;
     cDir: string;
@@ -367,7 +368,8 @@ class WatchUtils {
                 await new Promise<void>((resolve) => stream.once("data", resolve));
 
                 const cwd = inDir ?? deployDirs.cDir;
-                const cmd = `cd ${cwd}\nmake\nexit $?\n`;
+                const envSetup = preBuildCmd ? `${preBuildCmd}\n` : "";
+                const cmd = `${envSetup}cd ${cwd}\nmake\nexit $?\n`;
                 stream.write(cmd);
 
                 let outText = "";
@@ -819,6 +821,9 @@ async function artifacts(connection: Client, packageAll: boolean) {
 }
 
 async function runCommandInShell(connection: Client, command: string, streamOutput = false) {
+    if (preBuildCmd) {
+        command = `${preBuildCmd}\n${command}`;
+    }
     const spinner = streamOutput ? null : startSpinner(`$ ${command.trim()}`);
     return new Promise<string>((resolve, reject) => {
         let data = "";
@@ -937,18 +942,17 @@ async function upload(connection: Client, sshProfile: IProfile) {
     });
 }
 
-async function build(connection: Client, { preBuildCmd }: IConfig) {
-    preBuildCmd = preBuildCmd ? `${preBuildCmd} && ` : "";
+async function build(connection: Client) {
     console.log("Building native/c ...");
     let response = await runCommandInShell(
         connection,
-        `${preBuildCmd}cd ${deployDirs.cDir} && make ${DEBUG_MODE() ? "-DBuildType=DEBUG" : ""}\n`,
+        `cd ${deployDirs.cDir} && make ${DEBUG_MODE() ? "-DBuildType=DEBUG" : ""}\n`,
     );
     DEBUG_MODE() && console.log(response);
     console.log("Building native/zowed ...");
     response = await runCommandInShell(
         connection,
-        `${preBuildCmd}cd ${deployDirs.zowedDir} && make ${DEBUG_MODE() ? "-DBuildType=DEBUG" : ""}\n`,
+        `cd ${deployDirs.zowedDir} && make ${DEBUG_MODE() ? "-DBuildType=DEBUG" : ""}\n`,
     );
     DEBUG_MODE() && console.log(response);
     console.log("Build complete!");
@@ -965,10 +969,10 @@ async function make(connection: Client, inDir?: string) {
     console.log(response);
 }
 
-async function test(connection: Client, { preBuildCmd }: IConfig) {
+async function test(connection: Client) {
     console.log("Testing native/c ...");
     const testEnv = '_CEE_RUNOPTS="TRAP(ON,NOSPIE)"';
-    const cTestCmd = `${preBuildCmd ? `${preBuildCmd} && ` : ""}cd ${deployDirs.cTestDir} && ${testEnv} ./build-out/ztest_runner ${args[1] ?? ""}`;
+    const cTestCmd = `cd ${deployDirs.cTestDir} && ${testEnv} ./build-out/ztest_runner ${args[1] ?? ""}`;
     const zowedTestCmd = `cd ${path.posix.relative(deployDirs.cTestDir, deployDirs.zowedTestDir)} && ${testEnv} ./build-out/zowed_test_runner ${args[1] ?? ""}`;
     const exitMaxRc = `[ "$rc1" -gt "$rc2" ] && exit "$rc1" || exit "$rc2"`;
     await runCommandInShell(connection, `${cTestCmd}; rc1=$?; ${zowedTestCmd}; rc2=$?; ${exitMaxRc}\n`, true);
@@ -1163,6 +1167,7 @@ async function buildSshClient(sshProfile: IProfile): Promise<Client> {
 
 async function main() {
     const config = await loadConfig();
+    preBuildCmd = config.preBuildCmd;
     deployDirs = {
         root: config.deployDir,
         cDir: `${config.deployDir}/c`,
@@ -1181,7 +1186,7 @@ async function main() {
                 await artifacts(sshClient, false);
                 break;
             case "build":
-                await build(sshClient, config);
+                await build(sshClient);
                 break;
             case "build:chdsect":
                 await chdsect(sshClient);
@@ -1206,10 +1211,10 @@ async function main() {
                 break;
             case "rebuild":
                 await upload(sshClient, config.sshProfile as IProfile);
-                await build(sshClient, config);
+                await build(sshClient);
                 break;
             case "test":
-                await test(sshClient, config);
+                await test(sshClient);
                 break;
             case "test:python":
                 await make(sshClient, deployDirs.pythonTestDir);
