@@ -14,6 +14,7 @@
 #include <cstring>
 #include <ctime>
 #include <iterator>
+#include <sstream>
 #include <stdlib.h>
 #include <string>
 #include "zutils.hpp"
@@ -148,26 +149,35 @@ void zowex_uss_tests()
                        string resp;
                        int rc;
 
-                       testGid = 60000;
-                       while (true)
-                       {
-                         string idCheck = "id -g " + to_string(testGid) + " > /dev/null 2>&1";
-                         rc = execute_command_with_output(idCheck, resp);
-                         if (rc != 0) 
-                           break;
-                         testGid++;
-                         if (testGid > 65530) throw runtime_error("Could not find a free GID for testing");
-                       }
+                       // Use the current user's own UID — chown to self is always permitted
+                       rc = execute_command_with_output("id -u", resp);
+                       if (rc != 0) throw runtime_error("Could not determine current UID");
+                       resp.erase(resp.find_last_not_of(" \t\r\n") + 1);
+                       testUid = stoi(resp);
 
-                       testUid = 60000;
-                       while (true)
+                       // Pick a supplementary group that differs from the primary GID so the
+                       // change is observable. Fall back to the primary GID if none found.
+                       string primaryResp;
+                       rc = execute_command_with_output("id -g", primaryResp);
+                       if (rc != 0) throw runtime_error("Could not determine primary GID");
+                       primaryResp.erase(primaryResp.find_last_not_of(" \t\r\n") + 1);
+                       int primaryGid = stoi(primaryResp);
+
+                       string allGroupsResp;
+                       rc = execute_command_with_output("id -G", allGroupsResp);
+                       if (rc != 0) throw runtime_error("Could not determine supplementary GIDs");
+
+                       testGid = primaryGid;
+                       istringstream iss(allGroupsResp);
+                       string token;
+                       while (iss >> token)
                        {
-                         string idCheck = "id -u " + to_string(testUid) + " > /dev/null 2>&1";
-                         rc = execute_command_with_output(idCheck, resp);
-                         if (rc != 0)
+                         int gid = stoi(token);
+                         if (gid != primaryGid)
+                         {
+                           testGid = gid;
                            break;
-                         testUid++;
-                         if (testUid > 65530) throw runtime_error("Could not find a free UID for testing");
+                         }
                        } });
 
                         describe("on a file",
