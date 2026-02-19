@@ -458,6 +458,21 @@ void zds_tests()
                              Expect(string(zds.diag.e_msg)).ToContain("must be a sequential data set");
                            });
 
+                        it("should fail to copy PDS to existing sequential data set",
+                           [&]() -> void
+                           {
+                             CopyTestContext tc(created_dsns);
+                             tc.create_source_pds();
+                             tc.create_target_seq();
+                             tc.write_source_member("MEMBER", "PDS member content");
+                             tc.write_target("Sequential content");
+
+                             ZDS zds = {0};
+                             int rc = zds_copy_dsn(&zds, tc.source_dsn, tc.target_dsn, nullptr);
+                             Expect(rc).Not().ToBe(0);
+                             Expect(string(zds.diag.e_msg)).ToContain("must be a PDS");
+                           });
+
                         it("should copy PDS with multiple members",
                            [&]() -> void
                            {

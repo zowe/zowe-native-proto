@@ -591,6 +591,19 @@ int handle_data_set_write(InvocationContext &context)
   if (context.has("etag"))
   {
     string etag_value = context.get<string>("etag", "");
+    if (etag_value.empty())
+    {
+      // Adler-32 etags that consist only of decimal digits (no a-f) are
+      // lexed as integers rather than strings; recover the original hex string
+      // by formatting the stored integer back as decimal (its digits are the etag)
+      const long long *etag_int = context.get_if<long long>("etag");
+      if (etag_int)
+      {
+        stringstream ss;
+        ss << *etag_int;
+        etag_value = ss.str();
+      }
+    }
     if (!etag_value.empty())
     {
       strcpy(zds.etag, etag_value.c_str());
@@ -873,12 +886,10 @@ int handle_data_set_copy(InvocationContext &context)
 
   if (options.target_created)
   {
-    result->set("targetCreated", true);
     context.output_stream() << "New data set '" << target << "' created and copied from '" << source << "'" << endl;
   }
   else if (options.member_created)
   {
-    result->set("memberCreated", true);
     context.output_stream() << "New member '" << target << "' created and copied from '" << source << "'" << endl;
   }
   else if (options.delete_target_members)
@@ -889,11 +900,10 @@ int handle_data_set_copy(InvocationContext &context)
   {
     context.output_stream() << "Data set '" << target << "' has been updated with contents of '" << source << "'" << endl;
   }
-  else if (!target_created && !member_created)
+  else
   {
     context.output_stream() << "Data set '" << source << "' copied to '" << target << "'" << endl;
   }
-  static_cast<void>(context.set_object(result));
   return RTNCD_SUCCESS;
 }
 
