@@ -849,6 +849,51 @@ int handle_data_set_compress(InvocationContext &context)
   return RTNCD_SUCCESS;
 }
 
+int handle_data_set_copy(InvocationContext &context)
+{
+  const string source = context.get<string>("source", "");
+  const string target = context.get<string>("target", "");
+
+  ZDS zds = {};
+  ZDSCopyOptions options;
+  options.replace = context.get<bool>("replace", false);
+  options.delete_target_members = context.get<bool>("delete-target-members", false);
+
+  int rc = zds_copy_dsn(&zds, source, target, &options);
+
+  if (rc != RTNCD_SUCCESS)
+  {
+    context.error_stream() << "Error: copy failed" << endl;
+    if (zds.diag.e_msg_len > 0)
+    {
+      context.error_stream() << "  Details: " << zds.diag.e_msg << endl;
+    }
+    return RTNCD_FAILURE;
+  }
+
+  if (options.target_created)
+  {
+    context.output_stream() << "New data set '" << target << "' created and copied from '" << source << "'" << endl;
+  }
+  else if (options.member_created)
+  {
+    context.output_stream() << "New member '" << target << "' created and copied from '" << source << "'" << endl;
+  }
+  else if (options.delete_target_members)
+  {
+    context.output_stream() << "Target members deleted and data set '" << target << "' replaced with contents of '" << source << "'" << endl;
+  }
+  else if (options.replace)
+  {
+    context.output_stream() << "Data set '" << target << "' has been updated with contents of '" << source << "'" << endl;
+  }
+  else
+  {
+    context.output_stream() << "Data set '" << source << "' copied to '" << target << "'" << endl;
+  }
+  return RTNCD_SUCCESS;
+}
+
 void register_commands(parser::Command &root_command)
 {
   // Data set command group
@@ -996,6 +1041,19 @@ void register_commands(parser::Command &root_command)
   ds_compress_cmd->add_positional_arg("dsn", "data set to compress", ArgType_Single, true);
   ds_compress_cmd->set_handler(handle_data_set_compress);
   data_set_cmd->add_command(ds_compress_cmd);
+
+  // Copy subcommand
+  auto ds_copy_cmd = command_ptr(new Command("copy", "copy data set (RECFM=U not supported)"));
+  ds_copy_cmd->add_positional_arg("source", "source data set to copy from", ArgType_Single, true);
+  ds_copy_cmd->add_positional_arg("target", "target data set to copy to", ArgType_Single, true);
+  ds_copy_cmd->add_keyword_arg("replace", make_aliases("--replace", "-r"),
+                               "replace matching members in target PDS with source members (keeps non-matching target members)",
+                               ArgType_Flag, false, ArgValue(false));
+  ds_copy_cmd->add_keyword_arg("delete-target-members", make_aliases("--delete-target-members", "-d"),
+                               "delete all members from target PDS before copying (PDS-to-PDS copy only, makes target match source exactly)",
+                               ArgType_Flag, false, ArgValue(false));
+  ds_copy_cmd->set_handler(handle_data_set_copy);
+  data_set_cmd->add_command(ds_copy_cmd);
 
   root_command.add_command(data_set_cmd);
 }
