@@ -33,6 +33,27 @@ vi.mock("vscode", () => ({
     })),
 }));
 
+// Mock @zowe/zowe-explorer-api to avoid vscode dependency issues
+vi.mock("@zowe/zowe-explorer-api", () => ({
+    Gui: {
+        errorMessage: vi.fn(),
+        showMessage: vi.fn(),
+    },
+    imperative: {
+        IProfileLoaded: {},
+        ImperativeError: class ImperativeError extends Error {
+            public additionalDetails: string;
+            constructor(msg: { msg: string; additionalDetails?: string }) {
+                super(msg.msg);
+                this.additionalDetails = msg.additionalDetails ?? "";
+            }
+        },
+        IO: {
+            createDirsSyncFromFilePath: vi.fn(),
+        },
+    },
+}));
+
 import { SshMvsApi } from "../src/api/SshMvsApi";
 import type { ds, ZSshClient } from "zowe-native-proto-sdk";
 
