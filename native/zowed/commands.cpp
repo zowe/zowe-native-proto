@@ -77,6 +77,12 @@ void register_ds_commands(CommandDispatcher &dispatcher)
                                   .handle_fifo("stream", "pipe-path", FifoMode::PUT));
   dispatcher.register_command("renameDataset", create_ds_builder(ds::handle_data_set_rename).validate<RenameDatasetRequest, RenameDatasetResponse>());
   dispatcher.register_command("renameMember", create_ds_builder(ds::handle_rename_member).validate<RenameMemberRequest, RenameMemberResponse>());
+  dispatcher.register_command("copyDataset",
+                              CommandBuilder(ds::handle_data_set_copy)
+                                  .validate<CopyDatasetRequest, CopyDatasetResponse>()
+                                  .rename_arg("fromDataset", "source")
+                                  .rename_arg("toDataset", "target")
+                                  .rename_arg("deleteTargetMembers", "delete-target-members"));
 }
 
 void register_job_commands(CommandDispatcher &dispatcher)

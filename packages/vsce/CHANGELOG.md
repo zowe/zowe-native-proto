@@ -8,6 +8,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 - Added the functionality for the **Rename Member** option. [#765] (https://github.com/zowe/zowe-native-proto/pull/765).
 - Added the `multivolume` (`mvol`) property when displaying data set attributes. [#782](https://github.com/zowe/zowe-native-proto/pull/782)
+- Added `deleteTargetMembers` option to `copyDataSetMember` API for PDS-to-PDS copies (deletes all target members before copying, making target match source exactly).
 
 ## `0.2.3`
 

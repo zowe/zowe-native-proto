@@ -26,6 +26,7 @@ export abstract class RpcClientApi implements IRpcClient {
     };
 
     public ds = {
+        copyDataset: this.rpc<ds.CopyDatasetRequest, ds.CopyDatasetResponse>("copyDataset"),
         createDataset: this.rpc<ds.CreateDatasetRequest, ds.CreateDatasetResponse>("createDataset"),
         createMember: this.rpc<ds.CreateMemberRequest, ds.CreateMemberResponse>("createMember"),
         deleteDataset: this.rpc<ds.DeleteDatasetRequest, ds.DeleteDatasetResponse>("deleteDataset"),
