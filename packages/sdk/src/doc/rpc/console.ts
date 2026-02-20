@@ -11,7 +11,7 @@
 
 import type * as common from "./common";
 
-export interface IssueCmdRequest extends common.CommandRequest<"consoleCommand"> {
+export interface IssueConsoleCmdRequest extends common.CommandRequest<"consoleCommand"> {
     /**
      * Console command to execute
      */
@@ -22,7 +22,7 @@ export interface IssueCmdRequest extends common.CommandRequest<"consoleCommand">
     consoleName?: string;
 }
 
-export interface IssueCmdResponse extends common.CommandResponse {
+export interface IssueConsoleCmdResponse extends common.CommandResponse {
     /**
      * Data returned from the console command
      */

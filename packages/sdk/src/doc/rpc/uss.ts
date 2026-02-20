@@ -208,14 +208,14 @@ export interface WriteFileResponse extends common.CommandResponse {
     contentLen?: number;
 }
 
-export interface IssueCmdRequest extends common.CommandRequest<"unixCommand"> {
+export interface IssueUssCmdRequest extends common.CommandRequest<"unixCommand"> {
     /**
      * UNIX command to execute
      */
     commandText: string;
 }
 
-export interface IssueCmdResponse extends common.CommandResponse {
+export interface IssueUssCmdResponse extends common.CommandResponse {
     /**
      * Data returned from the UNIX command
      */

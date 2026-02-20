@@ -10,14 +10,14 @@
  */
 
 import type * as common from "./common";
-export interface IssueCmdRequest extends common.CommandRequest<"tsoCommand"> {
+export interface IssueTsoCmdRequest extends common.CommandRequest<"tsoCommand"> {
     /**
      * TSO command to execute
      */
     commandText: string;
 }
 
-export interface IssueCmdResponse extends common.CommandResponse {
+export interface IssueTsoCmdResponse extends common.CommandResponse {
     /**
      * Data returned from the TSO command
      */

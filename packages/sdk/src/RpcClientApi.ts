@@ -20,11 +20,11 @@ export abstract class RpcClientApi implements IRpcClient {
     ): Promise<RespT>;
 
     public tso = {
-        issueCmd: this.rpc<tso.IssueCmdRequest, tso.IssueCmdResponse>("tsoCommand"),
+        issueCmd: this.rpc<tso.IssueTsoCmdRequest, tso.IssueTsoCmdResponse>("tsoCommand"),
     };
 
     public console = {
-        issueCmd: this.rpc<console.IssueCmdRequest, console.IssueCmdResponse>("consoleCommand"),
+        issueCmd: this.rpc<console.IssueConsoleCmdRequest, console.IssueConsoleCmdResponse>("consoleCommand"),
     };
 
     public ds = {
@@ -64,7 +64,7 @@ export abstract class RpcClientApi implements IRpcClient {
         listFiles: this.rpc<uss.ListFilesRequest, uss.ListFilesResponse>("listFiles"),
         readFile: this.rpcWithProgress<uss.ReadFileRequest, uss.ReadFileResponse>("readFile"),
         writeFile: this.rpcWithProgress<uss.WriteFileRequest, uss.WriteFileResponse>("writeFile"),
-        issueCmd: this.rpc<uss.IssueCmdRequest, uss.IssueCmdResponse>("unixCommand"),
+        issueCmd: this.rpc<uss.IssueUssCmdRequest, uss.IssueUssCmdResponse>("unixCommand"),
     };
 
     private rpc<ReqT extends CommandRequest, RespT extends CommandResponse>(command: ReqT["command"]) {
