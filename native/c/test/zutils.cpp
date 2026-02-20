@@ -13,17 +13,13 @@
 #include "zutils.hpp"
 #include <vector>
 #include <string>
-#include <sstream>
 #include <cstring>
 #include <chrono>
 #include <thread>
-<<<<<<< HEAD
 #include <unistd.h>
-    =======
 #include <stdexcept>
-    >>>>>>> ef879cadf4e1b1b7036d9a7f48490dc375877c60
 
-    using namespace std;
+using namespace std;
 
 int execute_command_with_input(const string &command, const string &input, bool suppress_output)
 {
