@@ -10,13 +10,13 @@
  */
 
 import type { IHandlerParameters } from "@zowe/imperative";
-import type { cmds, ZSshClient } from "zowe-native-proto-sdk";
+import type { tso, ZSshClient } from "zowe-native-proto-sdk";
 import { SshBaseHandler } from "../../SshBaseHandler";
 
 export default class TsoCommandHandler extends SshBaseHandler {
-    public async processWithClient(params: IHandlerParameters, client: ZSshClient): Promise<cmds.IssueTsoResponse> {
+    public async processWithClient(params: IHandlerParameters, client: ZSshClient): Promise<tso.IssueTsoCmdResponse> {
         const commandText = params.arguments.command;
-        const response = await client.cmds.issueTso({ commandText });
+        const response = await client.tso.issueCmd({ commandText });
 
         params.response.data.setMessage("TSO response: %s", commandText);
         params.response.console.log(response.data);

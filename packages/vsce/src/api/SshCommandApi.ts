@@ -17,7 +17,7 @@ import { SshCommonApi } from "./SshCommonApi";
 
 export class SshCommandApi extends SshCommonApi implements MainframeInteraction.ICommand {
     public async issueTsoCommandWithParms?(command: string, _parms?: IStartTsoParms): Promise<IIssueResponse> {
-        const response = await (await this.client).cmds.issueTso({
+        const response = await (await this.client).tso.issueCmd({
             commandText: command,
         });
         return {
@@ -31,7 +31,7 @@ export class SshCommandApi extends SshCommonApi implements MainframeInteraction.
     public async issueMvsCommand?(command: string, consoleName?: string): Promise<IConsoleResponse> {
         try {
             const user = this.profile?.profile?.user;
-            const response = await (await this.client).cmds.issueConsole({
+            const response = await (await this.client).console.issueCmd({
                 commandText: command,
                 consoleName: consoleName ?? (user ? `${user.slice(0, -2)}CN` : "ZOWE00CN"),
             });
