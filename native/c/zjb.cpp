@@ -590,13 +590,15 @@ int zjb_view(ZJB *zjb, string jobid, ZJob &job)
 
 int zjb_list_by_owner(ZJB *zjb, string owner_name, vector<ZJob> &jobs)
 {
-  return zjb_list_by_owner(zjb, owner_name, "", jobs);
+  return zjb_list_by_owner(zjb, owner_name, "", "", jobs);
 }
 
+#ifndef SWIG // Exclude owner and prefix implementation for SWIG
 int zjb_list_by_owner(ZJB *zjb, string owner_name, string prefix_name, vector<ZJob> &jobs)
 {
   return zjb_list_by_owner(zjb, owner_name, prefix_name, "", jobs);
 }
+#endif
 
 int zjb_list_by_owner(ZJB *zjb, string owner_name, string prefix_name, string status_name, vector<ZJob> &jobs)
 {

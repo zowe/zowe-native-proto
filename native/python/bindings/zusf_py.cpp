@@ -33,6 +33,16 @@ void create_uss_dir(const std::string &file, const std::string &mode)
   }
 }
 
+void move_uss_file_or_dir(const std::string &source, const std::string &destination)
+{
+  ZUSF ctx = {0};
+  if (zusf_move_uss_file_or_dir(&ctx, source, destination) != 0)
+  {
+    std::string error_msg = ctx.diag.e_msg;
+    throw std::runtime_error(error_msg);
+  }
+}
+
 std::string list_uss_dir(const std::string &path, ListOptions options)
 {
   ZUSF ctx = {0};
