@@ -17,6 +17,7 @@
 #include "../c/commands/job.hpp"
 #include "../c/commands/tso.hpp"
 #include "../c/commands/uss.hpp"
+#include "../c/commands/tool.hpp"
 
 // Helper functions to create builders with common argument mappings
 static CommandBuilder create_ds_builder(CommandBuilder::CommandHandler handler)
@@ -173,8 +174,16 @@ void register_tso_commands(CommandDispatcher &dispatcher)
 {
   dispatcher.register_command("tsoCommand",
                               CommandBuilder(tso::handle_tso_issue)
-                                  .validate<IssueTsoRequest, IssueTsoResponse>()
+                                  .validate<IssueTsoCmdRequest, IssueTsoCmdResponse>()
                                   .rename_arg("commandText", "command")
+                                  .read_stdout("data", false));
+}
+
+void register_tool_commands(CommandDispatcher &dispatcher)
+{
+  dispatcher.register_command("toolSearch",
+                              create_ds_builder(tool::handle_tool_search)
+                                  .validate<ToolSearchRequest, ToolSearchResponse>()
                                   .read_stdout("data", false));
 }
 
