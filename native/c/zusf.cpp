@@ -952,7 +952,7 @@ int zusf_move_uss_file_or_dir(ZUSF *zusf, const string &source, const string &ta
   }
 
   // resolve source path
-  char resolved_source[1024]; // PATH_MAX = 1024 is defined in limits.h, but not in xlc
+  char resolved_source[PATH_MAX];
   if (realpath(source.c_str(), resolved_source) == nullptr)
   {
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to resolve source path '%s'", source.c_str());
@@ -960,7 +960,7 @@ int zusf_move_uss_file_or_dir(ZUSF *zusf, const string &source, const string &ta
   }
 
   // target related variables
-  char resolved_target[1024]; // PATH_MAX = 1024 is defined in limits.h, but not in xlc
+  char resolved_target[PATH_MAX];
   bool target_is_dir = false;
 
   // check if target exists
