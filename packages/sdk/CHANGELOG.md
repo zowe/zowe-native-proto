@@ -10,6 +10,9 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - Made the `recursive` property optional for USS request types. [#648](https://github.com/zowe/zowe-native-proto/issues/648)
 - Fixed an issue where deploying to the `/tmp` directory would result in an error. [#781](https://github.com/zowe/zowe-native-proto/pull/781)
 - Added `multivolume` property to the `Dataset` type for listing data sets with attributes. [#782](https://github.com/zowe/zowe-native-proto/pull/782)
+- Exported `ISshSession` and `SshSession` types from the Zowe USS SDK. [#799](https://github.com/zowe/zowe-native-proto/pull/799)
+- Added `verbose` property to the `ClientOptions` interface used by the `ZSshClient.create` method. [#801](https://github.com/zowe/zowe-native-proto/issues/801)
+- Enhanced the `ZSshClient.create` method to return `ImperativeError` containing error details when `zowed` fails to start. [#802](https://github.com/zowe/zowe-native-proto/issues/802)
 
 ## `0.2.3`
 
