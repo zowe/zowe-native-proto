@@ -6,6 +6,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Recent Changes
 
+- `c`: Added `toolSearch` in `zowed` for use by client SDK.
 - `c`: Fixed an issue where errors during `zowex` initialization and command execution were unhandled, causing abends as a result. Now, if a fatal error is encountered, the error is caught and its details are displayed before the process exits. [#784](https://github.com/zowe/zowe-native-proto/issues/784)
 - `c`: Fixed an issue where the `zowex uss list` command would return the file type `d` for symlinked directories instead of `l`. Now, symlinks in a file list are marked with file type `l`. [#791](https://github.com/zowe/zowe-native-proto/issues/791)
 - `c`: Fixed an issue where the `zowex uss delete` command could not remove symlinks or directories containing symlinks. Now, the command properly deletes a directory with a symlink in it, and treats the link as a file. No sub-directories or files in the target link are deleted. [#792](https://github.com/zowe/zowe-native-proto/issues/792)
@@ -13,14 +14,14 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## `0.2.3`
 
-- `c`: Added rename data set members functionality to the backend. [#765] (https://github.com/zowe/zowe-native-proto/pull/765)
+- `c`: Added rename data set members functionality to the backend. [#765] (<https://github.com/zowe/zowe-native-proto/pull/765>)
 - `c`: Implement `zowex job watch` command to watch spool output for a string or regex until terminating.
 - `c`: Implement `zut_bpxwdyn_rtdsn` to obtain and return a system allocated data set name.
 - `c`: Implement command `zowex job view-file` to print contents of a job output data set.
 - The `zowex job submit-jcl` command now displays the submitted job in the following format: `JobName(JobId)` [#733](https://github.com/zowe/zowe-native-proto/issues/733)
 - `c`: Rename command `zowex job view-file` to `zowex job view-file-by-id` so that `view-file` can be used to print a specific file (data set) name. [#740](https://github.com/zowe/zowe-native-proto/issues/740)
 - `c`: The zowex CLI parser now supports enabling passthrough arguments for commands. When enabled, arguments passed after a double-dash (`--`) are passed directly to the command as raw input. [#729](https://github.com/zowe/zowe-native-proto/pull/729)
-- Added the rename dataset functionality to the backend. [#376] (https://github.com/zowe/zowe-native-proto/issues/376)
+- Added the rename dataset functionality to the backend. [#376] (<https://github.com/zowe/zowe-native-proto/issues/376>)
 - `c`: Fixed results being truncated when listing all jobs on a system. [#735](https://github.com/zowe/zowe-native-proto/issues/735)
 - `c`: Fixed default behavior of `zowex job list` command to list jobs for only the current user. [#739](https://github.com/zowe/zowe-native-proto/issues/739)
 - `c`: Added `--status` argument to `zowex job list` command that supports filtering by job status. [#743](https://github.com/zowe/zowe-native-proto/issues/743)

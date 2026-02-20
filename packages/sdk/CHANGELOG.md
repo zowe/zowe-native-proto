@@ -6,6 +6,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Recent Changes
 
+- Added support for invoking the tool search group.
 - Changed SDK groupings to align with zowex.  [#807](https://github.com/zowe/zowe-native-proto/pull/808)
 - Added support for renaming data set members in the `RpcClientApi` class. [#765] (<https://github.com/zowe/zowe-native-proto/pull/765>)
 - Made the `recursive` property optional for USS request types. [#648](https://github.com/zowe/zowe-native-proto/issues/648)

@@ -192,5 +192,6 @@ void register_all_commands(CommandDispatcher &dispatcher)
   register_ds_commands(dispatcher);
   register_job_commands(dispatcher);
   register_uss_commands(dispatcher);
+  register_tool_commands(dispatcher);
   register_tso_commands(dispatcher);
 }
