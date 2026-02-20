@@ -14,7 +14,7 @@ import type { tso, ZSshClient } from "zowe-native-proto-sdk";
 import { SshBaseHandler } from "../../SshBaseHandler";
 
 export default class TsoCommandHandler extends SshBaseHandler {
-    public async processWithClient(params: IHandlerParameters, client: ZSshClient): Promise<tso.IssueCmdResponse> {
+    public async processWithClient(params: IHandlerParameters, client: ZSshClient): Promise<tso.IssueTsoCmdResponse> {
         const commandText = params.arguments.command;
         const response = await client.tso.issueCmd({ commandText });
 
