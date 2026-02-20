@@ -10,7 +10,7 @@
  */
 
 import type { IRpcClient } from "./doc/client";
-import type { CommandRequest, CommandResponse, console, ds, jobs, tso, uss } from "./doc/rpc";
+import type { CommandRequest, CommandResponse, console, ds, jobs, tool, tso, uss } from "./doc/rpc";
 import type { ProgressCallback } from "./doc/types";
 
 export abstract class RpcClientApi implements IRpcClient {
@@ -18,10 +18,6 @@ export abstract class RpcClientApi implements IRpcClient {
         request: ReqT,
         progressCallback?: (percent: number) => void,
     ): Promise<RespT>;
-
-    public tso = {
-        issueCmd: this.rpc<tso.IssueTsoCmdRequest, tso.IssueTsoCmdResponse>("tsoCommand"),
-    };
 
     public console = {
         issueCmd: this.rpc<console.IssueConsoleCmdRequest, console.IssueConsoleCmdResponse>("consoleCommand"),
@@ -53,6 +49,14 @@ export abstract class RpcClientApi implements IRpcClient {
         submitJcl: this.rpc<jobs.SubmitJclRequest, jobs.SubmitJclResponse>("submitJcl"),
         submitJob: this.rpc<jobs.SubmitJobRequest, jobs.SubmitJobResponse>("submitJob"),
         submitUss: this.rpc<jobs.SubmitUssRequest, jobs.SubmitUssResponse>("submitUss"),
+    };
+
+    public tool = {
+        search: this.rpc<tool.ToolSearchRequest, tool.ToolSearchResponse>("toolSearch"),
+    };
+
+    public tso = {
+        issueCmd: this.rpc<tso.IssueTsoCmdRequest, tso.IssueTsoCmdResponse>("tsoCommand"),
     };
 
     public uss = {

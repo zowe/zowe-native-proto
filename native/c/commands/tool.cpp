@@ -26,7 +26,6 @@ namespace tool
 int handle_tool_convert_dsect(InvocationContext &context)
 {
   int rc = 0;
-  unsigned int code = 0;
   string resp;
 
   string adata_dsn = context.get<std::string>("adata-dsn", "");
@@ -167,7 +166,7 @@ int handle_tool_search(InvocationContext &context)
   string data = " SRCHFOR '" + pattern + "'\n";
 
   // Write control statements
-  ZDS zds = {0};
+  ZDS zds = {};
   zds_write_to_dd(&zds, "sysin", data);
   if (0 != rc)
   {
@@ -234,7 +233,7 @@ int handle_tool_amblist(InvocationContext &context)
   transform(statements.begin(), statements.end(), statements.begin(), ::toupper);
 
   // Write control statements
-  ZDS zds = {0};
+  ZDS zds = {};
   zds_write_to_dd(&zds, "sysin", statements);
   if (0 != rc)
   {
@@ -471,6 +470,7 @@ void register_commands(parser::Command &root_command)
   tool_search_cmd->add_keyword_arg("parms",
                                    make_aliases("--parms", "--p"),
                                    "parms to pass to ISRSUPC", ArgType_Single, false);
+  tool_search_cmd->add_example("Search 'SYS1.MACLIB' for string 'world' with parms 'ANYC'", "zowex tool search sys1.maclib world --parms anyc");
   tool_search_cmd->set_handler(handle_tool_search);
   tool_cmd->add_command(tool_search_cmd);
 
