@@ -92,11 +92,13 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
                     entry.edate = item.edate;
                     entry.lrecl = item.lrecl;
                     entry.migr = item.migrated ? "YES" : "NO";
+                    entry.mvol = item.multivolume ? "YES" : "NO";
                     entry.rdate = item.rdate;
                     entry.recfm = item.recfm;
                     entry.spacu = item.spacu;
                     entry.used = item.usedp != null ? `${item.usedp}%` : undefined;
-                    entry.vols = item.volser;
+                    entry.vol = item.volser;
+                    entry.vols = item.volsers?.join(" ");
                 }
                 return entry;
             }),
@@ -111,6 +113,7 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
         const response = await (await this.client).ds.listDsMembers({
             dsname: dataSetName,
         });
+        this.attrProvider.cachedAttrs = undefined;
         return this.buildZosFilesResponse({
             items: response.items.map((item) => ({ member: item.name })),
             returnedRows: response.returnedRows,

@@ -15,6 +15,7 @@
 #include <vector>
 #include "../zut.hpp"
 #include <sys/stat.h>
+#include "../zds.hpp"
 
 using namespace std;
 
@@ -80,5 +81,13 @@ public:
 
   operator string() const;
 };
+
+// Data set creation helpers - convenience wrappers around zds_* functions
+// that use sensible defaults for test data sets
+void create_dsn_with_attrs(ZDS *zds, const std::string &dsn, DS_ATTRIBUTES &attrs, const std::string &type_name);
+void create_pds(ZDS *zds, const std::string &dsn);
+void create_pdse(ZDS *zds, const std::string &dsn);
+void create_seq(ZDS *zds, const std::string &dsn);
+void write_to_dsn(const std::string &dsn, const std::string &data);
 
 #endif

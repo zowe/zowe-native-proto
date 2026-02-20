@@ -9,6 +9,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - Added support for renaming data set members in the `RpcClientApi` class. [#765] (https://github.com/zowe/zowe-native-proto/pull/765)
 - Made the `recursive` property optional for USS request types. [#648](https://github.com/zowe/zowe-native-proto/issues/648)
 - Fixed an issue where deploying to the `/tmp` directory would result in an error. [#781](https://github.com/zowe/zowe-native-proto/pull/781)
+- Added `multivolume` property to the `Dataset` type for listing data sets with attributes. [#782](https://github.com/zowe/zowe-native-proto/pull/782)
 - Added proper interfaces for `zowed move` APIs. [#789](https://github.com/zowe/zowe-native-proto/pull/789)
 
 ## `0.2.3`

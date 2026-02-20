@@ -1131,7 +1131,8 @@ static int zusf_collect_directory_entries_recursive(ZUSF *zusf, const string &di
     {
       string child_path = zusf_join_path(dir_path, name);
       struct stat child_stats;
-      if (stat(child_path.c_str(), &child_stats) == 0 && S_ISDIR(child_stats.st_mode))
+      // Use lstat so symlinked directories are reported as links, not traversed as directories.
+      if (lstat(child_path.c_str(), &child_stats) == 0 && S_ISDIR(child_stats.st_mode))
       {
         vector<string> subdir_entries;
         if (zusf_collect_directory_entries_recursive(zusf, child_path, subdir_entries, options, current_depth + 1) == RTNCD_SUCCESS)
@@ -1229,7 +1230,11 @@ int zusf_list_uss_file_path(ZUSF *zusf, string file, string &response, ListOptio
     const auto name = entry_names.at(i);
     string child_path = zusf_join_path(file, name);
     struct stat child_stats;
-    stat(child_path.c_str(), &child_stats);
+    if (lstat(child_path.c_str(), &child_stats) != 0)
+    {
+      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not stat child path '%s'", child_path.c_str());
+      return RTNCD_FAILURE;
+    }
 
     response += zusf_format_file_entry(zusf, child_stats, child_path, name, options, use_csv_format);
   }
@@ -1837,7 +1842,7 @@ int zusf_chmod_uss_file_or_dir(ZUSF *zusf, string file, mode_t mode, bool recurs
 int zusf_delete_uss_item(ZUSF *zusf, string file, bool recursive)
 {
   struct stat file_stats;
-  if (stat(file.c_str(), &file_stats) == -1)
+  if (lstat(file.c_str(), &file_stats) == -1)
   {
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Path '%s' does not exist", file.c_str());
     return RTNCD_FAILURE;
@@ -1864,10 +1869,15 @@ int zusf_delete_uss_item(ZUSF *zusf, string file, bool recursive)
       if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0)
       {
         const string child_path = zusf_join_path(file, string((const char *)entry->d_name));
-        struct stat file_stats;
-        stat(child_path.c_str(), &file_stats);
+        struct stat child_stats;
+        if (lstat(child_path.c_str(), &child_stats) == -1)
+        {
+          closedir(dir);
+          zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not stat child path '%s'", child_path.c_str());
+          return RTNCD_FAILURE;
+        }
 
-        const auto rc = zusf_delete_uss_item(zusf, child_path, S_ISDIR(file_stats.st_mode));
+        const auto rc = zusf_delete_uss_item(zusf, child_path, S_ISDIR(child_stats.st_mode));
         if (0 != rc)
         {
           closedir(dir);
