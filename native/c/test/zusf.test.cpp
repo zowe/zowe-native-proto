@@ -46,8 +46,8 @@ void zusf_tests()
 
              beforeEach([&]() -> void
                         { memset(&zusf, 0, sizeof(zusf));
-                          // Ensure clean slate
-                          zusf_delete_uss_item(&zusf, tmp_base, true);
+                          std::string discard;
+                          execute_command_with_output("rm -rf " + tmp_base, discard);
                           mkdir(tmp_base.c_str(), 0755);
                           file_a = tmp_base + "/test_file_a";
                           file_b = tmp_base + "/test_file_b";
