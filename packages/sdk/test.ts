@@ -10,8 +10,7 @@
  */
 
 import { ProfileInfo } from "@zowe/imperative";
-import { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
-import { ZSshClient } from "./src";
+import { SshSession, ZSshClient } from "./src";
 
 (async () => {
     const profInfo = new ProfileInfo("zowe");
@@ -19,7 +18,8 @@ import { ZSshClient } from "./src";
     const sshProfAttrs = profInfo.getDefaultProfile("ssh");
     const sshMergedArgs = profInfo.mergeArgsForProfile(sshProfAttrs, { getSecureVals: true });
     const session = new SshSession(ProfileInfo.initSessCfg(sshMergedArgs.knownArgs));
-    using client = await ZSshClient.create(session);
+    const serverPathArg = sshMergedArgs.knownArgs.find((arg) => arg.argName === "serverPath");
+    using client = await ZSshClient.create(session, { serverPath: serverPathArg?.argValue as string });
     const testUsers = process.argv.slice(2);
     for (const user of testUsers) {
         console.time(`listDatasets:${user}`);

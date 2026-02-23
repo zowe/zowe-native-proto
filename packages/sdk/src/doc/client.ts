@@ -51,6 +51,12 @@ export interface ClientOptions {
      * (default: `~/.zowe-server`)
      */
     serverPath?: string;
+
+    /**
+     * Enable verbose logging from zowed server
+     * (default: false)
+     */
+    verbose?: boolean;
 }
 
 export interface IRpcClient {
