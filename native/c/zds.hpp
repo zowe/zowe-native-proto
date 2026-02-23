@@ -41,6 +41,7 @@ struct ZDSEntry
   int lrecl;
   std::string mgmtclass;
   bool migrated;
+  bool multivolume;
   long long primary;
   std::string rdate;
   std::string recfm;
@@ -50,6 +51,7 @@ struct ZDSEntry
   int usedp;
   int usedx;
   std::string volser;
+  std::vector<std::string> volsers;
   // ISPF shows the following fields, but we omit them since they require reading PDS directory (too slow)
   // Maximum dir. blocks, Used dir. blocks, Number of members
 };
@@ -94,6 +96,44 @@ struct DscbAttributes
 extern "C"
 {
 #endif
+
+/**
+ * @brief Options and results for data set copy operation
+ */
+struct ZDSCopyOptions
+{
+  // Input options
+  bool replace;               // Replace like-named members in target (for PDS copy)
+  bool delete_target_members; // Delete all members from target PDS before copying (PDS-to-PDS only)
+
+  // Output results
+  bool target_created; // Set to true if target data set was created
+  bool member_created; // Set to true if target member was created
+
+  ZDSCopyOptions() : replace(false), delete_target_members(false), target_created(false), member_created(false)
+  {
+  }
+};
+
+/**
+ * @brief Copy a data set or member
+ *
+ * @param zds data set returned attributes and error information
+ * @param dsn1 source data set name
+ * @param dsn2 destination data set name
+ * @param options copy options and results (optional, uses defaults if nullptr)
+ * @return int 0 for success; non zero otherwise
+ */
+int zds_copy_dsn(ZDS *zds, const std::string &dsn1, const std::string &dsn2, ZDSCopyOptions *options = nullptr);
+
+/**
+ * @brief Check if a data set exists
+ *
+ * @param dsn data set name to check
+ * @return true if it exists; false otherwise
+ */
+bool zds_dataset_exists(const std::string &dsn);
+
 /**
  * @brief Read data from a z/OS data set
  *

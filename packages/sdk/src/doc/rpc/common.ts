@@ -161,6 +161,10 @@ export interface Dataset {
      */
     migrated?: boolean;
     /**
+     * Whether the data set is on multiple volumes
+     */
+    multivolume?: boolean;
+    /**
      * Primary units
      */
     primary?: number;
@@ -196,6 +200,10 @@ export interface Dataset {
      * Volume serial
      */
     volser?: string;
+    /**
+     * List of volume serials
+     */
+    volsers?: string[];
 }
 
 export interface DatasetAttributes {

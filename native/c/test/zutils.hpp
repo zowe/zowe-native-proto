@@ -13,6 +13,7 @@
 #define ZUTILS_HPP
 #include <string>
 #include <vector>
+#include "../zds.hpp"
 
 const std::string zowex_command = "./../build-out/zowex";
 const std::string zoweax_command = "./../build-out/zoweax";
@@ -28,5 +29,13 @@ std::string parse_etag_from_output(const std::string &output);
 std::vector<std::string> parse_rfc_response(const std::string input, const char *delim = ",");
 // Wait for a job to be visible in JES (returns true if found, false if timeout)
 bool wait_for_job(const std::string &jobid, int max_retries = 30, int delay_ms = 100);
+
+// Data set creation helpers - convenience wrappers around zds_* functions
+// that use sensible defaults for test data sets
+void create_dsn_with_attrs(ZDS *zds, const std::string &dsn, DS_ATTRIBUTES &attrs, const std::string &type_name);
+void create_pds(ZDS *zds, const std::string &dsn);
+void create_pdse(ZDS *zds, const std::string &dsn);
+void create_seq(ZDS *zds, const std::string &dsn);
+void write_to_dsn(const std::string &dsn, const std::string &data);
 
 #endif

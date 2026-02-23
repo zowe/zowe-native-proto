@@ -173,6 +173,7 @@ const ast::Node build_ds_object(const ZDSEntry &entry, bool attributes)
   if (!entry.mgmtclass.empty())
     obj_entry->set("mgmtclass", str(entry.mgmtclass));
   obj_entry->set("migrated", boolean(entry.migrated));
+  obj_entry->set("multivolume", boolean(entry.multivolume));
   if (entry.primary != -1)
     obj_entry->set("primary", i64(entry.primary));
   if (!entry.rdate.empty())
@@ -190,6 +191,10 @@ const ast::Node build_ds_object(const ZDSEntry &entry, bool attributes)
   if (entry.usedx != -1)
     obj_entry->set("usedx", i64(entry.usedx));
   obj_entry->set("volser", str(entry.volser));
+  const auto volsers_array = arr();
+  for (auto it = entry.volsers.begin(); it != entry.volsers.end(); ++it)
+    volsers_array->push(str(*it));
+  obj_entry->set("volsers", volsers_array);
 
   return obj_entry;
 }
@@ -440,14 +445,14 @@ int handle_data_set_list(InvocationContext &context)
         fields.push_back(it->name);
         if (attributes)
         {
-          fields.push_back(it->volser);
+          fields.push_back(it->multivolume ? (it->volser + "+") : it->volser);
           fields.push_back(it->devtype != 0 ? zut_int_to_string(it->devtype, true) : "");
           fields.push_back(it->dsorg);
           fields.push_back(it->recfm);
           fields.push_back(it->lrecl == -1 ? "" : zut_int_to_string(it->lrecl));
           fields.push_back(it->blksize == -1 ? "" : zut_int_to_string(it->blksize));
-          fields.push_back(zut_int_to_string(it->primary));
-          fields.push_back(zut_int_to_string(it->secondary));
+          fields.push_back(it->primary == -1 ? "" : zut_int_to_string(it->primary));
+          fields.push_back(it->secondary == -1 ? "" : zut_int_to_string(it->secondary));
           fields.push_back(it->dsntype);
           fields.push_back(it->migrated ? "YES" : "NO");
         }
@@ -460,14 +465,14 @@ int handle_data_set_list(InvocationContext &context)
         {
           context.output_stream() << left
                                   << setw(44) << it->name << " "
-                                  << setw(6) << it->volser << " "
+                                  << setw(7) << (it->multivolume ? (it->volser + "+") : it->volser) << " "
                                   << setw(7) << (it->devtype != 0 ? zut_int_to_string(it->devtype, true) : "") << " "
                                   << setw(4) << it->dsorg << " "
                                   << setw(6) << it->recfm << " "
                                   << setw(6) << (it->lrecl == -1 ? "" : zut_int_to_string(it->lrecl)) << " "
                                   << setw(6) << (it->blksize == -1 ? "" : zut_int_to_string(it->blksize)) << " "
-                                  << setw(10) << it->primary << " "
-                                  << setw(10) << it->secondary << " "
+                                  << setw(10) << (it->primary == -1 ? "" : zut_int_to_string(it->primary)) << " "
+                                  << setw(10) << (it->secondary == -1 ? "" : zut_int_to_string(it->secondary)) << " "
                                   << setw(8) << it->dsntype << " "
                                   << (it->migrated ? "YES" : "NO")
                                   << endl;
@@ -586,6 +591,19 @@ int handle_data_set_write(InvocationContext &context)
   if (context.has("etag"))
   {
     string etag_value = context.get<string>("etag", "");
+    if (etag_value.empty())
+    {
+      // Adler-32 etags that consist only of decimal digits (no a-f) are
+      // lexed as integers rather than strings; recover the original hex string
+      // by formatting the stored integer back as decimal (its digits are the etag)
+      const long long *etag_int = context.get_if<long long>("etag");
+      if (etag_int)
+      {
+        stringstream ss;
+        ss << *etag_int;
+        etag_value = ss.str();
+      }
+    }
     if (!etag_value.empty())
     {
       strcpy(zds.etag, etag_value.c_str());
@@ -844,6 +862,51 @@ int handle_data_set_compress(InvocationContext &context)
   return RTNCD_SUCCESS;
 }
 
+int handle_data_set_copy(InvocationContext &context)
+{
+  const string source = context.get<string>("source", "");
+  const string target = context.get<string>("target", "");
+
+  ZDS zds = {};
+  ZDSCopyOptions options;
+  options.replace = context.get<bool>("replace", false);
+  options.delete_target_members = context.get<bool>("delete-target-members", false);
+
+  int rc = zds_copy_dsn(&zds, source, target, &options);
+
+  if (rc != RTNCD_SUCCESS)
+  {
+    context.error_stream() << "Error: copy failed" << endl;
+    if (zds.diag.e_msg_len > 0)
+    {
+      context.error_stream() << "  Details: " << zds.diag.e_msg << endl;
+    }
+    return RTNCD_FAILURE;
+  }
+
+  if (options.target_created)
+  {
+    context.output_stream() << "New data set '" << target << "' created and copied from '" << source << "'" << endl;
+  }
+  else if (options.member_created)
+  {
+    context.output_stream() << "New member '" << target << "' created and copied from '" << source << "'" << endl;
+  }
+  else if (options.delete_target_members)
+  {
+    context.output_stream() << "Target members deleted and data set '" << target << "' replaced with contents of '" << source << "'" << endl;
+  }
+  else if (options.replace)
+  {
+    context.output_stream() << "Data set '" << target << "' has been updated with contents of '" << source << "'" << endl;
+  }
+  else
+  {
+    context.output_stream() << "Data set '" << source << "' copied to '" << target << "'" << endl;
+  }
+  return RTNCD_SUCCESS;
+}
+
 void register_commands(parser::Command &root_command)
 {
   // Data set command group
@@ -971,6 +1034,7 @@ void register_commands(parser::Command &root_command)
 
   // Rename subcommand
   auto ds_rename_cmd = command_ptr(new Command("rename", "rename data set"));
+  ds_rename_cmd->add_alias("ren");
   ds_rename_cmd->add_positional_arg("dsname-before", "data set to rename", ArgType_Single, true);
   ds_rename_cmd->add_positional_arg("dsname-after", "new data set name", ArgType_Single, true);
   ds_rename_cmd->set_handler(handle_data_set_rename);
@@ -978,6 +1042,7 @@ void register_commands(parser::Command &root_command)
 
   // Rename member subcommand
   auto ds_rename_members_cmd = command_ptr(new Command("rename-member", "rename a member"));
+  ds_rename_members_cmd->add_alias("ren-m");
   ds_rename_members_cmd->add_positional_arg(DSN);
   ds_rename_members_cmd->add_positional_arg("member-before", "member to rename", ArgType_Single, true);
   ds_rename_members_cmd->add_positional_arg("member-after", "new member name", ArgType_Single, true);
@@ -989,6 +1054,19 @@ void register_commands(parser::Command &root_command)
   ds_compress_cmd->add_positional_arg("dsn", "data set to compress", ArgType_Single, true);
   ds_compress_cmd->set_handler(handle_data_set_compress);
   data_set_cmd->add_command(ds_compress_cmd);
+
+  // Copy subcommand
+  auto ds_copy_cmd = command_ptr(new Command("copy", "copy data set (RECFM=U not supported)"));
+  ds_copy_cmd->add_positional_arg("source", "source data set to copy from", ArgType_Single, true);
+  ds_copy_cmd->add_positional_arg("target", "target data set to copy to", ArgType_Single, true);
+  ds_copy_cmd->add_keyword_arg("replace", make_aliases("--replace", "-r"),
+                               "replace matching members in target PDS with source members (keeps non-matching target members)",
+                               ArgType_Flag, false, ArgValue(false));
+  ds_copy_cmd->add_keyword_arg("delete-target-members", make_aliases("--delete-target-members", "-d"),
+                               "delete all members from target PDS before copying (PDS-to-PDS copy only, makes target match source exactly)",
+                               ArgType_Flag, false, ArgValue(false));
+  ds_copy_cmd->set_handler(handle_data_set_copy);
+  data_set_cmd->add_command(ds_copy_cmd);
 
   root_command.add_command(data_set_cmd);
 }

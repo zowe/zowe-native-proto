@@ -639,6 +639,63 @@ void zowex_uss_tests()
                              ExpectWithContext(rc, response).ToBe(255);
                              Expect(response).ToContain("Path '" + uss_dir + "' is a directory and recursive was false");
                            });
+
+                        it("should properly delete a symlink to a directory without recursive flag",
+                           [&]() -> void
+                           {
+                             string target_dir = get_random_uss(ussTestDir) + "_target_dir";
+                             string link_path = get_random_uss(ussTestDir) + "_dir_link";
+                             create_test_dir_cmd(target_dir);
+
+                             int link_rc = symlink(target_dir.c_str(), link_path.c_str());
+                             Expect(link_rc).ToBe(0);
+
+                             string deleteCommand = zowex_command + " uss delete " + link_path;
+                             rc = execute_command_with_output(deleteCommand, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+                             Expect(response).ToContain("USS item '" + link_path + "' deleted");
+
+                             string listLinkCommand = "ls -ld " + link_path;
+                             rc = execute_command_with_output(listLinkCommand, response);
+                             Expect(rc).ToBe(1);
+
+                             string listTargetCommand = "ls -ld " + target_dir;
+                             rc = execute_command_with_output(listTargetCommand, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+
+                             execute_command_with_output(zowex_command + " uss delete " + target_dir + " -r", response);
+                           });
+
+                        it("should not traverse symlink targets during recursive directory delete",
+                           [&]() -> void
+                           {
+                             string external_dir = get_random_uss(ussTestDir) + "_external_dir";
+                             string external_file = external_dir + "/preserve.txt";
+                             string parent_dir = get_random_uss(ussTestDir) + "_parent_dir";
+                             string link_path = parent_dir + "/external_link";
+
+                             create_test_dir_cmd(external_dir);
+                             create_test_file_cmd(external_file);
+                             create_test_dir_cmd(parent_dir);
+
+                             int link_rc = symlink(external_dir.c_str(), link_path.c_str());
+                             Expect(link_rc).ToBe(0);
+
+                             string deleteCommand = zowex_command + " uss delete " + parent_dir + " -r";
+                             rc = execute_command_with_output(deleteCommand, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+                             Expect(response).ToContain("USS item '" + parent_dir + "' deleted");
+
+                             string listParentCommand = "ls -ld " + parent_dir;
+                             rc = execute_command_with_output(listParentCommand, response);
+                             Expect(rc).ToBe(1);
+
+                             string listExternalFileCommand = "ls -l " + external_file;
+                             rc = execute_command_with_output(listExternalFileCommand, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+
+                             execute_command_with_output(zowex_command + " uss delete " + external_dir + " -r", response);
+                           });
                       });
 
              describe("write and view",
@@ -851,6 +908,25 @@ void zowex_uss_tests()
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain("drwxrwxrwx,");
                              Expect(response).ToContain(",subDir1");
+                           });
+                        it("should preserve symlink file type in long listing",
+                           [&]() -> void
+                           {
+                             string linkTargetDir = get_random_uss(ussTestDir) + "_target";
+                             string linkPath = get_random_uss(ussTestDir) + "_link";
+
+                             create_test_dir_cmd(linkTargetDir, "--mode 777");
+                             rc = symlink(linkTargetDir.c_str(), linkPath.c_str());
+                             ExpectWithContext(rc, "Failed to create symlink").ToBe(0);
+
+                             string listCommand = zowex_command + " uss ls " + ussTestDir + " -l";
+                             rc = execute_command_with_output(listCommand, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+                             Expect(response).ToContain("lrwx");
+                             Expect(response).ToContain(linkPath.substr(linkPath.find_last_of("/") + 1));
+
+                             unlink(linkPath.c_str());
+                             execute_command_with_output(zowex_command + " uss delete " + linkTargetDir + " --recursive", response);
                            });
                         it("should properly handle missing options",
                            [&]() -> void

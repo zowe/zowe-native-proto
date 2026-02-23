@@ -12,6 +12,7 @@
 
 #ifndef _OPEN_SYS_ITOA_EXT
 #define _OPEN_SYS_ITOA_EXT
+#include "ztype.h"
 #include <cctype>
 #endif
 #ifndef _POSIX_SOURCE
@@ -20,6 +21,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <climits>
 #include <cstring>
 #include <fstream>
 #include <iostream>
@@ -39,6 +41,7 @@
 #include "zdsm.h"
 
 const size_t MAX_DS_LENGTH = 44u;
+const size_t MAX_VOLSER_LENGTH = 6u;
 // carriage return character, used for detecting CRLF line endings
 const char CR_CHAR = '\x0D';
 // form feed character, used for stripping off lines in ASA mode
@@ -108,6 +111,377 @@ string zds_get_recfm(const fldata_t &file_info)
   return recfm;
 }
 
+// Internal enum for data set type classification (used only by copy functions)
+enum ZDS_TYPE
+{
+  ZDS_TYPE_UNKNOWN = 0,
+  ZDS_TYPE_PS,     // Sequential
+  ZDS_TYPE_PDS,    // Partitioned (including PDSE)
+  ZDS_TYPE_MEMBER, // Member of a PDS
+  ZDS_TYPE_VSAM    // VSAM
+};
+
+// Internal struct for data set type information (used only by copy functions)
+struct ZDSTypeInfo
+{
+  bool exists;
+  ZDS_TYPE type;
+  string base_dsn;
+  string member_name;
+  ZDSEntry entry; // Basic attributes if it exists
+};
+
+static vector<string> get_member_names(const string &pds_dsn)
+{
+  vector<string> names;
+  vector<ZDSMem> members;
+  ZDS temp_zds = {};
+  zds_list_members(&temp_zds, pds_dsn, members);
+  for (vector<ZDSMem>::iterator it = members.begin(); it != members.end(); ++it)
+  {
+    string name = it->name;
+    zut_trim(name);
+    names.push_back(name);
+  }
+  return names;
+}
+
+static bool member_exists_in_pds(const string &pds_dsn, const string &member_name)
+{
+  vector<string> names = get_member_names(pds_dsn);
+  for (auto it = names.begin(); it != names.end(); ++it)
+  {
+    if (*it == member_name)
+      return true;
+  }
+  return false;
+}
+
+static int zds_get_type_info(const string &dsn, ZDSTypeInfo &info)
+{
+  info.exists = false;
+  info.type = ZDS_TYPE_UNKNOWN;
+  info.base_dsn = dsn;
+  info.member_name = "";
+
+  size_t member_idx = dsn.find('(');
+  if (member_idx != string::npos)
+  {
+    info.base_dsn = dsn.substr(0, member_idx);
+    size_t end_idx = dsn.find(')', member_idx);
+    if (end_idx != string::npos && end_idx > member_idx + 1)
+    {
+      info.member_name = dsn.substr(member_idx + 1, end_idx - member_idx - 1);
+    }
+  }
+
+  zut_trim(info.base_dsn);
+  transform(info.base_dsn.begin(), info.base_dsn.end(), info.base_dsn.begin(), ::toupper);
+  zut_trim(info.member_name);
+  transform(info.member_name.begin(), info.member_name.end(), info.member_name.begin(), ::toupper);
+
+  if (!zds_dataset_exists(info.base_dsn))
+  {
+    return RTNCD_SUCCESS;
+  }
+
+  ZDS zds = {};
+  vector<ZDSEntry> entries;
+  int rc = zds_list_data_sets(&zds, info.base_dsn, entries, true);
+  if (rc == RTNCD_SUCCESS && entries.size() == 1)
+  {
+    ZDSEntry &entry = entries[0];
+    info.exists = true;
+    info.entry = entry;
+
+    if (entry.dsorg == ZDS_DSORG_PS)
+    {
+      info.type = ZDS_TYPE_PS;
+    }
+    else if (entry.dsorg.rfind(ZDS_DSORG_PO, 0) == 0)
+    {
+      if (!info.member_name.empty())
+      {
+        info.type = ZDS_TYPE_MEMBER;
+        // For members, verify the member actually exists in the PDS
+        info.exists = member_exists_in_pds(info.base_dsn, info.member_name);
+      }
+      else
+      {
+        info.type = ZDS_TYPE_PDS;
+      }
+    }
+    else if (entry.dsorg == ZDS_DSORG_VSAM)
+    {
+      info.type = ZDS_TYPE_VSAM;
+    }
+  }
+
+  return RTNCD_SUCCESS;
+}
+
+static int copy_sequential(ZDS *zds, const string &src_dsn, const string &dst_dsn);
+
+// PDS-to-PDS copy using member-by-member binary I/O.
+// This approach provides granular control for --replace semantics (skip/overwrite individual members)
+// and naturally supports --delete-target-members workflow.
+static int copy_pds_to_pds(ZDS *zds, const ZDSTypeInfo &src, const ZDSTypeInfo &dst, bool replace)
+{
+  vector<string> src_members = get_member_names(src.base_dsn);
+  for (size_t i = 0; i < src_members.size(); i++)
+  {
+    const string &member = src_members[i];
+    if (!replace && member_exists_in_pds(dst.base_dsn, member))
+      continue;
+    string src_mem_dsn = src.base_dsn + "(" + member + ")";
+    string dst_mem_dsn = dst.base_dsn + "(" + member + ")";
+    int rc = copy_sequential(zds, src_mem_dsn, dst_mem_dsn);
+    if (rc != RTNCD_SUCCESS)
+      return rc;
+  }
+  return RTNCD_SUCCESS;
+}
+
+// Copy sequential data set or member using binary I/O
+// Note: RECFM=U data sets are not explicitly checked here because fldata() returns
+// unreliable RECFM information when files are opened in binary mode. The write
+// operation will fail naturally if the target is truly RECFM=U.
+static int copy_sequential(ZDS *zds, const string &src_dsn, const string &dst_dsn)
+{
+  string src_path = "//'" + src_dsn + "'";
+  string dst_path = "//'" + dst_dsn + "'";
+
+  FILE *fin = fopen(src_path.c_str(), "rb");
+  if (!fin)
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open source '%s'", src_dsn.c_str());
+    return RTNCD_FAILURE;
+  }
+
+  FILE *fout = fopen(dst_path.c_str(), "wb");
+  if (!fout)
+  {
+    fclose(fin);
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open target '%s'", dst_dsn.c_str());
+    return RTNCD_FAILURE;
+  }
+
+  char buffer[32760];
+  size_t bytes_read;
+  while ((bytes_read = fread(buffer, 1, sizeof(buffer), fin)) > 0)
+  {
+    size_t bytes_written = fwrite(buffer, 1, bytes_read, fout);
+    if (bytes_written != bytes_read)
+    {
+      fclose(fin);
+      fclose(fout);
+      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Write error copying to '%s'", dst_dsn.c_str());
+      return RTNCD_FAILURE;
+    }
+  }
+
+  fclose(fin);
+  fclose(fout);
+  return RTNCD_SUCCESS;
+}
+
+// Delete all members from a PDS
+static int delete_all_members(ZDS *zds, const string &pds_dsn)
+{
+  vector<string> members = get_member_names(pds_dsn);
+  for (size_t i = 0; i < members.size(); i++)
+  {
+    string member_dsn = pds_dsn + "(" + members[i] + ")";
+    int rc = zds_delete_dsn(zds, member_dsn);
+    if (rc != RTNCD_SUCCESS)
+    {
+      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to delete member '%s'", member_dsn.c_str());
+      return RTNCD_FAILURE;
+    }
+  }
+  return RTNCD_SUCCESS;
+}
+
+int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2, ZDSCopyOptions *options)
+{
+  int rc = 0;
+  ZDSCopyOptions default_options;
+  ZDSCopyOptions *opts = options ? options : &default_options;
+  opts->target_created = false;
+  opts->member_created = false;
+  ZDSTypeInfo info1 = {};
+  ZDSTypeInfo info2 = {};
+
+  zds_get_type_info(dsn1, info1);
+  zds_get_type_info(dsn2, info2);
+
+  if (!info1.exists)
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Source data set '%s' not found", info1.base_dsn.c_str());
+    return RTNCD_FAILURE;
+  }
+
+  // PDS -> Member is not allowed (can't copy entire PDS into a single member)
+  if (info1.type == ZDS_TYPE_PDS && !info2.member_name.empty())
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg,
+                                  "Cannot copy entire PDS to a member. "
+                                  "Target must be a PDS.");
+    return RTNCD_FAILURE;
+  }
+
+  // Member -> PS is not supported (cross-type copy)
+  if (info1.type == ZDS_TYPE_MEMBER && info2.member_name.empty())
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg,
+                                  "Cannot copy PDS member to a sequential data set. "
+                                  "Target must specify a member name.");
+    return RTNCD_FAILURE;
+  }
+
+  // PS -> Member is not supported (cross-type copy)
+  if (info1.type == ZDS_TYPE_PS && !info2.member_name.empty())
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg,
+                                  "Cannot copy sequential data set to a PDS member. "
+                                  "Target must be a sequential data set.");
+    return RTNCD_FAILURE;
+  }
+
+  // PDS -> PS is not supported (cannot copy PDS to existing sequential data set)
+  if (info1.type == ZDS_TYPE_PDS && info2.type == ZDS_TYPE_PS)
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg,
+                                  "Cannot copy PDS to a sequential data set. "
+                                  "Target must be a PDS.");
+    return RTNCD_FAILURE;
+  }
+
+  bool is_pds_full_copy = (info1.type == ZDS_TYPE_PDS && info2.member_name.empty());
+  bool target_is_member = !info2.member_name.empty();
+  bool target_base_exists = zds_dataset_exists(info2.base_dsn);
+
+  if (!target_base_exists)
+  {
+    // Create the target data set
+    ZDS create_zds = {};
+    string create_resp;
+    DS_ATTRIBUTES attrs = {0};
+
+    // Common attributes for all data set types
+    attrs.recfm = info1.entry.recfm.c_str();
+    attrs.lrecl = info1.entry.lrecl;
+    attrs.blksize = info1.entry.blksize;
+
+    // Preserve space unit (CYLINDERS or TRACKS)
+    if (info1.entry.spacu == "CYLINDERS" || info1.entry.spacu == "CYL")
+    {
+      attrs.alcunit = "CYL";
+    }
+    else
+    {
+      attrs.alcunit = "TRACKS";
+    }
+
+    // Preserve primary/secondary allocation
+    if (info1.entry.primary >= 0 && info1.entry.secondary >= 0)
+    {
+      attrs.primary = info1.entry.primary > INT_MAX ? INT_MAX : static_cast<int>(info1.entry.primary);
+      attrs.secondary = info1.entry.secondary > INT_MAX ? INT_MAX : static_cast<int>(info1.entry.secondary);
+    }
+    else
+    {
+      attrs.primary = 1;
+      attrs.secondary = 1;
+    }
+
+    if (info1.type == ZDS_TYPE_PDS || info1.type == ZDS_TYPE_MEMBER)
+    {
+      // PDS -> PDS or Member -> Member: create PDS with source attributes
+      attrs.dsorg = "PO";
+      attrs.dirblk = 5;
+      attrs.dsntype = info1.entry.dsntype.c_str();
+    }
+    else
+    {
+      // PS -> PS: create sequential data set with source attributes
+      attrs.dsorg = "PS";
+    }
+
+    rc = zds_create_dsn(&create_zds, info2.base_dsn, attrs, create_resp);
+    if (rc != RTNCD_SUCCESS)
+    {
+      // Truncate detail message to avoid buffer overflow (leave room for prefix + dsn + ": ")
+      const char *detail = create_zds.diag.e_msg_len > 0 ? create_zds.diag.e_msg : create_resp.c_str();
+      char truncated_detail[128];
+      strncpy(truncated_detail, detail, sizeof(truncated_detail) - 1);
+      truncated_detail[sizeof(truncated_detail) - 1] = '\0';
+      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to create target data set '%s': %s",
+                                    info2.base_dsn.c_str(), truncated_detail);
+      return RTNCD_FAILURE;
+    }
+    opts->target_created = true;
+  }
+  // Track if target member exists (for member_created reporting)
+  bool target_member_exists = target_is_member && member_exists_in_pds(info2.base_dsn, info2.member_name);
+
+  if (!opts->replace && !is_pds_full_copy)
+  {
+    // For member targets, check if the specific member exists
+    // For non-member targets (sequential DS), check if the base data set existed before this call
+    bool target_actually_exists = target_is_member ? target_member_exists : target_base_exists;
+
+    if (target_actually_exists)
+    {
+      zds->diag.e_msg_len = sprintf(zds->diag.e_msg,
+                                    "Target '%s' already exists. Use --replace to overwrite.",
+                                    dsn2.c_str());
+      return RTNCD_FAILURE;
+    }
+  }
+
+  // Check if source and target are in the same PDS - need special handling
+  bool same_pds = (info1.type == ZDS_TYPE_MEMBER && target_is_member &&
+                   info1.base_dsn == info2.base_dsn);
+
+  // Delete all target members if requested (only for PDS-to-PDS copy)
+  if (opts->delete_target_members && is_pds_full_copy && target_base_exists)
+  {
+    rc = delete_all_members(zds, info2.base_dsn);
+    if (rc != RTNCD_SUCCESS)
+    {
+      return rc;
+    }
+  }
+
+  if (is_pds_full_copy)
+  {
+    // When delete_target_members is used, always replace since target is now empty
+    return copy_pds_to_pds(zds, info1, info2, opts->replace || opts->delete_target_members);
+  }
+  else
+  {
+    if (same_pds)
+    {
+      // Same PDS: copy member to member using binary I/O
+      string src_mem_dsn = info1.base_dsn + "(" + info1.member_name + ")";
+      string dst_mem_dsn = info2.base_dsn + "(" + info2.member_name + ")";
+      rc = copy_sequential(zds, src_mem_dsn, dst_mem_dsn);
+    }
+    else
+    {
+      rc = copy_sequential(zds, dsn1, dsn2);
+    }
+
+    // Report if a new member was created
+    if (rc == RTNCD_SUCCESS && target_is_member && !target_member_exists)
+    {
+      opts->member_created = true;
+    }
+    return rc;
+  }
+}
+
 bool zds_dataset_exists(const string &dsn)
 {
   const auto member_idx = dsn.find('(');
@@ -131,6 +505,25 @@ bool zds_member_exists(const string &dsn, const string &member_before)
     return true;
   }
   return false;
+}
+
+bool zds_is_valid_member_name(const std::string &name)
+{
+  if (name.length() > 8)
+    return false;
+
+  char first = name[0];
+  if (!(isalpha(first) || first == '#' || first == '@' || first == '$'))
+    return false;
+
+  for (size_t i = 1; i < name.length(); ++i)
+  {
+    char c = name[i];
+    if (!(isalnum(c) || c == '#' || c == '@' || c == '$'))
+      return false;
+  }
+
+  return true;
 }
 
 int zds_read_from_dd(ZDS *zds, string ddname, string &response)
@@ -947,7 +1340,12 @@ int zds_validate_etag(ZDS *zds, const string &dsn, bool has_encoding)
   const auto read_rc = zds_read_from_dsn(&read_ds, dsn, current_contents);
   if (0 != read_rc)
   {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to read contents of data set for e-tag comparison: %s", read_ds.diag.e_msg);
+    // Truncate detail message to avoid buffer overflow
+    char truncated_detail[128];
+    strncpy(truncated_detail, read_ds.diag.e_msg, sizeof(truncated_detail) - 1);
+    truncated_detail[sizeof(truncated_detail) - 1] = '\0';
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg,
+                                  "Failed to read contents of data set for e-tag comparison: %s", truncated_detail);
     return RTNCD_FAILURE;
   }
 
@@ -1174,14 +1572,16 @@ int zds_create_dsn(ZDS *zds, string dsn, DS_ATTRIBUTES attributes, string &respo
     response = "Invalid allocation unit '" + attributes.alcunit + "'";
     return RTNCD_FAILURE;
   }
-  if (attributes.blksize == 0)
+  // Only default blksize when unset (negative); preserve 0 for RECFM U
+  if (attributes.blksize < 0)
   {
-    attributes.blksize = 80; // Block Size
+    attributes.blksize = (attributes.lrecl > 0) ? attributes.lrecl : 80; // Block Size (avoid system default when unset)
   }
   if (attributes.primary == 0)
   {
     attributes.primary = 1; // Primary Space
   }
+  // Only default lrecl when unset (negative); preserve 0 for RECFM U
   if (attributes.lrecl < 0)
   {
     attributes.lrecl = 80; // Record Length
@@ -1211,14 +1611,17 @@ int zds_create_dsn(ZDS *zds, string dsn, DS_ATTRIBUTES attributes, string &respo
     parm += ") " + attributes.alcunit;
   }
 
-  if (attributes.lrecl > 0)
+  if (!attributes.recfm.empty())
+    parm += " RECFM(" + attributes.recfm + ")";
+
+  // For RECFM=U, LRECL should be 0 or omitted; specifying non-zero LRECL can cause
+  // the system to override RECFM to FB
+  bool is_recfm_u = (attributes.recfm == "U" || attributes.recfm == ZDS_RECFM_U);
+  if (attributes.lrecl > 0 && !is_recfm_u)
   {
     memset(numberAsString, 0, sizeof(numberAsString));
     parm += " LRECL(" + string(itoa(attributes.lrecl, numberAsString, 10)) + ")";
   }
-
-  if (!attributes.recfm.empty())
-    parm += " RECFM(" + attributes.recfm + ")";
 
   if (attributes.dirblk > 0)
   {
@@ -1241,7 +1644,9 @@ int zds_create_dsn(ZDS *zds, string dsn, DS_ATTRIBUTES attributes, string &respo
   if (!attributes.unit.empty())
     parm += " UNIT(" + attributes.unit + ")";
 
-  if (attributes.blksize > 0)
+  // For RECFM=U, BLKSIZE handling is system-dependent; some systems need it, others don't
+  // Skip BLKSIZE for RECFM=U to let the system determine the appropriate value
+  if (attributes.blksize >= 0 && !is_recfm_u)
   {
     memset(numberAsString, 0, sizeof(numberAsString));
     parm += " BLKSIZE(" + string(itoa(attributes.blksize, numberAsString, 10)) + ")";
@@ -1263,7 +1668,7 @@ int zds_create_dsn_fb(ZDS *zds, const string &dsn, string &response)
   attributes.lrecl = 80;
   attributes.recfm = "F,B";
   attributes.dirblk = 5;
-  attributes.dsntype = "LIBRARY";
+  attributes.dsntype = ZDS_DSNTYPE_LIBRARY;
   return zds_create_dsn(zds, dsn, attributes, response);
 }
 
@@ -1279,7 +1684,7 @@ int zds_create_dsn_vb(ZDS *zds, const string &dsn, string &response)
   attributes.lrecl = 255;
   attributes.recfm = "V,B";
   attributes.dirblk = 5;
-  attributes.dsntype = "LIBRARY";
+  attributes.dsntype = ZDS_DSNTYPE_LIBRARY;
   return zds_create_dsn(zds, dsn, attributes, response);
 }
 
@@ -1296,7 +1701,7 @@ int zds_create_dsn_adata(ZDS *zds, const string &dsn, string &response)
   attributes.blksize = 32760;
   attributes.recfm = "V,B";
   attributes.dirblk = 5;
-  attributes.dsntype = "LIBRARY";
+  attributes.dsntype = ZDS_DSNTYPE_LIBRARY;
   return zds_create_dsn(zds, dsn, attributes, response);
 }
 
@@ -1313,7 +1718,7 @@ int zds_create_dsn_loadlib(ZDS *zds, const string &dsn, string &response)
   attributes.blksize = 32760;
   attributes.recfm = "U";
   attributes.dirblk = 5;
-  attributes.dsntype = "LIBRARY";
+  attributes.dsntype = ZDS_DSNTYPE_LIBRARY;
   return zds_create_dsn(zds, dsn, attributes, response);
 }
 
@@ -1394,16 +1799,6 @@ int zds_rename_members(ZDS *zds, const string &dsname, const string &member_befo
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Member name cannot be empty");
     return RTNCD_FAILURE;
   }
-  if (!isalpha(member_before[0]) || !isalpha(member_after[0]))
-  {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Member name must begin with an alphabetic character");
-    return RTNCD_FAILURE;
-  }
-  if (member_before.length() > 8 || member_after.length() > 8)
-  {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Member name must not exceed 8 characters");
-    return RTNCD_FAILURE;
-  }
   if (!zds_dataset_exists(dsname))
   {
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Data set does not exist");
@@ -1417,6 +1812,11 @@ int zds_rename_members(ZDS *zds, const string &dsname, const string &member_befo
   if (zds_member_exists(dsname, member_after))
   {
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Target member already exists");
+    return RTNCD_FAILURE;
+  }
+  if (!zds_is_valid_member_name(member_after) || !zds_is_valid_member_name(member_before))
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Member name must start with A-Z,#,@,$ and contain only A-Z,0-9,#,@,$ (max 8 chars)");
     return RTNCD_FAILURE;
   }
 
@@ -1567,11 +1967,15 @@ typedef struct
   ZDS_CSI_ERROR_INFO error_info;
 } ZDS_CSI_CATALOG;
 
+// This count should match number of catalog fields requested from CSI
+#define CSI_FIELD_COUNT 5
+#define CSI_FIELD_LEN 8
+
 typedef struct
 {
   int total_len;
   unsigned int reserved;
-  int field_lens; // data after field_lens
+  int field_lens[CSI_FIELD_COUNT]; // data after field_lens
 } ZDS_CSI_FIELD;
 
 typedef struct
@@ -1611,9 +2015,6 @@ typedef struct
 } ZDS_CSI_WORK_AREA;
 
 #pragma pack() // restore default packing
-
-#define BUFF_SIZE 1024
-#define FIELD_LEN 8
 
 #define DS1DSGPS_MASK 0x4000 // PS: Bit 2 is set
 #define DS1DSGDA_MASK 0x2000 // DA: Bit 3 is set
@@ -1973,11 +2374,11 @@ void load_general_attrs_from_dscb(const DSCBFormat1 *dscb, ZDSEntry &entry)
 
   if (is_partitioned && is_pdse)
   {
-    entry.dsntype = "LIBRARY";
+    entry.dsntype = ZDS_DSNTYPE_LIBRARY;
   }
   else if (is_partitioned)
   {
-    entry.dsntype = "PDS";
+    entry.dsntype = ZDS_DSNTYPE_PDS;
   }
   else
   {
@@ -2174,72 +2575,74 @@ void load_date_attrs_from_dscb(const DSCBFormat1 *dscb, ZDSEntry &entry)
 }
 
 // Load storage management attributes from catalog fields
-void load_storage_attrs_from_catalog(unsigned char *&data, int *&field_len, ZDSEntry &entry)
+void load_volsers_from_catalog(const unsigned char *&data, const int field_len, int &csi_offset, ZDSEntry &entry)
 {
-  // Parse DATACLAS field (8 bytes)
-  data += *field_len;
-  field_len++;
-  entry.dataclass = "";
-  if (*field_len > 2)
+  int num_volumes = field_len / MAX_VOLSER_LENGTH;
+  entry.multivolume = num_volumes > 1;
+  entry.volsers.reserve(num_volumes);
+
+  char buffer[MAX_VOLSER_LENGTH + 1] = {0};
+  for (int i = 0; i < num_volumes; i++)
   {
-    // First 2 bytes are a length prefix, extract actual length
-    uint16_t actual_len = (static_cast<unsigned char>(data[0]) << 8) | static_cast<unsigned char>(data[1]);
-    if (actual_len > 0 && actual_len <= (*field_len - 2))
+    memset(buffer, 0x00, sizeof(buffer)); // clear buffer
+    memcpy(buffer, data + csi_offset + (i * MAX_VOLSER_LENGTH), MAX_VOLSER_LENGTH);
+    std::string vol = string(buffer, MAX_VOLSER_LENGTH);
+    zut_rtrim(vol);
+    if (!vol.empty())
+      entry.volsers.push_back(vol);
+  }
+
+  // Use the first volume as the primary, or set unknown if empty
+  entry.volser = entry.volsers.empty() ? ZDS_VOLSER_UNKNOWN : entry.volsers[0];
+
+#define IPL_VOLUME "******"
+#define IPL_VOLUME_SYMBOL "&SYSR1" // https://www.ibm.com/docs/en/zos/3.1.0?topic=symbols-static-system
+
+  if (0 == strcmp(IPL_VOLUME, entry.volser.c_str()))
+  {
+    string symbol(IPL_VOLUME_SYMBOL);
+    string value;
+    int rc = zut_substitute_symbol(symbol, value);
+    if (0 == rc)
     {
-      entry.dataclass = string((char *)(data + 2), actual_len);
+      entry.volser = value;
     }
   }
 
-  // Parse MGMTCLAS field (8 bytes)
-  data += *field_len;
-  field_len++;
-  entry.mgmtclass = "";
-  if (*field_len > 2)
+  csi_offset += field_len;
+}
+
+void load_devtype_from_catalog(const unsigned char *&data, const int field_len, int &csi_offset, uint16_t &attr)
+{
+  if (field_len >= 4)
   {
-    // First 2 bytes are a length prefix, extract actual length
-    uint16_t actual_len = (static_cast<unsigned char>(data[0]) << 8) | static_cast<unsigned char>(data[1]);
-    if (actual_len > 0 && actual_len <= (*field_len - 2))
-    {
-      entry.mgmtclass = string((char *)(data + 2), actual_len);
-    }
-  }
+    const uint8_t *bytes = &data[csi_offset];
+    uint32_t devtyp = (bytes[0] << 24) | (bytes[1] << 16) | (bytes[2] << 8) | bytes[3];
 
-  // Parse STORCLAS field (8 bytes)
-  data += *field_len;
-  field_len++;
-  entry.storclass = "";
-  if (*field_len > 2)
-  {
-    // First 2 bytes are a length prefix, extract actual length
-    uint16_t actual_len = (static_cast<unsigned char>(data[0]) << 8) | static_cast<unsigned char>(data[1]);
-    if (actual_len > 0 && actual_len <= (*field_len - 2))
-    {
-      entry.storclass = string((char *)(data + 2), actual_len);
-    }
-  }
-
-  // Parse DEVTYP field (4-byte UCB device type)
-  data += *field_len;
-  field_len++;
-
-  if (*field_len >= 4)
-  {
-    uint32_t devtyp = (static_cast<unsigned char>(data[0]) << 24) |
-                      (static_cast<unsigned char>(data[1]) << 16) |
-                      (static_cast<unsigned char>(data[2]) << 8) |
-                      static_cast<unsigned char>(data[3]);
-
+    // Extract the device type code (last byte of UCB) and map to device type
     // If devtyp is all zeros, default to 3390 (most common modern DASD)
-    if (devtyp == 0x00000000)
+    attr = devtyp != 0x00000000 ? ucb_to_devtype(bytes[3]) : 0x3390;
+  }
+
+  csi_offset += field_len;
+}
+
+void load_storage_attr_from_catalog(const unsigned char *&data, const int field_len, int &csi_offset, string &attr)
+{
+  attr = "";
+
+  if (field_len > 2)
+  {
+    // First 2 bytes are a length prefix, extract actual length
+    uint16_t actual_len = (static_cast<unsigned char>(data[csi_offset]) << 8) |
+                          static_cast<unsigned char>(data[csi_offset + 1]);
+    if (actual_len > 0 && actual_len <= (field_len - 2))
     {
-      entry.devtype = 0x3390;
-    }
-    else
-    {
-      // Extract the device type code (last byte of UCB) and map to device type
-      entry.devtype = ucb_to_devtype(static_cast<uint8_t>(data[3]));
+      attr = string((char *)(data + csi_offset + 2), actual_len);
     }
   }
+
+  csi_offset += field_len;
 }
 
 void zds_get_attrs_from_dscb(ZDS *zds, ZDSEntry &entry)
@@ -2283,9 +2686,9 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &datasets, bool sh
   zds->csi = NULL;
 
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=directory-catalog-field-names
-  string fields_long[][FIELD_LEN] = {{"VOLSER"}, {"DATACLAS"}, {"MGMTCLAS"}, {"STORCLAS"}, {"DEVTYP"}};
+  string fields_long[CSI_FIELD_COUNT][CSI_FIELD_LEN] = {{"VOLSER"}, {"DEVTYP"}, {"DATACLAS"}, {"MGMTCLAS"}, {"STORCLAS"}};
 
-  string(*fields)[FIELD_LEN] = nullptr;
+  string(*fields)[CSI_FIELD_LEN] = nullptr;
   int number_of_fields = 0;
 
   if (show_attributes)
@@ -2294,7 +2697,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &datasets, bool sh
     number_of_fields = sizeof(fields_long) / sizeof(fields_long[0]);
   }
 
-  int internal_used_buffer_size = sizeof(CSIFIELD) + number_of_fields * FIELD_LEN;
+  int internal_used_buffer_size = sizeof(CSIFIELD) + number_of_fields * CSI_FIELD_LEN;
 
   if (0 == zds->buffer_size)
     zds->buffer_size = ZDS_DEFAULT_BUFFER_SIZE;
@@ -2323,7 +2726,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &datasets, bool sh
 
   CSIFIELD *selection_criteria = (CSIFIELD *)area;
   char *csi_fields = (char *)(selection_criteria->csifldnm);
-  ZDS_CSI_WORK_AREA *csi_work_area = (ZDS_CSI_WORK_AREA *)(area + sizeof(CSIFIELD) + number_of_fields * FIELD_LEN);
+  ZDS_CSI_WORK_AREA *csi_work_area = (ZDS_CSI_WORK_AREA *)(area + sizeof(CSIFIELD) + number_of_fields * CSI_FIELD_LEN);
 
   // set work area
   csi_work_area->header.total_size = zds->buffer_size - min_buffer_size;
@@ -2343,9 +2746,9 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &datasets, bool sh
 
   for (int i = 0; i < number_of_fields; i++)
   {
-    memset(csi_fields, ' ', FIELD_LEN);
+    memset(csi_fields, ' ', CSI_FIELD_LEN);
     memcpy(csi_fields, fields[i][0].c_str(), fields[i][0].size());
-    csi_fields += FIELD_LEN;
+    csi_fields += CSI_FIELD_LEN;
   }
 
   selection_criteria->csinumen = number_of_fields;
@@ -2479,27 +2882,12 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &datasets, bool sh
       // Only process catalog fields and DSCB if show_attributes is true
       if (show_attributes)
       {
-        int *field_len = &f->response.field.field_lens;
-        unsigned char *data = (unsigned char *)&f->response.field.field_lens;
-        data += (sizeof(f->response.field.field_lens) * number_fields);
+        const int *field_lens = f->response.field.field_lens;
+        const unsigned char *data = (unsigned char *)&f->response.field.field_lens + sizeof(f->response.field.field_lens);
+        int csi_offset = 0;
 
-        memset(buffer, 0x00, sizeof(buffer)); // clear buffer
-        memcpy(buffer, data, *field_len);     // copy VOLSER
-        entry.volser = strlen(buffer) == 0 ? ZDS_VOLSER_UNKNOWN : string(buffer);
-
-#define IPL_VOLUME "******"
-#define IPL_VOLUME_SYMBOL "&SYSR1" // https://www.ibm.com/docs/en/zos/3.1.0?topic=symbols-static-system
-
-        if (0 == strcmp(IPL_VOLUME, entry.volser.c_str()))
-        {
-          string symbol(IPL_VOLUME_SYMBOL);
-          string value;
-          rc = zut_substitute_symbol(symbol, value);
-          if (0 == rc)
-          {
-            entry.volser = value;
-          }
-        }
+        // Load volume serials from catalog and check if migrated
+        load_volsers_from_catalog(data, field_lens[0], csi_offset, entry);
 
 #define MIGRAT_VOLUME "MIGRAT"
 #define ARCIVE_VOLUME "ARCIVE"
@@ -2514,8 +2902,11 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &datasets, bool sh
           entry.migrated = false;
         }
 
-        // Parse storage management attributes (dataclass, mgmtclass, storclass, devtype)
-        load_storage_attrs_from_catalog(data, field_len, entry);
+        // Parse storage management attributes (devtype, dataclass, mgmtclass, storclass)
+        load_devtype_from_catalog(data, field_lens[1], csi_offset, entry.devtype);
+        load_storage_attr_from_catalog(data, field_lens[2], csi_offset, entry.dataclass);
+        load_storage_attr_from_catalog(data, field_lens[3], csi_offset, entry.mgmtclass);
+        load_storage_attr_from_catalog(data, field_lens[4], csi_offset, entry.storclass);
 
         // Load detailed attributes from DSCB if not migrated
         // This needs to happen before the switch statement as it sets entry.dsorg
@@ -2524,6 +2915,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &datasets, bool sh
           zds_get_attrs_from_dscb(zds, entry);
         }
 
+        string old_volser = entry.volser;
         switch (f->type)
         {
         case NON_VSAM_DATA_SET:
@@ -2557,6 +2949,12 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &datasets, bool sh
           zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Unsupported entry type '%x' ", f->type);
           return RTNCD_FAILURE;
         };
+
+        if (old_volser != entry.volser)
+        {
+          entry.volsers.clear();
+          entry.volsers.push_back(entry.volser);
+        }
       }
 
       if (datasets.size() + 1 > zds->max_entries)

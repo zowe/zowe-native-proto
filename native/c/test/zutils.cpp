@@ -17,6 +17,7 @@
 #include <cstring>
 #include <chrono>
 #include <thread>
+#include <stdexcept>
 
 using namespace std;
 
@@ -208,4 +209,63 @@ bool wait_for_job(const string &jobid, int max_retries, int delay_ms)
     this_thread::sleep_for(chrono::milliseconds(delay_ms));
   }
   return false;
+}
+
+// Data set creation helpers
+
+void create_dsn_with_attrs(ZDS *zds, const string &dsn, DS_ATTRIBUTES &attrs, const string &type_name)
+{
+  memset(zds, 0, sizeof(ZDS));
+  string response;
+  int rc = zds_create_dsn(zds, dsn, attrs, response);
+  if (rc != 0)
+  {
+    string err = zds->diag.e_msg_len > 0 ? string(zds->diag.e_msg)
+                 : response.length() > 0 ? response
+                                         : "rc=" + to_string(rc);
+    throw runtime_error("Failed to create " + type_name + ": " + err);
+  }
+}
+
+void create_pds(ZDS *zds, const string &dsn)
+{
+  DS_ATTRIBUTES attrs = {0};
+  attrs.dsorg = "PO";
+  attrs.dsntype = "PDS";
+  attrs.recfm = "F,B";
+  attrs.lrecl = 80;
+  attrs.blksize = 800;
+  attrs.dirblk = 5;
+  create_dsn_with_attrs(zds, dsn, attrs, "PDS");
+}
+
+void create_pdse(ZDS *zds, const string &dsn)
+{
+  DS_ATTRIBUTES attrs = {0};
+  attrs.dsorg = "PO";
+  attrs.dsntype = "LIBRARY";
+  attrs.recfm = "F,B";
+  attrs.lrecl = 80;
+  attrs.blksize = 800;
+  attrs.dirblk = 5;
+  create_dsn_with_attrs(zds, dsn, attrs, "PDSE");
+}
+
+void create_seq(ZDS *zds, const string &dsn)
+{
+  DS_ATTRIBUTES attrs = {0};
+  attrs.dsorg = "PS";
+  attrs.recfm = "F,B";
+  attrs.lrecl = 80;
+  attrs.blksize = 800;
+  attrs.primary = 1;
+  attrs.secondary = 1;
+  create_dsn_with_attrs(zds, dsn, attrs, "sequential data set");
+}
+
+void write_to_dsn(const string &dsn, const string &content)
+{
+  ZDS zds = {0};
+  string data = content;
+  zds_write_to_dsn(&zds, dsn, data);
 }
