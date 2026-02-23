@@ -366,7 +366,7 @@ int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2, ZDSCopyOption
     // Create the target data set
     ZDS create_zds = {};
     string create_resp;
-    DS_ATTRIBUTES attrs = {0};
+    DS_ATTRIBUTES attrs = {};
 
     // Common attributes for all data set types
     attrs.recfm = info1.entry.recfm.c_str();
@@ -587,7 +587,7 @@ static DscbAttributes zds_get_dscb_attributes(const string &dsn)
   DscbAttributes attrs;
   const string base_dsn = dsn.find('(') != string::npos ? dsn.substr(0, dsn.find('(')) : dsn;
 
-  ZDS zds = {0};
+  ZDS zds{};
   vector<ZDSEntry> datasets;
 
   // Use catalog lookup with DSCB to get the actual attributes
@@ -751,7 +751,7 @@ int zds_read_from_dsn(ZDS *zds, const string &dsn, string &response)
   else
   {
     // Non-ASA: read in chunks as before
-    char buffer[4096] = {0};
+    char buffer[4096] = {};
     while ((bytes_read = fread(buffer, 1, sizeof(buffer), fp)) > 0)
     {
       total_size += bytes_read;
@@ -1331,7 +1331,7 @@ static bool zds_write_recfm_unsupported(const string &recfm, const bool include_
 
 int zds_validate_etag(ZDS *zds, const string &dsn, bool has_encoding)
 {
-  ZDS read_ds = {0};
+  ZDS read_ds = {};
   string current_contents = "";
   if (has_encoding)
   {
@@ -1844,14 +1844,14 @@ int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &members)
 
   members.reserve(zds->max_entries);
 
-  RECORD rec = {0};
+  RECORD rec = {};
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=pds-reading-directory-sequentially
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=pdse-reading-directory - long alias names omitted, use DESERV for those
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=pds-directory
   FILE *fp = fopen(dsn.c_str(), "rb,recfm=u");
 
   const int bufsize = 256;
-  char buffer[bufsize] = {0};
+  char buffer[bufsize] = {};
 
   if (!fp)
   {
@@ -1868,7 +1868,7 @@ int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &members)
     int len = sizeof(RECORD_ENTRY);
     for (int i = 0; i < rec.count; i = i + len)
     {
-      RECORD_ENTRY entry = {0};
+      RECORD_ENTRY entry = {};
       memcpy(&entry, data, sizeof(entry));
       long long int end = 0xFFFFFFFFFFFFFFFF; // indicates end of entries
       if (memcmp(entry.name, &end, sizeof(end)) == 0)
@@ -1889,7 +1889,7 @@ int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &members)
 
         unsigned char info = entry.info;
         unsigned char pointer_count = entry.info;
-        char name[9] = {0};
+        char name[9] = {};
         if (info & 0x80) // bit 0 indicates alias
         {
           // TODO(Kelosky): // member name is an alias
@@ -2574,7 +2574,7 @@ void load_volsers_from_catalog(const unsigned char *&data, const int field_len, 
   entry.multivolume = num_volumes > 1;
   entry.volsers.reserve(num_volumes);
 
-  char buffer[MAX_VOLSER_LENGTH + 1] = {0};
+  char buffer[MAX_VOLSER_LENGTH + 1] = {};
   for (int i = 0; i < num_volumes; i++)
   {
     memset(buffer, 0x00, sizeof(buffer)); // clear buffer
@@ -2823,7 +2823,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &datasets, bool sh
     work_area_total -= sizeof(ZDS_CSI_HEADER);
     work_area_total -= sizeof(ZDS_CSI_CATALOG);
 
-    char buffer[sizeof(f->name) + 1] = {0};
+    char buffer[sizeof(f->name) + 1] = {};
 
     while (work_area_total > 0)
     {
