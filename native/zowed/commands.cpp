@@ -173,7 +173,7 @@ void register_tso_commands(CommandDispatcher &dispatcher)
 {
   dispatcher.register_command("tsoCommand",
                               CommandBuilder(tso::handle_tso_issue)
-                                  .validate<IssueTsoRequest, IssueTsoResponse>()
+                                  .validate<IssueTsoCmdRequest, IssueTsoCmdResponse>()
                                   .rename_arg("commandText", "command")
                                   .read_stdout("data", false));
 }
