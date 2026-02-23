@@ -64,7 +64,12 @@
 #define ZDS_DSORG_VSAM "VS"    // VSAM
 #define ZDS_DSORG_PS "PS"      // Sequential
 #define ZDS_DSORG_PO "PO"      // Partitioned
+#define ZDS_DSORG_POU "POU"    // Partitioned Unmovable
 #define ZDS_DSORG_DA "DA"      // Direct Access
+
+// DSNTYPE values
+#define ZDS_DSNTYPE_PDS "PDS"         // Partitioned Data Set
+#define ZDS_DSNTYPE_LIBRARY "LIBRARY" // PDSE (Partitioned Data Set Extended)
 
 // Record format constants (not exhaustive)
 #define ZDS_RECFM_FB "FB"   // Fixed Blocked
