@@ -4,7 +4,7 @@ All notable changes to the Client code for "zowe-native-proto-sdk" are documente
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## Recent Changes
+## `0.2.4`
 
 - Added support for renaming data set members in the `RpcClientApi` class. [#765] (https://github.com/zowe/zowe-native-proto/pull/765)
 - Made the `recursive` property optional for USS request types. [#648](https://github.com/zowe/zowe-native-proto/issues/648)
