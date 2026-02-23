@@ -112,7 +112,6 @@ int zutm1lpl(ZDIAG *diag, int *num_dsns, PARMLIB_DSNS *dsns)
   int rsn = 0;
   char *callername = "ZOWEX           ";
   IEFPRMLB_MODEL(iefprmlbm);
-  IEFPRMLB(iefprmlbm, rc, rc, rc, rsn);
 
 #define MAX_ENTRIES 11
 #define MAX_SIZE 60
