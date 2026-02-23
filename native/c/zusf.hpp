@@ -23,6 +23,10 @@
 #include "zusf.hpp"
 #include "zusftype.h"
 
+#ifndef PATH_MAX
+#define PATH_MAX 1024
+#endif
+
 typedef struct _ListOptions
 {
   bool all_files;
