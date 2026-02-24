@@ -951,13 +951,16 @@ int zusf_move_uss_file_or_dir(ZUSF *zusf, const string &source, const string &ta
     return RTNCD_FAILURE;
   }
 
+  // TODO(zFernand0): Use std::filesystem::absolute instead of realpath when C++17 is available
   // resolve source path
   char resolved_source[PATH_MAX];
-  if (realpath(source.c_str(), resolved_source) == nullptr)
+  auto absolute_source = realpath(source.c_str(), resolved_source);
+  if (absolute_source == nullptr)
   {
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to resolve source path '%s'", source.c_str());
     return RTNCD_FAILURE;
   }
+  free(absolute_source);
 
   // target related variables
   char resolved_target[PATH_MAX];
@@ -974,12 +977,15 @@ int zusf_move_uss_file_or_dir(ZUSF *zusf, const string &source, const string &ta
       return RTNCD_FAILURE;
     }
 
+    // TODO(zFernand0): Use std::filesystem::absolute instead of realpath when C++17 is available
     // resolve target path, save it to resolved_target
-    if (realpath(target.c_str(), resolved_target) == nullptr)
+    auto absolute_target = realpath(target.c_str(), resolved_target);
+    if (absolute_target == nullptr)
     {
       zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to resolve target path '%s'", target.c_str());
       return RTNCD_FAILURE;
     }
+    free(absolute_target);
 
     // check if paths are identical
     if (strcmp(resolved_source, resolved_target) == 0)
@@ -1011,9 +1017,11 @@ int zusf_move_uss_file_or_dir(ZUSF *zusf, const string &source, const string &ta
     new_target = zusf_join_path(resolved_target, source.substr(source.find_last_of("/") + 1));
   }
 
-  if (rename(source.c_str(), new_target.c_str()) == -1)
+  // TODO(zFernand0): Use std::filesystem::rename instead of rename when C++17 is available
+  if (rename(source.c_str(), new_target.c_str()) != 0)
   {
-    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to move file or directory from '%s' to '%s'", source.c_str(), target.c_str());
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to move file or directory from '%s' to '%s' errno: %d", source.c_str(), target.c_str(), errno);
+    // zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to move file or directory from '%s' to '%s'\n resolved_source: '%s' resolved_target: '%s', new_target: '%s'", source.c_str(), target.c_str(), resolved_source, resolved_target, new_target.c_str());
     return RTNCD_FAILURE;
   }
 
