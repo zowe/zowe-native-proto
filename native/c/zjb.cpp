@@ -14,7 +14,7 @@
 #include <cstring>
 #include <vector>
 #include <iomanip>
-#include <stdio.h>
+#include <cstdio>
 #include <unistd.h>
 #include "iazbtokp.h"
 #include "iefzb4d0.h"

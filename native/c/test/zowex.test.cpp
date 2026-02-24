@@ -9,7 +9,7 @@
  *
  */
 
-#include <stdlib.h>
+#include <cstdlib>
 #include <string>
 #include "ztest.hpp"
 #include "ztype.h"

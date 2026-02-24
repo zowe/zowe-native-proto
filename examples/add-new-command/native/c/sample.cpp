@@ -10,7 +10,7 @@
  */
 
 #include <string>
-#include <time.h>
+#include <ctime>
 #include "parser.hpp"
 
 namespace sample

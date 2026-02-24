@@ -13,7 +13,7 @@
 #include <chrono>
 #include <map>
 #include <mutex>
-#include <signal.h>
+#include <csignal>
 #include <sstream>
 #include <string>
 #include <thread>

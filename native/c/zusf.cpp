@@ -20,7 +20,6 @@
 #define _LARGE_TIME_API
 #endif
 
-#include <limits.h>
 #include <limits>
 #include <climits>
 
@@ -28,8 +27,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <dirent.h>
-#include <stdio.h>
-#include <string.h>
+#include <cstdio>
 #include <cstring>
 #include <fcntl.h>
 #include <fstream>
@@ -41,7 +39,7 @@
 #define _POSIX_SOURCE
 #endif
 #include <unistd.h>
-#include <stdlib.h>
+#include <cstdlib>
 #include <unordered_map>
 #include "zusf.hpp"
 #include "zdyn.h"
@@ -55,10 +53,10 @@
 #endif
 #include <sys/xattr.h>
 #include <vector>
-#include <time.h>
+#include <ctime>
 #include <iomanip>
 #include <sstream>
-#include <errno.h>
+#include <cerrno>
 
 using namespace std;
 

@@ -9,16 +9,15 @@
  *
  */
 
+#include <cerrno>
 #include <fstream>
 #include <string>
 
 #ifdef __MVS__
 #include <sys/stat.h>
-#include <errno.h>
 #else
 #include <sys/stat.h>
 #include <unistd.h>
-#include <errno.h>
 #endif
 
 #include "ztest.hpp"

@@ -13,7 +13,7 @@
 #include <cstdio>
 #include <ctime>
 #include <fcntl.h>
-#include <stdlib.h>
+#include <cstdlib>
 #include <string>
 #include <sys/stat.h>
 #include <sys/types.h>

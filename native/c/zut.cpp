@@ -11,7 +11,7 @@
 
 #define _OPEN_SYS_EXT
 #include <sys/ps.h>
-#include <stdio.h>
+#include <cstdio>
 #include <cstring>
 #include <fstream>
 #include <iostream>

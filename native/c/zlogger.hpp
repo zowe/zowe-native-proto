@@ -24,7 +24,7 @@
 
 #include <sys/stat.h>
 #include <unistd.h>
-#include <errno.h>
+#include <cerrno>
 
 typedef zlog_level_t LogLevel;
 

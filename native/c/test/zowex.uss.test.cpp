@@ -15,10 +15,10 @@
 #include <ctime>
 #include <iterator>
 #include <sstream>
-#include <stdlib.h>
+#include <cstdlib>
 #include <string>
 #include "zutils.hpp"
-#include <stdio.h>
+#include <cstdio>
 #include "test_utils.hpp"
 #include <sys/types.h>
 #include <sys/stat.h>

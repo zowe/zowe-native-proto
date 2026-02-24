@@ -15,10 +15,10 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <string.h>
+#include <cstring>
 #include <pwd.h>
 #include <grp.h>
-#include <time.h>
+#include <ctime>
 
 #include "ztest.hpp"
 #include "zusf.hpp"

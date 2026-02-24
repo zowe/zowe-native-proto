@@ -19,8 +19,8 @@
 #define _POSIX_SOURCE
 #endif
 #include <unistd.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include <cstdio>
+#include <cstdlib>
 #include <climits>
 #include <cstring>
 #include <fstream>
@@ -36,7 +36,6 @@
 #include "iefzb4d2.h"
 #include "zdsm.h"
 #include <fcntl.h>
-#include <stdlib.h>
 #include "zbase64.h"
 #include "zdsm.h"
 

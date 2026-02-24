@@ -10,7 +10,7 @@
  */
 
 #include <stdexcept>
-#include <signal.h>
+#include <csignal>
 #include <unistd.h>
 #include <sys/wait.h>
 #include <sys/stat.h>

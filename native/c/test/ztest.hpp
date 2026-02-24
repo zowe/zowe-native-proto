@@ -19,8 +19,8 @@
 #define _POSIX_SOURCE
 #include <iostream>
 #include <vector>
-#include <setjmp.h>
-#include <signal.h>
+#include <csetjmp>
+#include <csignal>
 #include <type_traits>
 #include <cxxabi.h>
 #include <typeinfo>

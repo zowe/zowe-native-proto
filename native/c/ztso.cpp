@@ -13,7 +13,7 @@
 #define _XOPEN_SOURCE
 #endif
 
-#include <stdio.h>
+#include <cstdio>
 #include <cstring>
 #include <fstream>
 #include <iostream>
@@ -21,8 +21,7 @@
 #include <iomanip>
 #include <algorithm>
 #include <iconv.h>
-#include <stdlib.h>
-#include <stdio.h>
+#include <cstdlib>
 #include <string>
 #include <sstream>
 #include "ztype.h"
