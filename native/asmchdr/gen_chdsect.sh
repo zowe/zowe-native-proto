@@ -57,9 +57,11 @@ chtag -tc ISO8859-1 build-out/$filename_no_ext.h
 echo "Conversion completed."
 printf "\n"
 
-echo "Replacing legacy pragma syntax for ibm-clang compatibility..."
-sed -i 's/#pragma pack(packed)/#pragma pack(1)/g; s/#pragma pack(reset)/#pragma pack()/g' build-out/$filename_no_ext.h
-echo "Pragma replacement completed."
+echo "Adding #ifdef for ibm-clang vs legacy pragma syntax..."
+sed -i \
+  's/#pragma pack(packed)/#ifdef __open_xl__\n#pragma pack(1)\n#else\n#pragma pack(packed)\n#endif/g; s/#pragma pack(reset)/#ifdef __open_xl__\n#pragma pack()\n#else\n#pragma pack(reset)\n#endif/g' \
+  build-out/$filename_no_ext.h
+echo "Pragma ifdef replacement completed."
 printf "\n"
 
 echo "Cleaning up..."
