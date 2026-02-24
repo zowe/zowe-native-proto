@@ -1538,9 +1538,22 @@ void zusf_tests()
                              Expect(result).ToBe(RTNCD_FAILURE);
                              Expect(string(zusf.diag.e_msg)).ToContain("Cannot move directory '" + source + "'. Target '" + test_file + "' is not a directory");
                            });
+
+                        it("should fail when using force false and target exists",
+                           [&]() -> void
+                           {
+                             string source = get_random_uss(zusf_test_dir);
+                             string target = get_random_uss(zusf_test_dir);
+                             TestFileGuard source_file(source.c_str());
+                             TestFileGuard target_file(target.c_str());
+
+                             int result = zusf_move_uss_file_or_dir(&zusf, source, target, false);
+                             Expect(result).ToBe(RTNCD_FAILURE);
+                             Expect(string(zusf.diag.e_msg)).ToContain("Target path '" + target + "' already exists");
+                           });
                         // Done with error conditions
                       });
-             describe("target missing", [&]() -> void
+             describe("target missing - happy paths", [&]() -> void
                       {
                         it("should move a file to a new location",
                            [&]() -> void
