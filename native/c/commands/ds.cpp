@@ -442,23 +442,23 @@ int handle_data_set_list(InvocationContext &context)
     fields.reserve((attributes ? num_attr_fields : 0) + 1);
     const auto entries_array = arr();
 
-    for (vector<ZDSEntry>::iterator it = entries.begin(); it != entries.end(); ++it)
+    for (auto &entry : entries)
     {
       if (emit_csv)
       {
-        fields.push_back(it->name);
+        fields.push_back(entry.name);
         if (attributes)
         {
-          fields.push_back(it->multivolume ? (it->volser + "+") : it->volser);
-          fields.push_back(it->devtype != 0 ? zut_int_to_string(it->devtype, true) : "");
-          fields.push_back(it->dsorg);
-          fields.push_back(it->recfm);
-          fields.push_back(it->lrecl == -1 ? "" : std::to_string(it->lrecl));
-          fields.push_back(it->blksize == -1 ? "" : std::to_string(it->blksize));
-          fields.push_back(it->primary == -1 ? "" : std::to_string(it->primary));
-          fields.push_back(it->secondary == -1 ? "" : std::to_string(it->secondary));
-          fields.push_back(it->dsntype);
-          fields.push_back(it->migrated ? "YES" : "NO");
+          fields.push_back(entry.multivolume ? (entry.volser + "+") : entry.volser);
+          fields.push_back(entry.devtype != 0 ? zut_int_to_string(entry.devtype, true) : "");
+          fields.push_back(entry.dsorg);
+          fields.push_back(entry.recfm);
+          fields.push_back(entry.lrecl == -1 ? "" : std::to_string(entry.lrecl));
+          fields.push_back(entry.blksize == -1 ? "" : std::to_string(entry.blksize));
+          fields.push_back(entry.primary == -1 ? "" : std::to_string(entry.primary));
+          fields.push_back(entry.secondary == -1 ? "" : std::to_string(entry.secondary));
+          fields.push_back(entry.dsntype);
+          fields.push_back(entry.migrated ? "YES" : "NO");
         }
         context.output_stream() << zut_format_as_csv(fields) << endl;
         fields.clear();
@@ -468,27 +468,27 @@ int handle_data_set_list(InvocationContext &context)
         if (attributes)
         {
           context.output_stream() << left
-                                  << setw(44) << it->name << " "
-                                  << setw(7) << (it->multivolume ? (it->volser + "+") : it->volser) << " "
-                                  << setw(7) << (it->devtype != 0 ? zut_int_to_string(it->devtype, true) : "") << " "
-                                  << setw(4) << it->dsorg << " "
-                                  << setw(6) << it->recfm << " "
-                                  << setw(6) << (it->lrecl == -1 ? "" : std::to_string(it->lrecl)) << " "
-                                  << setw(6) << (it->blksize == -1 ? "" : std::to_string(it->blksize)) << " "
-                                  << setw(10) << (it->primary == -1 ? "" : std::to_string(it->primary)) << " "
-                                  << setw(10) << (it->secondary == -1 ? "" : std::to_string(it->secondary)) << " "
-                                  << setw(8) << it->dsntype << " "
-                                  << (it->migrated ? "YES" : "NO")
+                                  << setw(44) << entry.name << " "
+                                  << setw(7) << (entry.multivolume ? (entry.volser + "+") : entry.volser) << " "
+                                  << setw(7) << (entry.devtype != 0 ? zut_int_to_string(entry.devtype, true) : "") << " "
+                                  << setw(4) << entry.dsorg << " "
+                                  << setw(6) << entry.recfm << " "
+                                  << setw(6) << (entry.lrecl == -1 ? "" : std::to_string(entry.lrecl)) << " "
+                                  << setw(6) << (entry.blksize == -1 ? "" : std::to_string(entry.blksize)) << " "
+                                  << setw(10) << (entry.primary == -1 ? "" : std::to_string(entry.primary)) << " "
+                                  << setw(10) << (entry.secondary == -1 ? "" : std::to_string(entry.secondary)) << " "
+                                  << setw(8) << entry.dsntype << " "
+                                  << (entry.migrated ? "YES" : "NO")
                                   << endl;
         }
         else
         {
-          context.output_stream() << left << setw(44) << it->name << endl;
+          context.output_stream() << left << setw(44) << entry.name << endl;
         }
       }
 
-      const auto entry = build_ds_object(*it, attributes);
-      entries_array->push(entry);
+      const auto ds_obj = build_ds_object(entry, attributes);
+      entries_array->push(ds_obj);
     }
 
     const auto result = obj();
@@ -539,11 +539,11 @@ int handle_data_set_list_members(InvocationContext &context)
   if (RTNCD_SUCCESS == rc || RTNCD_WARNING == rc)
   {
     const auto entries_array = arr();
-    for (vector<ZDSMem>::iterator it = members.begin(); it != members.end(); ++it)
+    for (const auto &mem : members)
     {
-      context.output_stream() << left << setw(12) << it->name << endl;
+      context.output_stream() << left << setw(12) << mem.name << endl;
       const auto entry = obj();
-      string trimmed_name = it->name;
+      string trimmed_name = mem.name;
       entry->set("name", str(zut_rtrim(trimmed_name)));
       entries_array->push(entry);
     }

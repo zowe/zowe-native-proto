@@ -191,9 +191,9 @@ void zds_tests()
                              rc = zds_list_data_sets(&zds, dsn, entries);
                              ExpectWithContext(rc, zds.diag.e_msg).ToBe(0);
                              string found = "";
-                             for (vector<ZDSEntry>::iterator it = entries.begin(); it != entries.end(); ++it)
+                             for (const auto &e : entries)
                              {
-                               string trimmed_name = it->name;
+                               string trimmed_name = e.name;
                                zut_rtrim(trimmed_name);
                                if (trimmed_name == dsn)
                                {
@@ -213,13 +213,13 @@ void zds_tests()
                              rc = zds_list_data_sets(&zds, dsn, entries, true);
                              ExpectWithContext(rc, zds.diag.e_msg).ToBe(0);
                              ZDSEntry *found = nullptr;
-                             for (vector<ZDSEntry>::iterator it = entries.begin(); it != entries.end(); ++it)
+                             for (auto &e : entries)
                              {
-                               string trimmed_name = it->name;
+                               string trimmed_name = e.name;
                                zut_rtrim(trimmed_name);
                                if (trimmed_name == dsn)
                                {
-                                 found = &(*it);
+                                 found = &e;
                                }
                              }
                              Expect(found != nullptr).ToBe(true);
@@ -238,9 +238,9 @@ void zds_tests()
                              rc = zds_list_data_sets(&zds, pattern, entries);
                              ExpectWithContext(rc, zds.diag.e_msg).ToBe(0);
                              string found = "";
-                             for (vector<ZDSEntry>::iterator it = entries.begin(); it != entries.end(); ++it)
+                             for (const auto &e : entries)
                              {
-                               string trimmed_name = it->name;
+                               string trimmed_name = e.name;
                                zut_rtrim(trimmed_name);
                                if (trimmed_name == dsn)
                                {

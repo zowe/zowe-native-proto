@@ -44,7 +44,7 @@ int zut_run(ZDIAG &diag, const string &program, const string &parms)
 int zut_run(const string &program)
 {
   ZDIAG diag = {};
-  return ZUTRUN(&diag, program.c_str(), NULL);
+  return ZUTRUN(&diag, program.c_str(), nullptr);
 }
 
 unsigned char zut_get_key()
@@ -221,84 +221,9 @@ int zut_list_parmlib(ZDIAG &diag, std::vector<std::string> &parmlibs)
   return rc;
 }
 
-/**
- * Get char value from hex byte, e.g. 0x0E -> 'E'
- */
 char zut_get_hex_char(int num)
 {
-  char val = '?';
-
-  switch (num)
-  {
-  case 0:
-    /* code */
-    val = '0';
-    break;
-  case 1:
-    /* code */
-    val = '1';
-    break;
-  case 2:
-    /* code */
-    val = '2';
-    break;
-  case 3:
-    /* code */
-    val = '3';
-    break;
-  case 4:
-    /* code */
-    val = '4';
-    break;
-  case 5:
-    /* code */
-    val = '5';
-    break;
-  case 6:
-    /* code */
-    val = '6';
-    break;
-  case 7:
-    /* code */
-    val = '7';
-    break;
-  case 8:
-    /* code */
-    val = '8';
-    break;
-  case 9:
-    /* code */
-    val = '9';
-    break;
-  case 10:
-    /* code */
-    val = 'A';
-    break;
-  case 11:
-    /* code */
-    val = 'B';
-    break;
-  case 12:
-    /* code */
-    val = 'C';
-    break;
-  case 13:
-    /* code */
-    val = 'D';
-    break;
-  case 14:
-    /* code */
-    val = 'E';
-    break;
-  case 15:
-    /* code */
-    val = 'F';
-    break;
-  default:
-    break;
-  }
-
-  return val;
+  return "0123456789ABCDEF"[num & 0xF];
 }
 
 // built from pseudocode in https://en.wikipedia.org/wiki/Adler-32#Calculation
@@ -454,7 +379,7 @@ size_t zut_iconv(iconv_t cd, ZConvData &data, ZDIAG &diag, bool flush_state)
   // Flush the shift state for stateful encodings (e.g., IBM-939 with SI/SO sequences)
   if (flush_state)
   {
-    size_t flush_rc = iconv(cd, NULL, NULL, &data.output_iter, &output_bytes_remaining);
+    size_t flush_rc = iconv(cd, nullptr, nullptr, &data.output_iter, &output_bytes_remaining);
     if (-1 == flush_rc)
     {
       diag.e_msg_len = sprintf(diag.e_msg, "[zut_iconv] Error flushing shift state. rc=%zu,errno=%d", flush_rc, errno);
@@ -482,7 +407,7 @@ vector<char> zut_iconv_flush(iconv_t cd, ZDIAG &diag)
   size_t output_bytes_remaining = max_output_size;
 
   char *start_pos = output_iter;
-  size_t flush_rc = iconv(cd, NULL, NULL, &output_iter, &output_bytes_remaining);
+  size_t flush_rc = iconv(cd, nullptr, nullptr, &output_iter, &output_bytes_remaining);
   if (-1 == flush_rc)
   {
     diag.e_msg_len = sprintf(diag.e_msg, "[zut_iconv_flush] Error flushing shift state. rc=%zu,errno=%d", flush_rc, errno);
@@ -656,16 +581,16 @@ int zut_loop_dynalloc(ZDIAG &diag, vector<string> &list)
   unsigned int code = 0;
   string response;
 
-  for (vector<string>::iterator it = list.begin(); it != list.end(); it++)
+  for (const auto &alloc : list)
   {
-    rc = zut_bpxwdyn(*it, &code, response);
+    rc = zut_bpxwdyn(alloc, &code, response);
 
     if (0 != rc)
     {
       diag.detail_rc = ZUT_RTNCD_SERVICE_FAILURE;
       diag.service_rc = rc;
       strcpy(diag.service_name, "bpxwdyn");
-      diag.e_msg_len = sprintf(diag.e_msg, "bpxwdyn failed with '%s' rc: '%d', emsg: '%s'", diag.service_name, rc, (*it).c_str());
+      diag.e_msg_len = sprintf(diag.e_msg, "bpxwdyn failed with '%s' rc: '%d', emsg: '%s'", diag.service_name, rc, alloc.c_str());
       return RTNCD_FAILURE;
     }
   }
@@ -678,19 +603,19 @@ int zut_free_dynalloc_dds(ZDIAG &diag, vector<string> &list)
   vector<string> free_dds;
   free_dds.reserve(list.size());
 
-  for (vector<string>::iterator it = list.begin(); it != list.end(); it++)
+  for (const auto &entry : list)
   {
-    string alloc_dd = *it;
+    string alloc_dd = entry;
     const auto dd_start = alloc_dd.find("dd(");
     if (dd_start == string::npos)
     {
-      diag.e_msg_len = sprintf(diag.e_msg, "Invalid format in DD alloc string: %s", it->c_str());
+      diag.e_msg_len = sprintf(diag.e_msg, "Invalid format in DD alloc string: %s", entry.c_str());
       return RTNCD_FAILURE;
     }
     const auto paren_end = alloc_dd.find(")", dd_start + 3);
     if (paren_end == string::npos)
     {
-      diag.e_msg_len = sprintf(diag.e_msg, "Invalid format in DD alloc string: %s", it->c_str());
+      diag.e_msg_len = sprintf(diag.e_msg, "Invalid format in DD alloc string: %s", entry.c_str());
       return RTNCD_FAILURE;
     }
     free_dds.push_back("free " + alloc_dd.substr(dd_start, paren_end - dd_start + 1));

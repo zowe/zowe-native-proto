@@ -137,9 +137,9 @@ static vector<string> get_member_names(const string &pds_dsn)
   vector<ZDSMem> members;
   ZDS temp_zds = {};
   zds_list_members(&temp_zds, pds_dsn, members);
-  for (vector<ZDSMem>::iterator it = members.begin(); it != members.end(); ++it)
+  for (const auto &mem : members)
   {
-    string name = it->name;
+    string name = mem.name;
     zut_trim(name);
     names.push_back(name);
   }
@@ -1488,7 +1488,7 @@ int zds_close_output_bpam(ZDS *zds, IO_CTRL *ioc)
   int rc = 0;
   unsigned int code = 0;
   string resp = "";
-  if (ioc == NULL)
+  if (ioc == nullptr)
   {
     zds->diag.detail_rc = RTNCD_WARNING;
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "IO_CTRL is NULL");
@@ -2673,7 +2673,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &datasets, bool sh
 {
   int rc = 0;
 
-  zds->csi = NULL;
+  zds->csi = nullptr;
 
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=directory-catalog-field-names
   string fields_long[CSI_FIELD_COUNT][CSI_FIELD_LEN] = {{"VOLSER"}, {"DEVTYP"}, {"DATACLAS"}, {"MGMTCLAS"}, {"STORCLAS"}};

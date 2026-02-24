@@ -72,44 +72,44 @@ int handle_job_list(InvocationContext &context)
     bool emit_csv = context.get<bool>("response-format-csv", false);
     const auto entries_array = arr();
 
-    for (vector<ZJob>::iterator it = jobs.begin(); it != jobs.end(); it++)
+    for (const auto &job : jobs)
     {
       if (emit_csv)
       {
         vector<string> fields;
         fields.reserve(5);
-        fields.push_back(it->jobid);
-        fields.push_back(it->jobname);
-        fields.push_back(it->owner);
-        fields.push_back(it->status);
-        fields.push_back(it->retcode);
+        fields.push_back(job.jobid);
+        fields.push_back(job.jobname);
+        fields.push_back(job.owner);
+        fields.push_back(job.status);
+        fields.push_back(job.retcode);
         context.output_stream() << zut_format_as_csv(fields) << endl;
       }
       else
       {
-        context.output_stream() << it->jobid << " " << it->jobname << " " << it->owner << " " << left << setw(7) << it->status << " " << it->retcode << endl;
+        context.output_stream() << job.jobid << " " << job.jobname << " " << job.owner << " " << left << setw(7) << job.status << " " << job.retcode << endl;
       }
 
       const auto entry = obj();
-      entry->set("id", str(it->jobid));
-      string trimmed_name = it->jobname;
+      entry->set("id", str(job.jobid));
+      string trimmed_name = job.jobname;
       entry->set("name", str(zut_rtrim(trimmed_name)));
-      trimmed_name = it->subsystem;
+      trimmed_name = job.subsystem;
       if (!zut_rtrim(trimmed_name).empty())
         entry->set("subsystem", str(trimmed_name));
-      trimmed_name = it->owner;
+      trimmed_name = job.owner;
       entry->set("owner", str(zut_rtrim(trimmed_name)));
-      entry->set("status", str(it->status));
-      entry->set("type", str(it->type));
-      trimmed_name = it->jobclass;
+      entry->set("status", str(job.status));
+      entry->set("type", str(job.type));
+      trimmed_name = job.jobclass;
       entry->set("class", str(zut_rtrim(trimmed_name)));
-      if (!it->retcode.empty())
-        entry->set("retcode", str(it->retcode));
-      trimmed_name = it->correlator;
+      if (!job.retcode.empty())
+        entry->set("retcode", str(job.retcode));
+      trimmed_name = job.correlator;
       if (!zut_rtrim(trimmed_name).empty())
         entry->set("correlator", str(trimmed_name));
-      entry->set("phase", i64(it->phase));
-      entry->set("phaseName", str(it->full_status));
+      entry->set("phase", i64(job.phase));
+      entry->set("phaseName", str(job.full_status));
       entries_array->push(entry);
     }
 
@@ -156,31 +156,31 @@ int handle_job_list_files(InvocationContext &context)
     fields.reserve(5);
     const auto entries_array = arr();
 
-    for (vector<ZJobDD>::iterator it = job_dds.begin(); it != job_dds.end(); ++it)
+    for (const auto &dd : job_dds)
     {
-      fields.push_back(it->ddn);
-      fields.push_back(it->dsn);
-      fields.push_back(std::to_string(it->key));
-      fields.push_back(it->stepname);
-      fields.push_back(it->procstep);
+      fields.push_back(dd.ddn);
+      fields.push_back(dd.dsn);
+      fields.push_back(std::to_string(dd.key));
+      fields.push_back(dd.stepname);
+      fields.push_back(dd.procstep);
       if (emit_csv)
       {
         context.output_stream() << zut_format_as_csv(fields) << endl;
       }
       else
       {
-        context.output_stream() << left << setw(9) << it->ddn << " " << it->dsn << " " << setw(4) << it->key << " " << it->stepname << " " << it->procstep << endl;
+        context.output_stream() << left << setw(9) << dd.ddn << " " << dd.dsn << " " << setw(4) << dd.key << " " << dd.stepname << " " << dd.procstep << endl;
       }
 
       const auto entry = obj();
-      string trimmed_name = it->ddn;
+      string trimmed_name = dd.ddn;
       entry->set("ddname", str(zut_rtrim(trimmed_name)));
-      trimmed_name = it->dsn;
+      trimmed_name = dd.dsn;
       entry->set("dsname", str(zut_rtrim(trimmed_name)));
-      entry->set("id", i64(it->key));
-      trimmed_name = it->stepname;
+      entry->set("id", i64(dd.key));
+      trimmed_name = dd.stepname;
       entry->set("stepname", str(zut_rtrim(trimmed_name)));
-      trimmed_name = it->procstep;
+      trimmed_name = dd.procstep;
       entry->set("procstep", str(zut_rtrim(trimmed_name)));
       entries_array->push(entry);
     }
@@ -222,9 +222,9 @@ int handle_job_list_proclib(InvocationContext &context)
     return RTNCD_FAILURE;
   }
 
-  for (vector<string>::iterator it = proclib.begin(); it != proclib.end(); it++)
+  for (const auto &lib : proclib)
   {
-    context.output_stream() << *it << endl;
+    context.output_stream() << lib << endl;
   }
 
   return RTNCD_SUCCESS;

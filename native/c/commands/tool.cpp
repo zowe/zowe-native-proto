@@ -131,9 +131,9 @@ int handle_tool_list_parmlib(InvocationContext &context)
     return RTNCD_FAILURE;
   }
 
-  for (vector<string>::iterator it = parmlibs.begin(); it != parmlibs.end(); ++it)
+  for (const auto &lib : parmlibs)
   {
-    context.output_stream() << *it << endl;
+    context.output_stream() << lib << endl;
   }
 
   return rc;
@@ -326,9 +326,9 @@ int handle_tool_run(InvocationContext &context)
   vector<string> dds;
 
   const ArgumentMap &dynamic_args = context.dynamic_arguments();
-  for (ArgumentMap::const_iterator it = dynamic_args.begin(); it != dynamic_args.end(); ++it)
+  for (const auto &kv : dynamic_args)
   {
-    dds.push_back("alloc dd(" + it->first + ") " + it->second.get_string_value());
+    dds.push_back("alloc dd(" + kv.first + ") " + kv.second.get_string_value());
   }
 
   ZDIAG diag = {};
@@ -351,9 +351,9 @@ int handle_tool_run(InvocationContext &context)
       if (dds.size() > 0)
       {
         context.error_stream() << "  Allocations: " << endl;
-        for (vector<string>::iterator it = dds.begin(); it != dds.end(); ++it)
+        for (const auto &dd : dds)
         {
-          context.error_stream() << "    " << *it << endl;
+          context.error_stream() << "    " << dd << endl;
         }
       }
       zut_free_dynalloc_dds(diag, dds);
@@ -385,9 +385,9 @@ int handle_tool_run(InvocationContext &context)
       if (dds.size() > 0)
       {
         context.error_stream() << "  Allocations: " << endl;
-        for (vector<string>::iterator it = dds.begin(); it != dds.end(); ++it)
+        for (const auto &dd : dds)
         {
-          context.error_stream() << "    " << *it << endl;
+          context.error_stream() << "    " << dd << endl;
         }
       }
     }
@@ -404,9 +404,9 @@ int handle_tool_run(InvocationContext &context)
       if (dds.size() > 0)
       {
         context.error_stream() << "  Allocations: " << endl;
-        for (vector<string>::iterator it = dds.begin(); it != dds.end(); ++it)
+        for (const auto &dd : dds)
         {
-          context.error_stream() << "    " << *it << endl;
+          context.error_stream() << "    " << dd << endl;
         }
       }
       zut_free_dynalloc_dds(diag, dds);

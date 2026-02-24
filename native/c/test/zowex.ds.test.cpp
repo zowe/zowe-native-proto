@@ -53,29 +53,29 @@ void zowex_ds_tests()
                  [&]() -> void
                  {
                    TestLog("Deleting " + to_string(_ds.size()) + " data sets...");
-                   for (vector<string>::iterator it = _ds.begin(); it != _ds.end(); ++it)
+                   for (const auto &ds : _ds)
                    {
                      try
                      {
-                       string command = zowex_command + " data-set delete " + *it;
+                       string command = zowex_command + " data-set delete " + ds;
                        string response;
                        int rc = execute_command_with_output(command, response);
                        ExpectWithContext(rc, response).ToBe(0);
-                       Expect(response).ToContain("Data set '" + *it + "' deleted"); // ds deleted
+                       Expect(response).ToContain("Data set '" + ds + "' deleted"); // ds deleted
                      }
                      catch (...)
                      {
                        try
                        {
                          string response;
-                         string command = zowex_command + " data-set list " + *it + " --no-warn --me 1";
+                         string command = zowex_command + " data-set list " + ds + " --no-warn --me 1";
                          int rc = execute_command_with_output(command, response);
                          ExpectWithContext(rc, response).ToBe(0);
-                         Expect(response).Not().ToContain(*it);
+                         Expect(response).Not().ToContain(ds);
                        }
                        catch (...)
                        {
-                         TestLog("Failed to delete: " + *it);
+                         TestLog("Failed to delete: " + ds);
                        }
                      }
                    }

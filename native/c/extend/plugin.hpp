@@ -793,14 +793,14 @@ public:
 
   const Argument *find(const std::string &key) const
   {
-    ArgumentMap::const_iterator it = m_args.find(key);
+    auto it = m_args.find(key);
     return it != m_args.end() ? &it->second : nullptr;
   }
 
   template <typename T>
   const T *get_if(const std::string &key) const
   {
-    ArgumentMap::const_iterator it = m_args.find(key);
+    auto it = m_args.find(key);
     if (it == m_args.end())
       return nullptr;
     return ArgGetter<T>::get(it->second);
@@ -1283,9 +1283,9 @@ inline bool PluginManager::is_display_name_in_use(const std::string &name) const
     return false;
   }
 
-  for (std::vector<LoadedPlugin>::const_iterator it = m_plugins.begin(); it != m_plugins.end(); ++it)
+  for (const auto &plugin : m_plugins)
   {
-    if (it->metadata.display_name == name)
+    if (plugin.metadata.display_name == name)
     {
       return true;
     }

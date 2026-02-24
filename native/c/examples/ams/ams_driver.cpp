@@ -49,7 +49,7 @@ int main()
   data.push_back(" one more");
 
   ZDS zds = {0};
-  IO_CTRL *ioc = NULL;
+  IO_CTRL *ioc = nullptr;
   rc = zds_open_output_bpam(&zds, "DKELOSKY.IO.O.FB80(data)", ioc);
   // rc = zds_open_output_bpam(&zds, "DKELOSKY.IO.O.V25(OMGNESS)", ioc);
   // rc = zds_open_output_bpam(&zds, "DKELOSKY.IO.O.V256(OMGNESS)", ioc);
@@ -62,9 +62,9 @@ int main()
     return -1;
   }
 
-  for (std::vector<std::string>::iterator it = data.begin(); it != data.end(); ++it)
+  for (const auto &line : data)
   {
-    rc = zds_write_output_bpam(&zds, ioc, *it);
+    rc = zds_write_output_bpam(&zds, ioc, line);
     if (0 != rc)
     {
       std::cout << "zds_write_output_bpam failed: " << rc << std::endl;

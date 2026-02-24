@@ -31,10 +31,9 @@ public:
 
   ~RegistrationContextImpl()
   {
-    for (std::vector<CommandRecord *>::iterator it = m_records.begin();
-         it != m_records.end(); ++it)
+    for (auto *record : m_records)
     {
-      delete *it;
+      delete record;
     }
   }
 
@@ -303,11 +302,8 @@ void PluginManager::register_commands(parser::Command &rootCommand)
 {
   RegistrationContextImpl context(rootCommand);
 
-  for (std::vector<CommandProvider *>::iterator it =
-           m_command_providers.begin();
-       it != m_command_providers.end(); ++it)
+  for (auto *factory : m_command_providers)
   {
-    CommandProvider *factory = *it;
     if (!factory)
       continue;
 
