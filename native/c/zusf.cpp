@@ -1018,10 +1018,11 @@ int zusf_move_uss_file_or_dir(ZUSF *zusf, const string &source, const string &ta
   }
 
   // TODO(zFernand0): Use std::filesystem::rename instead of rename when C++17 is available
-  if (rename(source.c_str(), new_target.c_str()) != 0)
+  string mv_command = "mv " + source + " " + target + " 2>&1";
+  string response;
+  if (zut_run_shell_command(mv_command, response) != 0)
   {
-    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to move file or directory from '%s' to '%s' errno: %d", source.c_str(), target.c_str(), errno);
-    // zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to move file or directory from '%s' to '%s'\n resolved_source: '%s' resolved_target: '%s', new_target: '%s'", source.c_str(), target.c_str(), resolved_source, resolved_target, new_target.c_str());
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to move file or directory from '%s' to '%s'", source.c_str(), target.c_str());
     return RTNCD_FAILURE;
   }
 
