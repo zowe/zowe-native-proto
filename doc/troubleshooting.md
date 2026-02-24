@@ -16,9 +16,9 @@ You should be able to find the `startup.mk` file in `/samples`
 - `cp /samples/startup.mk /etc/startup.mk` <br/>
   _source:_ https://www.ibm.com/support/pages/fsum9383-configuration-file-etcstartupmk-not-found
 
-## Building zut.o - FSUM3221 xlc++: Cannot spawn program /usr/lpp/cbclib/xlc/exe/ccndrvr
+## Building zut.o - FSUM3221 xlc: Cannot spawn program /usr/lpp/cbclib/xlc/exe/ccndrvr
 
-> **Note:** This error is specific to the legacy `xlc++` compiler. Since the project now uses `ibm-clang++64` for C++ compilation, this issue should no longer occur for C++ builds. It may still occur for Metal C builds which continue to use `xlc`.
+> **Note:** Since the project uses `ibm-clang++64` for C++ compilation, this issue should only occur for Metal C builds which use `xlc`.
 
 One workaround is to add `CBC.SCCNCMP` to your system LINKLIST concatenation. Below is an example of doing this via SYSVIEW commands.
 

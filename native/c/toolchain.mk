@@ -9,10 +9,9 @@
 #  Shared toolchain definitions for Zowe native components.
 #
 
-XLC_FLAGS=_CC_ACCEPTABLE_RC=0 _C89_ACCEPTABLE_RC=0 _CXX_ACCEPTABLE_RC=0
 CXX=ibm-clang++64
-CXXLANG=ibm-clang++64
-CC=$(XLC_FLAGS) xlc
+METALC_CC_FLAGS=_CC_ACCEPTABLE_RC=0 _C89_ACCEPTABLE_RC=0 _CXX_ACCEPTABLE_RC=0
+CC=$(METALC_CC_FLAGS) xlc
 ASM=as
 
 CPP_BND_BASE_FLAGS=-Wl,-bMAP $(LDFLAGS)
@@ -62,10 +61,8 @@ ASM_FLAGS=-mRENT
 # Compilation flags
 #
 C_FLAGS_BASE=-fvisibility=default -c
-DLL_CPP_FLAGS_BASE=-fvisibility=default -c -std=gnu++17 -fno-aligned-allocation -D_EXT -D_OPEN_SYS_FILE_EXT=1
 CPP_FLAGS_BASE=-fvisibility=default -c -std=gnu++17 -fno-aligned-allocation -D_EXT -D_OPEN_SYS_FILE_EXT=1
-CXXLANG_FLAGS_BASE=-c -std=gnu++17 -fno-aligned-allocation -D_EXT -D_OPEN_SYS_FILE_EXT=1
-SWIG_FLAGS_BASE=-DSWIG -c -std=gnu++17 -fno-aligned-allocation -D_EXT -D_OPEN_SYS_FILE_EXT=1
+SWIG_FLAGS_BASE=-DSWIG $(CPP_FLAGS_BASE)
 
 #
 # Logging support

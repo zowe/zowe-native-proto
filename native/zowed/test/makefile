@@ -11,8 +11,6 @@
 
 .INCLUDE: ../../c/toolchain.mk
 
-CXX=$(CXXLANG)
-
 OUT_DIR=build-out
 TARGET=$(OUT_DIR)/zowed_test_runner
 
