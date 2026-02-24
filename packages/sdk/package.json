@@ -1,10 +1,10 @@
 {
   "name": "zowe-native-proto-sdk",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "main": "lib/index.js",
   "scripts": {
     "build": "tsc -b",
-    "clean": "tsc -b --clean",
+    "clean": "tsc -b --clean && rimraf tsconfig.tsbuildinfo",
     "lint": "npx @biomejs/biome check --write src tests",
     "test": "vitest run --coverage",
     "test:ui": "vitest --ui --coverage",
@@ -19,6 +19,9 @@
     "bin",
     "lib"
   ],
+  "publishConfig": {
+    "registry": "https://zowe.jfrog.io/zowe/api/npm/npm-local-release/"
+  },
   "dependencies": {
     "base64-stream": "^1.0.0",
     "es-toolkit": "^1.39.10",
