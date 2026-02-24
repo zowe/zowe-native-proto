@@ -84,13 +84,8 @@ inline std::vector<std::string> make_aliases(const char *a1 = 0,
 }
 
 class Command;
-#if defined(COMPAT_USE_TR1_SHARED_PTR) || !defined(__clang__)
-typedef std::tr1::shared_ptr<Command> command_ptr;
-typedef std::tr1::enable_shared_from_this<Command> enable_shared_command;
-#else
 typedef std::shared_ptr<Command> command_ptr;
 typedef std::enable_shared_from_this<Command> enable_shared_command;
-#endif
 
 class ArgumentParser;
 class ParseResult;

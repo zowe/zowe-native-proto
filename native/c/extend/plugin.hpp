@@ -20,11 +20,7 @@
 #include <vector>
 #include <cstddef>
 
-#if defined(__IBMTR1_CPP__) && !defined(__clang__)
-#include <tr1/unordered_map>
-#else
 #include <unordered_map>
-#endif
 
 template <typename Interface>
 class Factory
@@ -41,19 +37,11 @@ namespace ast
 using namespace std;
 struct Ast;
 
-#if !defined(__clang__)
-typedef tr1::shared_ptr<Ast> Node;
-typedef tr1::shared_ptr<string> StringPtr;
-typedef tr1::shared_ptr<vector<Node>> VecPtr;
-typedef tr1::unordered_map<string, Node> ObjMap;
-typedef tr1::shared_ptr<ObjMap> ObjPtr;
-#else
 typedef shared_ptr<Ast> Node;
 typedef shared_ptr<string> StringPtr;
 typedef shared_ptr<vector<Node>> VecPtr;
 typedef unordered_map<string, Node> ObjMap;
 typedef shared_ptr<ObjMap> ObjPtr;
-#endif
 
 struct Ast
 {
@@ -783,11 +771,7 @@ struct ArgGetter<std::vector<std::string>>
   }
 };
 
-#if defined(__clang__)
 typedef std::unordered_map<std::string, Argument> ArgumentMap;
-#else
-typedef std::tr1::unordered_map<std::string, Argument> ArgumentMap;
-#endif
 
 class Io
 {
