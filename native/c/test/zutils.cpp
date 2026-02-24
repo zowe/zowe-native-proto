@@ -74,7 +74,7 @@ string get_random_string(const int length, const bool allNumbers)
   static bool seeded = false;
   if (!seeded)
   {
-    srand(static_cast<unsigned int>(time(NULL)));
+    srand(static_cast<unsigned int>(time(nullptr)));
     seeded = true;
   }
   string ret = "";
@@ -99,7 +99,7 @@ string get_random_uss(const string base_dir)
   static bool seeded = false;
   if (!seeded)
   {
-    srand(static_cast<unsigned int>(time(NULL)));
+    srand(static_cast<unsigned int>(time(nullptr)));
     seeded = true;
   }
 

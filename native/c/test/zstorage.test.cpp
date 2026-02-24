@@ -28,7 +28,7 @@ void zstorage_tests()
                 []() -> void
                 {
                   int size = 128;
-                  void *data = NULL;
+                  void *data = nullptr;
                   expect(data).ToBeNull();
                   data = STBT31(&size);
                   expect(data).Not().ToBeNull();
@@ -39,7 +39,7 @@ void zstorage_tests()
                 []() -> void
                 {
                   int size = 256;
-                  void *data = NULL;
+                  void *data = nullptr;
                   expect(data).ToBeNull();
                   data = STGET64(&size);
                   expect(data).Not().ToBeNull();

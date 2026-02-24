@@ -745,7 +745,7 @@ private:
     case TokFlagLong:
       return "<long_flag>";
     default:
-      return NULL;
+      return nullptr;
     }
   }
 
