@@ -25,7 +25,7 @@ MTL_HEADERS=$(MTL_HEADERS_BASE) -I../ -I../chdsect
 
 C_FLAGS=$(C_FLAGS_BASE) -I./chdsect
 CPP_FLAGS=$(CPP_FLAGS_BASE)
-CXXFLAGS=$(CPP_FLAGS_BASE) -I../ -I../chdsect -std=c++17
+CXXFLAGS=$(CPP_FLAGS_BASE) -I../ -I../chdsect
 BND_FLAGS=
 
 # make -DBuildType=DEBUG
