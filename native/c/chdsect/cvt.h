@@ -1,4 +1,8 @@
+#ifdef __open_xl__
 #pragma pack(1)
+#else
+#pragma pack(packed)
+#endif
 
 #ifndef __cvt__
 #define __cvt__
@@ -896,4 +900,8 @@ struct cvtxtnt2
 
 #endif
 
+#ifdef __open_xl__
 #pragma pack()
+#else
+#pragma pack(reset)
+#endif

@@ -1,4 +1,8 @@
+#ifdef __open_xl__
 #pragma pack(1)
+#else
+#pragma pack(packed)
+#endif
  
 #ifndef __symbp__
 #define __symbp__
@@ -285,4 +289,8 @@ struct symbth {
  
 #endif
  
+#ifdef __open_xl__
 #pragma pack()
+#else
+#pragma pack(reset)
+#endif

@@ -1,4 +1,8 @@
+#ifdef __open_xl__
 #pragma pack(1)
+#else
+#pragma pack(packed)
+#endif
  
 #ifndef __tcbfix__
 #define __tcbfix__
@@ -579,4 +583,8 @@ struct tcbxtnt2 {
  
 #endif
  
+#ifdef __open_xl__
 #pragma pack()
+#else
+#pragma pack(reset)
+#endif

@@ -1,4 +1,8 @@
+#ifdef __open_xl__
 #pragma pack(1)
+#else
+#pragma pack(packed)
+#endif
 
 #ifndef __mdb__
 #define __mdb__
@@ -388,4 +392,8 @@ struct mdbt
 
 #endif
 
+#ifdef __open_xl__
 #pragma pack()
+#else
+#pragma pack(reset)
+#endif

@@ -1,4 +1,8 @@
+#ifdef __open_xl__
 #pragma pack(1)
+#else
+#pragma pack(packed)
+#endif
 
 #ifndef __iazbtokp__
 #define __iazbtokp__
@@ -44,4 +48,8 @@ struct iazbtokp
 
 #endif
 
+#ifdef __open_xl__
 #pragma pack()
+#else
+#pragma pack(reset)
+#endif

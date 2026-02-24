@@ -1,4 +1,8 @@
+#ifdef __open_xl__
 #pragma pack(1)
+#else
+#pragma pack(packed)
+#endif
 
 #ifndef __ssjp__
 #define __ssjp__
@@ -83,4 +87,8 @@ struct ssob {
 
 #endif
 
+#ifdef __open_xl__
 #pragma pack()
+#else
+#pragma pack(reset)
+#endif

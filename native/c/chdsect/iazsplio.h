@@ -1,4 +1,8 @@
+#ifdef __open_xl__
 #pragma pack(1)
+#else
+#pragma pack(packed)
+#endif
 
 #ifndef __splio__
 #define __splio__
@@ -59,4 +63,8 @@ struct splio
 
 #endif
 
+#ifdef __open_xl__
 #pragma pack()
+#else
+#pragma pack(reset)
+#endif

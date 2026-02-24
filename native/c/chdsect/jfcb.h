@@ -1,4 +1,8 @@
+#ifdef __open_xl__
 #pragma pack(1)
+#else
+#pragma pack(packed)
+#endif
  
 #ifndef __jfcb__
 #define __jfcb__
@@ -522,4 +526,8 @@ struct jfcb {
  
 #endif
  
+#ifdef __open_xl__
 #pragma pack()
+#else
+#pragma pack(reset)
+#endif

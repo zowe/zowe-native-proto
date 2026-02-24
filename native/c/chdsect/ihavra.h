@@ -1,4 +1,8 @@
+#ifdef __open_xl__
 #pragma pack(1)
+#else
+#pragma pack(packed)
+#endif
  
 #ifndef __vramap__
 #define __vramap__
@@ -188,4 +192,8 @@ struct vramap {
  
 #endif
  
+#ifdef __open_xl__
 #pragma pack()
+#else
+#pragma pack(reset)
+#endif

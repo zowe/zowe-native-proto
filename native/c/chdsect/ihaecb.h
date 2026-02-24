@@ -1,5 +1,9 @@
 #if defined(__MVS__)
+#ifdef __open_xl__
 #pragma pack(1)
+#else
+#pragma pack(packed)
+#endif
 #endif
 
 #ifndef __ecb__
@@ -89,5 +93,9 @@ struct ecbe
 #endif
 
 #if defined(__MVS__)
+#ifdef __open_xl__
 #pragma pack()
+#else
+#pragma pack(reset)
+#endif
 #endif

@@ -1,7 +1,11 @@
 #ifndef IEANTASM_H
 #define IEANTASM_H
 
+#ifdef __open_xl__
 #pragma pack(1)
+#else
+#pragma pack(packed)
+#endif
 
 #ifndef __ieatasmw__
 #define __ieatasmw__
@@ -39,6 +43,10 @@ struct ieatasmw
 
 #endif
 
+#ifdef __open_xl__
 #pragma pack()
+#else
+#pragma pack(reset)
+#endif
 
 #endif // ieantasm.h

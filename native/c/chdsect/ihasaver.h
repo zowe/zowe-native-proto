@@ -1,4 +1,8 @@
+#ifdef __open_xl__
 #pragma pack(1)
+#else
+#pragma pack(packed)
+#endif
  
 #ifndef __saver__
 #define __saver__
@@ -223,4 +227,8 @@ struct savf8sa {
  
 #endif
  
+#ifdef __open_xl__
 #pragma pack()
+#else
+#pragma pack(reset)
+#endif
