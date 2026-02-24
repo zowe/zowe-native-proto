@@ -6,11 +6,11 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Recent Changes
 
-- Used new SDK groupings that align with zowex.  [#807](https://github.com/zowe/zowe-native-proto/pull/808)
+- Used new SDK groupings that align with zowex. [#807](https://github.com/zowe/zowe-native-proto/pull/808)
 
 ## `0.2.4`
 
-- Added the `zssh rename data-set-member` command to the CLI. [#765] (<https://github.com/zowe/zowe-native-proto/pull/765>).
+- Added the `zssh rename data-set-member` command to the CLI. [#765] (https://github.com/zowe/zowe-native-proto/pull/765).
 - Added `+` suffix after volser for multi-volume data sets when listing data sets with attributes. [#782](https://github.com/zowe/zowe-native-proto/pull/782)
 
 ## `0.2.3`
