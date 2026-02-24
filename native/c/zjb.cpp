@@ -41,7 +41,7 @@ using namespace std;
 // NOTE(Kelosky): see struct __S99struc via 'showinc' compiler option in <stdio.h>
 // NOTE(Kelosky): In the future, to allocate the logical SYSLOG concatenation for a system specify the following data set name (in DALDSNAM).
 // https://www.ibm.com/docs/en/zos/3.1.0?topic=allocation-specifying-data-set-name-daldsnam
-int zjb_read_jobs_output_by_key(ZJB *zjb, string jobid, int key, string &response)
+int zjb_read_jobs_output_by_key(ZJB *zjb, const string &jobid, int key, string &response)
 {
   int rc = 0;
   string job_dsn;
@@ -53,7 +53,7 @@ int zjb_read_jobs_output_by_key(ZJB *zjb, string jobid, int key, string &respons
   return zjb_read_job_content_by_dsn(zjb, job_dsn, response);
 }
 
-int zjb_get_job_dsn_by_key(ZJB *zjb, string jobid, int key, string &job_dsn)
+int zjb_get_job_dsn_by_key(ZJB *zjb, const string &jobid, int key, string &job_dsn)
 {
   int rc = 0;
 
@@ -85,7 +85,7 @@ int zjb_get_job_dsn_by_key(ZJB *zjb, string jobid, int key, string &job_dsn)
   return RTNCD_SUCCESS;
 }
 
-int zjb_read_job_jcl(ZJB *zjb, string jobid, string &response)
+int zjb_read_job_jcl(ZJB *zjb, const string &jobid, string &response)
 {
   int rc = 0;
 
@@ -124,7 +124,7 @@ int zjb_read_job_jcl(ZJB *zjb, string jobid, string &response)
 
 #define NUM_TEXT_UNITS 5
 
-int zjb_read_job_content_by_dsn(ZJB *zjb, string jobdsn, string &response)
+int zjb_read_job_content_by_dsn(ZJB *zjb, const string &jobdsn, string &response)
 {
   int rc = 0;
   unsigned char *p = nullptr;
@@ -294,7 +294,7 @@ int zjb_read_job_content_by_dsn(ZJB *zjb, string jobdsn, string &response)
   return rc;
 }
 
-int zjb_wait(ZJB *zjb, string status)
+int zjb_wait(ZJB *zjb, const string &status)
 {
   int rc = 0;
   ZJob job = {};
@@ -323,7 +323,7 @@ int zjb_wait(ZJB *zjb, string status)
   return RTNCD_SUCCESS;
 }
 
-int zjb_delete(ZJB *zjb, string jobid)
+int zjb_delete(ZJB *zjb, const string &jobid)
 {
   if (jobid.size() > sizeof(zjb->jobid))
     zut_uppercase_pad_truncate(zjb->correlator, jobid, sizeof(zjb->correlator));
@@ -332,7 +332,7 @@ int zjb_delete(ZJB *zjb, string jobid)
   return ZJBMPRG(zjb);
 }
 
-int zjb_cancel(ZJB *zjb, string jobid)
+int zjb_cancel(ZJB *zjb, const string &jobid)
 {
   if (jobid.size() > sizeof(zjb->jobid))
     zut_uppercase_pad_truncate(zjb->correlator, jobid, sizeof(zjb->correlator));
@@ -341,7 +341,7 @@ int zjb_cancel(ZJB *zjb, string jobid)
   return ZJBMCNL(zjb, 0);
 }
 
-int zjb_hold(ZJB *zjb, string jobid)
+int zjb_hold(ZJB *zjb, const string &jobid)
 {
   if (jobid.size() > sizeof(zjb->jobid))
     zut_uppercase_pad_truncate(zjb->correlator, jobid, sizeof(zjb->correlator));
@@ -350,7 +350,7 @@ int zjb_hold(ZJB *zjb, string jobid)
   return ZJBMHLD(zjb);
 }
 
-int zjb_release(ZJB *zjb, string jobid)
+int zjb_release(ZJB *zjb, const string &jobid)
 {
   if (jobid.size() > sizeof(zjb->jobid))
     zut_uppercase_pad_truncate(zjb->correlator, jobid, sizeof(zjb->correlator));
@@ -359,7 +359,7 @@ int zjb_release(ZJB *zjb, string jobid)
   return ZJBMRLS(zjb);
 }
 
-int zjb_submit_dsn(ZJB *zjb, string dsn, string &jobid)
+int zjb_submit_dsn(ZJB *zjb, const string &dsn, string &jobid)
 {
   ZDS zds = {0};
   string contents;
@@ -373,7 +373,7 @@ int zjb_submit_dsn(ZJB *zjb, string dsn, string &jobid)
   return zjb_submit(zjb, contents, jobid);
 }
 
-int zjb_submit(ZJB *zjb, string contents, string &jobid)
+int zjb_submit(ZJB *zjb, const string &contents, string &jobid)
 {
   int rc = 0;
   ZDS zds = {0};
@@ -462,7 +462,7 @@ int zjb_submit(ZJB *zjb, string contents, string &jobid)
   return RTNCD_SUCCESS;
 }
 
-int zjb_list_dds(ZJB *zjb, string jobid, vector<ZJobDD> &jobDDs)
+int zjb_list_dds(ZJB *zjb, const string &jobid, vector<ZJobDD> &jobDDs)
 {
   int rc = 0;
   STATSEVB *PTR64 sysoutInfo = nullptr;
@@ -549,7 +549,7 @@ int zjb_list_dds(ZJB *zjb, string jobid, vector<ZJobDD> &jobDDs)
   return rc;
 }
 
-int zjb_view(ZJB *zjb, string jobid, ZJob &job)
+int zjb_view(ZJB *zjb, const string &jobid, ZJob &job)
 {
   int rc = 0;
   ZJB_JOB_INFO *PTR64 job_info = nullptr;
@@ -588,17 +588,17 @@ int zjb_view(ZJB *zjb, string jobid, ZJob &job)
   return RTNCD_SUCCESS;
 }
 
-int zjb_list_by_owner(ZJB *zjb, string owner_name, vector<ZJob> &jobs)
+int zjb_list_by_owner(ZJB *zjb, const string &owner_name, vector<ZJob> &jobs)
 {
   return zjb_list_by_owner(zjb, owner_name, "", jobs);
 }
 
-int zjb_list_by_owner(ZJB *zjb, string owner_name, string prefix_name, vector<ZJob> &jobs)
+int zjb_list_by_owner(ZJB *zjb, const string &owner_name, const string &prefix_name, vector<ZJob> &jobs)
 {
   return zjb_list_by_owner(zjb, owner_name, prefix_name, "", jobs);
 }
 
-int zjb_list_by_owner(ZJB *zjb, string owner_name, string prefix_name, string status_name, vector<ZJob> &jobs)
+int zjb_list_by_owner(ZJB *zjb, string owner_name, const string &prefix_name, const string &status_name, vector<ZJob> &jobs)
 {
   int rc = 0;
   ZJB_JOB_INFO *PTR64 job_info = nullptr;

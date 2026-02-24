@@ -23,7 +23,7 @@
 
 using namespace std;
 
-int zcn_activate(ZCN *zcn, string console_name)
+int zcn_activate(ZCN *zcn, const string &console_name)
 {
   int rc = 0;
   zcn->diag.detail_rc = 0;
@@ -50,7 +50,7 @@ int zcn_activate(ZCN *zcn, string console_name)
   return rc;
 }
 
-int zcn_put(ZCN *zcn, string command)
+int zcn_put(ZCN *zcn, const string &command)
 {
   int rc = 0;
   zcn->diag.detail_rc = 0;

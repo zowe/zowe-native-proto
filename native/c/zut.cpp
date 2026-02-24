@@ -31,17 +31,17 @@
 
 using namespace std;
 
-int zut_search(string parms)
+int zut_search(const string &parms)
 {
   return ZUTSRCH(parms.c_str());
 }
 
-int zut_run(ZDIAG &diag, string program, string parms)
+int zut_run(ZDIAG &diag, const string &program, const string &parms)
 {
   return ZUTRUN(&diag, program.c_str(), parms.c_str());
 }
 
-int zut_run(string program)
+int zut_run(const string &program)
 {
   ZDIAG diag = {};
   return ZUTRUN(&diag, program.c_str(), NULL);
@@ -52,7 +52,7 @@ unsigned char zut_get_key()
   return ZUTMGKEY();
 }
 
-int zut_substitute_symbol(string pattern, string &result)
+int zut_substitute_symbol(const string &pattern, string &result)
 {
   SYMBOL_DATA *parms = (SYMBOL_DATA *)__malloc31(sizeof(SYMBOL_DATA));
   if (parms == nullptr)
@@ -94,7 +94,7 @@ void zut_uppercase_pad_truncate(char *target, string source, int len)
 }
 
 // https://www.ibm.com/docs/en/zos/3.2.0?topic=output-requesting-dynamic-allocation
-int zut_bpxwdyn_common(string parm, unsigned int *code, string &resp, string &ddname, string &dsname)
+int zut_bpxwdyn_common(const string &parm, unsigned int *code, string &resp, string &ddname, string &dsname)
 {
   char bpx_response[RET_ARG_MAX_LEN * MSG_ENTRIES + 1] = {0};
 
@@ -137,21 +137,21 @@ int zut_bpxwdyn_common(string parm, unsigned int *code, string &resp, string &dd
   return rc;
 }
 
-int zut_bpxwdyn(string parm, unsigned int *code, string &resp)
+int zut_bpxwdyn(const string &parm, unsigned int *code, string &resp)
 {
   string ddname = "";
   string dsname = "";
   return zut_bpxwdyn_common(parm, code, resp, ddname, dsname);
 }
 
-int zut_bpxwdyn_rtdd(string parm, unsigned int *code, string &resp, string &ddname)
+int zut_bpxwdyn_rtdd(const string &parm, unsigned int *code, string &resp, string &ddname)
 {
   ddname = "RTDDN";
   string dsname = "";
   return zut_bpxwdyn_common(parm, code, resp, ddname, dsname);
 }
 
-int zut_bpxwdyn_rtdsn(string parm, unsigned int *code, string &resp, string &dsname)
+int zut_bpxwdyn_rtdsn(const string &parm, unsigned int *code, string &resp, string &dsname)
 {
   string ddname = "";
   dsname = "RTDSN";
@@ -181,7 +181,7 @@ int zut_get_current_user(string &struser)
   return rc;
 }
 
-int zut_hello(string name)
+int zut_hello(const string &name)
 {
   // #if defined(__IBMC__) || defined(__IBMCPP__)
   // #pragma convert(819)

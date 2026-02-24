@@ -1427,7 +1427,7 @@ int zds_write_to_dsn(ZDS *zds, const string &dsn, string &data)
   return rc;
 }
 
-int zds_open_output_bpam(ZDS *zds, std::string dsname, IO_CTRL *&ioc)
+int zds_open_output_bpam(ZDS *zds, const std::string &dsname, IO_CTRL *&ioc)
 {
   string alloc_cmd = "ALLOC DA('" + dsname + "') SHR"; // TODO(Kelosky): log this command
   unsigned int code = 0;
@@ -1553,7 +1553,7 @@ int alloc_and_free(const string &alloc_dd, const string &dsn, unsigned int *code
 }
 
 // TODO(Kelosky): add attributues to ZDS and have other functions populate it
-int zds_create_dsn(ZDS *zds, string dsn, DS_ATTRIBUTES attributes, string &response)
+int zds_create_dsn(ZDS *zds, const string &dsn, DS_ATTRIBUTES attributes, string &response)
 {
   int rc = 0;
   unsigned int code = 0;

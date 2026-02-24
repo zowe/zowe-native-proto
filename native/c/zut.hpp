@@ -37,7 +37,7 @@ typedef struct ZConvData
  * @param input The string to search for
  * @return Return code (0 for success, non-zero for error)
  */
-int zut_search(std::string input);
+int zut_search(const std::string &input);
 
 /**
  * @brief Run a specified command or operation
@@ -46,14 +46,14 @@ int zut_search(std::string input);
  * @param parms The parameters string to execute
  * @return Return code (0 for success, non-zero for error)
  */
-int zut_run(ZDIAG &diag, std::string input, std::string parms);
+int zut_run(ZDIAG &diag, const std::string &input, const std::string &parms);
 
 /**
  * @brief Run a specified command or operation
  * @param input The command string to execute
  * @return Return code (0 for success, non-zero for error)
  */
-int zut_run(std::string input);
+int zut_run(const std::string &input);
 
 /**
  * @brief Substitute a symbol in a string
@@ -61,7 +61,7 @@ int zut_run(std::string input);
  * @param result Reference to a string where the result will be stored
  * @return Return code (0 for success, non-zero for error)
  */
-int zut_substitute_symbol(std::string symbol, std::string &result);
+int zut_substitute_symbol(const std::string &symbol, std::string &result);
 
 /**
  * @brief Invoke BPXWDYN service with the given parameters
@@ -70,7 +70,7 @@ int zut_substitute_symbol(std::string symbol, std::string &result);
  * @param resp Reference to a string where the result will be stored
  * @return Return code (0 for success, non-zero for error)
  */
-int zut_bpxwdyn(std::string command, unsigned int *code, std::string &resp);
+int zut_bpxwdyn(const std::string &command, unsigned int *code, std::string &resp);
 
 /**
  * @brief Invoke BPXWDYN service with the given parameters and return the DD or DS name
@@ -81,7 +81,7 @@ int zut_bpxwdyn(std::string command, unsigned int *code, std::string &resp);
  * @param dsname Reference to a string where the DS name will be stored
  * @return Return code (0 for success, non-zero for error)
  */
-int zut_bpxwdyn_common(std::string command, unsigned int *code, std::string &resp, std::string &ddname, std::string &dsname);
+int zut_bpxwdyn_common(const std::string &command, unsigned int *code, std::string &resp, std::string &ddname, std::string &dsname);
 
 /**
  * @brief Invoke BPXWDYN service with the given parameters and return the DD name
@@ -91,7 +91,7 @@ int zut_bpxwdyn_common(std::string command, unsigned int *code, std::string &res
  * @param ddname Reference to a string where the DD name will be stored
  * @return Return code (0 for success, non-zero for error)
  */
-int zut_bpxwdyn_rtdd(std::string command, unsigned int *code, std::string &resp, std::string &ddname);
+int zut_bpxwdyn_rtdd(const std::string &command, unsigned int *code, std::string &resp, std::string &ddname);
 
 /**
  * @brief Invoke BPXWDYN service with the given parameters and return the DS name
@@ -101,14 +101,14 @@ int zut_bpxwdyn_rtdd(std::string command, unsigned int *code, std::string &resp,
  * @param dsname Reference to a string where the DS name will be stored
  * @return Return code (0 for success, non-zero for error)
  */
-int zut_bpxwdyn_rtdsn(std::string command, unsigned int *code, std::string &resp, std::string &dsname);
+int zut_bpxwdyn_rtdsn(const std::string &command, unsigned int *code, std::string &resp, std::string &dsname);
 
 /**
  * @brief Print a hello message
  * @param input Input string for the hello message
  * @return Return code (0 for success, non-zero for error)
  */
-int zut_hello(std::string input);
+int zut_hello(const std::string &input);
 
 /**
  * @brief Convert an integer to its hexadecimal character representation

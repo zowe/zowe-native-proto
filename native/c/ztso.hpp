@@ -16,6 +16,6 @@
 #include <vector>
 #include <string>
 
-int ztso_issue(std::string, std::string &);
+int ztso_issue(const std::string &, std::string &);
 
 #endif

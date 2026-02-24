@@ -123,7 +123,7 @@ string zusf_format_ls_time(time_t mtime, bool use_csv_format)
  *
  * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
  */
-int zusf_get_file_ccsid(ZUSF *zusf, string file)
+int zusf_get_file_ccsid(ZUSF *zusf, const string &file)
 {
   struct stat file_stats;
   if (stat(file.c_str(), &file_stats) == -1)
@@ -1052,7 +1052,7 @@ static int zusf_collect_directory_entries_recursive(ZUSF *zusf, const string &di
  *
  * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
  */
-int zusf_list_uss_file_path(ZUSF *zusf, string file, string &response, ListOptions options, bool use_csv_format)
+int zusf_list_uss_file_path(ZUSF *zusf, const string &file, string &response, ListOptions options, bool use_csv_format)
 {
   // TODO(zFernand0): Handle `*` and other bash-expansion rules
   struct stat file_stats;
@@ -1682,7 +1682,7 @@ int zusf_write_to_uss_file_streamed(ZUSF *zusf, const string &file, const string
  *
  * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
  */
-int zusf_chmod_uss_file_or_dir(ZUSF *zusf, string file, mode_t mode, bool recursive)
+int zusf_chmod_uss_file_or_dir(ZUSF *zusf, const string &file, mode_t mode, bool recursive)
 {
   // TODO(zFernand0): Add recursive option for directories
   struct stat file_stats;
@@ -1729,7 +1729,7 @@ int zusf_chmod_uss_file_or_dir(ZUSF *zusf, string file, mode_t mode, bool recurs
   return 0;
 }
 
-int zusf_delete_uss_item(ZUSF *zusf, string file, bool recursive)
+int zusf_delete_uss_item(ZUSF *zusf, const string &file, bool recursive)
 {
   struct stat file_stats;
   if (lstat(file.c_str(), &file_stats) == -1)

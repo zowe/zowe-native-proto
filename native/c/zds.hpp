@@ -163,7 +163,7 @@ int zds_write_to_dsn(ZDS *zds, const std::string &dsn, std::string &data);
  * @param ioc IO_CTRL pointer to the data set
  * @return int 0 for success; non zero otherwise
  */
-int zds_open_output_bpam(ZDS *zds, std::string dsname, IO_CTRL *&ioc);
+int zds_open_output_bpam(ZDS *zds, const std::string &dsname, IO_CTRL *&ioc);
 
 /**
  * @brief Write data to a data set using BPAM mode
@@ -193,7 +193,7 @@ int zds_close_output_bpam(ZDS *zds, IO_CTRL *ioc);
  * @param response messages from dynamic allocation (which may be present even when successful requests are made)
  * @return int 0 for success; non zero otherwise
  */
-int zds_create_dsn(ZDS *zds, std::string dsn, DS_ATTRIBUTES attributes, std::string &response);
+int zds_create_dsn(ZDS *zds, const std::string &dsn, DS_ATTRIBUTES attributes, std::string &response);
 
 /**
  * @brief Delete a data set
@@ -308,7 +308,7 @@ int zds_create_dsn_loadlib(ZDS *zds, const std::string &dsn, std::string &respon
  */
 int zds_delete_dsn(ZDS *zds, std::string dsn);
 
-int zdsReadDynalloc(std::string, std::string, std::string, std::string &); // NOTE(Kelosky): testing only
+int zdsReadDynalloc(const std::string &, const std::string &, const std::string &, std::string &); // NOTE(Kelosky): testing only
 
 /**
  * @brief Read data from a z/OS data set in streaming mode

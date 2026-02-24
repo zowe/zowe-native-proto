@@ -34,7 +34,7 @@ using namespace std;
 // - IKJEFT01, requires authorized caller
 // - IKJEFTSR, limited TSO dynamic environment
 // - Load TMP directly, untested, but potentially useful if we read/write SYSTSIN/SYSTSPRT
-int ztso_issue(string command, string &response)
+int ztso_issue(const string &command, string &response)
 {
   int rc = 0;
 
