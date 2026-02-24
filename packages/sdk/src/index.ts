@@ -9,6 +9,7 @@
  *
  */
 
+export { ISshSession, SshSession } from "@zowe/zos-uss-for-zowe-sdk";
 export * from "./AbstractConfigManager";
 export * from "./ConfigFileUtils";
 export * from "./doc";

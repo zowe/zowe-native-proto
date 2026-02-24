@@ -4,10 +4,11 @@ All notable changes to the "zowe-native-proto-vsce" extension will be documented
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## Recent Changes
+## `0.2.4`
 
 - Added the functionality for the **Rename Member** option. [#765] (https://github.com/zowe/zowe-native-proto/pull/765).
 - Added the `multivolume` (`mvol`) property when displaying data set attributes. [#782](https://github.com/zowe/zowe-native-proto/pull/782)
+- Fixed an issue where using the "Upload Member" option with an SSH profile in Zowe Explorer caused an error. Now, the member name is provided to the back end for each member that is uploaded. [#785](https://github.com/zowe/zowe-native-proto/issues/785)
 
 ## `0.2.3`
 
