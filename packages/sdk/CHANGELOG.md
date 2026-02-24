@@ -4,6 +4,10 @@ All notable changes to the Client code for "zowe-native-proto-sdk" are documente
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## Recent Changes 
+
+- Added support for USS Move operations. [#789](https://github.com/zowe/zowe-native-proto/pull/789)
+
 ## `0.2.4`
 
 - Added support for renaming data set members in the `RpcClientApi` class. [#765] (https://github.com/zowe/zowe-native-proto/pull/765)
@@ -13,7 +17,6 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - Exported `ISshSession` and `SshSession` types from the Zowe USS SDK. [#799](https://github.com/zowe/zowe-native-proto/pull/799)
 - Added `verbose` property to the `ClientOptions` interface used by the `ZSshClient.create` method. [#801](https://github.com/zowe/zowe-native-proto/issues/801)
 - Enhanced the `ZSshClient.create` method to return `ImperativeError` containing error details when `zowed` fails to start. [#802](https://github.com/zowe/zowe-native-proto/issues/802)
-- Added support for USS Move operations. [#789](https://github.com/zowe/zowe-native-proto/pull/789)
 
 ## `0.2.3`
 
