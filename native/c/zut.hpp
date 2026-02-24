@@ -224,15 +224,20 @@ std::vector<char> zut_encode(const char *input_str, const size_t input_size, ico
 std::string zut_format_as_csv(std::vector<std::string> &fields);
 
 /**
- * @brief Convert an integer to a string using sprintf
+ * @brief Convert an integer to a string
  * @param value The integer value to convert
- * @param is_hex Set to true to format as hexadecimal
+ * @param is_hex Set to true to format as uppercase hexadecimal
  * @return The string representation of the integer
  */
-std::string zut_int_to_string(int value, bool is_hex = false);
-std::string zut_int_to_string(unsigned int value, bool is_hex = false);
-std::string zut_int_to_string(long value, bool is_hex = false);
-std::string zut_int_to_string(long long value, bool is_hex = false);
+template <typename T>
+inline std::string zut_int_to_string(T value, bool is_hex = false)
+{
+  if (!is_hex)
+    return std::to_string(value);
+  std::ostringstream oss;
+  oss << std::hex << std::uppercase << value;
+  return oss.str();
+}
 
 /**
  * @brief Trim whitespace from the right end of a string

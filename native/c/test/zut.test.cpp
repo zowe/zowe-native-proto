@@ -179,7 +179,7 @@ void zut_tests()
                              string input_data;
                              for (int i = 0; i < 1000; i++)
                              {
-                               input_data += "Line " + zut_int_to_string(i) + " with some content\n";
+                               input_data += "Line " + std::to_string(i) + " with some content\n";
                              }
                              istringstream input_stream(input_data);
 

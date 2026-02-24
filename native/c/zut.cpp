@@ -626,34 +626,6 @@ string zut_format_as_csv(std::vector<string> &fields)
   return formatted;
 }
 
-// Helper template for integer to string conversion
-template <typename T>
-static inline string int_to_string_impl(T value, bool is_hex, const char *dec_fmt, const char *hex_fmt)
-{
-  char buffer[32];
-  sprintf(buffer, is_hex ? hex_fmt : dec_fmt, value);
-  return string(buffer);
-}
-
-string zut_int_to_string(int value, bool is_hex)
-{
-  return int_to_string_impl(value, is_hex, "%d", "%X");
-}
-
-string zut_int_to_string(unsigned int value, bool is_hex)
-{
-  return int_to_string_impl(value, is_hex, "%u", "%X");
-}
-
-string zut_int_to_string(long value, bool is_hex)
-{
-  return int_to_string_impl(value, is_hex, "%ld", "%lX");
-}
-
-string zut_int_to_string(long long value, bool is_hex)
-{
-  return int_to_string_impl(value, is_hex, "%lld", "%llX");
-}
 
 int zut_alloc_debug()
 {

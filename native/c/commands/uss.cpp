@@ -451,7 +451,7 @@ int handle_uss_chtag(InvocationContext &context)
   string tag = context.get<std::string>("tag", "");
   if (tag.empty())
   {
-    tag = zut_int_to_string(context.get<long long>("tag", 0));
+    tag = std::to_string(context.get<long long>("tag", 0));
   }
 
   if (tag.empty())

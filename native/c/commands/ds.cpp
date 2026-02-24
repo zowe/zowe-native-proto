@@ -453,10 +453,10 @@ int handle_data_set_list(InvocationContext &context)
           fields.push_back(it->devtype != 0 ? zut_int_to_string(it->devtype, true) : "");
           fields.push_back(it->dsorg);
           fields.push_back(it->recfm);
-          fields.push_back(it->lrecl == -1 ? "" : zut_int_to_string(it->lrecl));
-          fields.push_back(it->blksize == -1 ? "" : zut_int_to_string(it->blksize));
-          fields.push_back(it->primary == -1 ? "" : zut_int_to_string(it->primary));
-          fields.push_back(it->secondary == -1 ? "" : zut_int_to_string(it->secondary));
+          fields.push_back(it->lrecl == -1 ? "" : std::to_string(it->lrecl));
+          fields.push_back(it->blksize == -1 ? "" : std::to_string(it->blksize));
+          fields.push_back(it->primary == -1 ? "" : std::to_string(it->primary));
+          fields.push_back(it->secondary == -1 ? "" : std::to_string(it->secondary));
           fields.push_back(it->dsntype);
           fields.push_back(it->migrated ? "YES" : "NO");
         }
@@ -473,10 +473,10 @@ int handle_data_set_list(InvocationContext &context)
                                   << setw(7) << (it->devtype != 0 ? zut_int_to_string(it->devtype, true) : "") << " "
                                   << setw(4) << it->dsorg << " "
                                   << setw(6) << it->recfm << " "
-                                  << setw(6) << (it->lrecl == -1 ? "" : zut_int_to_string(it->lrecl)) << " "
-                                  << setw(6) << (it->blksize == -1 ? "" : zut_int_to_string(it->blksize)) << " "
-                                  << setw(10) << (it->primary == -1 ? "" : zut_int_to_string(it->primary)) << " "
-                                  << setw(10) << (it->secondary == -1 ? "" : zut_int_to_string(it->secondary)) << " "
+                                  << setw(6) << (it->lrecl == -1 ? "" : std::to_string(it->lrecl)) << " "
+                                  << setw(6) << (it->blksize == -1 ? "" : std::to_string(it->blksize)) << " "
+                                  << setw(10) << (it->primary == -1 ? "" : std::to_string(it->primary)) << " "
+                                  << setw(10) << (it->secondary == -1 ? "" : std::to_string(it->secondary)) << " "
                                   << setw(8) << it->dsntype << " "
                                   << (it->migrated ? "YES" : "NO")
                                   << endl;

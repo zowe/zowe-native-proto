@@ -160,7 +160,7 @@ int handle_job_list_files(InvocationContext &context)
     {
       fields.push_back(it->ddn);
       fields.push_back(it->dsn);
-      fields.push_back(zut_int_to_string(it->key));
+      fields.push_back(std::to_string(it->key));
       fields.push_back(it->stepname);
       fields.push_back(it->procstep);
       if (emit_csv)
