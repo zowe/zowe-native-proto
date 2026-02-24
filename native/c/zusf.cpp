@@ -942,18 +942,22 @@ int zusf_move_uss_file_or_dir(ZUSF *zusf, const string &source, const string &ta
     return RTNCD_FAILURE;
   }
 
+  // truncate source and target paths to 100 characters for error messages
+  string truncated_source = source.size() > 100 ? "..." + source.substr(source.size() - 100) : source;
+  string truncated_target = target.size() > 100 ? "..." + target.substr(target.size() - 100) : target;
+
   // check if source exists
   struct stat source_stats;
   if (stat(source.c_str(), &source_stats) == -1)
   {
-    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Source path '%s' does not exist", source.c_str());
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Source path '%s' does not exist", truncated_source.c_str());
     return RTNCD_FAILURE;
   }
 
   // simple string compare for source and target
   if (strcmp(source.c_str(), target.c_str()) == 0)
   {
-    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Source '%s' and target '%s' are identical", source.c_str(), target.c_str());
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Source '%s' and target '%s' are identical", truncated_source.c_str(), truncated_target.c_str());
     return RTNCD_FAILURE;
   }
 
@@ -963,7 +967,7 @@ int zusf_move_uss_file_or_dir(ZUSF *zusf, const string &source, const string &ta
   auto absolute_source = realpath(source.c_str(), resolved_source);
   if (absolute_source == nullptr)
   {
-    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to resolve source path '%s'", source.c_str());
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to resolve source path '%s'", truncated_source.c_str());
     return RTNCD_FAILURE;
   }
   free(absolute_source);
@@ -979,7 +983,7 @@ int zusf_move_uss_file_or_dir(ZUSF *zusf, const string &source, const string &ta
     // if target exists and force is not set, return failure
     if (!force)
     {
-      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Target path '%s' already exists", target.c_str());
+      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Target path '%s' already exists", truncated_target.c_str());
       return RTNCD_FAILURE;
     }
 
@@ -988,7 +992,7 @@ int zusf_move_uss_file_or_dir(ZUSF *zusf, const string &source, const string &ta
     auto absolute_target = realpath(target.c_str(), resolved_target);
     if (absolute_target == nullptr)
     {
-      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to resolve target path '%s'", target.c_str());
+      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to resolve target path '%s'", truncated_target.c_str());
       return RTNCD_FAILURE;
     }
     free(absolute_target);
@@ -996,7 +1000,7 @@ int zusf_move_uss_file_or_dir(ZUSF *zusf, const string &source, const string &ta
     // check if paths are identical
     if (strcmp(resolved_source, resolved_target) == 0)
     {
-      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Source '%s' and target '%s' are identical", source.c_str(), target.c_str());
+      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Source '%s' and target '%s' are identical", truncated_source.c_str(), truncated_target.c_str());
       return RTNCD_FAILURE;
     }
 
@@ -1004,14 +1008,14 @@ int zusf_move_uss_file_or_dir(ZUSF *zusf, const string &source, const string &ta
     // check if source is a directory and target is not
     if (S_ISDIR(source_stats.st_mode) && !target_is_dir)
     {
-      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Cannot move directory '%s'. Target '%s' is not a directory", source.c_str(), target.c_str());
+      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Cannot move directory '%s'. Target '%s' is not a directory", truncated_source.c_str(), truncated_target.c_str());
       return RTNCD_FAILURE;
     }
 
     // check if source is a pipe and target is not
     if (S_ISFIFO(source_stats.st_mode) && !S_ISFIFO(target_stats.st_mode))
     {
-      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Cannot move pipe '%s'. Target '%s' is not a pipe", source.c_str(), target.c_str());
+      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Cannot move pipe '%s'. Target '%s' is not a pipe", truncated_source.c_str(), truncated_target.c_str());
       return RTNCD_FAILURE;
     }
   }
@@ -1029,7 +1033,7 @@ int zusf_move_uss_file_or_dir(ZUSF *zusf, const string &source, const string &ta
   int rc = zut_run_shell_command(mv_command, response);
   if (rc != 0)
   {
-    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to move file or directory from '%s' to '%s', errno: %d", source.c_str(), target.c_str(), rc);
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to move file or directory from '%s' to '%s', errno: %d", truncated_source.c_str(), truncated_target.c_str(), rc);
     return RTNCD_FAILURE;
   }
 
