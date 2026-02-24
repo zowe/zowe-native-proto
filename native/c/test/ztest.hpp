@@ -1718,7 +1718,7 @@ inline int execute_command(const std::string &command, std::string &stdout_outpu
     close(stderr_pipe[1]);
 
     // Execute command via shell
-    execl("/bin/sh", "sh", "-c", command.c_str(), (char *)nullptr);
+    execl("/bin/sh", "sh", "-c", command.c_str(), nullptr);
     _exit(127); // If execl fails
   }
   else
