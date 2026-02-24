@@ -32,10 +32,7 @@ export interface SearchSummary {
 
 export interface SearchResult {
     dataset: string;
-    utility: string;
-    version: string;
-    date: string;
-    time: string;
+    header: string;
     members: SearchMember[];
     summary: SearchSummary;
 }
@@ -44,10 +41,7 @@ export function parseSearchOutput(output: string): SearchResult {
     const lines = output.split("\n");
 
     let dataset = "";
-    let utility = "";
-    let version = "";
-    let date = "";
-    let time = "";
+    let header = "";
     const members: SearchMember[] = [];
     let currentMember: SearchMember | null = null;
 
@@ -64,14 +58,8 @@ export function parseSearchOutput(output: string): SearchResult {
         const line = lines[i];
 
         // NOTE(Kelosky): ASMFSUPC - MVS FILE/LINE/WORD/BYTE/SFOR COMPARE UTILITY- V1R6M0 (2021/11/01) 2026/02/20 9.05
-        const headerMatch = line.match(
-            /ASMFSUPC\s+-\s+(.+?)-\s+(V\d+R\d+M\d+)\s+\([^)]+\)\s+(\d{4}\/\d{2}\/\d{2})\s+(\d+\.\d+)/,
-        );
-        if (headerMatch) {
-            utility = "ASMFSUPC";
-            version = headerMatch[2];
-            date = headerMatch[3];
-            time = headerMatch[4];
+        if (/ASMFSUPC/.test(line) && /COMPARE UTILITY/.test(line)) {
+            header = line.trim();
         }
 
         // Parse "SRCH DSN:"
@@ -139,10 +127,7 @@ export function parseSearchOutput(output: string): SearchResult {
 
     return {
         dataset,
-        utility,
-        version,
-        date,
-        time,
+        header,
         members,
         summary: {
             linesFound,
