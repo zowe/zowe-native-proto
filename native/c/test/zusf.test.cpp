@@ -1455,7 +1455,7 @@ void zusf_tests()
                              Expect(string(zusf.diag.e_msg)).ToContain("Source path '" + source + "' does not exist");
                            });
 
-                        it("should return early with success when source and target are the same",
+                        it("should fail when source and target are the same",
                            [&]() -> void
                            {
                              string source = get_random_uss(zusf_test_dir);
