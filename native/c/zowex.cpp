@@ -31,7 +31,7 @@ int main(int argc, char *argv[])
 {
   try
   {
-    auto &root_cmd = core::setup_root_command(argc, argv);
+    auto &root_cmd = core::setup_root_command(argv);
 
     plugin::PluginManager pm;
     core::set_plugin_manager(&pm);

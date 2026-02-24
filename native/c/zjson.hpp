@@ -371,16 +371,15 @@ public:
 
 private:
   // Variant type for JSON values
-  typedef std::variant<
-      std::monostate,                       // Null
+  using ValueVariant = std::variant<
+      std::monostate,                        // Null
       bool,                                  // Bool
       long long,                             // Integer
       double,                                // Float
       std::string,                           // String
       std::vector<Value>,                    // Array
       std::unordered_map<std::string, Value> // Object
-      >
-      ValueVariant;
+      >;
 
   ValueVariant data_;
 
@@ -436,16 +435,17 @@ private:
   }
 
 public:
-  Value() : data_(std::monostate())
+  Value() = default;
+  Value(bool b)
+      : data_(b)
   {
   }
-  Value(bool b) : data_(b)
+  Value(int i)
+      : data_(static_cast<long long>(i))
   {
   }
-  Value(int i) : data_(static_cast<long long>(i))
-  {
-  }
-  Value(long long ll) : data_(ll)
+  Value(long long ll)
+      : data_(ll)
   {
   }
   Value(unsigned long long ull)
@@ -459,18 +459,22 @@ public:
       data_ = static_cast<double>(ull);
     }
   }
-  Value(double d) : data_(d)
+  Value(double d)
+      : data_(d)
   {
   }
-  Value(const std::string &s) : data_(s)
+  Value(const std::string &s)
+      : data_(s)
   {
   }
-  Value(const char *s) : data_(std::string(s))
+  Value(const char *s)
+      : data_(std::string(s))
   {
   }
 
   // Copy constructor and assignment
-  Value(const Value &other) : data_(other.data_)
+  Value(const Value &other)
+      : data_(other.data_)
   {
   }
 

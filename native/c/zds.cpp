@@ -1554,7 +1554,6 @@ int alloc_and_free(const string &alloc_dd, const string &dsn, unsigned int *code
 // TODO(Kelosky): add attributues to ZDS and have other functions populate it
 int zds_create_dsn(ZDS *zds, const string &dsn, DS_ATTRIBUTES attributes, string &response)
 {
-  int rc = 0;
   unsigned int code = 0;
   string parm = "ALLOC DA('" + dsn + "')";
   transform(attributes.alcunit.begin(), attributes.alcunit.end(), attributes.alcunit.begin(), ::toupper);
@@ -1649,9 +1648,6 @@ int zds_create_dsn(ZDS *zds, const string &dsn, DS_ATTRIBUTES attributes, string
 
 int zds_create_dsn_fb(ZDS *zds, const string &dsn, string &response)
 {
-  int rc = 0;
-  unsigned int code = 0;
-
   DS_ATTRIBUTES attributes = {};
   attributes.dsorg = "PO";
   attributes.primary = 5;
@@ -1666,8 +1662,6 @@ int zds_create_dsn_fb(ZDS *zds, const string &dsn, string &response)
 
 int zds_create_dsn_vb(ZDS *zds, const string &dsn, string &response)
 {
-  int rc = 0;
-  unsigned int code = 0;
   DS_ATTRIBUTES attributes = {};
   attributes.dsorg = "PO";
   attributes.primary = 5;
@@ -1682,8 +1676,6 @@ int zds_create_dsn_vb(ZDS *zds, const string &dsn, string &response)
 
 int zds_create_dsn_adata(ZDS *zds, const string &dsn, string &response)
 {
-  int rc = 0;
-  unsigned int code = 0;
   DS_ATTRIBUTES attributes = {};
   attributes.dsorg = "PO";
   attributes.primary = 5;
@@ -1699,8 +1691,6 @@ int zds_create_dsn_adata(ZDS *zds, const string &dsn, string &response)
 
 int zds_create_dsn_loadlib(ZDS *zds, const string &dsn, string &response)
 {
-  int rc = 0;
-  unsigned int code = 0;
   DS_ATTRIBUTES attributes = {};
   attributes.dsorg = "PO";
   attributes.primary = 5;
@@ -1884,14 +1874,14 @@ int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &members)
         }
 
         unsigned char info = entry.info;
-        unsigned char pointer_count = entry.info;
+        //unsigned char pointer_count = entry.info;
         char name[9] = {};
         if (info & 0x80) // bit 0 indicates alias
         {
           // TODO(Kelosky): // member name is an alias
         }
-        pointer_count &= 0x60; // bits 1-2 contain number of user data TTRNs
-        pointer_count >>= 5;   // adjust to byte boundary
+        //pointer_count &= 0x60; // bits 1-2 contain number of user data TTRNs
+        //pointer_count >>= 5;   // adjust to byte boundary
         info &= 0x1F;          // bits 3-7 contain the number of half words of user data
 
         memcpy(name, entry.name, sizeof(entry.name));

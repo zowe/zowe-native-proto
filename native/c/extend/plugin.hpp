@@ -12,6 +12,7 @@
 #ifndef PLUGIN_HPP
 #define PLUGIN_HPP
 
+#include <algorithm>
 #include <memory>
 #include <iostream>
 #include <ostream>
@@ -1283,15 +1284,9 @@ inline bool PluginManager::is_display_name_in_use(const std::string &name) const
     return false;
   }
 
-  for (const auto &plugin : m_plugins)
-  {
-    if (plugin.metadata.display_name == name)
-    {
-      return true;
-    }
-  }
-
-  return false;
+  return std::any_of(m_plugins.begin(), m_plugins.end(), [&name](const auto &plugin) {
+    return plugin.metadata.display_name == name;
+  });
 }
 
 inline void PluginManager::discard_command_providers_from(std::size_t start_index)

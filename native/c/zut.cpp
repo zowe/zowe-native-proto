@@ -551,7 +551,6 @@ string zut_format_as_csv(std::vector<string> &fields)
   return formatted;
 }
 
-
 int zut_alloc_debug()
 {
   int rc = 0;
@@ -575,7 +574,7 @@ bool zut_string_compare_c(const std::string &a, const std::string &b)
   return strcmp(a.c_str(), b.c_str()) < 0;
 }
 
-int zut_loop_dynalloc(ZDIAG &diag, vector<string> &list)
+int zut_loop_dynalloc(ZDIAG &diag, const vector<string> &list)
 {
   int rc = 0;
   unsigned int code = 0;
@@ -598,7 +597,7 @@ int zut_loop_dynalloc(ZDIAG &diag, vector<string> &list)
   return rc;
 }
 
-int zut_free_dynalloc_dds(ZDIAG &diag, vector<string> &list)
+int zut_free_dynalloc_dds(ZDIAG &diag, const vector<string> &list)
 {
   vector<string> free_dds;
   free_dds.reserve(list.size());

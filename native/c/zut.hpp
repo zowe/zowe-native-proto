@@ -297,7 +297,7 @@ bool zut_string_compare_c(const std::string &a, const std::string &b);
  * @param list List of dynamic allocation commands
  * @return Return code (0 for success, non-zero for error)
  */
-int zut_loop_dynalloc(ZDIAG &diag, std::vector<std::string> &list);
+int zut_loop_dynalloc(ZDIAG &diag, const std::vector<std::string> &list);
 
 /**
  * @brief Free a list of dynamic allocation commands
@@ -305,7 +305,7 @@ int zut_loop_dynalloc(ZDIAG &diag, std::vector<std::string> &list);
  * @param diag Reference to diagnostic information structure
  * @return Return code (0 for success, non-zero for error)
  */
-int zut_free_dynalloc_dds(ZDIAG &diag, std::vector<std::string> &list);
+int zut_free_dynalloc_dds(ZDIAG &diag, const std::vector<std::string> &list);
 
 /**
  * @brief List a parmlib

@@ -458,7 +458,7 @@ int handle_data_set_list(InvocationContext &context)
           fields.push_back(entry.primary == -1 ? "" : std::to_string(entry.primary));
           fields.push_back(entry.secondary == -1 ? "" : std::to_string(entry.secondary));
           fields.push_back(entry.dsntype);
-          fields.push_back(entry.migrated ? "YES" : "NO");
+          fields.emplace_back(entry.migrated ? "YES" : "NO");
         }
         context.output_stream() << zut_format_as_csv(fields) << endl;
         fields.clear();

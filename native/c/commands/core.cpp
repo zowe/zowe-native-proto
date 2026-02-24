@@ -51,7 +51,7 @@ bool should_quit(const std::string &input)
           input == "QUIT" || input == "EXIT");
 }
 
-int interactive_mode(plugin::InvocationContext &context)
+int interactive_mode(const plugin::InvocationContext &context)
 {
   context.output_stream() << "Started, enter command or 'quit' to quit..." << std::endl;
 
@@ -187,9 +187,9 @@ int execute_command(int argc, char *argv[])
   return result.exit_code;
 }
 
-Command &setup_root_command(int argc, char *argv[])
+Command &setup_root_command(char *argv[])
 {
-  g_arg_parser = std::shared_ptr<ArgumentParser>(new ArgumentParser(argv[0], "Zowe Native CLI"));
+  g_arg_parser = std::make_shared<ArgumentParser>(argv[0], "Zowe Native CLI");
   auto &root_command = g_arg_parser->get_root_command();
 
   root_command.add_keyword_arg("interactive",

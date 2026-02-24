@@ -1362,11 +1362,11 @@ async function buildChdsect(connection: Client, sftpcon: SFTPWrapper, target: st
 
 async function chdsect(connection: Client) {
     const targets =
-        args[1] != null
-            ? [args[1]]
-            : fs
+        args[1] == null
+            ? fs
                   .readdirSync(path.resolve(__dirname, `${localDeployDir}/asmchdr`))
-                  .filter((f) => f.endsWith(".s"));
+                  .filter((f) => f.endsWith(".s"))
+            : [args[1]];
 
     if (targets.length === 0) {
         throw new Error("No .s files found in native/asmchdr");
