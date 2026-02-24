@@ -521,7 +521,7 @@ void register_commands(parser::Command &root_command)
   uss_move_cmd->add_alias("mv");
   uss_move_cmd->add_positional_arg("source", "source path", ArgType_Single, true);
   uss_move_cmd->add_positional_arg("target", "target path", ArgType_Single, true);
-  uss_move_cmd->add_keyword_arg("force", make_aliases("--force", "-f"), "force overwrite", ArgType_Flag, false, ArgValue(true));
+  uss_move_cmd->add_arg("force", make_aliases(), "force overwrite", ArgType_Flag, false, false, ArgValue(true), true);
   uss_move_cmd->set_handler(handle_uss_move);
   uss_group->add_command(uss_move_cmd);
 
