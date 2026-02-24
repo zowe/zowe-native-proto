@@ -1446,6 +1446,27 @@ void zusf_tests()
                              Expect(string(zusf.diag.e_msg)).ToContain("Source or target is empty");
                            });
 
+                        it("should fail when source or target path is too long",
+                           [&]() -> void
+                           {
+                             string source = get_random_uss(zusf_test_dir);
+                             string target = get_random_uss(zusf_test_dir);
+                             source.append(PATH_MAX, 'a');
+                             target.append(PATH_MAX, 'a');
+
+                             int rc = zusf_move_uss_file_or_dir(&zusf, source, zusf_test_dir);
+                             Expect(rc).ToBe(RTNCD_FAILURE);
+                             Expect(string(zusf.diag.e_msg)).ToContain("Source or target path is too long");
+
+                             rc = zusf_move_uss_file_or_dir(&zusf, zusf_test_dir, target);
+                             Expect(rc).ToBe(RTNCD_FAILURE);
+                             Expect(string(zusf.diag.e_msg)).ToContain("Source or target path is too long");
+
+                             rc = zusf_move_uss_file_or_dir(&zusf, source, target);
+                             Expect(rc).ToBe(RTNCD_FAILURE);
+                             Expect(string(zusf.diag.e_msg)).ToContain("Source or target path is too long");
+                           });
+
                         it("should fail when source does not exist",
                            [&]() -> void
                            {

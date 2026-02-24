@@ -936,6 +936,12 @@ int zusf_move_uss_file_or_dir(ZUSF *zusf, const string &source, const string &ta
     return RTNCD_FAILURE;
   }
 
+  if (source.size() > PATH_MAX || target.size() > PATH_MAX)
+  {
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Source or target path is too long");
+    return RTNCD_FAILURE;
+  }
+
   // check if source exists
   struct stat source_stats;
   if (stat(source.c_str(), &source_stats) == -1)
