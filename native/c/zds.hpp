@@ -22,7 +22,16 @@ extern const size_t MAX_DS_LENGTH;
 struct ZDSMem
 {
   std::string name;
-  // std::string dsorg;
+  int vers;
+  int mod;
+  std::string c4date;
+  std::string m4date;
+  std::string mtime;
+  int cnorc;
+  int inorc;
+  int mnorc;
+  std::string user;
+  std::string sclm;
 };
 
 struct ZDSEntry
@@ -110,7 +119,8 @@ struct ZDSCopyOptions
   bool target_created; // Set to true if target data set was created
   bool member_created; // Set to true if target member was created
 
-  ZDSCopyOptions() : replace(false), delete_target_members(false), target_created(false), member_created(false)
+  ZDSCopyOptions()
+      : replace(false), delete_target_members(false), target_created(false), member_created(false)
   {
   }
 };
