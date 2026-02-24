@@ -303,11 +303,11 @@ private:
   ArgumentBuilder &operator=(const ArgumentBuilder &);
 };
 
-typedef struct _CmdExample
+struct CmdExample
 {
   std::string title;
   std::string command;
-} CmdExample;
+};
 
 // represents a command or subcommand with its arguments
 class Command : public enable_shared_command
@@ -785,12 +785,12 @@ private:
   std::vector<std::string> m_aliases;
   std::vector<CmdExample> m_examples;
 
-  typedef struct
+  struct DynamicKw
   {
     ArgType keyword_type;
     std::string description;
     std::string placeholder;
-  } DynamicKw;
+  };
   DynamicKw m_dynamic;
 
 public:

@@ -56,7 +56,7 @@ struct ZDSEntry
   // Maximum dir. blocks, Used dir. blocks, Number of members
 };
 
-typedef struct
+struct DS_ATTRIBUTES
 {
   std::string alcunit;   // Allocation Unit
   int blksize;           // Block Size
@@ -75,7 +75,7 @@ typedef struct
   int size;              // Size
   std::string storclass; // Storage Class
   std::string vol;       // Volume Serial
-} DS_ATTRIBUTES;
+};
 
 /**
  * Helper struct to hold data set attributes from DSCB lookup.

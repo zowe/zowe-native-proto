@@ -23,14 +23,14 @@
  * @struct ZConvData
  * @brief Structure holding data for character set conversion
  */
-typedef struct ZConvData
+struct ZConvData
 {
   char *input;            /**< Pointer to input buffer. */
   size_t input_size;      /**< Size of input buffer. */
   size_t max_output_size; /**< Maximum size of output buffer. */
   char *output_buffer;    /**< Pointer to output buffer. */
   char *output_iter;      /**< Pointer to current position in output buffer. */
-} ZConvData;
+};
 
 /**
  * @brief Search for a specific string
