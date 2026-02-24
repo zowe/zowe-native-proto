@@ -37,7 +37,13 @@ void zusf_tests()
              ListOptions short_list_opts = {false, false, 1};
              ListOptions long_list_opts = {false, true, 1};
              ListOptions all_long_list_opts = {true, true, 1};
-
+             CopyOptions copts_preserve = {false, false, true, false};
+             CopyOptions copts_recurse_symlink_preserve = {true, true, true, false};
+             CopyOptions copts_all_off = { false, false, false, false };
+             CopyOptions copts_recurse_preserve = { true, false, true, false };
+             CopyOptions copts_force = { false, false, false, true };
+             CopyOptions copts_recursive = { true, false, false, false };
+             CopyOptions copts_recursive_force = { true, false, false, true };
              const std::string tmp_base = "/tmp/zusf_chown_tests_" + get_random_string(10);
              string file_a;
              string file_b;
@@ -62,36 +68,36 @@ void zusf_tests()
                   zusf_create_uss_file_or_dir(&zusf, source_file, 0664, false);
                   zusf_create_uss_file_or_dir(&zusf, dest_file, 0775, true);
                   int rc;
-                  rc = zusf_copy_file_or_dir(&zusf, source_file, dest_file, false, false, true);
+                  rc = zusf_copy_file_or_dir(&zusf, source_file, dest_file, copts_preserve);
                   Expect(rc).ToBe(0);
                   rc = zusf_list_uss_file_path(&zusf, dest_file, list_response, short_list_opts, false);
                   Expect(rc).ToBe(0);
                   // copy over an existing file
-                  rc = zusf_copy_file_or_dir(&zusf, source_file, dest_file, false, false, true);
+                  rc = zusf_copy_file_or_dir(&zusf, source_file, dest_file, copts_preserve);
                   Expect(rc).ToBe(0);
                   rc = zusf_list_uss_file_path(&zusf, dest_file, list_response, short_list_opts, false);
                   Expect(rc).ToBe(0);
                   // copy over an existing file with -RL
-                  rc = zusf_copy_file_or_dir(&zusf, source_file, dest_file, true, true, true);
+                  rc = zusf_copy_file_or_dir(&zusf, source_file, dest_file, copts_recurse_symlink_preserve);
                   Expect(rc).ToBe(0);
                   rc = zusf_list_uss_file_path(&zusf, dest_file, list_response, short_list_opts, false);
                   Expect(rc).ToBe(0);
 
                   // copy a file to itself
-                  rc = zusf_copy_file_or_dir(&zusf, source_file, source_file, false, false, true);
+                  rc = zusf_copy_file_or_dir(&zusf, source_file, source_file, copts_preserve);
                   Expect(rc).ToBe(-1);
 
                   // with and without -p
                   zusf_chmod_uss_file_or_dir(&zusf, source_file, 0777, false);
-                  rc = zusf_copy_file_or_dir(&zusf, source_file, dest_file, false, false, false);
+                  rc = zusf_copy_file_or_dir(&zusf, source_file, dest_file, copts_all_off);
                   Expect(rc).ToBe(0);
-                  rc = zusf_list_uss_file_path(&zusf, dest_file, list_response, {false, true, 1}, false);
+                  rc = zusf_list_uss_file_path(&zusf, dest_file, list_response, long_list_opts, false);
                   Expect(rc).ToBe(0);
                   Expect(list_response).ToContain("-rw-rw-r--"); // NOT 777
 
-                  rc = zusf_copy_file_or_dir(&zusf, source_file, dest_file, false, false, true);
+                  rc = zusf_copy_file_or_dir(&zusf, source_file, dest_file, copts_preserve);
                   Expect(rc).ToBe(0);
-                  rc = zusf_list_uss_file_path(&zusf, dest_file, list_response, {false, true, 1}, false);
+                  rc = zusf_list_uss_file_path(&zusf, dest_file, list_response, long_list_opts, false);
                   Expect(rc).ToBe(0);
                   Expect(list_response).ToContain("-rwxrwxrwx"); // keeps 777
                 });
@@ -105,42 +111,42 @@ void zusf_tests()
                   zusf_create_uss_file_or_dir(&zusf, source_file, 0664, false);
                   zusf_create_uss_file_or_dir(&zusf, dest_dir, 0775, true);
                   int rc;
-                  rc = zusf_copy_file_or_dir(&zusf, source_file, dest_dir, false, false, true);
+                  rc = zusf_copy_file_or_dir(&zusf, source_file, dest_dir, copts_preserve);
                   Expect(rc).ToBe(0);
 
                   // overwrite
-                  rc = zusf_copy_file_or_dir(&zusf, source_file, dest_dir, false, false, true);
+                  rc = zusf_copy_file_or_dir(&zusf, source_file, dest_dir, copts_preserve);
                   Expect(rc).ToBe(0);
                   rc = zusf_list_uss_file_path(&zusf, dest_copied_file, list_response, short_list_opts, false);
                   Expect(rc).ToBe(0);
                   // overwrite with -RL
-                  rc = zusf_copy_file_or_dir(&zusf, source_file, dest_dir, true, true, true);
+                  rc = zusf_copy_file_or_dir(&zusf, source_file, dest_dir, copts_recurse_symlink_preserve);
                   Expect(rc).ToBe(0);
                   rc = zusf_list_uss_file_path(&zusf, dest_copied_file, list_response, short_list_opts, false);
                   Expect(rc).ToBe(0);
 
-                  rc = zusf_copy_file_or_dir(&zusf, source_file, "/some/dir/doesnt/exist", false, false, true);
+                  rc = zusf_copy_file_or_dir(&zusf, source_file, "/some/dir/doesnt/exist", copts_preserve);
                   Expect(rc).ToBe(-1);
 
                   // with and without -p. dir is 0775 and file is 0664
                   // file already exists from last tests: replacement does not change permissions
-                  rc = zusf_copy_file_or_dir(&zusf, source_file, dest_dir, false, false, false);
+                  rc = zusf_copy_file_or_dir(&zusf, source_file, dest_dir, copts_all_off);
                   Expect(rc).ToBe(0);
-                  rc = zusf_list_uss_file_path(&zusf, dest_copied_file, list_response, {false, true, 1}, false);
+                  rc = zusf_list_uss_file_path(&zusf, dest_copied_file, list_response, long_list_opts, false);
                   Expect(rc).ToBe(0);
                   Expect(list_response).ToContain("-rw-rw-r--"); // 0644
 
                   // after removing, we should see 0644 (file attributes not preserved)
                   rc = zusf_delete_uss_item(&zusf, dest_copied_file, false);
-                  rc = zusf_copy_file_or_dir(&zusf, source_file, dest_dir, false, false, false);
+                  rc = zusf_copy_file_or_dir(&zusf, source_file, dest_dir, copts_all_off);
                   Expect(rc).ToBe(0);
-                  rc = zusf_list_uss_file_path(&zusf, dest_copied_file, list_response, {false, true, 1}, false);
+                  rc = zusf_list_uss_file_path(&zusf, dest_copied_file, list_response, long_list_opts, false);
                   Expect(rc).ToBe(0);
                   Expect(list_response).ToContain("-rw-r--r--"); // 0644
 
-                  rc = zusf_copy_file_or_dir(&zusf, source_file, dest_dir, false, false, true);
+                  rc = zusf_copy_file_or_dir(&zusf, source_file, dest_dir, copts_preserve);
                   Expect(rc).ToBe(0);
-                  rc = zusf_list_uss_file_path(&zusf, dest_copied_file, list_response, {false, true, 1}, false);
+                  rc = zusf_list_uss_file_path(&zusf, dest_copied_file, list_response, long_list_opts, false);
                   Expect(rc).ToBe(0);
                   Expect(list_response).ToContain("-rw-rw-r--"); // keeps file's 0664
                 });
@@ -156,7 +162,7 @@ void zusf_tests()
                   int rc;
 
                   // copy to an existing file: error and no change to file/dir
-                  rc = zusf_copy_file_or_dir(&zusf, source_dir, dest_file, false, false, true);
+                  rc = zusf_copy_file_or_dir(&zusf, source_dir, dest_file, copts_preserve);
                   Expect(rc).ToBe(-1);
                   rc = zusf_list_uss_file_path(&zusf, dest_file, list_response, all_long_list_opts, false);
                   Expect(rc).ToBe(0);
@@ -166,17 +172,17 @@ void zusf_tests()
                   Expect(list_response).ToContain("drwxrwxr-x");
 
                   // copy to an existing file with -RL, also fail
-                  rc = zusf_copy_file_or_dir(&zusf, source_dir, dest_file, true, false, true);
+                  rc = zusf_copy_file_or_dir(&zusf, source_dir, dest_file, copts_recurse_preserve);
                   Expect(rc).ToBe(-1);
-                  rc = zusf_copy_file_or_dir(&zusf, source_dir, dest_file, true, true, true);
+                  rc = zusf_copy_file_or_dir(&zusf, source_dir, dest_file, copts_recurse_symlink_preserve);
                   Expect(rc).ToBe(-1);
 
                   const std::string unused_path = file_a;
                   // copy to a non-existent file or dir (creates it)
-                  rc = zusf_copy_file_or_dir(&zusf, source_dir, unused_path, false, false, true);
+                  rc = zusf_copy_file_or_dir(&zusf, source_dir, unused_path, copts_preserve);
                   Expect(rc).ToBe(-1); // missing -R
 
-                  rc = zusf_copy_file_or_dir(&zusf, source_dir, unused_path, true, true, true);
+                  rc = zusf_copy_file_or_dir(&zusf, source_dir, unused_path, copts_recurse_symlink_preserve);
                   Expect(rc).ToBe(0); // now exists
                   rc = zusf_list_uss_file_path(&zusf, unused_path, list_response, all_long_list_opts, false);
                   Expect(rc).ToBe(0);
@@ -194,20 +200,20 @@ void zusf_tests()
                   zusf_create_uss_file_or_dir(&zusf, source_dir, 0775, true);
 
                   // bad source
-                  rc = zusf_copy_file_or_dir(&zusf, "/noway/src/noexist", dest_dir, false, false, true);
+                  rc = zusf_copy_file_or_dir(&zusf, "/noway/src/noexist", dest_dir, copts_preserve);
                   Expect(rc).ToBe(-1);
                   // bad target
-                  rc = zusf_copy_file_or_dir(&zusf, source_dir, "/noway/dest/noexist", false, false, true);
+                  rc = zusf_copy_file_or_dir(&zusf, source_dir, "/noway/dest/noexist", copts_preserve);
                   Expect(rc).ToBe(-1);
 
                   // missing -R
-                  rc = zusf_copy_file_or_dir(&zusf, source_dir, dest_dir, false, false, true);
+                  rc = zusf_copy_file_or_dir(&zusf, source_dir, dest_dir, copts_preserve);
                   Expect(rc).ToBe(-1);
                   rc = zusf_list_uss_file_path(&zusf, dest_dir, list_response, short_list_opts, false);
                   Expect(rc).ToBe(-1);
 
                   // with -R
-                  rc = zusf_copy_file_or_dir(&zusf, source_dir, dest_dir, true, false, true);
+                  rc = zusf_copy_file_or_dir(&zusf, source_dir, dest_dir, copts_recurse_preserve);
                   Expect(rc).ToBe(0);
                   rc = zusf_list_uss_file_path(&zusf, dest_dir, list_response, short_list_opts, false);
                   Expect(rc).ToBe(0);
@@ -228,7 +234,7 @@ void zusf_tests()
                   execute_command_with_output("ln -s " + symlink_target + " " + source_symlink_filepath, cmd_output);
 
                   // link is copied
-                  rc = zusf_copy_file_or_dir(&zusf, source_dir, dest_dir, true, false, true);
+                  rc = zusf_copy_file_or_dir(&zusf, source_dir, dest_dir, copts_recurse_preserve);
                   Expect(rc).ToBe(0);
                   rc = zusf_list_uss_file_path(&zusf, dest_symlink_nested_dir, list_response, short_list_opts, false);
                   Expect(rc).ToBe(0);
@@ -242,7 +248,7 @@ void zusf_tests()
                   execute_command_with_output("rm -rf " + dest_dir, cmd_output);
 
                   // data is copied (--follow-symlinks)
-                  rc = zusf_copy_file_or_dir(&zusf, source_dir, dest_dir, true, true, true);
+                  rc = zusf_copy_file_or_dir(&zusf, source_dir, dest_dir, copts_recurse_symlink_preserve);
                   Expect(rc).ToBe(0);
                   rc = zusf_list_uss_file_path(&zusf, symlink_target, list_response, short_list_opts, true);
                   Expect(rc).ToBe(0);
@@ -250,6 +256,27 @@ void zusf_tests()
                   rc = zusf_list_uss_file_path(&zusf, dest_dir, list_response, all_long_list_opts, false);
                   Expect(rc).ToBe(0);
                   Expect(list_response).ToContain("drwxr-xr-x"); // it should be a dir
+                });
+
+             it("force copy tests", [&]() -> void
+                {
+                  const std::string source_file = file_a;
+                  const std::string target_file = file_b;
+
+                  const std::string source_dir = dir_a;
+                  const std::string target_dir = dir_b;
+
+                  ExpectWithContext(zusf_create_uss_file_or_dir(&zusf, source_file, 0664, false), zusf.diag.e_msg).ToBe(0);
+                  ExpectWithContext(zusf_create_uss_file_or_dir(&zusf, target_file, 0400, false), zusf.diag.e_msg).ToBe(0);
+                  ExpectWithContext(zusf_create_uss_file_or_dir(&zusf, source_dir, 0664, true), zusf.diag.e_msg).ToBe(0);
+                  ExpectWithContext(zusf_create_uss_file_or_dir(&zusf, target_dir + "/" + get_basename(source_dir), 0400, true), zusf.diag.e_msg).ToBe(0);
+
+                  // can't overwrite 0400 target without force
+                  ExpectWithContext(zusf_copy_file_or_dir(&zusf, source_file, target_file, copts_all_off), zusf.diag.e_msg).ToBe(255);
+                  ExpectWithContext(zusf_copy_file_or_dir(&zusf, source_file, target_file, copts_force), zusf.diag.e_msg).ToBe(0);
+
+                  ExpectWithContext(zusf_copy_file_or_dir(&zusf, source_dir, target_dir, copts_recursive), zusf.diag.e_msg).ToBe(255);
+                  ExpectWithContext(zusf_copy_file_or_dir(&zusf, source_dir, target_dir, copts_recursive_force), zusf.diag.e_msg).ToBe(0);
                 });
 
              it("insufficient permissions tests", [&]() -> void
@@ -262,11 +289,11 @@ void zusf_tests()
                   // chmod must succeed for copy to fail
                   ExpectWithContext(zusf_chmod_uss_file_or_dir(&zusf, dest_dir, 0400, true), zusf.diag.e_msg).ToBe(0);
                   int rc;
-                  rc = zusf_copy_file_or_dir(&zusf, source_file, dest_dir, false, false, true);
+                  rc = zusf_copy_file_or_dir(&zusf, source_file, dest_dir, copts_preserve);
                   ExpectWithContext(rc, zusf.diag.e_msg).ToBe(-1);
 
                   zusf_chmod_uss_file_or_dir(&zusf, dest_dir, 0775, true);
-                  rc = zusf_copy_file_or_dir(&zusf, source_file, dest_dir, false, false, true);
+                  rc = zusf_copy_file_or_dir(&zusf, source_file, dest_dir, copts_preserve);
                   Expect(rc).ToBe(0); });
            }
 

@@ -85,14 +85,22 @@ export interface CopyUssRequest extends common.CommandRequest<"copyUss"> {
      * Default: false
      */
     followSymlinks?: boolean;
+
     /**
      * Set to true if the copy action should **not** preserve permission bits and ownership in the output destination.
-     *   Note: the USS 'cp' utility by default does not preserve these permissions. zowex's USS copy by default *does*.
-     *    This is the one major way our default behavior diverges from `cp`.
+     *   Note: the USS 'cp' utility by default does not preserve these permissions.
      *
      * Default: false
      */
-    noPreservePermissions?: boolean;
+    preserveAttributes?: boolean;
+
+    /**
+     * Set to true if the copy action should try and replace any files it cannot open in the output destination.
+     *  Equivalent to 'cp -f'
+     *
+     * Default: false
+     */
+    force?: boolean;
 }
 
 export type CopyUssResponse = common.CommandResponse;

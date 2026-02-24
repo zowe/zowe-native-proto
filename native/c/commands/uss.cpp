@@ -31,16 +31,37 @@ int handle_uss_copy(InvocationContext &context)
 
   bool recursive = context.get<bool>("recursive", false);
   bool follow_symlinks = context.get<bool>("follow-symlinks", false);
-  bool preserve_attributes = !context.get<bool>("dont-preserve-attributes", false); // default = true
+  bool preserve_attributes = context.get<bool>("preserve-attributes", false);
+  bool force = context.get<bool>("force", false);
 
   if (follow_symlinks && !recursive)
   {
     context.error_stream() << "Error: follow symlinks option requires setting the recursive flag" << endl;
     return RTNCD_FAILURE;
   }
+  struct stat buf;
+  if (0 == lstat(source_path.c_str(), &buf)) {
+    if (S_ISFIFO(buf.st_mode)) {
+      context.error_stream() << "Error: we do not support copying from named pipes" << endl;
+      return RTNCD_FAILURE;
+    }
+  }
+
+  if (0 == lstat(destination_path.c_str(), &buf)) {
+    if (S_ISFIFO(buf.st_mode)) {
+      context.error_stream() << "Error: we do not support copying to named pipes" << endl;
+      return RTNCD_FAILURE;
+    }
+  }
+
+  CopyOptions options;
+  options.recursive = recursive;
+  options.follow_symlinks = follow_symlinks;
+  options.preserve_attributes = preserve_attributes;
+  options.force = force;
 
   ZUSF zusf = {};
-  int rc = zusf_copy_file_or_dir(&zusf, source_path, destination_path, recursive, follow_symlinks, preserve_attributes);
+  int rc = zusf_copy_file_or_dir(&zusf, source_path, destination_path, options);
 
   if (0 != rc) {
     context.error_stream() << "Error occurred while trying to copy \"" << source_path << "\" to \"" << destination_path << "\"" << endl;
@@ -516,7 +537,8 @@ void register_commands(parser::Command &root_command)
   uss_copy_cmd->add_positional_arg(FILE_PATH_DEST);
   uss_copy_cmd->add_keyword_arg("follow-symlinks", make_aliases("--follow-symlinks", "-L"), "follows symlinks within a directory tree. requires \"--recursive\"", ArgType_Flag, false);
   uss_copy_cmd->add_keyword_arg("recursive", make_aliases("--recursive", "-r"), "recursively copies if the source is a directory", ArgType_Flag, false);
-  uss_copy_cmd->add_keyword_arg("dont-preserve-attributes", make_aliases("--dont-preserve-attributes", "-d"), "does not preserve permission bits or ownership on copy to destination", ArgType_Flag, false);
+  uss_copy_cmd->add_keyword_arg("preserve-attributes", make_aliases("--preserve-attributes", "-p"), "preserve permission bits and ownership on copy to destination", ArgType_Flag, false);
+  uss_copy_cmd->add_keyword_arg("force", make_aliases("--force", "-f"),  "attempts to remove and replace a UNIX destination file that cannot be opened", ArgType_Flag, false);
   uss_copy_cmd->set_handler(handle_uss_copy);
   uss_group->add_command(uss_copy_cmd);
 

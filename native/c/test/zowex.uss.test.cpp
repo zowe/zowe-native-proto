@@ -143,15 +143,33 @@ void zowex_uss_tests()
                   ExpectWithContext(copy_result.second, copy_result.first).ToBe(0);
                   list_file_result = list_cmd(target_file);
                   ExpectWithContext(list_file_result.second, list_file_result.first).ToBe(0);
-
-                  // copy with --dont-preserve-attributes
-                  string output;
-                  zut_run_shell_command("chmod 777 " + source_file, output);
-                  copy_result = copy_cmd(source_file, target_file, "--dont-preserve-attributes");
                   ExpectWithContext(copy_result.second, copy_result.first).ToBe(0);
                   list_file_result = list_cmd(target_file, "-al");
                   ExpectWithContext(list_file_result.second, list_file_result.first).ToBe(0);
                   Expect(list_file_result.first).ToContain("-rw-r--r--");
+
+                  // copy with --preserve-attributes
+                  string output;
+                  delete_cmd(target_file);
+                  zut_run_shell_command("chmod 777 " + source_file, output);
+                  copy_result = copy_cmd(source_file, target_file, "--preserve-attributes");
+                  ExpectWithContext(copy_result.second, copy_result.first).ToBe(0);
+                  list_file_result = list_cmd(target_file, "-al");
+                  ExpectWithContext(list_file_result.second, list_file_result.first).ToBe(0);
+                  Expect(list_file_result.first).ToContain("-rwxrwxrwx");
+
+                });
+
+                it("copy dir->dir smoke", [&]() {
+                  string source_dir = dir_a;
+                  string target_dir = dir_b;
+                  create_test_dir_cmd(source_dir);
+                  std::pair<string, int> copy_result, list_file_result;
+
+                  copy_result = copy_cmd(source_dir, target_dir, "--recursive --follow-symlinks --force --preserve-attributes");
+                  ExpectWithContext(copy_result.second, copy_result.first).ToBe(0);
+                  list_file_result = list_cmd(target_dir); // dir created
+                  ExpectWithContext(list_file_result.second, list_file_result.first).ToBe(0); 
 
                 });
 
@@ -254,7 +272,7 @@ void zowex_uss_tests()
                   ExpectWithContext(copy_result.second, copy_result.first).ToBe(255);
                 
                   // still requires --recursive
-                  copy_result = copy_cmd(source_dir, target_dir, "--follow-symlinks --dont-preserve-attributes");
+                  copy_result = copy_cmd(source_dir, target_dir, "--follow-symlinks --preserve-attributes --force");
                   ExpectWithContext(copy_result.second, copy_result.first).ToBe(255);
                 });
 

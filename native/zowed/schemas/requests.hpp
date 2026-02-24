@@ -221,7 +221,8 @@ ZJSON_SCHEMA(CopyUssRequest,
     FIELD_REQUIRED(dstFsPath, STRING),
     FIELD_OPTIONAL(recursive, BOOL),
     FIELD_OPTIONAL(followSymlinks, BOOL),
-    FIELD_OPTIONAL(noPreservePermissions, BOOL)
+    FIELD_OPTIONAL(preserveAttributes, BOOL),
+    FIELD_OPTIONAL(force, BOOL)
 );
 
 struct CreateFileRequest {};

@@ -857,20 +857,24 @@ string zusf_build_mode_string(mode_t mode)
 /**
  * Copies a USS file or directory.
  */
-int zusf_copy_file_or_dir(ZUSF *zusf, const string &source_path, const string &destination_path, bool recursive, bool follow_symlinks, bool preserve_attributes) {
+int zusf_copy_file_or_dir(ZUSF *zusf, const string &source_path, const string &destination_path, CopyOptions options) {
 
   string command_flags = "";
-  if (recursive)
+  if (options.recursive)
   {
     command_flags += "-R ";
   }
-  if (follow_symlinks)
+  if (options.follow_symlinks)
   {
     command_flags += "-L ";
   }
-  if (preserve_attributes)
+  if (options.preserve_attributes)
   {
     command_flags += "-p ";
+  }
+  if (options.force)
+  {
+    command_flags += "-f ";
   }
   string cp_command = "cp " + command_flags + " \"" + source_path + "\" \"" + destination_path + "\" 2>&1";
   string response;

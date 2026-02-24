@@ -23,6 +23,18 @@
 #include "zusf.hpp"
 #include "zusftype.h"
 
+typedef struct _CopyOptions
+{
+  bool recursive;
+  bool follow_symlinks;
+  bool preserve_attributes;
+  bool force;
+  _CopyOptions(bool recursive = false, bool follow_symlinks = false, bool preserve_attributes = false, bool force = false)
+    : recursive(recursive), follow_symlinks(follow_symlinks), preserve_attributes(preserve_attributes), force(force)
+    {
+    }
+} CopyOptions;
+
 typedef struct _ListOptions
 {
   bool all_files;
@@ -34,7 +46,7 @@ typedef struct _ListOptions
   }
 } ListOptions;
 
-int zusf_copy_file_or_dir(ZUSF *zusf, const std::string &source_fs, const std::string &dest_fs, bool recursive, bool symlinks, bool preserveAttributes);
+int zusf_copy_file_or_dir(ZUSF *zusf, const std::string &source_fs, const std::string &dest_fs, CopyOptions options);
 int zusf_create_uss_file_or_dir(ZUSF *zusf, const std::string &file, mode_t mode, bool createDir);
 std::string zusf_format_file_entry(ZUSF *zusf, const struct stat &file_stats, const std::string &file_path, const std::string &display_name, ListOptions options, bool use_csv_format);
 int zusf_list_uss_file_path(ZUSF *zusf, std::string file, std::string &response, ListOptions options = ListOptions(), bool use_csv_format = false);
