@@ -1850,9 +1850,6 @@ int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &members)
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=pds-directory
   FILE *fp = fopen(dsn.c_str(), "rb,recfm=u");
 
-  const int bufsize = 256;
-  char buffer[bufsize] = {};
-
   if (!fp)
   {
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open dsn '%s'", dsn.c_str());
