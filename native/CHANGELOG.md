@@ -26,7 +26,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - The `zowex job submit-jcl` command now displays the submitted job in the following format: `JobName(JobId)` [#733](https://github.com/zowe/zowe-native-proto/issues/733)
 - `c`: Rename command `zowex job view-file` to `zowex job view-file-by-id` so that `view-file` can be used to print a specific file (data set) name. [#740](https://github.com/zowe/zowe-native-proto/issues/740)
 - `c`: The zowex CLI parser now supports enabling passthrough arguments for commands. When enabled, arguments passed after a double-dash (`--`) are passed directly to the command as raw input. [#729](https://github.com/zowe/zowe-native-proto/pull/729)
-- Added the rename dataset functionality to the backend. [#376] (<https://github.com/zowe/zowe-native-proto/issues/376>)
+- Added the rename dataset functionality to the backend. [#376](https://github.com/zowe/zowe-native-proto/issues/376)
 - `c`: Fixed results being truncated when listing all jobs on a system. [#735](https://github.com/zowe/zowe-native-proto/issues/735)
 - `c`: Fixed default behavior of `zowex job list` command to list jobs for only the current user. [#739](https://github.com/zowe/zowe-native-proto/issues/739)
 - `c`: Added `--status` argument to `zowex job list` command that supports filtering by job status. [#743](https://github.com/zowe/zowe-native-proto/issues/743)
