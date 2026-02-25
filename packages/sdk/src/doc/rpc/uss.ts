@@ -207,6 +207,19 @@ export interface WriteFileResponse extends common.CommandResponse {
      */
     contentLen?: number;
 }
+export interface IssueUssCmdRequest extends common.CommandRequest<"unixCommand"> {
+    /**
+     * UNIX command to execute
+     */
+    commandText: string;
+}
+
+export interface IssueUssCmdResponse extends common.CommandResponse {
+    /**
+     * Data returned from the UNIX command
+     */
+    data: string;
+}
 
 export interface MoveFileRequest extends common.CommandRequest<"moveFile"> {
     /**

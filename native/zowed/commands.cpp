@@ -174,13 +174,11 @@ void register_uss_commands(CommandDispatcher &dispatcher)
                                   .handle_fifo("stream", "pipe-path", FifoMode::PUT));
 }
 
-void register_cmd_commands(CommandDispatcher &dispatcher)
+void register_tso_commands(CommandDispatcher &dispatcher)
 {
-  // TODO Support APF authorized commands with zoweax
-  // dispatcher.register_command("consoleCommand", CommandBuilder(console::handle_console_issue));
   dispatcher.register_command("tsoCommand",
                               CommandBuilder(tso::handle_tso_issue)
-                                  .validate<IssueTsoRequest, IssueTsoResponse>()
+                                  .validate<IssueTsoCmdRequest, IssueTsoCmdResponse>()
                                   .rename_arg("commandText", "command")
                                   .read_stdout("data", false));
 }
@@ -190,5 +188,5 @@ void register_all_commands(CommandDispatcher &dispatcher)
   register_ds_commands(dispatcher);
   register_job_commands(dispatcher);
   register_uss_commands(dispatcher);
-  register_cmd_commands(dispatcher);
+  register_tso_commands(dispatcher);
 }
