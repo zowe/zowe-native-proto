@@ -12,6 +12,8 @@
 export interface SearchMatch {
     lineNumber: number;
     content: string;
+    beforeContext: string[];
+    afterContext: string[];
 }
 
 export interface SearchMember {
@@ -45,6 +47,7 @@ export function parseSearchOutput(output: string): SearchResult {
     const members: SearchMember[] = [];
     let currentMember: SearchMember | null = null;
 
+    let pendingContext: string[] = [];
     let linesFound = 0;
     let linesProcessed = 0;
     let membersWithLines = 0;
@@ -72,8 +75,11 @@ export function parseSearchOutput(output: string): SearchResult {
         const memberMatch = line.match(/^\s+(\S+)\s+[-]+\s+STRING\(S\) FOUND\s+[-]+/);
         if (memberMatch) {
             if (currentMember) {
+                const lastMatch = currentMember.matches.at(-1);
+                if (lastMatch) lastMatch.afterContext.push(...pendingContext);
                 members.push(currentMember);
             }
+            pendingContext = [];
             currentMember = {
                 name: memberMatch[1],
                 matches: [],
@@ -84,8 +90,10 @@ export function parseSearchOutput(output: string): SearchResult {
         // parse summary
         const summaryMatch = line.match(/^\s*(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+:\d+)\s+(\d+)\s*$/);
         if (summaryMatch) {
-            // Save last member before summary
             if (currentMember) {
+                const lastMatch = currentMember.matches.at(-1);
+                if (lastMatch) lastMatch.afterContext.push(...pendingContext);
+                pendingContext = [];
                 members.push(currentMember);
                 currentMember = null;
             }
@@ -99,13 +107,26 @@ export function parseSearchOutput(output: string): SearchResult {
         }
 
         // parse match e.g. "      1  //IEFBR14$ JOB (IZUACCT),'Some User',REGION=0M"
+        // parse context e.g. "      *  //*"
         if (currentMember) {
             const matchLine = line.match(/^\s+(\d+)\s{2}(.+)$/);
             if (matchLine) {
+                const lastMatch = currentMember.matches.at(-1);
                 currentMember.matches.push({
                     lineNumber: parseInt(matchLine[1], 10),
                     content: matchLine[2].trimEnd(),
+                    beforeContext: lastMatch ? [] : pendingContext,
+                    afterContext: [],
                 });
+                if (lastMatch) {
+                    lastMatch.afterContext.push(...pendingContext);
+                }
+                pendingContext = [];
+                continue;
+            }
+            const contextLine = line.match(/^\s+\*\s{2}(.+)$/);
+            if (contextLine) {
+                pendingContext.push(contextLine[1].trimEnd());
             }
         }
 
@@ -123,6 +144,8 @@ export function parseSearchOutput(output: string): SearchResult {
     }
 
     if (currentMember) {
+        const lastMatch = currentMember.matches.at(-1);
+        if (lastMatch) lastMatch.afterContext.push(...pendingContext);
         members.push(currentMember);
     }
 
