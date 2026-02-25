@@ -2574,9 +2574,18 @@ void load_date_attrs_from_dscb(const DSCBFormat1 *dscb, ZDSEntry &entry)
   load_date_from_dscb(dscb->ds1refd, &entry.rdate, false);
 }
 
+// Reasonable upper bound for number of volumes in one catalog entry (avoids huge loops / overread)
+#define MAX_VOLSER_FIELD_LEN (MAX_VOLSER_LENGTH * 256)
+
 // Load storage management attributes from catalog fields
 void load_volsers_from_catalog(const unsigned char *&data, const int field_len, int &csi_offset, ZDSEntry &entry)
 {
+  if (field_len < 0 || field_len > MAX_VOLSER_FIELD_LEN)
+  {
+    entry.volser = ZDS_VOLSER_UNKNOWN;
+    csi_offset += (field_len > 0 ? field_len : 0);
+    return;
+  }
   int num_volumes = field_len / MAX_VOLSER_LENGTH;
   entry.multivolume = num_volumes > 1;
   entry.volsers.reserve(num_volumes);
@@ -2631,12 +2640,14 @@ void load_storage_attr_from_catalog(const unsigned char *&data, const int field_
 {
   attr = "";
 
-  if (field_len > 2)
+  if (field_len > 2 && field_len <= 0xFFFF)
   {
-    // First 2 bytes are a length prefix, extract actual length
+    // First 2 bytes are a length prefix (big-endian), extract actual length
     uint16_t actual_len = (static_cast<unsigned char>(data[csi_offset]) << 8) |
                           static_cast<unsigned char>(data[csi_offset + 1]);
-    if (actual_len > 0 && actual_len <= (field_len - 2))
+    // Bounds check: actual_len must fit within field and be reasonable (avoid 0C4 from overread)
+    const int max_content = field_len - 2;
+    if (actual_len > 0 && actual_len <= static_cast<uint16_t>(max_content))
     {
       attr = string((char *)(data + csi_offset + 2), actual_len);
     }
@@ -2883,11 +2894,30 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &datasets, bool sh
       if (show_attributes)
       {
         const int *field_lens = f->response.field.field_lens;
-        const unsigned char *data = (unsigned char *)&f->response.field.field_lens + sizeof(f->response.field.field_lens);
-        int csi_offset = 0;
+        const int total_len = f->response.field.total_len;
+        // Validate catalog response layout to avoid 0C4 (protection) from overread in load_* / string()
+        int sum_lens = 0;
+        bool valid_layout = (total_len > 0 && total_len <= 0x10000);
+        for (int i = 0; valid_layout && i < CSI_FIELD_COUNT; i++)
+        {
+          if (field_lens[i] < 0 || field_lens[i] > total_len)
+            valid_layout = false;
+          else
+            sum_lens += field_lens[i];
+        }
+        if (valid_layout)
+          valid_layout = (sum_lens <= total_len);
+        if (valid_layout && field_lens[0] > MAX_VOLSER_FIELD_LEN)
+          valid_layout = false;
 
-        // Load volume serials from catalog and check if migrated
-        load_volsers_from_catalog(data, field_lens[0], csi_offset, entry);
+        if (valid_layout)
+        {
+          const unsigned char *data =
+              (unsigned char *)&f->response.field.field_lens + sizeof(f->response.field.field_lens);
+          int csi_offset = 0;
+
+          // Load volume serials from catalog and check if migrated
+          load_volsers_from_catalog(data, field_lens[0], csi_offset, entry);
 
 #define MIGRAT_VOLUME "MIGRAT"
 #define ARCIVE_VOLUME "ARCIVE"
@@ -2954,6 +2984,12 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &datasets, bool sh
         {
           entry.volsers.clear();
           entry.volsers.push_back(entry.volser);
+        }
+        }
+        else
+        {
+          entry.volser = ZDS_VOLSER_UNKNOWN;
+          entry.migrated = false;
         }
       }
 
