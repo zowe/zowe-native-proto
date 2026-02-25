@@ -1971,7 +1971,6 @@ int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &members)
     unsigned char *data = nullptr;
     data = (unsigned char *)&rec;
     data += sizeof(rec.count); // increment past halfword length
-
     int len = sizeof(RECORD_ENTRY);
     for (int i = 0; i < rec.count; i = i + len)
     {
@@ -2017,6 +2016,7 @@ int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &members)
 
         ZDSMem mem = {0};
         mem.name = string(name);
+        printf("Member: %s\n", mem.name.c_str());
         int user_data_len = info * 2;
         const unsigned char *stats = data + sizeof(entry);
 
@@ -2026,45 +2026,44 @@ int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &members)
           char user[9] = {0};
           memcpy(user, stats + 20, 8);
           mem.user = string(user);
+          printf("User: %s\n", mem.user.c_str());
 
           // Version and Mod
           mem.vers = stats[0];
+          printf("Vers: %d\n", mem.vers);
           mem.mod = stats[1];
+          printf("Mod : %d\n", mem.mod);
 
           // CHANGE THIS TO BOOLEAN
           unsigned char flags = stats[2];
           mem.sclm = (flags & 0x80) ? "Y" : "N";
+          printf("SCLM:%s\n", mem.sclm.c_str());
 
           parse_century_julian_date(stats + 4, &mem.c4date);
+          printf("CDate: %s\n", mem.c4date.c_str());
           parse_century_julian_date(stats + 8, &mem.m4date);
+          printf("MDate :%s\n", mem.m4date.c_str());
 
           parse_packed_time(
               stats[13], // hours
               stats[14], // minutes
               stats[3],  // seconds
               &mem.mtime);
+          printf("MTime  :%s\n", mem.mtime.c_str());
 
           // Line counts
           mem.cnorc = (stats[14] << 8) | stats[15];
           mem.inorc = (stats[16] << 8) | stats[17];
           mem.mnorc = (stats[18] << 8) | stats[19];
+          printf("CNORC: %d\n", mem.cnorc);
+          printf("INORC:%d\n", mem.inorc);
+          printf("MNORC: %d\n", mem.mnorc);
         }
 
         members.push_back(mem);
-        // printf("Member: %s\n", mem.name.c_str());
-        // printf("User: %s\n", mem.user.c_str());
-        // printf("Vers: %d\n", mem.vers);
-        // printf("Mod : %d\n", mem.mod);
-        // printf("CDate: %s\n", mem.c4date.c_str());
-        // printf("MDate :%s\n", mem.m4date.c_str());
-        // printf("MTime  :%s\n", mem.mtime.c_str());
-        // printf("CNORC: %d\n", mem.cnorc);
-        // printf("INORC:%d\n", mem.inorc);
-        // printf("MNORC: %d\n", mem.mnorc);
-        // printf("SCLM:%s\n", mem.sclm.c_str());
 
-        data += sizeof(entry) + user_data_len;
-        len = sizeof(entry) + user_data_len;
+        data += sizeof(entry) + info * 2;
+        len = sizeof(entry) + info * 2;
 
         int remainder = rec.count - (i + len);
         if (remainder < sizeof(entry))
