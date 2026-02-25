@@ -761,6 +761,31 @@ void zowex_ds_tests()
                              Expect(response).ToContain("Error: data set pattern exceeds 44 character length limit");
                            });
 
+                        it("should list information for a multivolume data set",
+                           [&]() -> void
+                           {
+                             string ds = _ds.back();
+                             string jcl = "//IEFBR14 JOB (IZUACCT),TEST,REGION=0M\\n"
+                                          "//STEP1   EXEC PGM=IEFBR14\\n"
+                                          "//DD1     DD DSN=" +
+                                          ds + ",DISP=(NEW,CATLG),\\n"
+                                               "//           UNIT=(3390,2),SPACE=(CYL,(1,1)),\\n"
+                                               "//           DCB=(RECFM=FB,LRECL=80,BLKSIZE=800)";
+                             string stdout_output, stderr_output;
+                             string submit_cmd = "printf \"" + jcl + "\" | " + zowex_command + " job submit-jcl --wait output";
+                             int rc = execute_command(submit_cmd, stdout_output, stderr_output);
+                             ExpectWithContext(rc, stderr_output).ToBe(0);
+
+                             string response;
+                             string command = zowex_command + " data-set list " + ds + " --attributes --response-format-csv";
+                             rc = execute_command_with_output(command, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+                             vector<string> tokens = parse_rfc_response(response, ",");
+                             Expect(tokens.size()).ToBeGreaterThan(1);
+                             // If the volser column ends with a '+', the data set is multivolume
+                             Expect(tokens[1].back()).ToBe('+');
+                           });
+
                         // TODO: https://github.com/zowe/zowe-native-proto/issues/666
                         xit("should list information for a VSAM KSDS data set", []() -> void {});
                         xit("should list information for a VSAM ESDS data set", []() -> void {});
