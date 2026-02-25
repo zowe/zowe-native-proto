@@ -81,18 +81,7 @@ export function parseSearchOutput(output: string): SearchResult {
             continue;
         }
 
-        // Parse match line: "      1  //IEFBR14$ JOB (IZUACCT),'Some User',REGION=0M"
-        if (currentMember) {
-            const matchLine = line.match(/^\s+(\d+)\s{2}(.+)$/);
-            if (matchLine) {
-                currentMember.matches.push({
-                    lineNumber: parseInt(matchLine[1], 10),
-                    content: matchLine[2].trimEnd(),
-                });
-            }
-        }
-
-        // Parse summary section
+        // parse summary
         const summaryMatch = line.match(/^\s*(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+:\d+)\s+(\d+)\s*$/);
         if (summaryMatch) {
             // Save last member before summary
@@ -106,15 +95,27 @@ export function parseSearchOutput(output: string): SearchResult {
             membersWithoutLines = parseInt(summaryMatch[4], 10);
             compareColumns = summaryMatch[5];
             longestLine = parseInt(summaryMatch[6], 10);
+            continue;
         }
 
-        // Parse process options
+        // parse match e.g. "      1  //IEFBR14$ JOB (IZUACCT),'Some User',REGION=0M"
+        if (currentMember) {
+            const matchLine = line.match(/^\s+(\d+)\s{2}(.+)$/);
+            if (matchLine) {
+                currentMember.matches.push({
+                    lineNumber: parseInt(matchLine[1], 10),
+                    content: matchLine[2].trimEnd(),
+                });
+            }
+        }
+
+        // parse options
         const optionsMatch = line.match(/PROCESS OPTIONS USED:\s+(.+)/);
         if (optionsMatch) {
             processOptions = optionsMatch[1].trim();
         }
 
-        // Parse search pattern: SRCHFOR 'IEF'
+        // parse search pattern, e.g.: SRCHFOR 'IEF'
         const patternMatch = line.match(/SRCHFOR\s+'([^']+)'/);
         if (patternMatch) {
             searchPattern = patternMatch[1];
