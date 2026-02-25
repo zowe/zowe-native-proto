@@ -21,7 +21,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## `0.2.3`
 
-- Added support for renaming data sets in the `RpcClientApi` class. [#376] (<https://github.com/zowe/zowe-native-proto/issues/376>)
+- Added support for renaming data sets in the `RpcClientApi` class. [#376](https://github.com/zowe/zowe-native-proto/issues/376)
 - Fixed an issue where connecting to the host with an expired password resulted in an ambiguous error. [#732](https://github.com/zowe/zowe-native-proto/issues/732)
 - The `submitJcl` and `submitJob` functions in the `SshJesApi` class now return the job name as a property (`jobname`) within the response object. [#733](https://github.com/zowe/zowe-native-proto/issues/733)
 - Enhanced the `Job` type to include more properties such as `subsystem`, `owner`, `type`, and `class` when listing jobs. [#749](https://github.com/zowe/zowe-native-proto/pull/749)
