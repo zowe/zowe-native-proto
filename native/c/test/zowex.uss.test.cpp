@@ -33,12 +33,18 @@ void zowex_uss_tests()
 {
   int rc;
   string response;
+  bool can_get_superuser = false;
   describe("uss",
            [&]() -> void
            {
              // Start by creating a /tmp/zowex-uss test directory
-             beforeAll([&response]() -> void
-                       { execute_command_with_output(zowex_command + " uss create-dir " + ussTestDir + " --mode 777", response); });
+             beforeAll([&response, &rc, &can_get_superuser]() -> void
+                       { execute_command_with_output(zowex_command + " uss create-dir " + ussTestDir + " --mode 777", response); 
+
+                       rc = execute_command_with_output("echo 'id -u' | su", response);
+                       if (0 == rc && 0 == response.rfind("0", 0)) {
+                         can_get_superuser = true;
+                       }});
 
              // Reset the RC to zero before each test
              beforeEach([&rc]() -> void
@@ -178,28 +184,28 @@ void zowex_uss_tests()
                                    uss_path = get_random_uss(ussTestDir);
                                    create_test_file_cmd(uss_path); });
 
-                                   it("should properly change the group on a file using numeric GID",
+                                   itif("should properly change the group on a file using numeric GID",
                                       [&]() -> void
                                       {
                                         string newGroupChownCommand = zowex_command + " uss chown :" + to_string(testGid) + " " + uss_path;
                                         string listUser = "ls -n " + uss_path;
 
-                                        rc = execute_command_with_output(newGroupChownCommand, response);
+                                        rc = execute_su_command_with_output(newGroupChownCommand, response);
                                         ExpectWithContext(rc, response).ToBe(0);
                                         Expect(response).ToContain("USS path '" + uss_path + "' owner changed to ':" + to_string(testGid) + "'");
 
                                         rc = execute_command_with_output(listUser, response);
                                         ExpectWithContext(rc, response).ToBe(0);
                                         Expect(response).ToContain(to_string(testGid));
-                                      });
+                                      }, can_get_superuser);
 
-                                   it("should properly change the group and user on a file using numeric IDs",
+                                   itif("should properly change the group and user on a file using numeric IDs",
                                       [&]() -> void
                                       {
                                         string newUserNewGroupChownCommand = zowex_command + " uss chown " + to_string(testUid) + ":" + to_string(testGid) + " " + uss_path;
                                         string listUser = "ls -n " + uss_path;
 
-                                        rc = execute_command_with_output(newUserNewGroupChownCommand, response);
+                                        rc = execute_su_command_with_output(newUserNewGroupChownCommand, response);
                                         ExpectWithContext(rc, response).ToBe(0);
                                         Expect(response).ToContain("USS path '" + uss_path + "' owner changed to '" + to_string(testUid) + ":" + to_string(testGid) + "'");
 
@@ -207,7 +213,7 @@ void zowex_uss_tests()
                                         ExpectWithContext(rc, response).ToBe(0);
                                         Expect(response).ToContain(to_string(testUid));
                                         Expect(response).ToContain(to_string(testGid));
-                                      });
+                                      }, can_get_superuser);
                                  });
 
                         describe("on a directory",
@@ -218,7 +224,7 @@ void zowex_uss_tests()
                                    uss_path = get_random_uss(ussTestDir) + "_dir";
                                    create_test_dir_cmd(uss_path); });
 
-                                   it("should properly change the group and user on a directory using numeric IDs",
+                                   itif("should properly change the group and user on a directory using numeric IDs",
                                       [&]() -> void
                                       {
                                         string newUserNewGroupChownCommand = zowex_command + " uss chown " + to_string(testUid) + ":" + to_string(testGid) + " " + uss_path + " -r";
@@ -226,7 +232,7 @@ void zowex_uss_tests()
                                         // Use -nd to list directory details numerically without entering it
                                         string listUser = "ls -nd " + uss_path;
 
-                                        rc = execute_command_with_output(newUserNewGroupChownCommand, response);
+                                        rc = execute_su_command_with_output(newUserNewGroupChownCommand, response);
                                         ExpectWithContext(rc, response).ToBe(0);
                                         Expect(response).ToContain("USS path '" + uss_path + "' owner changed to '" + to_string(testUid) + ":" + to_string(testGid) + "'");
 
@@ -234,7 +240,7 @@ void zowex_uss_tests()
                                         ExpectWithContext(rc, response).ToBe(0);
                                         Expect(response).ToContain(to_string(testUid));
                                         Expect(response).ToContain(to_string(testGid));
-                                      });
+                                      }, can_get_superuser);
                                  });
                       });
              describe("chtag",
