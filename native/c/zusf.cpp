@@ -859,6 +859,26 @@ string zusf_build_mode_string(mode_t mode)
  */
 int zusf_copy_file_or_dir(ZUSF *zusf, const string &source_path, const string &destination_path, CopyOptions options) {
 
+  if (options.follow_symlinks && !options.recursive)
+  {
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Error: follow symlinks option requires setting the recursive flag");
+    return RTNCD_FAILURE;
+  }
+  struct stat buf;
+  if (0 == stat(source_path.c_str(), &buf)) {
+    if (S_ISFIFO(buf.st_mode)) {
+      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Error: we do not support copying from named pipes");
+      return RTNCD_FAILURE;
+    }
+  }
+
+  if (0 == stat(destination_path.c_str(), &buf)) {
+    if (S_ISFIFO(buf.st_mode)) {
+      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Error: we do not support copying to named pipes");
+      return RTNCD_FAILURE;
+    }
+  }
+
   string command_flags = "";
   if (options.recursive)
   {

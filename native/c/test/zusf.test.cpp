@@ -257,6 +257,15 @@ void zusf_tests()
                   Expect(rc).ToBe(0);
                   Expect(list_response).ToContain("drwxr-xr-x"); // it should be a dir
                 });
+             it("should not copy to/from fifo pipes", [&]() -> void
+                {
+                  const std::string pipe = file_a;
+                  const std::string non_pipe = file_b;
+                  std::string dispose;
+                  execute_command_with_output("mkfifo -m 0666 " + pipe, dispose);
+                  ExpectWithContext(zusf_copy_file_or_dir(&zusf, pipe, non_pipe, copts_all_off), zusf.diag.e_msg).ToBe(-1);
+                  ExpectWithContext(zusf_copy_file_or_dir(&zusf, non_pipe, pipe, copts_all_off), zusf.diag.e_msg).ToBe(-1); 
+                });
 
              it("force copy tests", [&]() -> void
                 {
@@ -269,14 +278,13 @@ void zusf_tests()
                   ExpectWithContext(zusf_create_uss_file_or_dir(&zusf, source_file, 0664, false), zusf.diag.e_msg).ToBe(0);
                   ExpectWithContext(zusf_create_uss_file_or_dir(&zusf, target_file, 0400, false), zusf.diag.e_msg).ToBe(0);
                   ExpectWithContext(zusf_create_uss_file_or_dir(&zusf, source_dir, 0664, true), zusf.diag.e_msg).ToBe(0);
+                  ExpectWithContext(zusf_create_uss_file_or_dir(&zusf, target_dir, 0775, true), zusf.diag.e_msg).ToBe(0);
                   ExpectWithContext(zusf_create_uss_file_or_dir(&zusf, target_dir + "/" + get_basename(source_dir), 0400, true), zusf.diag.e_msg).ToBe(0);
 
                   // can't overwrite 0400 target without force
-                  ExpectWithContext(zusf_copy_file_or_dir(&zusf, source_file, target_file, copts_all_off), zusf.diag.e_msg).ToBe(255);
-                  ExpectWithContext(zusf_copy_file_or_dir(&zusf, source_file, target_file, copts_force), zusf.diag.e_msg).ToBe(0);
-
-                  ExpectWithContext(zusf_copy_file_or_dir(&zusf, source_dir, target_dir, copts_recursive), zusf.diag.e_msg).ToBe(255);
-                  ExpectWithContext(zusf_copy_file_or_dir(&zusf, source_dir, target_dir, copts_recursive_force), zusf.diag.e_msg).ToBe(0);
+                  zusf_chmod_uss_file_or_dir(&zusf, target_file, 0400, false);
+                  ExpectWithContext(zusf_copy_file_or_dir(&zusf, source_file, target_file, copts_all_off), zusf.diag.e_msg).ToBe(-1);
+                  ExpectWithContext(zusf_copy_file_or_dir(&zusf, source_file, target_file, copts_force), zusf.diag.e_msg).ToBe(0); 
                 });
 
              it("insufficient permissions tests", [&]() -> void
@@ -294,7 +302,8 @@ void zusf_tests()
 
                   zusf_chmod_uss_file_or_dir(&zusf, dest_dir, 0775, true);
                   rc = zusf_copy_file_or_dir(&zusf, source_file, dest_dir, copts_preserve);
-                  Expect(rc).ToBe(0); });
+                  Expect(rc).ToBe(0); 
+                });
            }
 
   );

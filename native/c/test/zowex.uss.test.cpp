@@ -222,7 +222,8 @@ void zowex_uss_tests()
                   for (int i = 0; i < test_cases.size(); i++) {
                     std::pair<string, int> result;
                     string cmd_output, list_output;
-                    const string test = test_cases.at(i);
+                    const string test_basename = test_cases.at(i);
+                    const string test = uss_path + "/" + test_basename;
 
                     // copy static file -> new file w/ special chars
                     result = copy_cmd(test_file, test);

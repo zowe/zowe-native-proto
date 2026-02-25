@@ -34,26 +34,6 @@ int handle_uss_copy(InvocationContext &context)
   bool preserve_attributes = context.get<bool>("preserve-attributes", false);
   bool force = context.get<bool>("force", false);
 
-  if (follow_symlinks && !recursive)
-  {
-    context.error_stream() << "Error: follow symlinks option requires setting the recursive flag" << endl;
-    return RTNCD_FAILURE;
-  }
-  struct stat buf;
-  if (0 == lstat(source_path.c_str(), &buf)) {
-    if (S_ISFIFO(buf.st_mode)) {
-      context.error_stream() << "Error: we do not support copying from named pipes" << endl;
-      return RTNCD_FAILURE;
-    }
-  }
-
-  if (0 == lstat(destination_path.c_str(), &buf)) {
-    if (S_ISFIFO(buf.st_mode)) {
-      context.error_stream() << "Error: we do not support copying to named pipes" << endl;
-      return RTNCD_FAILURE;
-    }
-  }
-
   CopyOptions options;
   options.recursive = recursive;
   options.follow_symlinks = follow_symlinks;
