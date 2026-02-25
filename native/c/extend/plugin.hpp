@@ -35,14 +35,13 @@ public:
 
 namespace ast
 {
-using namespace std;
 struct Ast;
 
-typedef shared_ptr<Ast> Node;
-typedef shared_ptr<string> StringPtr;
-typedef shared_ptr<vector<Node>> VecPtr;
-typedef unordered_map<string, Node> ObjMap;
-typedef shared_ptr<ObjMap> ObjPtr;
+typedef std::shared_ptr<Ast> Node;
+typedef std::shared_ptr<std::string> StringPtr;
+typedef std::shared_ptr<std::vector<Node>> VecPtr;
+typedef std::unordered_map<std::string, Node> ObjMap;
+typedef std::shared_ptr<ObjMap> ObjPtr;
 
 struct Ast
 {

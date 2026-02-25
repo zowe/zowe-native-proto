@@ -22,40 +22,39 @@
 
 using namespace ast;
 using namespace parser;
-using namespace std;
 using namespace commands::common;
 
 namespace ds
 {
-int process_data_set_create_result(InvocationContext &context, ZDS *zds, int rc, string dsn, string response)
+int process_data_set_create_result(InvocationContext &context, ZDS *zds, int rc, std::string dsn, std::string response)
 {
   if (0 != rc)
   {
-    context.error_stream() << "Error: could not create data set: '" << dsn << "' rc: '" << rc << "'" << endl;
+    context.error_stream() << "Error: could not create data set: '" << dsn << "' rc: '" << rc << "'" << std::endl;
     context.error_stream() << "  Details:\n"
-                           << response << endl;
+                           << response << std::endl;
     return RTNCD_FAILURE;
   }
 
   // Handle member creation if specified
   size_t start = dsn.find_first_of('(');
   size_t end = dsn.find_last_of(')');
-  if (start != string::npos && end != string::npos && end > start)
+  if (start != std::string::npos && end != std::string::npos && end > start)
   {
-    string member_name = dsn.substr(start + 1, end - start - 1);
-    string data = "";
+    std::string member_name = dsn.substr(start + 1, end - start - 1);
+    std::string data = "";
     rc = zds_write_to_dsn(zds, dsn, data);
     if (0 != rc)
     {
-      context.output_stream() << "Error: could not write to data set: '" << dsn << "' rc: '" << rc << "'" << endl;
-      context.output_stream() << "  Details: " << zds->diag.e_msg << endl;
+      context.output_stream() << "Error: could not write to data set: '" << dsn << "' rc: '" << rc << "'" << std::endl;
+      context.output_stream() << "  Details: " << zds->diag.e_msg << std::endl;
       return RTNCD_FAILURE;
     }
-    context.output_stream() << "Data set and/or member created: '" << dsn << "'" << endl;
+    context.output_stream() << "Data set and/or member created: '" << dsn << "'" << std::endl;
   }
   else
   {
-    context.output_stream() << "Data set created: '" << dsn << "'" << endl;
+    context.output_stream() << "Data set created: '" << dsn << "'" << std::endl;
   }
 
   return rc;
@@ -64,14 +63,14 @@ int process_data_set_create_result(InvocationContext &context, ZDS *zds, int rc,
 int create_with_attributes(InvocationContext &context)
 {
   int rc = 0;
-  string dsn = context.get<string>("dsn", "");
+  std::string dsn = context.get<std::string>("dsn", "");
   ZDS zds = {};
   DS_ATTRIBUTES attributes = {};
 
   // Extract all the optional creation attributes
   if (context.has("alcunit"))
   {
-    attributes.alcunit = context.get<string>("alcunit", "");
+    attributes.alcunit = context.get<std::string>("alcunit", "");
   }
   if (context.has("blksize"))
   {
@@ -83,7 +82,7 @@ int create_with_attributes(InvocationContext &context)
   }
   if (context.has("dsorg"))
   {
-    attributes.dsorg = context.get<string>("dsorg", "");
+    attributes.dsorg = context.get<std::string>("dsorg", "");
   }
   if (context.has("primary"))
   {
@@ -91,7 +90,7 @@ int create_with_attributes(InvocationContext &context)
   }
   if (context.has("recfm"))
   {
-    attributes.recfm = context.get<string>("recfm", "");
+    attributes.recfm = context.get<std::string>("recfm", "");
   }
   if (context.has("lrecl"))
   {
@@ -99,23 +98,23 @@ int create_with_attributes(InvocationContext &context)
   }
   if (context.has("dataclass"))
   {
-    attributes.dataclass = context.get<string>("dataclass", "");
+    attributes.dataclass = context.get<std::string>("dataclass", "");
   }
   if (context.has("unit"))
   {
-    attributes.unit = context.get<string>("unit", "");
+    attributes.unit = context.get<std::string>("unit", "");
   }
   if (context.has("dsntype"))
   {
-    attributes.dsntype = context.get<string>("dsntype", "");
+    attributes.dsntype = context.get<std::string>("dsntype", "");
   }
   if (context.has("mgntclass"))
   {
-    attributes.mgntclass = context.get<string>("mgntclass", "");
+    attributes.mgntclass = context.get<std::string>("mgntclass", "");
   }
   if (context.has("dsname"))
   {
-    attributes.dsname = context.get<string>("dsname", "");
+    attributes.dsname = context.get<std::string>("dsname", "");
   }
   if (context.has("avgblk"))
   {
@@ -131,14 +130,14 @@ int create_with_attributes(InvocationContext &context)
   }
   if (context.has("storclass"))
   {
-    attributes.storclass = context.get<string>("storclass", "");
+    attributes.storclass = context.get<std::string>("storclass", "");
   }
   if (context.has("vol"))
   {
-    attributes.vol = context.get<string>("vol", "");
+    attributes.vol = context.get<std::string>("vol", "");
   }
 
-  string response;
+  std::string response;
   rc = zds_create_dsn(&zds, dsn, attributes, response);
   return process_data_set_create_result(context, &zds, rc, dsn, response);
 }
@@ -146,7 +145,7 @@ int create_with_attributes(InvocationContext &context)
 const ast::Node build_ds_object(const ZDSEntry &entry, bool attributes)
 {
   const auto obj_entry = obj();
-  string trimmed_name = entry.name;
+  std::string trimmed_name = entry.name;
   obj_entry->set("name", str(zut_rtrim(trimmed_name)));
 
   if (!attributes)
@@ -206,9 +205,9 @@ const ast::Node build_ds_object(const ZDSEntry &entry, bool attributes)
 int handle_data_set_create_fb(InvocationContext &context)
 {
   int rc = 0;
-  string dsn = context.get<string>("dsn", "");
+  std::string dsn = context.get<std::string>("dsn", "");
   ZDS zds = {};
-  string response;
+  std::string response;
   rc = zds_create_dsn_fb(&zds, dsn, response);
   return process_data_set_create_result(context, &zds, rc, dsn, response);
 }
@@ -216,9 +215,9 @@ int handle_data_set_create_fb(InvocationContext &context)
 int handle_data_set_create_vb(InvocationContext &context)
 {
   int rc = 0;
-  string dsn = context.get<string>("dsn", "");
+  std::string dsn = context.get<std::string>("dsn", "");
   ZDS zds = {};
-  string response;
+  std::string response;
   rc = zds_create_dsn_vb(&zds, dsn, response);
   return process_data_set_create_result(context, &zds, rc, dsn, response);
 }
@@ -226,9 +225,9 @@ int handle_data_set_create_vb(InvocationContext &context)
 int handle_data_set_create_adata(InvocationContext &context)
 {
   int rc = 0;
-  string dsn = context.get<string>("dsn", "");
+  std::string dsn = context.get<std::string>("dsn", "");
   ZDS zds = {};
-  string response;
+  std::string response;
   rc = zds_create_dsn_adata(&zds, dsn, response);
   return process_data_set_create_result(context, &zds, rc, dsn, response);
 }
@@ -236,9 +235,9 @@ int handle_data_set_create_adata(InvocationContext &context)
 int handle_data_set_create_loadlib(InvocationContext &context)
 {
   int rc = 0;
-  string dsn = context.get<string>("dsn", "");
+  std::string dsn = context.get<std::string>("dsn", "");
   ZDS zds = {};
-  string response;
+  std::string response;
   rc = zds_create_dsn_loadlib(&zds, dsn, response);
   return process_data_set_create_result(context, &zds, rc, dsn, response);
 }
@@ -246,41 +245,41 @@ int handle_data_set_create_loadlib(InvocationContext &context)
 int handle_data_set_create_member(InvocationContext &context)
 {
   int rc = 0;
-  string dsn = context.get<string>("dsn", "");
+  std::string dsn = context.get<std::string>("dsn", "");
   ZDS zds = {};
-  string response;
-  vector<ZDSEntry> entries;
+  std::string response;
+  std::vector<ZDSEntry> entries;
 
   size_t start = dsn.find_first_of('(');
   size_t end = dsn.find_last_of(')');
-  string member_name;
-  if (start != string::npos && end != string::npos && end > start)
+  std::string member_name;
+  if (start != std::string::npos && end != std::string::npos && end > start)
   {
     member_name = dsn.substr(start + 1, end - start - 1);
-    string dataset_name = dsn.substr(0, start);
+    std::string dataset_name = dsn.substr(0, start);
 
     rc = zds_list_data_sets(&zds, dataset_name, entries);
     if (RTNCD_WARNING < rc || entries.size() == 0)
     {
-      context.output_stream() << "Error: could not create data set member: '" << dataset_name << "' rc: '" << rc << "'" << endl;
+      context.output_stream() << "Error: could not create data set member: '" << dataset_name << "' rc: '" << rc << "'" << std::endl;
       context.output_stream() << "  Details:\n"
-                              << zds.diag.e_msg << endl;
+                              << zds.diag.e_msg << std::endl;
       return RTNCD_FAILURE;
     }
 
-    string data = "";
+    std::string data = "";
     rc = zds_write_to_dsn(&zds, dsn, data);
     if (0 != rc)
     {
-      context.output_stream() << "Error: could not write to data set: '" << dsn << "' rc: '" << rc << "'" << endl;
-      context.output_stream() << "  Details: " << zds.diag.e_msg << endl;
+      context.output_stream() << "Error: could not write to data set: '" << dsn << "' rc: '" << rc << "'" << std::endl;
+      context.output_stream() << "  Details: " << zds.diag.e_msg << std::endl;
       return RTNCD_FAILURE;
     }
-    context.output_stream() << "Data set and/or member created: '" << dsn << "'" << endl;
+    context.output_stream() << "Data set and/or member created: '" << dsn << "'" << std::endl;
   }
   else
   {
-    context.output_stream() << "Error: could not find member name in dsn: '" << dsn << "'" << endl;
+    context.output_stream() << "Error: could not find member name in dsn: '" << dsn << "'" << std::endl;
     return RTNCD_FAILURE;
   }
 
@@ -290,17 +289,17 @@ int handle_data_set_create_member(InvocationContext &context)
 int handle_data_set_view(InvocationContext &context)
 {
   int rc = 0;
-  string dsn = context.get<string>("dsn", "");
+  std::string dsn = context.get<std::string>("dsn", "");
   ZDS zds = {};
-  vector<string> dds;
+  std::vector<std::string> dds;
 
   if (context.has("encoding"))
   {
-    zut_prepare_encoding(context.get<string>("encoding", ""), &zds.encoding_opts);
+    zut_prepare_encoding(context.get<std::string>("encoding", ""), &zds.encoding_opts);
   }
   if (context.has("local-encoding"))
   {
-    const auto source_encoding = context.get<string>("local-encoding", "");
+    const auto source_encoding = context.get<std::string>("local-encoding", "");
     if (!source_encoding.empty() && source_encoding.size() < sizeof(zds.encoding_opts.source_codepage))
     {
       memcpy(zds.encoding_opts.source_codepage, source_encoding.data(), source_encoding.length() + 1);
@@ -308,7 +307,7 @@ int handle_data_set_view(InvocationContext &context)
   }
   if (context.has("volser"))
   {
-    string volser_value = context.get<string>("volser", "");
+    std::string volser_value = context.get<std::string>("volser", "");
     if (!volser_value.empty())
     {
       dds.push_back("alloc dd(input) da('" + dsn + "') shr vol(" + volser_value + ")");
@@ -316,7 +315,7 @@ int handle_data_set_view(InvocationContext &context)
       rc = zut_loop_dynalloc(diag, dds);
       if (0 != rc)
       {
-        context.error_stream() << diag.e_msg << endl;
+        context.error_stream() << diag.e_msg << std::endl;
         return RTNCD_FAILURE;
       }
       strcpy(zds.ddname, "INPUT");
@@ -324,7 +323,7 @@ int handle_data_set_view(InvocationContext &context)
   }
 
   bool has_pipe_path = context.has("pipe-path");
-  string pipe_path = context.get<string>("pipe-path", "");
+  std::string pipe_path = context.get<std::string>("pipe-path", "");
   const auto result = obj();
 
   if (has_pipe_path && !pipe_path.empty())
@@ -334,16 +333,16 @@ int handle_data_set_view(InvocationContext &context)
 
     if (context.get<bool>("return-etag", false))
     {
-      string temp_content;
+      std::string temp_content;
       auto read_rc = zds_read_from_dsn(&zds, dsn, temp_content);
       if (read_rc == 0)
       {
         const auto etag = zut_calc_adler32_checksum(temp_content);
-        stringstream etag_stream;
-        etag_stream << hex << etag << dec;
+        std::stringstream etag_stream;
+        etag_stream << std::hex << etag << std::dec;
         if (!context.is_redirecting_output())
         {
-          context.output_stream() << "etag: " << etag_stream.str() << endl;
+          context.output_stream() << "etag: " << etag_stream.str() << std::endl;
         }
         result->set("etag", str(etag_stream.str()));
       }
@@ -351,29 +350,29 @@ int handle_data_set_view(InvocationContext &context)
 
     if (!context.is_redirecting_output())
     {
-      context.output_stream() << "size: " << content_len << endl;
+      context.output_stream() << "size: " << content_len << std::endl;
     }
     result->set("contentLen", i64(content_len));
   }
   else
   {
-    string response;
+    std::string response;
     rc = zds_read_from_dsn(&zds, dsn, response);
     if (0 != rc)
     {
-      context.error_stream() << "Error: could not read data set: '" << dsn << "' rc: '" << rc << "'" << endl;
-      context.error_stream() << "  Details: " << zds.diag.e_msg << endl;
+      context.error_stream() << "Error: could not read data set: '" << dsn << "' rc: '" << rc << "'" << std::endl;
+      context.error_stream() << "  Details: " << zds.diag.e_msg << std::endl;
       return RTNCD_FAILURE;
     }
 
     if (context.get<bool>("return-etag", false))
     {
       const auto etag = zut_calc_adler32_checksum(response);
-      stringstream etag_stream;
-      etag_stream << hex << etag << dec;
+      std::stringstream etag_stream;
+      etag_stream << std::hex << etag << std::dec;
       if (!context.is_redirecting_output())
       {
-        context.output_stream() << "etag: " << etag_stream.str() << endl;
+        context.output_stream() << "etag: " << etag_stream.str() << std::endl;
         context.output_stream() << "data: ";
       }
       result->set("etag", str(etag_stream.str()));
@@ -398,7 +397,7 @@ int handle_data_set_view(InvocationContext &context)
     rc = zut_free_dynalloc_dds(diag, dds);
     if (0 != rc)
     {
-      context.error_stream() << diag.e_msg << endl;
+      context.error_stream() << diag.e_msg << std::endl;
       return RTNCD_FAILURE;
     }
   }
@@ -412,11 +411,11 @@ int handle_data_set_list(InvocationContext &context)
 {
   int rc = 0;
   ZLOG_DEBUG("[>] handle_data_set_list");
-  string dsn = context.get<string>("dsn", "");
+  std::string dsn = context.get<std::string>("dsn", "");
 
   if (dsn.length() > MAX_DS_LENGTH)
   {
-    context.error_stream() << "Error: data set pattern exceeds 44 character length limit" << endl;
+    context.error_stream() << "Error: data set pattern exceeds 44 character length limit" << std::endl;
     return RTNCD_FAILURE;
   }
 
@@ -431,14 +430,14 @@ int handle_data_set_list(InvocationContext &context)
   {
     zds.max_entries = max_entries;
   }
-  vector<ZDSEntry> entries;
+  std::vector<ZDSEntry> entries;
 
   const auto num_attr_fields = 10;
   bool emit_csv = context.get<bool>("response-format-csv", false);
   rc = zds_list_data_sets(&zds, dsn, entries, attributes);
   if (RTNCD_SUCCESS == rc || RTNCD_WARNING == rc)
   {
-    vector<string> fields;
+    std::vector<std::string> fields;
     fields.reserve((attributes ? num_attr_fields : 0) + 1);
     const auto entries_array = arr();
 
@@ -460,30 +459,30 @@ int handle_data_set_list(InvocationContext &context)
           fields.push_back(entry.dsntype);
           fields.emplace_back(entry.migrated ? "YES" : "NO");
         }
-        context.output_stream() << zut_format_as_csv(fields) << endl;
+        context.output_stream() << zut_format_as_csv(fields) << std::endl;
         fields.clear();
       }
       else
       {
         if (attributes)
         {
-          context.output_stream() << left
-                                  << setw(44) << entry.name << " "
-                                  << setw(7) << (entry.multivolume ? (entry.volser + "+") : entry.volser) << " "
-                                  << setw(7) << (entry.devtype != 0 ? zut_int_to_string(entry.devtype, true) : "") << " "
-                                  << setw(4) << entry.dsorg << " "
-                                  << setw(6) << entry.recfm << " "
-                                  << setw(6) << (entry.lrecl == -1 ? "" : std::to_string(entry.lrecl)) << " "
-                                  << setw(6) << (entry.blksize == -1 ? "" : std::to_string(entry.blksize)) << " "
-                                  << setw(10) << (entry.primary == -1 ? "" : std::to_string(entry.primary)) << " "
-                                  << setw(10) << (entry.secondary == -1 ? "" : std::to_string(entry.secondary)) << " "
-                                  << setw(8) << entry.dsntype << " "
+          context.output_stream() << std::left
+                                  << std::setw(44) << entry.name << " "
+                                  << std::setw(7) << (entry.multivolume ? (entry.volser + "+") : entry.volser) << " "
+                                  << std::setw(7) << (entry.devtype != 0 ? zut_int_to_string(entry.devtype, true) : "") << " "
+                                  << std::setw(4) << entry.dsorg << " "
+                                  << std::setw(6) << entry.recfm << " "
+                                  << std::setw(6) << (entry.lrecl == -1 ? "" : std::to_string(entry.lrecl)) << " "
+                                  << std::setw(6) << (entry.blksize == -1 ? "" : std::to_string(entry.blksize)) << " "
+                                  << std::setw(10) << (entry.primary == -1 ? "" : std::to_string(entry.primary)) << " "
+                                  << std::setw(10) << (entry.secondary == -1 ? "" : std::to_string(entry.secondary)) << " "
+                                  << std::setw(8) << entry.dsntype << " "
                                   << (entry.migrated ? "YES" : "NO")
-                                  << endl;
+                                  << std::endl;
         }
         else
         {
-          context.output_stream() << left << setw(44) << entry.name << endl;
+          context.output_stream() << std::left << std::setw(44) << entry.name << std::endl;
         }
       }
 
@@ -502,19 +501,19 @@ int handle_data_set_list(InvocationContext &context)
     {
       if (ZDS_RSNCD_MAXED_ENTRIES_REACHED == zds.diag.detail_rc)
       {
-        context.error_stream() << "Warning: results truncated" << endl;
+        context.error_stream() << "Warning: results truncated" << std::endl;
       }
       else if (ZDS_RSNCD_NOT_FOUND == zds.diag.detail_rc)
       {
-        context.error_stream() << "Warning: no matching results found" << endl;
+        context.error_stream() << "Warning: no matching results found" << std::endl;
       }
     }
   }
 
   if (RTNCD_SUCCESS != rc && RTNCD_WARNING != rc)
   {
-    context.error_stream() << "Error: could not list data set: '" << dsn << "' rc: '" << rc << "'" << endl;
-    context.error_stream() << "  Details: " << zds.diag.e_msg << endl;
+    context.error_stream() << "Error: could not list data set: '" << dsn << "' rc: '" << rc << "'" << std::endl;
+    context.error_stream() << "  Details: " << zds.diag.e_msg << std::endl;
     return RTNCD_FAILURE;
   }
 
@@ -524,7 +523,7 @@ int handle_data_set_list(InvocationContext &context)
 int handle_data_set_list_members(InvocationContext &context)
 {
   int rc = 0;
-  string dsn = context.get<string>("dsn", "");
+  std::string dsn = context.get<std::string>("dsn", "");
   long long max_entries = context.get<long long>("max-entries", 0);
   bool warn = context.get<bool>("warn", true);
 
@@ -533,7 +532,7 @@ int handle_data_set_list_members(InvocationContext &context)
   {
     zds.max_entries = max_entries;
   }
-  vector<ZDSMem> members;
+  std::vector<ZDSMem> members;
   rc = zds_list_members(&zds, dsn, members);
 
   if (RTNCD_SUCCESS == rc || RTNCD_WARNING == rc)
@@ -541,9 +540,9 @@ int handle_data_set_list_members(InvocationContext &context)
     const auto entries_array = arr();
     for (const auto &mem : members)
     {
-      context.output_stream() << left << setw(12) << mem.name << endl;
+      context.output_stream() << std::left << std::setw(12) << mem.name << std::endl;
       const auto entry = obj();
-      string trimmed_name = mem.name;
+      std::string trimmed_name = mem.name;
       entry->set("name", str(zut_rtrim(trimmed_name)));
       entries_array->push(entry);
     }
@@ -558,14 +557,14 @@ int handle_data_set_list_members(InvocationContext &context)
     {
       if (ZDS_RSNCD_MAXED_ENTRIES_REACHED == zds.diag.detail_rc)
       {
-        context.error_stream() << "Warning: results truncated" << endl;
+        context.error_stream() << "Warning: results truncated" << std::endl;
       }
     }
   }
   if (RTNCD_SUCCESS != rc && RTNCD_WARNING != rc)
   {
-    context.error_stream() << "Error: could not list members: '" << dsn << "' rc: '" << rc << "'" << endl;
-    context.error_stream() << "  Details: " << zds.diag.e_msg << endl;
+    context.error_stream() << "Error: could not list members: '" << dsn << "' rc: '" << rc << "'" << std::endl;
+    context.error_stream() << "  Details: " << zds.diag.e_msg << std::endl;
     return RTNCD_FAILURE;
   }
 
@@ -575,17 +574,17 @@ int handle_data_set_list_members(InvocationContext &context)
 int handle_data_set_write(InvocationContext &context)
 {
   int rc = 0;
-  string dsn = context.get<string>("dsn", "");
+  std::string dsn = context.get<std::string>("dsn", "");
   ZDS zds = {};
-  vector<string> dds;
+  std::vector<std::string> dds;
 
   if (context.has("encoding"))
   {
-    zut_prepare_encoding(context.get<string>("encoding", ""), &zds.encoding_opts);
+    zut_prepare_encoding(context.get<std::string>("encoding", ""), &zds.encoding_opts);
   }
   if (context.has("local-encoding"))
   {
-    const auto source_encoding = context.get<string>("local-encoding", "");
+    const auto source_encoding = context.get<std::string>("local-encoding", "");
     if (!source_encoding.empty() && source_encoding.size() < sizeof(zds.encoding_opts.source_codepage))
     {
       memcpy(zds.encoding_opts.source_codepage, source_encoding.data(), source_encoding.length() + 1);
@@ -594,7 +593,7 @@ int handle_data_set_write(InvocationContext &context)
 
   if (context.has("etag"))
   {
-    string etag_value = context.get<string>("etag", "");
+    std::string etag_value = context.get<std::string>("etag", "");
     if (etag_value.empty())
     {
       // Adler-32 etags that consist only of decimal digits (no a-f) are
@@ -603,7 +602,7 @@ int handle_data_set_write(InvocationContext &context)
       const long long *etag_int = context.get_if<long long>("etag");
       if (etag_int)
       {
-        stringstream ss;
+        std::stringstream ss;
         ss << *etag_int;
         etag_value = ss.str();
       }
@@ -616,7 +615,7 @@ int handle_data_set_write(InvocationContext &context)
 
   if (context.has("volser"))
   {
-    string volser_value = context.get<string>("volser", "");
+    std::string volser_value = context.get<std::string>("volser", "");
     if (!volser_value.empty())
     {
       dds.push_back("alloc dd(output) da('" + dsn + "') shr vol(" + volser_value + ")");
@@ -624,7 +623,7 @@ int handle_data_set_write(InvocationContext &context)
       rc = zut_loop_dynalloc(diag, dds);
       if (0 != rc)
       {
-        context.error_stream() << diag.e_msg << endl;
+        context.error_stream() << diag.e_msg << std::endl;
         return RTNCD_FAILURE;
       }
       strcpy(zds.ddname, "OUTPUT");
@@ -632,7 +631,7 @@ int handle_data_set_write(InvocationContext &context)
   }
 
   bool has_pipe_path = context.has("pipe-path");
-  string pipe_path = context.get<string>("pipe-path", "");
+  std::string pipe_path = context.get<std::string>("pipe-path", "");
   size_t content_len = 0;
   const auto result = obj();
 
@@ -643,7 +642,7 @@ int handle_data_set_write(InvocationContext &context)
   }
   else
   {
-    string data = zut_read_input(context.input_stream());
+    std::string data = zut_read_input(context.input_stream());
     rc = zds_write_to_dsn(&zds, dsn, data);
   }
 
@@ -653,7 +652,7 @@ int handle_data_set_write(InvocationContext &context)
     int free_rc = zut_free_dynalloc_dds(diag, dds);
     if (0 != free_rc)
     {
-      context.error_stream() << diag.e_msg << endl;
+      context.error_stream() << diag.e_msg << std::endl;
       return RTNCD_FAILURE;
     }
   }
@@ -661,26 +660,26 @@ int handle_data_set_write(InvocationContext &context)
   // Handle truncation warning
   if (RTNCD_WARNING == rc && ZDS_RSNCD_TRUNCATION_WARNING == zds.diag.detail_rc)
   {
-    context.error_stream() << "\nWarning: " << zds.diag.e_msg << endl;
+    context.error_stream() << "\nWarning: " << zds.diag.e_msg << std::endl;
     result->set("truncationWarning", str(zds.diag.e_msg));
     // Continues w/ logic below to output success RC - operation succeeded with warning
   }
   else if (0 != rc)
   {
-    context.error_stream() << "Error: could not write to data set: '" << dsn << "' rc: '" << rc << "'" << endl;
-    context.error_stream() << "  Details: " << zds.diag.e_msg << endl;
+    context.error_stream() << "Error: could not write to data set: '" << dsn << "' rc: '" << rc << "'" << std::endl;
+    context.error_stream() << "  Details: " << zds.diag.e_msg << std::endl;
     return RTNCD_FAILURE;
   }
 
   if (context.get<bool>("etag-only", false))
   {
-    context.output_stream() << "etag: " << zds.etag << endl;
+    context.output_stream() << "etag: " << zds.etag << std::endl;
     if (content_len > 0)
-      context.output_stream() << "size: " << content_len << endl;
+      context.output_stream() << "size: " << content_len << std::endl;
   }
   else
   {
-    context.output_stream() << "Wrote data to '" << dsn << "'" << endl;
+    context.output_stream() << "Wrote data to '" << dsn << "'" << std::endl;
   }
 
   result->set("etag", str(zds.etag));
@@ -692,17 +691,17 @@ int handle_data_set_write(InvocationContext &context)
 int handle_data_set_delete(InvocationContext &context)
 {
   int rc = 0;
-  string dsn = context.get<string>("dsn", "");
+  std::string dsn = context.get<std::string>("dsn", "");
   ZDS zds = {};
   rc = zds_delete_dsn(&zds, dsn);
 
   if (0 != rc)
   {
-    context.error_stream() << "Error: could not delete data set: '" << dsn << "' rc: '" << rc << "'" << endl;
-    context.error_stream() << "  Details: " << zds.diag.e_msg << endl;
+    context.error_stream() << "Error: could not delete data set: '" << dsn << "' rc: '" << rc << "'" << std::endl;
+    context.error_stream() << "  Details: " << zds.diag.e_msg << std::endl;
     return RTNCD_FAILURE;
   }
-  context.output_stream() << "Data set '" << dsn << "' deleted" << endl;
+  context.output_stream() << "Data set '" << dsn << "' deleted" << std::endl;
 
   return rc;
 }
@@ -710,19 +709,19 @@ int handle_data_set_delete(InvocationContext &context)
 int handle_data_set_rename(InvocationContext &context)
 {
   int rc = 0;
-  string dsn_before = context.get<string>("dsname-before", "");
-  string dsn_after = context.get<string>("dsname-after", "");
+  std::string dsn_before = context.get<std::string>("dsname-before", "");
+  std::string dsn_after = context.get<std::string>("dsname-after", "");
   ZDS zds = {};
 
   rc = zds_rename_dsn(&zds, dsn_before, dsn_after);
 
   if (0 != rc)
   {
-    context.error_stream() << "Error: Could not rename data set: '" << dsn_before << "' rc: '" << rc << "'" << endl;
-    context.error_stream() << " Details: " << zds.diag.e_msg << endl;
+    context.error_stream() << "Error: Could not rename data set: '" << dsn_before << "' rc: '" << rc << "'" << std::endl;
+    context.error_stream() << " Details: " << zds.diag.e_msg << std::endl;
     return RTNCD_FAILURE;
   }
-  context.output_stream() << "Data set '" << dsn_before << "' renamed to '" << dsn_after << "'" << endl;
+  context.output_stream() << "Data set '" << dsn_before << "' renamed to '" << dsn_after << "'" << std::endl;
 
   return rc;
 }
@@ -730,20 +729,20 @@ int handle_data_set_rename(InvocationContext &context)
 int handle_rename_member(InvocationContext &context)
 {
   int rc = 0;
-  string dsname = context.get<string>("dsn", "");
-  string member_before = context.get<string>("member-before", "");
-  string member_after = context.get<string>("member-after", "");
+  std::string dsname = context.get<std::string>("dsn", "");
+  std::string member_before = context.get<std::string>("member-before", "");
+  std::string member_after = context.get<std::string>("member-after", "");
   ZDS zds = {};
 
   rc = zds_rename_members(&zds, dsname, member_before, member_after);
   std::string source_member = dsname + "(" + member_before + ")";
   if (0 != rc)
   {
-    context.error_stream() << "Error: Could not rename member: '" << source_member << "' rc: '" << rc << "'" << endl;
-    context.error_stream() << " Details: " << zds.diag.e_msg << endl;
+    context.error_stream() << "Error: Could not rename member: '" << source_member << "' rc: '" << rc << "'" << std::endl;
+    context.error_stream() << " Details: " << zds.diag.e_msg << std::endl;
     return RTNCD_FAILURE;
   }
-  context.output_stream() << "Data set member '" << member_before << "' renamed to '" << member_after << "'" << endl;
+  context.output_stream() << "Data set member '" << member_before << "' renamed to '" << member_after << "'" << std::endl;
 
   return rc;
 }
@@ -751,10 +750,10 @@ int handle_rename_member(InvocationContext &context)
 int handle_data_set_restore(InvocationContext &context)
 {
   int rc = 0;
-  string dsn = context.get<string>("dsn", "");
+  std::string dsn = context.get<std::string>("dsn", "");
 
   // perform dynalloc
-  vector<string> dds;
+  std::vector<std::string> dds;
   dds.reserve(2);
   dds.push_back("alloc da('" + dsn + "') shr");
   dds.push_back("free da('" + dsn + "')");
@@ -763,12 +762,12 @@ int handle_data_set_restore(InvocationContext &context)
   rc = zut_loop_dynalloc(diag, dds);
   if (0 != rc)
   {
-    context.error_stream() << "Error: could not restore data set: '" << dsn << "' rc: '" << rc << "'" << endl;
-    context.error_stream() << "Details: " << diag.e_msg << endl;
+    context.error_stream() << "Error: could not restore data set: '" << dsn << "' rc: '" << rc << "'" << std::endl;
+    context.error_stream() << "Details: " << diag.e_msg << std::endl;
     return RTNCD_FAILURE;
   }
 
-  context.output_stream() << "Data set '" << dsn << "' restored" << endl;
+  context.output_stream() << "Data set '" << dsn << "' restored" << std::endl;
 
   return rc;
 }
@@ -776,13 +775,13 @@ int handle_data_set_restore(InvocationContext &context)
 int handle_data_set_compress(InvocationContext &context)
 {
   int rc = 0;
-  string dsn = context.get<string>("dsn", "");
+  std::string dsn = context.get<std::string>("dsn", "");
 
-  transform(dsn.begin(), dsn.end(), dsn.begin(), ::toupper);
+  std::transform(dsn.begin(), dsn.end(), dsn.begin(), ::toupper);
 
   bool is_pds = false;
 
-  string dsn_formatted = "//'" + dsn + "'";
+  std::string dsn_formatted = "//'" + dsn + "'";
   FILE *dir = fopen(dsn_formatted.c_str(), "r");
   if (dir)
   {
@@ -800,12 +799,12 @@ int handle_data_set_compress(InvocationContext &context)
 
   if (!is_pds)
   {
-    context.error_stream() << "Error: data set '" << dsn << "' is not a PDS" << endl;
+    context.error_stream() << "Error: data set '" << dsn << "' is not a PDS" << std::endl;
     return RTNCD_FAILURE;
   }
 
   // perform dynalloc
-  vector<string> dds;
+  std::vector<std::string> dds;
   dds.reserve(4);
   dds.push_back("alloc dd(a) da('" + dsn + "') shr");
   dds.push_back("alloc dd(b) da('" + dsn + "') shr");
@@ -816,8 +815,8 @@ int handle_data_set_compress(InvocationContext &context)
   rc = zut_loop_dynalloc(diag, dds);
   if (0 != rc)
   {
-    context.error_stream() << "Error: allocation failed" << endl;
-    context.error_stream() << "  Details: " << diag.e_msg << endl;
+    context.error_stream() << "Error: allocation failed" << std::endl;
+    context.error_stream() << "  Details: " << diag.e_msg << std::endl;
     return RTNCD_FAILURE;
   }
 
@@ -826,8 +825,8 @@ int handle_data_set_compress(InvocationContext &context)
   rc = zds_write_to_dd(&zds, "sysin", "        COPY OUTDD=B,INDD=A");
   if (0 != rc)
   {
-    context.error_stream() << "Error: could not write to dd: '" << "sysin" << "' rc: '" << rc << "'" << endl;
-    context.error_stream() << "  Details: " << zds.diag.e_msg << endl;
+    context.error_stream() << "Error: could not write to dd: '" << "sysin" << "' rc: '" << rc << "'" << std::endl;
+    context.error_stream() << "  Details: " << zds.diag.e_msg << std::endl;
     zut_free_dynalloc_dds(diag, dds);
     return RTNCD_FAILURE;
   }
@@ -836,30 +835,30 @@ int handle_data_set_compress(InvocationContext &context)
   rc = zut_run("IEBCOPY");
   if (RTNCD_SUCCESS != rc)
   {
-    context.error_stream() << "Error: could not invoke IEBCOPY rc: '" << rc << "'" << endl;
+    context.error_stream() << "Error: could not invoke IEBCOPY rc: '" << rc << "'" << std::endl;
     zut_free_dynalloc_dds(diag, dds);
     return RTNCD_FAILURE;
   }
 
   // read output from iebcopy
-  string output;
+  std::string output;
   rc = zds_read_from_dd(&zds, "sysprint", output);
   if (0 != rc)
   {
-    context.error_stream() << "Error: could not read from dd: '" << "sysprint" << "' rc: '" << rc << "'" << endl;
-    context.error_stream() << "  Details: " << zds.diag.e_msg << endl;
-    context.error_stream() << output << endl;
+    context.error_stream() << "Error: could not read from dd: '" << "sysprint" << "' rc: '" << rc << "'" << std::endl;
+    context.error_stream() << "  Details: " << zds.diag.e_msg << std::endl;
+    context.error_stream() << output << std::endl;
     zut_free_dynalloc_dds(diag, dds);
     return RTNCD_FAILURE;
   }
-  context.output_stream() << "Data set '" << dsn << "' compressed" << endl;
+  context.output_stream() << "Data set '" << dsn << "' compressed" << std::endl;
 
   // free dynalloc dds
   rc = zut_free_dynalloc_dds(diag, dds);
   if (0 != rc)
   {
-    context.error_stream() << "Error: allocation failed" << endl;
-    context.error_stream() << "  Details: " << diag.e_msg << endl;
+    context.error_stream() << "Error: allocation failed" << std::endl;
+    context.error_stream() << "  Details: " << diag.e_msg << std::endl;
     return RTNCD_FAILURE;
   }
 
@@ -868,8 +867,8 @@ int handle_data_set_compress(InvocationContext &context)
 
 int handle_data_set_copy(InvocationContext &context)
 {
-  const string source = context.get<string>("source", "");
-  const string target = context.get<string>("target", "");
+  const std::string source = context.get<std::string>("source", "");
+  const std::string target = context.get<std::string>("target", "");
 
   ZDS zds = {};
   ZDSCopyOptions options;
@@ -880,33 +879,33 @@ int handle_data_set_copy(InvocationContext &context)
 
   if (rc != RTNCD_SUCCESS)
   {
-    context.error_stream() << "Error: copy failed" << endl;
+    context.error_stream() << "Error: copy failed" << std::endl;
     if (zds.diag.e_msg_len > 0)
     {
-      context.error_stream() << "  Details: " << zds.diag.e_msg << endl;
+      context.error_stream() << "  Details: " << zds.diag.e_msg << std::endl;
     }
     return RTNCD_FAILURE;
   }
 
   if (options.target_created)
   {
-    context.output_stream() << "New data set '" << target << "' created and copied from '" << source << "'" << endl;
+    context.output_stream() << "New data set '" << target << "' created and copied from '" << source << "'" << std::endl;
   }
   else if (options.member_created)
   {
-    context.output_stream() << "New member '" << target << "' created and copied from '" << source << "'" << endl;
+    context.output_stream() << "New member '" << target << "' created and copied from '" << source << "'" << std::endl;
   }
   else if (options.delete_target_members)
   {
-    context.output_stream() << "Target members deleted and data set '" << target << "' replaced with contents of '" << source << "'" << endl;
+    context.output_stream() << "Target members deleted and data set '" << target << "' replaced with contents of '" << source << "'" << std::endl;
   }
   else if (options.replace)
   {
-    context.output_stream() << "Data set '" << target << "' has been updated with contents of '" << source << "'" << endl;
+    context.output_stream() << "Data set '" << target << "' has been updated with contents of '" << source << "'" << std::endl;
   }
   else
   {
-    context.output_stream() << "Data set '" << source << "' copied to '" << target << "'" << endl;
+    context.output_stream() << "Data set '" << source << "' copied to '" << target << "'" << std::endl;
   }
   return RTNCD_SUCCESS;
 }

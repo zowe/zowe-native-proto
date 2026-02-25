@@ -26,22 +26,20 @@
 #include <sstream>
 #include "ztype.h"
 
-using namespace std;
-
 // NOTE(Kelosky): alternatives we'll likely use / consider in the future
 // - CEA, probably needed to achieve z/OSMF parity (allows starting, stopping TSO address spaces)
 // - IKJEFT01, requires authorized caller
 // - IKJEFTSR, limited TSO dynamic environment
 // - Load TMP directly, untested, but potentially useful if we read/write SYSTSIN/SYSTSPRT
-int ztso_issue(const string &command, string &response)
+int ztso_issue(const std::string &command, std::string &response)
 {
   int rc = 0;
 
   // NOTE(Kelosky): for now we combined stderr and stdout as `popen` doesnt
   // appear to allow access to stderr and tsocmd always writes the input parameters
   // to stderr
-  string data = "tsocmd " + command + " 2>&1"; // combine stderr
-  string response_raw;
+  std::string data = "tsocmd " + command + " 2>&1"; // combine stderr
+  std::string response_raw;
 
   FILE *tso = popen(data.c_str(), "r");
   if (nullptr == tso)
@@ -52,15 +50,15 @@ int ztso_issue(const string &command, string &response)
   char buffer[256] = {0};
   while (fgets(buffer, sizeof(buffer), tso) != nullptr)
   {
-    response_raw += string(buffer);
+    response_raw += std::string(buffer);
   }
 
-  stringstream response_ss(response_raw);
+  std::stringstream response_ss(response_raw);
 
-  string line;
+  std::string line;
   auto index = 0;
 
-  while (getline(response_ss, line))
+  while (std::getline(response_ss, line))
   {
     index++;
     if (index > 1)

@@ -17,7 +17,6 @@
 #include <vector>
 
 using namespace parser;
-using namespace std;
 
 // Version information
 #ifndef PACKAGE_VERSION
@@ -90,10 +89,10 @@ int interactive_mode(const plugin::InvocationContext &context)
 
 int handle_version(plugin::InvocationContext &context)
 {
-  context.output_stream() << "Zowe Native Protocol CLI (zowex)" << endl;
-  context.output_stream() << "Version: " << PACKAGE_VERSION << endl;
-  context.output_stream() << "Build Date: " << BUILD_DATE << " " << BUILD_TIME << endl;
-  context.output_stream() << "Copyright Contributors to the Zowe Project." << endl;
+  context.output_stream() << "Zowe Native Protocol CLI (zowex)" << std::endl;
+  context.output_stream() << "Version: " << PACKAGE_VERSION << std::endl;
+  context.output_stream() << "Build Date: " << BUILD_DATE << " " << BUILD_TIME << std::endl;
+  context.output_stream() << "Copyright Contributors to the Zowe Project." << std::endl;
   return 0;
 }
 
@@ -134,9 +133,9 @@ int handle_plugins_list(plugin::InvocationContext &context)
       {
         out << " (" << metadata.filename << ")";
       }
-      out << endl;
-      out << "  Version: " << (metadata.version.empty() ? "n/a" : metadata.version) << endl;
-      out << endl;
+      out << std::endl;
+      out << "  Version: " << (metadata.version.empty() ? "n/a" : metadata.version) << std::endl;
+      out << std::endl;
     }
   }
 
@@ -149,11 +148,11 @@ int handle_plugins_list(plugin::InvocationContext &context)
     }
     if (!has_unregistered)
     {
-      out << "The following unregistered plug-ins were found in the plugins/ dir:" << endl;
+      out << "The following unregistered plug-ins were found in the plugins/ dir:" << std::endl;
       has_unregistered = true;
     }
-    out << *it << endl;
-    out << endl;
+    out << *it << std::endl;
+    out << std::endl;
   }
 
   return 0;

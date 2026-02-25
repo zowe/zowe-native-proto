@@ -15,7 +15,6 @@
 #include "ztest.hpp"
 #include "zstorage.metal.test.h"
 
-using namespace std;
 using namespace ztst;
 
 void zstorage_tests()

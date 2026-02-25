@@ -13,7 +13,6 @@
 #include "../zcn.hpp"
 
 using namespace parser;
-using namespace std;
 
 namespace console
 {
@@ -24,10 +23,10 @@ int handle_console_issue(plugin::InvocationContext &context)
   ZcnSession session;
   ZCN &zcn = session.control_block();
 
-  const string console_name = context.get<std::string>("console-name", "zowex");
+  const std::string console_name = context.get<std::string>("console-name", "zowex");
   const long long timeout = context.get<long long>("timeout", 0);
 
-  const string command = context.get<std::string>("command", "");
+  const std::string command = context.get<std::string>("command", "");
   const bool wait = context.get<bool>("wait", true);
 
   if (timeout > 0)
@@ -38,37 +37,37 @@ int handle_console_issue(plugin::InvocationContext &context)
   rc = session.activate(console_name);
   if (0 != rc)
   {
-    context.error_stream() << "Error: could not activate console: '" << console_name << "' rc: '" << rc << "'" << endl;
-    context.error_stream() << "  Details: " << zcn.diag.e_msg << endl;
+    context.error_stream() << "Error: could not activate console: '" << console_name << "' rc: '" << rc << "'" << std::endl;
+    context.error_stream() << "  Details: " << zcn.diag.e_msg << std::endl;
     return RTNCD_FAILURE;
   }
 
   rc = session.put(command);
   if (0 != rc)
   {
-    context.error_stream() << "Error: could not write to console: '" << console_name << "' rc: '" << rc << "'" << endl;
-    context.error_stream() << "  Details: " << zcn.diag.e_msg << endl;
+    context.error_stream() << "Error: could not write to console: '" << console_name << "' rc: '" << rc << "'" << std::endl;
+    context.error_stream() << "  Details: " << zcn.diag.e_msg << std::endl;
     return RTNCD_FAILURE;
   }
 
   if (wait)
   {
-    string response = "";
+    std::string response = "";
     rc = session.get(response);
     if (0 != rc)
     {
-      context.error_stream() << "Error: could not get from console: '" << console_name << "' rc: '" << rc << "'" << endl;
-      context.error_stream() << "  Details: " << zcn.diag.e_msg << endl;
+      context.error_stream() << "Error: could not get from console: '" << console_name << "' rc: '" << rc << "'" << std::endl;
+      context.error_stream() << "  Details: " << zcn.diag.e_msg << std::endl;
       return RTNCD_FAILURE;
     }
-    context.output_stream() << response << endl;
+    context.output_stream() << response << std::endl;
   }
 
   rc = session.deactivate();
   if (0 != rc)
   {
-    context.error_stream() << "Error: could not deactivate console: '" << console_name << "' rc: '" << rc << "'" << endl;
-    context.error_stream() << "  Details: " << zcn.diag.e_msg << endl;
+    context.error_stream() << "Error: could not deactivate console: '" << console_name << "' rc: '" << rc << "'" << std::endl;
+    context.error_stream() << "  Details: " << zcn.diag.e_msg << std::endl;
     return RTNCD_FAILURE;
   }
   return rc;

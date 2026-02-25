@@ -20,7 +20,6 @@
 #include <string>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include "zusf.hpp"
 #include "zusftype.h"
 
 struct ListOptions

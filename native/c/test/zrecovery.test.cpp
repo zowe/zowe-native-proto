@@ -15,7 +15,6 @@
 #include "ztest.hpp"
 #include "zrecovery.metal.test.h"
 
-using namespace std;
 using namespace ztst;
 
 void zrecovery_tests()

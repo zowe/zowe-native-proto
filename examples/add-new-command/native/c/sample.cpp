@@ -16,22 +16,20 @@
 namespace sample
 {
 
-using namespace std;
-
 // Command handler for new ping command
 int handle_ping(const plugin::InvocationContext &context)
 {
-  string message = context.get("message");
+  std::string message = context.get("message");
 
   // Get current timestamp
   time_t now = time(0);
   char *dt = ctime(&now);
 
   // Remove newline from ctime output
-  string timestamp(dt);
+  std::string timestamp(dt);
   timestamp.erase(timestamp.find_last_not_of("\n\r") + 1);
 
-  context.output_stream() << "PONG: " << message << " at " << timestamp << endl;
+  context.output_stream() << "PONG: " << message << " at " << timestamp << std::endl;
 
   return RTNCD_SUCCESS;
 }

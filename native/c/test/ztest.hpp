@@ -1176,7 +1176,7 @@ void xdescribe(const std::string &description, Callable)
 {
   Globals &g = Globals::get_instance();
 
-  TEST_SUITE suite = {0};
+  TEST_SUITE suite{};
   suite.description = description;
   suite.nesting_level = g.get_nesting();
   suite.skipped = true;

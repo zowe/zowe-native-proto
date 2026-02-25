@@ -19,7 +19,6 @@
 #include <cassert>
 #include "../zjson.hpp"
 
-using namespace std;
 using namespace ztst;
 
 // ============================================================================
@@ -114,7 +113,7 @@ void test_type_traits()
             Expect(unreg_deserializable).ToBe(false);
         });
 
-        it("should correctly handle vector traits", []() {
+        it("should correctly handle std::vector traits", []() {
             bool vec_int_serializable = zjson::Serializable<std::vector<int>>::value;
             bool vec_simple_serializable = zjson::Serializable<std::vector<SimpleStruct>>::value;
             bool vec_unreg_serializable = zjson::Serializable<std::vector<UnregisteredType>>::value;
@@ -310,7 +309,7 @@ void test_optional_types()
             Expect(valued_opt.value()).ToBe(42);
         });
 
-        it("should handle string optionals", []() {
+        it("should handle std::string optionals", []() {
             std::optional<std::string> string_opt("hello");
             Expect(string_opt.has_value()).ToBe(true);
             Expect(string_opt.value()).ToBe(std::string("hello"));
@@ -386,7 +385,7 @@ void test_expected_types()
             Expect(error_result.error().kind() == zjson::Error::InvalidValue).ToBe(true);
         });
 
-        it("should handle string results", []() {
+        it("should handle std::string results", []() {
             zstd::expected<std::string, zjson::Error> string_result("hello world");
             Expect(string_result.has_value()).ToBe(true);
             Expect(string_result.value()).ToBe(std::string("hello world"));

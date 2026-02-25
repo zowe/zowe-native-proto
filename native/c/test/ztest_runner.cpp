@@ -25,7 +25,6 @@
 #include "zjson.test.hpp"
 #include "ztest.hpp"
 
-using namespace std;
 using namespace ztst;
 
 int main(int argc, char *argv[])

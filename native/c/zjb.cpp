@@ -34,17 +34,15 @@ typedef struct iazbtokp IAZBTOKP;
 
 void zjb_build_job_response(ZJB_JOB_INFO *PTR64, int, std::vector<ZJob> &);
 
-using namespace std;
-
 #define BTOKLEN (293 - 254) // 293 is the full length, minus the max optional buffer area for logs (less 254)
 
 // NOTE(Kelosky): see struct __S99struc via 'showinc' compiler option in <stdio.h>
 // NOTE(Kelosky): In the future, to allocate the logical SYSLOG concatenation for a system specify the following data set name (in DALDSNAM).
 // https://www.ibm.com/docs/en/zos/3.1.0?topic=allocation-specifying-data-set-name-daldsnam
-int zjb_read_jobs_output_by_key(ZJB *zjb, const string &jobid, int key, string &response)
+int zjb_read_jobs_output_by_key(ZJB *zjb, const std::string &jobid, int key, std::string &response)
 {
   int rc = 0;
-  string job_dsn;
+  std::string job_dsn;
 
   rc = zjb_get_job_dsn_by_key(zjb, jobid, key, job_dsn);
   if (0 != rc)
@@ -53,11 +51,11 @@ int zjb_read_jobs_output_by_key(ZJB *zjb, const string &jobid, int key, string &
   return zjb_read_job_content_by_dsn(zjb, job_dsn, response);
 }
 
-int zjb_get_job_dsn_by_key(ZJB *zjb, const string &jobid, int key, string &job_dsn)
+int zjb_get_job_dsn_by_key(ZJB *zjb, const std::string &jobid, int key, std::string &job_dsn)
 {
   int rc = 0;
 
-  vector<ZJobDD> list;
+  std::vector<ZJobDD> list;
 
   rc = zjb_list_dds(zjb, jobid, list);
   if (0 != rc)
@@ -85,11 +83,11 @@ int zjb_get_job_dsn_by_key(ZJB *zjb, const string &jobid, int key, string &job_d
   return RTNCD_SUCCESS;
 }
 
-int zjb_read_job_jcl(ZJB *zjb, const string &jobid, string &response)
+int zjb_read_job_jcl(ZJB *zjb, const std::string &jobid, std::string &response)
 {
   int rc = 0;
 
-  vector<ZJobDD> list;
+  std::vector<ZJobDD> list;
 
   rc = zjb_list_dds(zjb, jobid, list);
   if (0 != rc)
@@ -99,11 +97,11 @@ int zjb_read_job_jcl(ZJB *zjb, const string &jobid, string &response)
 
   rc = RTNCD_FAILURE; // assume failure
 
-  istringstream iss(list[0].dsn);
-  vector<string> args;
-  string arg;
+  std::istringstream iss(list[0].dsn);
+  std::vector<std::string> args;
+  std::string arg;
 
-  while (getline(iss, arg, '.'))
+  while (std::getline(iss, arg, '.'))
   {
     args.push_back(arg);
   }
@@ -117,14 +115,14 @@ int zjb_read_job_jcl(ZJB *zjb, const string &jobid, string &response)
     return RTNCD_FAILURE;
   }
 
-  string jcl_dsn = args[0] + "." + args[1] + "." + args[2] + ".JCL";
+  std::string jcl_dsn = args[0] + "." + args[1] + "." + args[2] + ".JCL";
 
   return zjb_read_job_content_by_dsn(zjb, jcl_dsn, response);
 }
 
 #define NUM_TEXT_UNITS 5
 
-int zjb_read_job_content_by_dsn(ZJB *zjb, const string &jobdsn, string &response)
+int zjb_read_job_content_by_dsn(ZJB *zjb, const std::string &jobdsn, std::string &response)
 {
   int rc = 0;
   unsigned char *p = nullptr;
@@ -261,7 +259,7 @@ int zjb_read_job_content_by_dsn(ZJB *zjb, const string &jobdsn, string &response
 
   char cddname[8 + 1] = {0};
   memcpy(cddname, &s99tunit_x[4].s99tunit.s99tupar, ddnamelen);
-  string ddname = string(cddname);
+  std::string ddname = std::string(cddname);
 
   zds.encoding_opts.data_type = zjb->encoding_opts.data_type;
   memcpy((void *)&zds.encoding_opts.codepage, (const void *)&zjb->encoding_opts.codepage, sizeof(zjb->encoding_opts.codepage));
@@ -294,11 +292,11 @@ int zjb_read_job_content_by_dsn(ZJB *zjb, const string &jobdsn, string &response
   return rc;
 }
 
-int zjb_wait(ZJB *zjb, const string &status)
+int zjb_wait(ZJB *zjb, const std::string &status)
 {
   int rc = 0;
   ZJob job = {};
-  string jobid(zjb->jobid, sizeof(zjb->jobid));
+  std::string jobid(zjb->jobid, sizeof(zjb->jobid));
   const auto waiting_for_active = status == "ACTIVE";
 
   do
@@ -314,7 +312,7 @@ int zjb_wait(ZJB *zjb, const string &status)
 
     // When waiting for ACTIVE, accept OUTPUT as a valid completion state
     // (Job may complete before the waiting logic gets to it)
-    if (waiting_for_active && job.status.find("OUTPUT") != string::npos)
+    if (waiting_for_active && job.status.find("OUTPUT") != std::string::npos)
     {
       return RTNCD_SUCCESS;
     }
@@ -323,7 +321,7 @@ int zjb_wait(ZJB *zjb, const string &status)
   return RTNCD_SUCCESS;
 }
 
-int zjb_delete(ZJB *zjb, const string &jobid)
+int zjb_delete(ZJB *zjb, const std::string &jobid)
 {
   if (jobid.size() > sizeof(zjb->jobid))
     zut_uppercase_pad_truncate(zjb->correlator, jobid, sizeof(zjb->correlator));
@@ -332,7 +330,7 @@ int zjb_delete(ZJB *zjb, const string &jobid)
   return ZJBMPRG(zjb);
 }
 
-int zjb_cancel(ZJB *zjb, const string &jobid)
+int zjb_cancel(ZJB *zjb, const std::string &jobid)
 {
   if (jobid.size() > sizeof(zjb->jobid))
     zut_uppercase_pad_truncate(zjb->correlator, jobid, sizeof(zjb->correlator));
@@ -341,7 +339,7 @@ int zjb_cancel(ZJB *zjb, const string &jobid)
   return ZJBMCNL(zjb, 0);
 }
 
-int zjb_hold(ZJB *zjb, const string &jobid)
+int zjb_hold(ZJB *zjb, const std::string &jobid)
 {
   if (jobid.size() > sizeof(zjb->jobid))
     zut_uppercase_pad_truncate(zjb->correlator, jobid, sizeof(zjb->correlator));
@@ -350,7 +348,7 @@ int zjb_hold(ZJB *zjb, const string &jobid)
   return ZJBMHLD(zjb);
 }
 
-int zjb_release(ZJB *zjb, const string &jobid)
+int zjb_release(ZJB *zjb, const std::string &jobid)
 {
   if (jobid.size() > sizeof(zjb->jobid))
     zut_uppercase_pad_truncate(zjb->correlator, jobid, sizeof(zjb->correlator));
@@ -359,10 +357,10 @@ int zjb_release(ZJB *zjb, const string &jobid)
   return ZJBMRLS(zjb);
 }
 
-int zjb_submit_dsn(ZJB *zjb, const string &dsn, string &jobid)
+int zjb_submit_dsn(ZJB *zjb, const std::string &dsn, std::string &jobid)
 {
   ZDS zds = {0};
-  string contents;
+  std::string contents;
   const auto rc = zds_read_from_dsn(&zds, dsn, contents);
   if (0 != rc)
   {
@@ -373,7 +371,7 @@ int zjb_submit_dsn(ZJB *zjb, const string &dsn, string &jobid)
   return zjb_submit(zjb, contents, jobid);
 }
 
-int zjb_submit(ZJB *zjb, const string &contents, string &jobid)
+int zjb_submit(ZJB *zjb, const std::string &contents, std::string &jobid)
 {
   int rc = 0;
   ZDS zds = {0};
@@ -389,9 +387,9 @@ int zjb_submit(ZJB *zjb, const string &contents, string &jobid)
     return RTNCD_FAILURE;
   }
 
-  string ddname = "????????"; // system generated DD name
+  std::string ddname = "????????"; // system generated DD name
   ip.__ddname = (char *)ddname.c_str();
-  string intrdr = "INTRDR  ";
+  std::string intrdr = "INTRDR  ";
   ip.__sysoutname = (char *)intrdr.c_str(); // https://www.ibm.com/docs/en/zos/3.1.0?topic=control-destination-internal-reader && https://www.ibm.com/docs/en/zos/3.1.0?topic=programming-internal-reader-facility
   ip.__lrecl = 80;
   ip.__blksize = 80;
@@ -427,7 +425,7 @@ int zjb_submit(ZJB *zjb, const string &contents, string &jobid)
     return rc;
   }
 
-  jobid = string(cjobid);
+  jobid = std::string(cjobid);
 
   if (jobid == "")
   {
@@ -462,7 +460,7 @@ int zjb_submit(ZJB *zjb, const string &contents, string &jobid)
   return RTNCD_SUCCESS;
 }
 
-int zjb_list_dds(ZJB *zjb, const string &jobid, vector<ZJobDD> &jobDDs)
+int zjb_list_dds(ZJB *zjb, const std::string &jobid, std::vector<ZJobDD> &jobDDs)
 {
   int rc = 0;
   STATSEVB *PTR64 sysoutInfo = nullptr;
@@ -527,10 +525,10 @@ int zjb_list_dds(ZJB *zjb, const string &jobid, vector<ZJobDD> &jobDDs)
 
   for (int i = 0; i < entries; i++)
   {
-    string ddn((char *)sysoutInfoNext[i].stvsddnd, sizeof(sysoutInfo->stvsddnd));
-    string stepname((char *)sysoutInfoNext[i].stvsstpd, sizeof(sysoutInfo->stvsstpd));
-    string procstep((char *)sysoutInfoNext[i].stvsprcd, sizeof(sysoutInfo->stvsprcd));
-    string dsn((char *)sysoutInfoNext[i].stvsdsn, sizeof(sysoutInfo->stvsdsn));
+    std::string ddn((char *)sysoutInfoNext[i].stvsddnd, sizeof(sysoutInfo->stvsddnd));
+    std::string stepname((char *)sysoutInfoNext[i].stvsstpd, sizeof(sysoutInfo->stvsstpd));
+    std::string procstep((char *)sysoutInfoNext[i].stvsprcd, sizeof(sysoutInfo->stvsprcd));
+    std::string dsn((char *)sysoutInfoNext[i].stvsdsn, sizeof(sysoutInfo->stvsdsn));
 
     ZJobDD zjobdd = {};
 
@@ -538,7 +536,7 @@ int zjb_list_dds(ZJB *zjb, const string &jobid, vector<ZJobDD> &jobDDs)
     zjobdd.stepname = stepname;
     zjobdd.procstep = procstep;
     zjobdd.dsn = dsn;
-    zjobdd.jobid = string(jobid);
+    zjobdd.jobid = std::string(jobid);
     zjobdd.key = sysoutInfoNext[i].stvsdsky;
 
     jobDDs.push_back(zjobdd);
@@ -549,7 +547,7 @@ int zjb_list_dds(ZJB *zjb, const string &jobid, vector<ZJobDD> &jobDDs)
   return rc;
 }
 
-int zjb_view(ZJB *zjb, const string &jobid, ZJob &job)
+int zjb_view(ZJB *zjb, const std::string &jobid, ZJob &job)
 {
   int rc = 0;
   ZJB_JOB_INFO *PTR64 job_info = nullptr;
@@ -579,7 +577,7 @@ int zjb_view(ZJB *zjb, const string &jobid, ZJob &job)
   }
 
   // create a vector which will only have one entry
-  vector<ZJob> jobs;
+  std::vector<ZJob> jobs;
   zjb_build_job_response(job_info, entries, jobs);
   job = jobs[0];
 
@@ -588,17 +586,17 @@ int zjb_view(ZJB *zjb, const string &jobid, ZJob &job)
   return RTNCD_SUCCESS;
 }
 
-int zjb_list_by_owner(ZJB *zjb, const string &owner_name, vector<ZJob> &jobs)
+int zjb_list_by_owner(ZJB *zjb, const std::string &owner_name, std::vector<ZJob> &jobs)
 {
   return zjb_list_by_owner(zjb, owner_name, "", jobs);
 }
 
-int zjb_list_by_owner(ZJB *zjb, const string &owner_name, const string &prefix_name, vector<ZJob> &jobs)
+int zjb_list_by_owner(ZJB *zjb, const std::string &owner_name, const std::string &prefix_name, std::vector<ZJob> &jobs)
 {
   return zjb_list_by_owner(zjb, owner_name, prefix_name, "", jobs);
 }
 
-int zjb_list_by_owner(ZJB *zjb, string owner_name, const string &prefix_name, const string &status_name, vector<ZJob> &jobs)
+int zjb_list_by_owner(ZJB *zjb, std::string owner_name, const std::string &prefix_name, const std::string &status_name, std::vector<ZJob> &jobs)
 {
   int rc = 0;
   ZJB_JOB_INFO *PTR64 job_info = nullptr;
@@ -631,7 +629,7 @@ int zjb_list_by_owner(ZJB *zjb, string owner_name, const string &prefix_name, co
   return rc;
 }
 
-int zjb_list_proclib(ZJB *zjb, vector<string> &proclib)
+int zjb_list_proclib(ZJB *zjb, std::vector<std::string> &proclib)
 {
   int rc = 0;
   ZJB_JOB_INFO *PTR64 job_info = nullptr;
@@ -644,7 +642,7 @@ int zjb_list_proclib(ZJB *zjb, vector<string> &proclib)
   {
     for (int i = 0; i < entries; i++)
     {
-      string dsn(buffer + (i * DSN_ENTRY_SIZE), DSN_ENTRY_SIZE);
+      std::string dsn(buffer + (i * DSN_ENTRY_SIZE), DSN_ENTRY_SIZE);
       proclib.push_back(dsn);
     }
   }
@@ -652,19 +650,19 @@ int zjb_list_proclib(ZJB *zjb, vector<string> &proclib)
   return rc;
 }
 
-void zjb_build_job_response(ZJB_JOB_INFO *PTR64 job_info, int entries, vector<ZJob> &jobs)
+void zjb_build_job_response(ZJB_JOB_INFO *PTR64 job_info, int entries, std::vector<ZJob> &jobs)
 {
   ZJB_JOB_INFO *PTR64 job_info_next = job_info;
   jobs.reserve(entries);
 
   for (int i = 0; i < entries; i++)
   {
-    string jobname((char *)job_info_next[i].statjqtr.sttrname, sizeof(job_info->statjqtr.sttrname));
-    string jobid((char *)job_info_next[i].statjqtr.sttrjid, sizeof(job_info->statjqtr.sttrjid));
-    string subsystem((char *)job_info_next[i].subsystem, sizeof(job_info->subsystem));
-    string owner((char *)job_info_next[i].statjqtr.sttrouid, sizeof(job_info->statjqtr.sttrouid));
-    string jobclass((char *)job_info_next[i].statjqtr.sttrclas, sizeof(job_info->statjqtr.sttrclas));
-    string correlator((char *)job_info_next[i].statjqtr.sttrjcor, sizeof(job_info->statjqtr.sttrjcor));
+    std::string jobname((char *)job_info_next[i].statjqtr.sttrname, sizeof(job_info->statjqtr.sttrname));
+    std::string jobid((char *)job_info_next[i].statjqtr.sttrjid, sizeof(job_info->statjqtr.sttrjid));
+    std::string subsystem((char *)job_info_next[i].subsystem, sizeof(job_info->subsystem));
+    std::string owner((char *)job_info_next[i].statjqtr.sttrouid, sizeof(job_info->statjqtr.sttrouid));
+    std::string jobclass((char *)job_info_next[i].statjqtr.sttrclas, sizeof(job_info->statjqtr.sttrclas));
+    std::string correlator((char *)job_info_next[i].statjqtr.sttrjcor, sizeof(job_info->statjqtr.sttrjcor));
 
     ZJob zjob = {};
 
@@ -675,7 +673,7 @@ void zjb_build_job_response(ZJB_JOB_INFO *PTR64 job_info, int entries, vector<ZJ
     } mycc = {0};
     memcpy(&mycc, &job_info_next[i].statjqtr.sttrxind, sizeof(cc));
 
-    zjob.full_status = string(job_info_next[i].phase_text);
+    zjob.full_status = std::string(job_info_next[i].phase_text);
     zut_rtrim(zjob.full_status);
 
     zjob.retcode = ZJB_UNKNOWN_RC;
@@ -700,7 +698,7 @@ void zjb_build_job_response(ZJB_JOB_INFO *PTR64 job_info, int entries, vector<ZJ
         unsigned char byte2 = mycc.parts[1] & 0x0F;
         unsigned char byte3 = mycc.parts[2] >> 4;
 
-        string result = "ABEND ";
+        std::string result = "ABEND ";
         result.push_back(zut_get_hex_char(byte1));
         result.push_back(zut_get_hex_char(byte2));
         result.push_back(zut_get_hex_char(byte3));
@@ -709,9 +707,9 @@ void zjb_build_job_response(ZJB_JOB_INFO *PTR64 job_info, int entries, vector<ZJ
       else
       {
         mycc.full &= 0x00000FFF; // clear uneeded bits
-        stringstream sscc;
-        sscc << setw(4) << setfill('0') << mycc.full; // format to 4 characters
-        zjob.retcode = "CC " + sscc.str();            // make it look like z/OSMF
+        std::stringstream sscc;
+        sscc << std::setw(4) << std::setfill('0') << mycc.full; // format to 4 characters
+        zjob.retcode = "CC " + sscc.str();                      // make it look like z/OSMF
       }
     }
     else

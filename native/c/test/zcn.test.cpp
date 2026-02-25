@@ -16,7 +16,6 @@
 #include "ztest.hpp"
 #include "../zcn.hpp"
 
-using namespace std;
 using namespace ztst;
 
 void zcn_tests()
@@ -29,13 +28,13 @@ void zcn_tests()
                 {
                   int rc = 0;
                   ZCN zcn = {0};
-                  string console_name = "ZOWETST";
+                  std::string console_name = "ZOWETST";
 
                   rc = zcn_activate(&zcn, console_name);
                   ExpectWithContext(rc, zcn.diag.e_msg).ToBe(RTNCD_FAILURE);
 
                   // Verify console name was properly set
-                  Expect(string(zcn.console_name, 8)).ToBe("ZOWETST ");
+                  Expect(std::string(zcn.console_name, 8)).ToBe("ZOWETST ");
 
                   rc = zcn_deactivate(&zcn);
                   ExpectWithContext(rc, zcn.diag.e_msg).ToBe(RTNCD_FAILURE);
@@ -46,13 +45,13 @@ void zcn_tests()
              //     {
              //       int rc = 0;
              //       ZCN zcn = {0};
-             //       string console_name = "ZOWETST";
+             //       std::string console_name = "ZOWETST";
 
              //       rc = zcn_activate(&zcn, console_name);
              //       ExpectWithContext(rc, zcn.diag.e_msg).ToBe(0);
 
              //       // Verify console name was properly set
-             //       Expect(string(zcn.console_name, 8)).ToBe("ZOWETST ");
+             //       Expect(std::string(zcn.console_name, 8)).ToBe("ZOWETST ");
 
              //       rc = zcn_deactivate(&zcn);
              //       ExpectWithContext(rc, zcn.diag.e_msg).ToBe(0);
@@ -63,13 +62,13 @@ void zcn_tests()
              //     {
              //       int rc = 0;
              //       ZCN zcn = {0};
-             //       string console_name = "verylongconsolename"; // exceeds 8 chars
+             //       std::string console_name = "verylongconsolename"; // exceeds 8 chars
 
              //       rc = zcn_activate(&zcn, console_name);
              //       ExpectWithContext(rc, zcn.diag.e_msg).ToBe(0);
 
              //       // Verify console name was truncated to 8 characters
-             //       Expect(string(zcn.console_name, 8)).ToBe("VERYLONG");
+             //       Expect(std::string(zcn.console_name, 8)).ToBe("VERYLONG");
 
              //       rc = zcn_deactivate(&zcn);
              //       ExpectWithContext(rc, zcn.diag.e_msg).ToBe(0);
@@ -80,13 +79,13 @@ void zcn_tests()
              //     {
              //       int rc = 0;
              //       ZCN zcn = {0};
-             //       string console_name = "TEST";
+             //       std::string console_name = "TEST";
 
              //       rc = zcn_activate(&zcn, console_name);
              //       ExpectWithContext(rc, zcn.diag.e_msg).ToBe(0);
 
              //       // Verify console name was padded with spaces
-             //       Expect(string(zcn.console_name, 8)).ToBe("TEST    ");
+             //       Expect(std::string(zcn.console_name, 8)).ToBe("TEST    ");
 
              //       rc = zcn_deactivate(&zcn);
              //       ExpectWithContext(rc, zcn.diag.e_msg).ToBe(0);
@@ -97,9 +96,9 @@ void zcn_tests()
              //     {
              //       int rc = 0;
              //       ZCN zcn = {0};
-             //       string console_name = "ZOWETST";
-             //       string command = "D T";
-             //       string response;
+             //       std::string console_name = "ZOWETST";
+             //       std::string command = "D T";
+             //       std::string response;
 
              //       rc = zcn_activate(&zcn, console_name);
              //       ExpectWithContext(rc, zcn.diag.e_msg).ToBe(0);
@@ -122,9 +121,9 @@ void zcn_tests()
              //     {
              //       int rc = 0;
              //       ZCN zcn = {0};
-             //       string console_name = "ZOWETST";
-             //       string command = "D IPLINFO";
-             //       string response;
+             //       std::string console_name = "ZOWETST";
+             //       std::string command = "D IPLINFO";
+             //       std::string response;
 
              //       rc = zcn_activate(&zcn, console_name);
              //       ExpectWithContext(rc, zcn.diag.e_msg).ToBe(0);
@@ -147,7 +146,7 @@ void zcn_tests()
              //     {
              //       int rc = 0;
              //       ZCN zcn = {0};
-             //       string console_name = "";
+             //       std::string console_name = "";
 
              //       rc = zcn_activate(&zcn, console_name);
              //       // Should handle empty name gracefully, possibly using default
@@ -162,7 +161,7 @@ void zcn_tests()
              //     []() -> void
              //     {
              //       int rc = 0;
-             //       string console_name = "ZOWETST";
+             //       std::string console_name = "ZOWETST";
 
              //       rc = zcn_activate(nullptr, console_name);
              //       Expect(rc).Not().ToBe(0);
@@ -172,13 +171,13 @@ void zcn_tests()
              //     []() -> void
              //     {
              //       ZCN zcn = {0};
-             //       string console_name = "ZOWETST";
+             //       std::string console_name = "ZOWETST";
 
              //       int rc = zcn_activate(&zcn, console_name);
              //       if (0 != rc)
              //       {
              //         // Verify eye catcher
-             //         Expect(string(zcn.eye, 3)).ToBe("ZCN");
+             //         Expect(std::string(zcn.eye, 3)).ToBe("ZCN");
 
              //         // Verify buffer size defaults
              //         if (zcn.buffer_size == 0)
@@ -199,8 +198,8 @@ void zcn_tests()
              //     {
              //       int rc = 0;
              //       ZCN zcn = {0};
-             //       string console_name = "ZOWETST";
-             //       string response;
+             //       std::string console_name = "ZOWETST";
+             //       std::string response;
 
              //       rc = zcn_activate(&zcn, console_name);
              //       ExpectWithContext(rc, zcn.diag.e_msg).ToBe(0);
@@ -230,7 +229,7 @@ void zcn_tests()
              //     {
              //       int rc = 0;
              //       ZCN zcn = {0};
-             //       string command = "D T";
+             //       std::string command = "D T";
 
              //       // Try to put command without activating console first
              //       rc = zcn_put(&zcn, command);
@@ -242,8 +241,8 @@ void zcn_tests()
              //     {
              //       int rc = 0;
              //       ZCN zcn = {0};
-             //       string console_name = "ZOWETST";
-             //       string response;
+             //       std::string console_name = "ZOWETST";
+             //       std::string response;
 
              //       rc = zcn_activate(&zcn, console_name);
              //       ExpectWithContext(rc, zcn.diag.e_msg).ToBe(0);

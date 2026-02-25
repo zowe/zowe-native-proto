@@ -19,31 +19,31 @@
 #include "zutils.hpp"
 // #include "zstorage.metal.test.h"
 
-using namespace std;
 using namespace ztst;
 
 // Base for test contexts that create data sets and register them for cleanup
 struct DataSetTestContextBase
 {
-  vector<string> &cleanup_list;
+  std::vector<std::string> &cleanup_list;
 
-  explicit DataSetTestContextBase(vector<string> &list) : cleanup_list(list)
+  explicit DataSetTestContextBase(std::vector<std::string> &list)
+      : cleanup_list(list)
   {
   }
 
-  void create_pds_at(const string &dsn)
+  void create_pds_at(const std::string &dsn)
   {
     ZDS zds = {0};
     create_pds(&zds, dsn);
   }
 
-  void create_pdse_at(const string &dsn)
+  void create_pdse_at(const std::string &dsn)
   {
     ZDS zds = {0};
     create_pdse(&zds, dsn);
   }
 
-  void create_seq_at(const string &dsn)
+  void create_seq_at(const std::string &dsn)
   {
     ZDS zds = {0};
     create_seq(&zds, dsn);
@@ -53,10 +53,11 @@ struct DataSetTestContextBase
 // Test context for copy operations
 struct CopyTestContext : DataSetTestContextBase
 {
-  string source_dsn;
-  string target_dsn;
+  std::string source_dsn;
+  std::string target_dsn;
 
-  explicit CopyTestContext(vector<string> &list) : DataSetTestContextBase(list)
+  explicit CopyTestContext(std::vector<std::string> &list)
+      : DataSetTestContextBase(list)
   {
     source_dsn = get_random_ds(3);
     target_dsn = get_random_ds(3);
@@ -85,22 +86,22 @@ struct CopyTestContext : DataSetTestContextBase
     create_seq_at(target_dsn);
   }
 
-  void write_source_member(const string &member, const string &data)
+  void write_source_member(const std::string &member, const std::string &data)
   {
     write_to_dsn(source_dsn + "(" + member + ")", data);
   }
 
-  void write_source(const string &data)
+  void write_source(const std::string &data)
   {
     write_to_dsn(source_dsn, data);
   }
 
-  void write_target_member(const string &member, const string &data)
+  void write_target_member(const std::string &member, const std::string &data)
   {
     write_to_dsn(target_dsn + "(" + member + ")", data);
   }
 
-  void write_target(const string &data)
+  void write_target(const std::string &data)
   {
     write_to_dsn(target_dsn, data);
   }
@@ -114,7 +115,7 @@ struct CopyTestContext : DataSetTestContextBase
     return zds_copy_dsn(&zds, source_dsn, target_dsn, &options);
   }
 
-  int copy_member(const string &src_mem, const string &tgt_mem, bool replace = false, bool delete_target_members = false)
+  int copy_member(const std::string &src_mem, const std::string &tgt_mem, bool replace = false, bool delete_target_members = false)
   {
     ZDS zds = {0};
     ZDSCopyOptions options;
@@ -123,14 +124,14 @@ struct CopyTestContext : DataSetTestContextBase
     return zds_copy_dsn(&zds, source_dsn + "(" + src_mem + ")", target_dsn + "(" + tgt_mem + ")", &options);
   }
 
-  bool target_has_member(const string &member)
+  bool target_has_member(const std::string &member)
   {
-    vector<ZDSMem> members;
+    std::vector<ZDSMem> members;
     ZDS zds = {0};
     zds_list_members(&zds, target_dsn, members);
     for (const auto &mem : members)
     {
-      string name = mem.name;
+      std::string name = mem.name;
       zut_trim(name);
       if (name == member)
         return true;
@@ -138,14 +139,14 @@ struct CopyTestContext : DataSetTestContextBase
     return false;
   }
 
-  bool source_has_member(const string &member)
+  bool source_has_member(const std::string &member)
   {
-    vector<ZDSMem> members;
+    std::vector<ZDSMem> members;
     ZDS zds = {0};
     zds_list_members(&zds, source_dsn, members);
     for (const auto &mem : members)
     {
-      string name = mem.name;
+      std::string name = mem.name;
       zut_trim(name);
       if (name == member)
         return true;
@@ -156,7 +157,7 @@ struct CopyTestContext : DataSetTestContextBase
 
 void zds_tests()
 {
-  vector<string> created_dsns;
+  std::vector<std::string> created_dsns;
 
   describe("zds",
            [&]() -> void
@@ -186,14 +187,14 @@ void zds_tests()
                            {
                              int rc = 0;
                              ZDS zds = {0};
-                             vector<ZDSEntry> entries;
-                             string dsn = "SYS1.MACLIB";
+                             std::vector<ZDSEntry> entries;
+                             std::string dsn = "SYS1.MACLIB";
                              rc = zds_list_data_sets(&zds, dsn, entries);
                              ExpectWithContext(rc, zds.diag.e_msg).ToBe(0);
-                             string found = "";
+                             std::string found = "";
                              for (const auto &e : entries)
                              {
-                               string trimmed_name = e.name;
+                               std::string trimmed_name = e.name;
                                zut_rtrim(trimmed_name);
                                if (trimmed_name == dsn)
                                {
@@ -208,14 +209,14 @@ void zds_tests()
                            {
                              int rc = 0;
                              ZDS zds = {0};
-                             vector<ZDSEntry> entries;
-                             string dsn = "SYS1.MACLIB";
+                             std::vector<ZDSEntry> entries;
+                             std::string dsn = "SYS1.MACLIB";
                              rc = zds_list_data_sets(&zds, dsn, entries, true);
                              ExpectWithContext(rc, zds.diag.e_msg).ToBe(0);
                              ZDSEntry *found = nullptr;
                              for (auto &e : entries)
                              {
-                               string trimmed_name = e.name;
+                               std::string trimmed_name = e.name;
                                zut_rtrim(trimmed_name);
                                if (trimmed_name == dsn)
                                {
@@ -232,15 +233,15 @@ void zds_tests()
                            {
                              int rc = 0;
                              ZDS zds = {0};
-                             vector<ZDSEntry> entries;
-                             string dsn = "SYS1.MACLIB";
-                             string pattern = "SYS1.*";
+                             std::vector<ZDSEntry> entries;
+                             std::string dsn = "SYS1.MACLIB";
+                             std::string pattern = "SYS1.*";
                              rc = zds_list_data_sets(&zds, pattern, entries);
                              ExpectWithContext(rc, zds.diag.e_msg).ToBe(0);
-                             string found = "";
+                             std::string found = "";
                              for (const auto &e : entries)
                              {
-                               string trimmed_name = e.name;
+                               std::string trimmed_name = e.name;
                                zut_rtrim(trimmed_name);
                                if (trimmed_name == dsn)
                                {
@@ -280,8 +281,8 @@ void zds_tests()
                              zds.encoding_opts.data_type = eDataTypeText;
 
                              // Verify both encodings are set correctly
-                             Expect(string(zds.encoding_opts.codepage)).ToBe("IBM-1047");
-                             Expect(string(zds.encoding_opts.source_codepage)).ToBe("IBM-037");
+                             Expect(std::string(zds.encoding_opts.codepage)).ToBe("IBM-1047");
+                             Expect(std::string(zds.encoding_opts.source_codepage)).ToBe("IBM-037");
                              Expect(zds.encoding_opts.data_type).ToBe(eDataTypeText);
                            });
 
@@ -294,8 +295,8 @@ void zds_tests()
                              zds.encoding_opts.data_type = eDataTypeBinary;
 
                              // For binary data, encoding should not be used for conversion
-                             Expect(string(zds.encoding_opts.codepage)).ToBe("binary");
-                             Expect(string(zds.encoding_opts.source_codepage)).ToBe("UTF-8");
+                             Expect(std::string(zds.encoding_opts.codepage)).ToBe("binary");
+                             Expect(std::string(zds.encoding_opts.source_codepage)).ToBe("UTF-8");
                              Expect(zds.encoding_opts.data_type).ToBe(eDataTypeBinary);
                            });
 
@@ -310,7 +311,7 @@ void zds_tests()
 
                              // Should handle empty source encoding (will default to UTF-8 in actual conversion)
                              Expect(strlen(zds.encoding_opts.source_codepage)).ToBe(0);
-                             Expect(string(zds.encoding_opts.codepage)).ToBe("IBM-1047");
+                             Expect(std::string(zds.encoding_opts.codepage)).ToBe("IBM-1047");
                            });
 
                         it("should handle maximum length encoding names",
@@ -318,8 +319,8 @@ void zds_tests()
                            {
                              ZDS zds = {0};
                              // Test with maximum length encoding names (15 chars + null terminator)
-                             string long_target = "IBM-1234567890A"; // 15 characters
-                             string long_source = "UTF-1234567890B"; // 15 characters
+                             std::string long_target = "IBM-1234567890A"; // 15 characters
+                             std::string long_source = "UTF-1234567890B"; // 15 characters
 
                              strncpy(zds.encoding_opts.codepage, long_target.c_str(), sizeof(zds.encoding_opts.codepage) - 1);
                              strncpy(zds.encoding_opts.source_codepage, long_source.c_str(), sizeof(zds.encoding_opts.source_codepage) - 1);
@@ -328,8 +329,8 @@ void zds_tests()
                              zds.encoding_opts.codepage[sizeof(zds.encoding_opts.codepage) - 1] = '\0';
                              zds.encoding_opts.source_codepage[sizeof(zds.encoding_opts.source_codepage) - 1] = '\0';
 
-                             Expect(string(zds.encoding_opts.codepage)).ToBe(long_target);
-                             Expect(string(zds.encoding_opts.source_codepage)).ToBe(long_source);
+                             Expect(std::string(zds.encoding_opts.codepage)).ToBe(long_target);
+                             Expect(std::string(zds.encoding_opts.source_codepage)).ToBe(long_source);
                            });
 
                         it("should preserve encoding settings through struct copy",
@@ -340,8 +341,8 @@ void zds_tests()
                              strcpy(zds1.encoding_opts.source_codepage, "IBM-037");
                              zds1.encoding_opts.data_type = eDataTypeText;
                              ZDS zds2 = zds1;
-                             Expect(string(zds2.encoding_opts.codepage)).ToBe("IBM-1047");
-                             Expect(string(zds2.encoding_opts.source_codepage)).ToBe("IBM-037");
+                             Expect(std::string(zds2.encoding_opts.codepage)).ToBe("IBM-1047");
+                             Expect(std::string(zds2.encoding_opts.source_codepage)).ToBe("IBM-037");
                              Expect(zds2.encoding_opts.data_type).ToBe(eDataTypeText);
                            });
 
@@ -357,8 +358,8 @@ void zds_tests()
                              strcpy(encode.codepage, "test1");
                              strcpy(encode.source_codepage, "test2");
 
-                             Expect(string(encode.codepage)).ToBe("test1");
-                             Expect(string(encode.source_codepage)).ToBe("test2");
+                             Expect(std::string(encode.codepage)).ToBe("test1");
+                             Expect(std::string(encode.source_codepage)).ToBe("test2");
                            });
 
                         it("should handle common encoding combinations",
@@ -387,8 +388,8 @@ void zds_tests()
                                memset(&zds.encoding_opts, 0, sizeof(zds.encoding_opts));
                                strcpy(zds.encoding_opts.source_codepage, pair.source);
                                strcpy(zds.encoding_opts.codepage, pair.target);
-                               Expect(string(zds.encoding_opts.source_codepage)).ToBe(string(pair.source));
-                               Expect(string(zds.encoding_opts.codepage)).ToBe(string(pair.target));
+                               Expect(std::string(zds.encoding_opts.source_codepage)).ToBe(std::string(pair.source));
+                               Expect(std::string(zds.encoding_opts.codepage)).ToBe(std::string(pair.target));
                              }
                            });
                       });
@@ -423,7 +424,7 @@ void zds_tests()
                              ZDS zds = {0};
                              int rc = zds_copy_dsn(&zds, tc.source_dsn + "(MEMBER)", tc.target_dsn, nullptr);
                              Expect(rc).Not().ToBe(0);
-                             Expect(string(zds.diag.e_msg)).ToContain("must specify a member name");
+                             Expect(std::string(zds.diag.e_msg)).ToContain("must specify a member name");
                            });
 
                         it("should copy sequential data set to sequential data set",
@@ -455,7 +456,7 @@ void zds_tests()
                              ZDS zds = {0};
                              int rc = zds_copy_dsn(&zds, tc.source_dsn, tc.target_dsn + "(MEMBER)", nullptr);
                              Expect(rc).Not().ToBe(0);
-                             Expect(string(zds.diag.e_msg)).ToContain("must be a sequential data set");
+                             Expect(std::string(zds.diag.e_msg)).ToContain("must be a sequential data set");
                            });
 
                         it("should fail to copy PDS to existing sequential data set",
@@ -470,7 +471,7 @@ void zds_tests()
                              ZDS zds = {0};
                              int rc = zds_copy_dsn(&zds, tc.source_dsn, tc.target_dsn, nullptr);
                              Expect(rc).Not().ToBe(0);
-                             Expect(string(zds.diag.e_msg)).ToContain("must be a PDS");
+                             Expect(std::string(zds.diag.e_msg)).ToContain("must be a PDS");
                            });
 
                         it("should copy PDS with multiple members",
@@ -480,7 +481,7 @@ void zds_tests()
                              tc.create_source_pds();
                              for (int i = 1; i <= 3; i++)
                              {
-                               tc.write_source_member("MEM" + to_string(i), "Data " + to_string(i));
+                               tc.write_source_member("MEM" + std::to_string(i), "Data " + std::to_string(i));
                              }
                              Expect(tc.copy()).ToBe(0);
                            });
@@ -489,12 +490,12 @@ void zds_tests()
                            [&]() -> void
                            {
                              ZDS zds = {0};
-                             string source_dsn = "NONEXISTENT.DATASET.NAME";
-                             string target_dsn = get_random_ds(3);
+                             std::string source_dsn = "NONEXISTENT.DATASET.NAME";
+                             std::string target_dsn = get_random_ds(3);
                              created_dsns.push_back(target_dsn);
                              int rc = zds_copy_dsn(&zds, source_dsn, target_dsn, nullptr);
                              Expect(rc).Not().ToBe(0);
-                             Expect(string(zds.diag.e_msg)).ToContain("not found");
+                             Expect(std::string(zds.diag.e_msg)).ToContain("not found");
                            });
 
                         it("should preserve data set attributes when copying",
@@ -505,8 +506,8 @@ void zds_tests()
                              tc.write_source("Test data");
                              Expect(tc.copy()).ToBe(0);
 
-                             vector<ZDSEntry> source_entries;
-                             vector<ZDSEntry> target_entries;
+                             std::vector<ZDSEntry> source_entries;
+                             std::vector<ZDSEntry> target_entries;
                              ZDS zds_list = {0};
                              zds_list_data_sets(&zds_list, tc.source_dsn, source_entries, true);
                              zds_list_data_sets(&zds_list, tc.target_dsn, target_entries, true);
@@ -523,9 +524,9 @@ void zds_tests()
                              Expect(tgt.secondary).ToBe(src.secondary);
 
                              ZDS zds_read = {0};
-                             string content;
+                             std::string content;
                              zds_read_from_dsn(&zds_read, tc.target_dsn, content);
-                             Expect(content.find("Test data") != string::npos).ToBe(true);
+                             Expect(content.find("Test data") != std::string::npos).ToBe(true);
                            });
 
                         it("should fail to overwrite existing sequential data set without replace flag",
@@ -542,7 +543,7 @@ void zds_tests()
                              options.replace = false;
                              int rc = zds_copy_dsn(&zds, tc.source_dsn, tc.target_dsn, &options);
                              Expect(rc).Not().ToBe(0);
-                             Expect(string(zds.diag.e_msg)).ToContain("already exists");
+                             Expect(std::string(zds.diag.e_msg)).ToContain("already exists");
                            });
 
                         it("should overwrite existing sequential data set with replace flag",
@@ -614,7 +615,7 @@ void zds_tests()
                              options.replace = false;
                              int rc = zds_copy_dsn(&zds, tc.source_dsn + "(MEM)", tc.target_dsn + "(MEM)", &options);
                              Expect(rc).Not().ToBe(0);
-                             Expect(string(zds.diag.e_msg)).ToContain("already exists");
+                             Expect(std::string(zds.diag.e_msg)).ToContain("already exists");
                            });
 
                         it("should overwrite existing member with replace flag",
@@ -734,7 +735,7 @@ void zds_tests()
                              options.replace = true;
                              int rc = zds_copy_dsn(&zds, tc.source_dsn, tc.target_dsn + "(EXISTING)", &options);
                              Expect(rc).Not().ToBe(0);
-                             Expect(string(zds.diag.e_msg)).ToContain("must be a sequential data set");
+                             Expect(std::string(zds.diag.e_msg)).ToContain("must be a sequential data set");
                            });
 
                         it("should set member_created when copying to new member",
@@ -782,37 +783,37 @@ void zds_tests()
                            []() -> void
                            {
                              ZDS zds = {0};
-                             string target = get_random_ds(3);
+                             std::string target = get_random_ds(3);
                              int rc = zds_rename_dsn(&zds, "", target);
                              Expect(rc).ToBe(RTNCD_FAILURE);
-                             Expect(string(zds.diag.e_msg)).ToContain("Data set names must be valid");
+                             Expect(std::string(zds.diag.e_msg)).ToContain("Data set names must be valid");
 
                              ZDS zds2 = {0};
                              rc = zds_rename_dsn(&zds2, "USER.TEST", "");
                              Expect(rc).ToBe(RTNCD_FAILURE);
-                             Expect(string(zds2.diag.e_msg)).ToContain("Data set names must be valid");
+                             Expect(std::string(zds2.diag.e_msg)).ToContain("Data set names must be valid");
                            });
 
                         it("should fail if target data set name exceeds max length",
                            []() -> void
                            {
                              ZDS zds = {0};
-                             string longName = "USER.TEST.TEST.TEST.TEST.TEST.TEST.TEST.TEST.TEST.TEST.TEST.TEST";
-                             string source = get_random_ds(3);
+                             std::string longName = "USER.TEST.TEST.TEST.TEST.TEST.TEST.TEST.TEST.TEST.TEST.TEST.TEST";
+                             std::string source = get_random_ds(3);
                              int rc = zds_rename_dsn(&zds, source, longName);
                              Expect(rc).ToBe(RTNCD_FAILURE);
-                             Expect(string(zds.diag.e_msg)).ToContain("Target data set name exceeds max character length of 44");
+                             Expect(std::string(zds.diag.e_msg)).ToContain("Target data set name exceeds max character length of 44");
                            });
 
                         it("should fail if source data set does not exist",
                            []() -> void
                            {
                              ZDS zds = {0};
-                             string target = get_random_ds(3);
-                             string source = get_random_ds(3);
+                             std::string target = get_random_ds(3);
+                             std::string source = get_random_ds(3);
                              int rc = zds_rename_dsn(&zds, source, target);
                              Expect(rc).ToBe(RTNCD_FAILURE);
-                             Expect(string(zds.diag.e_msg)).ToContain("Source data set does not exist");
+                             Expect(std::string(zds.diag.e_msg)).ToContain("Source data set does not exist");
                            });
 
                         it("should fail if target data set already exists",
@@ -830,8 +831,8 @@ void zds_tests()
                              attr.secondary = 1;
                              attr.dirblk = 0;
 
-                             string source = get_random_ds(3);
-                             string target = get_random_ds(3);
+                             std::string source = get_random_ds(3);
+                             std::string target = get_random_ds(3);
                              created_dsns.push_back(source);
                              created_dsns.push_back(target);
 
@@ -839,7 +840,7 @@ void zds_tests()
                              create_seq(&zds, target);
                              int rc = zds_rename_dsn(&zds, source, target);
                              Expect(rc).ToBe(RTNCD_FAILURE);
-                             Expect(string(zds.diag.e_msg)).ToContain("Target data set name already exists");
+                             Expect(std::string(zds.diag.e_msg)).ToContain("Target data set name already exists");
                            });
 
                         it("should rename dataset successfully when valid",
@@ -856,8 +857,8 @@ void zds_tests()
                              attr.primary = 1;
                              attr.secondary = 1;
                              attr.dirblk = 0;
-                             string before = get_random_ds(3);
-                             string after = get_random_ds(3);
+                             std::string before = get_random_ds(3);
+                             std::string after = get_random_ds(3);
                              created_dsns.push_back(after); // before is renamed to after; clean up final name
 
                              create_seq(&zds, before);
@@ -868,8 +869,8 @@ void zds_tests()
              describe("rename members",
                       [&]() -> void
                       {
-                        const string M1 = "M1";
-                        const string M2 = "M2";
+                        const std::string M1 = "M1";
+                        const std::string M2 = "M2";
                         DS_ATTRIBUTES attr{};
 
                         attr.dsorg = "PO";
@@ -880,69 +881,69 @@ void zds_tests()
                         attr.primary = 1;
                         attr.secondary = 1;
                         attr.dirblk = 10;
-                        string response;
+                        std::string response;
 
                         it("should fail if data set name is empty",
                            [&]() -> void
                            {
                              ZDS zds = {0};
-                             string ds = get_random_ds(3);
+                             std::string ds = get_random_ds(3);
                              int rc = zds_rename_members(&zds, "", M1, M2);
                              Expect(rc).ToBe(RTNCD_FAILURE);
-                             Expect(string(zds.diag.e_msg)).ToContain("Data set name must be valid");
+                             Expect(std::string(zds.diag.e_msg)).ToContain("Data set name must be valid");
                            });
 
                         it("should fail if member names are empty",
                            [&]() -> void
                            {
                              ZDS zds = {0};
-                             string ds = get_random_ds(3);
+                             std::string ds = get_random_ds(3);
                              int rc = zds_create_dsn(&zds, ds, attr, response);
                              Expect(rc).ToBe(0);
 
                              rc = zds_rename_members(&zds, ds, "", M2);
                              Expect(rc).ToBe(RTNCD_FAILURE);
-                             Expect(string(zds.diag.e_msg)).ToContain("Member name cannot be empty");
+                             Expect(std::string(zds.diag.e_msg)).ToContain("Member name cannot be empty");
 
                              ZDS zds2 = {0};
                              rc = zds_rename_members(&zds2, ds, M1, "");
                              Expect(rc).ToBe(RTNCD_FAILURE);
-                             Expect(string(zds.diag.e_msg)).ToContain("Member name cannot be empty");
+                             Expect(std::string(zds.diag.e_msg)).ToContain("Member name cannot be empty");
                            });
                         it("should fail if member name is too long",
                            [&]() -> void
                            {
                              ZDS zds = {0};
-                             string longName = "USER.TEST.TEST.TEST";
-                             string ds = get_random_ds(3);
+                             std::string longName = "USER.TEST.TEST.TEST";
+                             std::string ds = get_random_ds(3);
                              int rc = zds_create_dsn(&zds, ds, attr, response);
-                             string empty = "";
+                             std::string empty = "";
                              rc = zds_write_to_dsn(&zds, ds + "(M1)", empty);
                              Expect(rc).ToBe(0);
                              rc = zds_rename_members(&zds, ds, M1, longName);
                              Expect(rc).ToBe(RTNCD_FAILURE);
-                             Expect(string(zds.diag.e_msg)).ToContain("Member name must start with A-Z,#,@,$ and contain only A-Z,0-9,#,@,$ (max 8 chars)");
+                             Expect(std::string(zds.diag.e_msg)).ToContain("Member name must start with A-Z,#,@,$ and contain only A-Z,0-9,#,@,$ (max 8 chars)");
                            });
 
                         it("should fail if data set does not exist",
                            [&]() -> void
                            {
                              ZDS zds = {0};
-                             string ds = get_random_ds(3);
+                             std::string ds = get_random_ds(3);
                              int rc = zds_rename_members(&zds, ds, M1, M2);
                              Expect(rc).ToBe(RTNCD_FAILURE);
-                             Expect(string(zds.diag.e_msg)).ToContain("Data set does not exist");
+                             Expect(std::string(zds.diag.e_msg)).ToContain("Data set does not exist");
                            });
 
                         it("should fail if source member does not exist",
                            [&]() -> void
                            {
                              ZDS zds = {0};
-                             string ds = get_random_ds(3);
+                             std::string ds = get_random_ds(3);
                              int rc = zds_create_dsn(&zds, ds, attr, response);
                              rc = zds_rename_members(&zds, ds, M1, "M3");
                              Expect(rc).ToBe(RTNCD_FAILURE);
-                             Expect(string(zds.diag.e_msg)).ToContain("Source member does not exist");
+                             Expect(std::string(zds.diag.e_msg)).ToContain("Source member does not exist");
                            });
 
                         it("should fail if target member already exists",
@@ -950,10 +951,10 @@ void zds_tests()
                            {
                              ZDS zds = {};
 
-                             string ds = get_random_ds(3);
+                             std::string ds = get_random_ds(3);
                              int rc = zds_create_dsn(&zds, ds, attr, response);
 
-                             string empty = "";
+                             std::string empty = "";
                              rc = zds_write_to_dsn(&zds, ds + "(M1)", empty);
                              Expect(rc).ToBe(0);
                              memset(zds.etag, 0, 8);
@@ -962,17 +963,17 @@ void zds_tests()
 
                              rc = zds_rename_members(&zds, ds, M1, M2);
                              Expect(rc).ToBe(RTNCD_FAILURE);
-                             Expect(string(zds.diag.e_msg)).ToContain("Target member already exists");
+                             Expect(std::string(zds.diag.e_msg)).ToContain("Target member already exists");
                            });
 
                         it("should rename dataset successfully when valid",
                            [&]() -> void
                            {
                              ZDS zds = {};
-                             string ds = get_random_ds(3);
+                             std::string ds = get_random_ds(3);
                              int rc = zds_create_dsn(&zds, ds, attr, response);
 
-                             string empty = "";
+                             std::string empty = "";
                              rc = zds_write_to_dsn(&zds, ds + "(M1)", empty);
                              Expect(rc).ToBe(0);
 
@@ -985,16 +986,16 @@ void zds_tests()
                            [&]() -> void
                            {
                              ZDS zds = {};
-                             string ds = get_random_ds(3);
+                             std::string ds = get_random_ds(3);
                              int rc = zds_create_dsn(&zds, ds, attr, response);
 
-                             string empty = "";
+                             std::string empty = "";
                              rc = zds_write_to_dsn(&zds, ds + "(M1)", empty);
                              Expect(rc).ToBe(0);
 
                              rc = zds_rename_members(&zds, ds, M1, "123");
                              Expect(rc).ToBe(RTNCD_FAILURE);
-                             Expect(string(zds.diag.e_msg)).ToContain("Member name must start with A-Z,#,@,$ and contain only A-Z,0-9,#,@,$ (max 8 chars)");
+                             Expect(std::string(zds.diag.e_msg)).ToContain("Member name must start with A-Z,#,@,$ and contain only A-Z,0-9,#,@,$ (max 8 chars)");
                            });
                       });
            });

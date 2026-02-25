@@ -25,7 +25,6 @@
 #include "extend/plugin.hpp"
 
 using namespace parser;
-using namespace std;
 
 int main(int argc, char *argv[])
 {

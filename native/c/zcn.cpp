@@ -21,9 +21,7 @@
 #include "zut.hpp"
 #include "zcntype.h"
 
-using namespace std;
-
-int zcn_activate(ZCN *zcn, const string &console_name)
+int zcn_activate(ZCN *zcn, const std::string &console_name)
 {
   int rc = 0;
   zcn->diag.detail_rc = 0;
@@ -50,7 +48,7 @@ int zcn_activate(ZCN *zcn, const string &console_name)
   return rc;
 }
 
-int zcn_put(ZCN *zcn, const string &command)
+int zcn_put(ZCN *zcn, const std::string &command)
 {
   int rc = 0;
   zcn->diag.detail_rc = 0;
@@ -70,7 +68,7 @@ int zcn_put(ZCN *zcn, const string &command)
   return rc;
 }
 
-int zcn_get(ZCN *zcn, string &response)
+int zcn_get(ZCN *zcn, std::string &response)
 {
   int rc = 0;
   zcn->diag.detail_rc = 0;
@@ -96,7 +94,7 @@ int zcn_get(ZCN *zcn, string &response)
   rc = ZCNGET(zcn, resp31);
 
   if (0 == rc)
-    response += string(resp31);
+    response += std::string(resp31);
   free(resp31);
 
   return rc;

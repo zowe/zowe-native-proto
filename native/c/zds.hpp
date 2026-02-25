@@ -110,7 +110,8 @@ struct ZDSCopyOptions
   bool target_created; // Set to true if target data set was created
   bool member_created; // Set to true if target member was created
 
-  ZDSCopyOptions() : replace(false), delete_target_members(false), target_created(false), member_created(false)
+  ZDSCopyOptions()
+      : replace(false), delete_target_members(false), target_created(false), member_created(false)
   {
   }
 };

@@ -58,8 +58,6 @@
 #include <sstream>
 #include <cerrno>
 
-using namespace std;
-
 /**
  * Concatenates a directory path with a file/directory name, handling trailing slashes.
  *
@@ -67,7 +65,7 @@ using namespace std;
  * @param name the file or directory name to append
  * @return the concatenated path
  */
-string zusf_join_path(const string &dir_path, const string &name)
+std::string zusf_join_path(const std::string &dir_path, const std::string &name)
 {
   return dir_path[dir_path.length() - 1] == '/' ? dir_path + name : dir_path + "/" + name;
 }
@@ -79,7 +77,7 @@ string zusf_join_path(const string &dir_path, const string &name)
  * @param use_csv_format whether to use CSV format (ISO time in UTC) or ls-style format (local time)
  * @return formatted time string
  */
-string zusf_format_ls_time(time_t mtime, bool use_csv_format)
+std::string zusf_format_ls_time(time_t mtime, bool use_csv_format)
 {
   char time_buf[32] = {0};
 
@@ -110,7 +108,7 @@ string zusf_format_ls_time(time_t mtime, bool use_csv_format)
     }
   }
 
-  return string(time_buf);
+  return std::string(time_buf);
 }
 
 /**
@@ -121,7 +119,7 @@ string zusf_format_ls_time(time_t mtime, bool use_csv_format)
  *
  * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
  */
-int zusf_get_file_ccsid(ZUSF *zusf, const string &file)
+int zusf_get_file_ccsid(ZUSF *zusf, const std::string &file)
 {
   struct stat file_stats;
   if (stat(file.c_str(), &file_stats) == -1)
@@ -140,7 +138,7 @@ int zusf_get_file_ccsid(ZUSF *zusf, const string &file)
 }
 
 // CCSID -> display name conversion table (based on output from `iconv -l`)
-static const unordered_map<int, string> CCSID_DISPLAY_TABLE = {
+static const std::unordered_map<int, std::string> CCSID_DISPLAY_TABLE = {
     {37, "IBM-037"},
     {256, "00256"},
     {259, "00259"},
@@ -742,10 +740,10 @@ static const unordered_map<int, string> CCSID_DISPLAY_TABLE = {
 
 /**
  * Gets the CCSID from a display name.
- * @param display_name the display name string
+ * @param display_name the display name std::string
  * @return CCSID value, or -1 if not found
  */
-int zusf_get_ccsid_from_display_name(const string &display_name)
+int zusf_get_ccsid_from_display_name(const std::string &display_name)
 {
   if (display_name == "untagged")
   {
@@ -770,9 +768,9 @@ int zusf_get_ccsid_from_display_name(const string &display_name)
 /**
  * Gets the display name for a CCSID.
  * @param ccsid the CCSID value
- * @return display name string for the CCSID, or the CCSID number as a string if not found
+ * @return display name std::string for the CCSID, or the CCSID number as a std::string if not found
  */
-string zusf_get_ccsid_display_name(int ccsid)
+std::string zusf_get_ccsid_display_name(int ccsid)
 {
   // Special case for invalid/unset CCSID
   if (ccsid <= 0)
@@ -786,20 +784,20 @@ string zusf_get_ccsid_display_name(int ccsid)
     return it->second;
   }
 
-  // If not found in table, return the CCSID number as a string
+  // If not found in table, return the CCSID number as a std::string
   return std::to_string(ccsid);
 }
 
 /**
- * Builds a file mode string from stat mode.
+ * Builds a file mode std::string from stat mode.
  *
  * @param mode the file mode from stat
  *
- * @return mode string in the format "drwxrwxrwx"
+ * @return mode std::string in the format "drwxrwxrwx"
  */
-string zusf_build_mode_string(mode_t mode)
+std::string zusf_build_mode_string(mode_t mode)
 {
-  string mode_str;
+  std::string mode_str;
 
   // Determine file type character
   if (S_ISDIR(mode))
@@ -849,7 +847,7 @@ string zusf_build_mode_string(mode_t mode)
  *
  * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
  */
-int zusf_create_uss_file_or_dir(ZUSF *zusf, const string &file, mode_t mode, bool createDir)
+int zusf_create_uss_file_or_dir(ZUSF *zusf, const std::string &file, mode_t mode, bool createDir)
 {
   struct stat file_stats;
   if (stat(file.c_str(), &file_stats) != -1)
@@ -895,7 +893,7 @@ int zusf_create_uss_file_or_dir(ZUSF *zusf, const string &file, mode_t mode, boo
   }
   else
   {
-    ofstream out(file.c_str());
+    std::ofstream out(file.c_str());
     if (out.is_open())
     {
       out.close();
@@ -918,23 +916,23 @@ int zusf_create_uss_file_or_dir(ZUSF *zusf, const string &file, mode_t mode, boo
  * @param options listing options (all_files, long_format)
  * @param use_csv_format whether to use CSV format or ls-style format
  *
- * @return formatted string for the file entry
+ * @return formatted std::string for the file entry
  */
-string zusf_format_file_entry(ZUSF *zusf, const struct stat &file_stats, const string &file_path, const string &display_name, ListOptions options, bool use_csv_format)
+std::string zusf_format_file_entry(ZUSF *zusf, const struct stat &file_stats, const std::string &file_path, const std::string &display_name, ListOptions options, bool use_csv_format)
 {
   if (!options.long_format)
   {
     return display_name + "\n";
   }
 
-  const string mode = zusf_build_mode_string(file_stats.st_mode);
+  const std::string mode = zusf_build_mode_string(file_stats.st_mode);
   const auto ccsid = zusf_get_ccsid_display_name(file_stats.st_tag.ft_ccsid);
   const auto tag_flag = (file_stats.st_tag.ft_txtflag) ? "T=on" : "T=off";
-  const string time_str = zusf_format_ls_time(file_stats.st_mtime, use_csv_format);
+  const std::string time_str = zusf_format_ls_time(file_stats.st_mtime, use_csv_format);
 
   if (use_csv_format)
   {
-    vector<string> fields;
+    std::vector<std::string> fields;
 
     fields.push_back(mode);
     fields.push_back(std::to_string(file_stats.st_nlink));
@@ -949,19 +947,19 @@ string zusf_format_file_entry(ZUSF *zusf, const struct stat &file_stats, const s
   else
   {
     // ls-style format: "- untagged    T=off -rw-r--r--   1 TRAE     XMPLGRP  2772036 May 22 17:23 hw.txt"
-    stringstream ss;
+    std::stringstream ss;
     const auto is_directory = S_ISDIR(file_stats.st_mode);
     const auto tagged = !is_directory && ccsid != "untagged";
     const auto tag_prefix = tagged ? "t" : "-";
 
-    ss << (is_directory ? "" : tag_prefix) << "  " << left << setw(12);
+    ss << (is_directory ? "" : tag_prefix) << "  " << std::left << std::setw(12);
     ss << (is_directory ? "" : ccsid);
-    ss << " " << setw(5) << (is_directory ? "" : tag_flag)
+    ss << " " << std::setw(5) << (is_directory ? "" : tag_flag)
        << (is_directory ? "   " : "  ") << mode
-       << " " << right << setw(3) << file_stats.st_nlink
-       << " " << left << setw(8) << zusf_get_owner_from_uid(file_stats.st_uid)
-       << " " << setw(8) << zusf_get_group_from_gid(file_stats.st_gid)
-       << " " << right << setw(8) << file_stats.st_size
+       << " " << std::right << std::setw(3) << file_stats.st_nlink
+       << " " << std::left << std::setw(8) << zusf_get_owner_from_uid(file_stats.st_uid)
+       << " " << std::setw(8) << zusf_get_group_from_gid(file_stats.st_gid)
+       << " " << std::right << std::setw(8) << file_stats.st_size
        << " " << time_str
        << " " << display_name << "\n";
     return ss.str();
@@ -973,13 +971,13 @@ string zusf_format_file_entry(ZUSF *zusf, const struct stat &file_stats, const s
  *
  * @param zusf pointer to a ZUSF object
  * @param dir_path path to the directory
- * @param entry_names reference to vector where entry names will be stored
+ * @param entry_names reference to std::vector where entry names will be stored
  * @param options listing options (all_files, long_format, depth)
  * @param current_depth current recursion depth
  *
  * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
  */
-static int zusf_collect_directory_entries_recursive(ZUSF *zusf, const string &dir_path, vector<string> &entry_names, const ListOptions &options, int current_depth = 0)
+static int zusf_collect_directory_entries_recursive(ZUSF *zusf, const std::string &dir_path, std::vector<std::string> &entry_names, const ListOptions &options, int current_depth = 0)
 {
   DIR *dir;
   if ((dir = opendir(dir_path.c_str())) == nullptr)
@@ -988,13 +986,13 @@ static int zusf_collect_directory_entries_recursive(ZUSF *zusf, const string &di
   }
 
   // Collect all directory entries first
-  vector<string> current_entries;
+  std::vector<std::string> current_entries;
   struct dirent *entry;
   while ((entry = readdir(dir)) != nullptr)
   {
     if ((strcmp(entry->d_name, ".") != 0) && (strcmp(entry->d_name, "..") != 0))
     {
-      string name = entry->d_name;
+      std::string name = entry->d_name;
       // Skip hidden files if not requested
       if (name.at(0) == '.' && !options.all_files)
       {
@@ -1016,12 +1014,12 @@ static int zusf_collect_directory_entries_recursive(ZUSF *zusf, const string &di
     // If we haven't reached max depth, recurse into subdirectories
     if (options.max_depth > 1 && current_depth < (options.max_depth - 1))
     {
-      string child_path = zusf_join_path(dir_path, name);
+      std::string child_path = zusf_join_path(dir_path, name);
       struct stat child_stats;
       // Use lstat so symlinked directories are reported as links, not traversed as directories.
       if (lstat(child_path.c_str(), &child_stats) == 0 && S_ISDIR(child_stats.st_mode))
       {
-        vector<string> subdir_entries;
+        std::vector<std::string> subdir_entries;
         if (zusf_collect_directory_entries_recursive(zusf, child_path, subdir_entries, options, current_depth + 1) == RTNCD_SUCCESS)
         {
           // Add subdirectory entries with path prefix
@@ -1042,13 +1040,13 @@ static int zusf_collect_directory_entries_recursive(ZUSF *zusf, const string &di
  *
  * @param zusf pointer to a ZUSF object
  * @param file name of the USS file or directory
- * @param response reference to a string where the read data will be stored
+ * @param response reference to a std::string where the read data will be stored
  * @param options listing options (all_files, long_format, max_depth)
  * @param use_csv_format whether to use CSV format or ls-style format
  *
  * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
  */
-int zusf_list_uss_file_path(ZUSF *zusf, const string &file, string &response, ListOptions options, bool use_csv_format)
+int zusf_list_uss_file_path(ZUSF *zusf, const std::string &file, std::string &response, ListOptions options, bool use_csv_format)
 {
   // TODO(zFernand0): Handle `*` and other bash-expansion rules
   struct stat file_stats;
@@ -1090,7 +1088,7 @@ int zusf_list_uss_file_path(ZUSF *zusf, const string &file, string &response, Li
     response += zusf_format_file_entry(zusf, file_stats, file, ".", options, use_csv_format);
 
     // Add ".." entry if we can stat the parent directory
-    string parent_path = file.substr(0, file.find_last_of("/"));
+    std::string parent_path = file.substr(0, file.find_last_of("/"));
     if (parent_path.empty())
     {
       parent_path = "/"; // Root directory case
@@ -1103,7 +1101,7 @@ int zusf_list_uss_file_path(ZUSF *zusf, const string &file, string &response, Li
   }
 
   // Collect all directory entries (recursively if depth > 1)
-  vector<string> entry_names;
+  std::vector<std::string> entry_names;
   if (zusf_collect_directory_entries_recursive(zusf, file, entry_names, options) != RTNCD_SUCCESS)
   {
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open directory '%s'", file.c_str());
@@ -1114,7 +1112,7 @@ int zusf_list_uss_file_path(ZUSF *zusf, const string &file, string &response, Li
   for (auto i = 0u; i < entry_names.size(); i++)
   {
     const auto name = entry_names.at(i);
-    string child_path = zusf_join_path(file, name);
+    std::string child_path = zusf_join_path(file, name);
     struct stat child_stats;
     if (lstat(child_path.c_str(), &child_stats) != 0)
     {
@@ -1133,39 +1131,39 @@ int zusf_list_uss_file_path(ZUSF *zusf, const string &file, string &response, Li
  *
  * @param zusf pointer to a ZUSF object
  * @param file name of the USS file
- * @param response reference to a string where the read data will be stored
+ * @param response reference to a std::string where the read data will be stored
  *
  * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
  */
-int zusf_read_from_uss_file(ZUSF *zusf, const string &file, string &response)
+int zusf_read_from_uss_file(ZUSF *zusf, const std::string &file, std::string &response)
 {
   AutocvtGuard autocvt(false);
-  ifstream in(file.c_str(), zusf->encoding_opts.data_type == eDataTypeBinary ? ifstream::in | ifstream::binary : ifstream::in);
+  std::ifstream in(file.c_str(), zusf->encoding_opts.data_type == eDataTypeBinary ? std::ifstream::in | std::ifstream::binary : std::ifstream::in);
   if (!in.is_open())
   {
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open file '%s'", file.c_str());
     return RTNCD_FAILURE;
   }
 
-  in.seekg(0, ios::end);
+  in.seekg(0, std::ios::end);
   size_t size = in.tellg();
-  in.seekg(0, ios::beg);
+  in.seekg(0, std::ios::beg);
 
-  vector<char> raw_data(size);
+  std::vector<char> raw_data(size);
   in.read(&raw_data[0], size);
 
   response.assign(raw_data.begin(), raw_data.end());
   in.close();
 
   // Use file tag encoding if available, otherwise fall back to provided encoding
-  string encoding_to_use;
+  std::string encoding_to_use;
   bool has_encoding = false;
 
   if (zusf->encoding_opts.data_type == eDataTypeText)
   {
     if (strlen(zusf->encoding_opts.codepage) > 0)
     {
-      encoding_to_use = string(zusf->encoding_opts.codepage);
+      encoding_to_use = std::string(zusf->encoding_opts.codepage);
       has_encoding = true;
     }
     else
@@ -1182,8 +1180,8 @@ int zusf_read_from_uss_file(ZUSF *zusf, const string &file, string &response)
 
   if (size > 0 && has_encoding)
   {
-    string temp = response;
-    const auto source_encoding = strlen(zusf->encoding_opts.source_codepage) > 0 ? string(zusf->encoding_opts.source_codepage) : "UTF-8";
+    std::string temp = response;
+    const auto source_encoding = strlen(zusf->encoding_opts.source_codepage) > 0 ? std::string(zusf->encoding_opts.source_codepage) : "UTF-8";
     try
     {
       const auto bytes_with_encoding = zut_encode(temp, encoding_to_use, source_encoding, zusf->diag);
@@ -1213,7 +1211,7 @@ int zusf_read_from_uss_file(ZUSF *zusf, const string &file, string &response)
  *
  * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
  */
-int zusf_read_from_uss_file_streamed(ZUSF *zusf, const string &file, const string &pipe, size_t *content_len)
+int zusf_read_from_uss_file_streamed(ZUSF *zusf, const std::string &file, const std::string &pipe, size_t *content_len)
 {
   if (content_len == nullptr)
   {
@@ -1259,14 +1257,14 @@ int zusf_read_from_uss_file_streamed(ZUSF *zusf, const string &file, const strin
   }
 
   // Use file tag encoding if available, otherwise fall back to provided encoding
-  string encoding_to_use;
+  std::string encoding_to_use;
   bool has_encoding = false;
 
   if (zusf->encoding_opts.data_type == eDataTypeText)
   {
     if (strlen(zusf->encoding_opts.codepage) > 0)
     {
-      encoding_to_use = string(zusf->encoding_opts.codepage);
+      encoding_to_use = std::string(zusf->encoding_opts.codepage);
       has_encoding = true;
     }
     else
@@ -1289,10 +1287,10 @@ int zusf_read_from_uss_file_streamed(ZUSF *zusf, const string &file, const strin
 
   // Open iconv descriptor once for all chunks (for stateful encodings like IBM-939)
   iconv_t cd = (iconv_t)(-1);
-  string source_encoding;
+  std::string source_encoding;
   if (has_encoding)
   {
-    source_encoding = strlen(zusf->encoding_opts.source_codepage) > 0 ? string(zusf->encoding_opts.source_codepage) : "UTF-8";
+    source_encoding = strlen(zusf->encoding_opts.source_codepage) > 0 ? std::string(zusf->encoding_opts.source_codepage) : "UTF-8";
     cd = iconv_open(source_encoding.c_str(), encoding_to_use.c_str());
     if (cd == (iconv_t)(-1))
     {
@@ -1378,7 +1376,7 @@ int zusf_read_from_uss_file_streamed(ZUSF *zusf, const string &file, const strin
  *
  * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
  */
-int zusf_write_to_uss_file(ZUSF *zusf, const string &file, string &data)
+int zusf_write_to_uss_file(ZUSF *zusf, const std::string &file, std::string &data)
 {
   // TODO(zFernand0): Avoid overriding existing files
   struct stat file_stats;
@@ -1398,14 +1396,14 @@ int zusf_write_to_uss_file(ZUSF *zusf, const string &file, string &data)
   zusf->created = stat_result == -1;
 
   // Use encoding provided in arguments, otherwise fall back to file tag encoding
-  string encoding_to_use;
+  std::string encoding_to_use;
   bool has_encoding = false;
 
   if (zusf->encoding_opts.data_type == eDataTypeText)
   {
     if (strlen(zusf->encoding_opts.codepage) > 0)
     {
-      encoding_to_use = string(zusf->encoding_opts.codepage);
+      encoding_to_use = std::string(zusf->encoding_opts.codepage);
       has_encoding = true;
     }
     else
@@ -1420,10 +1418,10 @@ int zusf_write_to_uss_file(ZUSF *zusf, const string &file, string &data)
     }
   }
 
-  string temp = data;
+  std::string temp = data;
   if (has_encoding)
   {
-    const auto source_encoding = strlen(zusf->encoding_opts.source_codepage) > 0 ? string(zusf->encoding_opts.source_codepage) : "UTF-8";
+    const auto source_encoding = strlen(zusf->encoding_opts.source_codepage) > 0 ? std::string(zusf->encoding_opts.source_codepage) : "UTF-8";
     try
     {
       const auto bytes_with_encoding = zut_encode(temp, source_encoding, encoding_to_use, zusf->diag);
@@ -1472,7 +1470,7 @@ int zusf_write_to_uss_file(ZUSF *zusf, const string &file, string &data)
     return RTNCD_FAILURE;
   }
 
-  const string new_tag = zut_build_etag(new_stats.st_mtime, new_stats.st_size);
+  const std::string new_tag = zut_build_etag(new_stats.st_mtime, new_stats.st_size);
   strcpy(zusf->etag, new_tag.c_str());
 
   return RTNCD_SUCCESS; // success
@@ -1488,7 +1486,7 @@ int zusf_write_to_uss_file(ZUSF *zusf, const string &file, string &data)
  *
  * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
  */
-int zusf_write_to_uss_file_streamed(ZUSF *zusf, const string &file, const string &pipe, size_t *content_len)
+int zusf_write_to_uss_file_streamed(ZUSF *zusf, const std::string &file, const std::string &pipe, size_t *content_len)
 {
   // TODO(zFernand0): Avoid overriding existing files
   if (content_len == nullptr)
@@ -1500,14 +1498,14 @@ int zusf_write_to_uss_file_streamed(ZUSF *zusf, const string &file, const string
   struct stat file_stats;
 
   // Use encoding provided in arguments, otherwise fall back to file tag encoding
-  string encoding_to_use;
+  std::string encoding_to_use;
   bool has_encoding = false;
 
   if (zusf->encoding_opts.data_type == eDataTypeText)
   {
     if (strlen(zusf->encoding_opts.codepage) > 0)
     {
-      encoding_to_use = string(zusf->encoding_opts.codepage);
+      encoding_to_use = std::string(zusf->encoding_opts.codepage);
       has_encoding = true;
     }
     else
@@ -1567,10 +1565,10 @@ int zusf_write_to_uss_file_streamed(ZUSF *zusf, const string &file, const string
 
   // Open iconv descriptor once for all chunks (for stateful encodings like IBM-939)
   iconv_t cd = (iconv_t)(-1);
-  string source_encoding;
+  std::string source_encoding;
   if (has_encoding)
   {
-    source_encoding = strlen(zusf->encoding_opts.source_codepage) > 0 ? string(zusf->encoding_opts.source_codepage) : "UTF-8";
+    source_encoding = strlen(zusf->encoding_opts.source_codepage) > 0 ? std::string(zusf->encoding_opts.source_codepage) : "UTF-8";
     cd = iconv_open(encoding_to_use.c_str(), source_encoding.c_str());
     if (cd == (iconv_t)(-1))
     {
@@ -1663,7 +1661,7 @@ int zusf_write_to_uss_file_streamed(ZUSF *zusf, const string &file, const string
   }
 
   // Print new e-tag to stdout as response
-  string etag_str = zut_build_etag(file_stats.st_mtime, file_stats.st_size);
+  std::string etag_str = zut_build_etag(file_stats.st_mtime, file_stats.st_size);
   strcpy(zusf->etag, etag_str.c_str());
 
   return RTNCD_SUCCESS;
@@ -1678,7 +1676,7 @@ int zusf_write_to_uss_file_streamed(ZUSF *zusf, const string &file, const string
  *
  * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
  */
-int zusf_chmod_uss_file_or_dir(ZUSF *zusf, const string &file, mode_t mode, bool recursive)
+int zusf_chmod_uss_file_or_dir(ZUSF *zusf, const std::string &file, mode_t mode, bool recursive)
 {
   // TODO(zFernand0): Add recursive option for directories
   struct stat file_stats;
@@ -1708,7 +1706,7 @@ int zusf_chmod_uss_file_or_dir(ZUSF *zusf, const string &file, mode_t mode, bool
     {
       if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0)
       {
-        const string child_path = zusf_join_path(file, string((const char *)entry->d_name));
+        const std::string child_path = zusf_join_path(file, std::string((const char *)entry->d_name));
         struct stat file_stats;
         stat(child_path.c_str(), &file_stats);
 
@@ -1725,7 +1723,7 @@ int zusf_chmod_uss_file_or_dir(ZUSF *zusf, const string &file, mode_t mode, bool
   return 0;
 }
 
-int zusf_delete_uss_item(ZUSF *zusf, const string &file, bool recursive)
+int zusf_delete_uss_item(ZUSF *zusf, const std::string &file, bool recursive)
 {
   struct stat file_stats;
   if (lstat(file.c_str(), &file_stats) == -1)
@@ -1754,7 +1752,7 @@ int zusf_delete_uss_item(ZUSF *zusf, const string &file, bool recursive)
     {
       if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0)
       {
-        const string child_path = zusf_join_path(file, string((const char *)entry->d_name));
+        const std::string child_path = zusf_join_path(file, std::string((const char *)entry->d_name));
         struct stat child_stats;
         if (lstat(child_path.c_str(), &child_stats) == -1)
         {
@@ -1784,19 +1782,19 @@ int zusf_delete_uss_item(ZUSF *zusf, const string &file, bool recursive)
   return 0;
 }
 
-string zusf_get_owner_from_uid(uid_t uid)
+std::string zusf_get_owner_from_uid(uid_t uid)
 {
   auto *meta = getpwuid(uid);
-  return meta && meta->pw_name ? meta->pw_name : string();
+  return meta && meta->pw_name ? meta->pw_name : std::string();
 }
 
-string zusf_get_group_from_gid(gid_t gid)
+std::string zusf_get_group_from_gid(gid_t gid)
 {
   auto *meta = getgrgid(gid);
-  return meta && meta->gr_name ? meta->gr_name : string();
+  return meta && meta->gr_name ? meta->gr_name : std::string();
 }
 
-short zusf_get_id_from_user_or_group(const string &user_or_group, bool is_user)
+short zusf_get_id_from_user_or_group(const std::string &user_or_group, bool is_user)
 {
   const auto is_numeric = user_or_group.find_first_not_of("0123456789") == std::string::npos;
   if (is_numeric)
@@ -1960,7 +1958,7 @@ int zusf_chown_uss_file_or_dir(ZUSF *zusf, const std::string &file, const std::s
     {
       if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0)
       {
-        const string child_path = zusf_join_path(file, string((const char *)entry->d_name));
+        const std::string child_path = zusf_join_path(file, std::string((const char *)entry->d_name));
         struct stat child_stats;
         if (stat(child_path.c_str(), &child_stats) == -1)
         {
@@ -1983,7 +1981,7 @@ int zusf_chown_uss_file_or_dir(ZUSF *zusf, const std::string &file, const std::s
   return 0;
 }
 
-int zusf_chtag_uss_file_or_dir(ZUSF *zusf, const string &file, const string &tag, bool recursive)
+int zusf_chtag_uss_file_or_dir(ZUSF *zusf, const std::string &file, const std::string &tag, bool recursive)
 {
   struct stat file_stats;
   if (stat(file.c_str(), &file_stats) == -1)
@@ -2041,7 +2039,7 @@ int zusf_chtag_uss_file_or_dir(ZUSF *zusf, const string &file, const string &tag
     {
       if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0)
       {
-        const string child_path = zusf_join_path(file, string((const char *)entry->d_name));
+        const std::string child_path = zusf_join_path(file, std::string((const char *)entry->d_name));
         struct stat file_stats;
         stat(child_path.c_str(), &file_stats);
 
