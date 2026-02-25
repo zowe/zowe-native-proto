@@ -235,6 +235,13 @@ int zds_rename_members(ZDS *zds, const std::string &dsn, const std::string &memb
 int zds_list_members(ZDS *zds, std::string dsn, std::vector<ZDSMem> &members);
 
 int zds_list_data_sets(ZDS *zds, std::string dsn, std::vector<ZDSEntry> &datasets, bool show_attributes = false);
+
+#ifdef ZDS_TEST_ACCESS
+// Exposed for unit tests only (catalog bounds / S04C fix)
+void load_volsers_from_catalog(const unsigned char *&data, const int field_len, int &csi_offset, ZDSEntry &entry);
+void load_storage_attr_from_catalog(const unsigned char *&data, const int field_len, int &csi_offset, std::string &attr);
+#endif
+
 #ifdef SWIG
 }
 #endif

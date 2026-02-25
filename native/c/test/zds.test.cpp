@@ -251,6 +251,76 @@ void zds_tests()
                            });
                       });
 
+#ifdef ZDS_TEST_ACCESS
+             describe("catalog bounds (S04C fix)",
+                      []() -> void
+                      {
+                        it("load_volsers_from_catalog rejects negative field_len and sets volser unknown",
+                           []() -> void
+                           {
+                             const unsigned char data[6] = {'A', 'B', 'C', 'D', 'E', 'F'};
+                             const unsigned char *p = data;
+                             int csi_offset = 0;
+                             ZDSEntry entry;
+                             entry.volser = "INIT";
+                             load_volsers_from_catalog(p, -1, csi_offset, entry);
+                             Expect(entry.volser).ToBe(ZDS_VOLSER_UNKNOWN);
+                             Expect(csi_offset).ToBe(0);
+                           });
+
+                        it("load_volsers_from_catalog rejects field_len over MAX_VOLSER_FIELD_LEN",
+                           []() -> void
+                           {
+                             const unsigned char data[6] = {'A', 'B', 'C', 'D', 'E', 'F'};
+                             const unsigned char *p = data;
+                             int csi_offset = 0;
+                             ZDSEntry entry;
+                             entry.volser = "INIT";
+                             const int over_limit = (6 * 256) + 1; // MAX_VOLSER_LENGTH*256 + 1
+                             load_volsers_from_catalog(p, over_limit, csi_offset, entry);
+                             Expect(entry.volser).ToBe(ZDS_VOLSER_UNKNOWN);
+                             Expect(csi_offset).ToBe(over_limit);
+                           });
+
+                        it("load_storage_attr_from_catalog rejects field_len over 0xFFFF",
+                           []() -> void
+                           {
+                             const unsigned char data[4] = {0x00, 0x02, 'X', 'Y'};
+                             const unsigned char *p = data;
+                             int csi_offset = 0;
+                             string attr = "INIT";
+                             load_storage_attr_from_catalog(p, 0x10000, csi_offset, attr);
+                             Expect(attr).ToBe("");
+                             Expect(csi_offset).ToBe(0x10000);
+                           });
+
+                        it("load_storage_attr_from_catalog rejects actual_len exceeding field content",
+                           []() -> void
+                           {
+                             // First 2 bytes big-endian length 0x0100 (256), but field_len is 10 so max content is 8
+                             const unsigned char data[12] = {0x01, 0x00, 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'};
+                             const unsigned char *p = data;
+                             int csi_offset = 0;
+                             string attr = "INIT";
+                             load_storage_attr_from_catalog(p, 10, csi_offset, attr);
+                             Expect(attr).ToBe("");
+                             Expect(csi_offset).ToBe(10);
+                           });
+
+                        it("load_storage_attr_from_catalog accepts valid length-prefixed content",
+                           []() -> void
+                           {
+                             const unsigned char data[8] = {0x00, 0x03, 'A', 'B', 'C', 0x00, 0x00, 0x00};
+                             const unsigned char *p = data;
+                             int csi_offset = 0;
+                             string attr;
+                             load_storage_attr_from_catalog(p, 8, csi_offset, attr);
+                             Expect(attr).ToBe("ABC");
+                             Expect(csi_offset).ToBe(8);
+                           });
+                      });
+#endif
+
              describe("source encoding tests",
                       []() -> void
                       {

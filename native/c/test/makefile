@@ -227,7 +227,7 @@ build-out/zjb.test.o: zjb.test.cpp
 	$(OCXX) $(CXXLANG_FLAGS) $(CPP_LIST_FLAG) -c $^ -o $@
 
 build-out/zds.test.o: zds.test.cpp
-	$(OCXX) $(CXXLANG_FLAGS) $(CPP_LIST_FLAG) -c $^ -o $@
+	$(OCXX) $(CXXLANG_FLAGS) $(CPP_LIST_FLAG) -DZDS_TEST_ACCESS -c $^ -o $@
 
 build-out/zcn.test.o: zcn.test.cpp
 	$(OCXX) $(CXXLANG_FLAGS) $(CPP_LIST_FLAG) -c $^ -o $@
