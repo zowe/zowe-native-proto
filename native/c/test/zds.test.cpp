@@ -27,7 +27,8 @@ struct DataSetTestContextBase
 {
   vector<string> &cleanup_list;
 
-  explicit DataSetTestContextBase(vector<string> &list) : cleanup_list(list)
+  explicit DataSetTestContextBase(vector<string> &list)
+      : cleanup_list(list)
   {
   }
 
@@ -50,13 +51,35 @@ struct DataSetTestContextBase
   }
 };
 
+struct ListMembersTestContext : DataSetTestContextBase
+{
+  string pds_dsn;
+
+  explicit ListMembersTestContext(vector<string> &list)
+      : DataSetTestContextBase(list)
+  {
+    pds_dsn = get_random_ds(3);
+    cleanup_list.push_back(pds_dsn);
+  }
+
+  void setup_pds()
+  {
+    create_pds_at(pds_dsn);
+    write_to_dsn(pds_dsn + "(ABC1)", "data 1");
+    write_to_dsn(pds_dsn + "(ABC2)", "data 2");
+    write_to_dsn(pds_dsn + "(XYZ1)", "data 3");
+    write_to_dsn(pds_dsn + "(TEST)", "data 4");
+  }
+};
+
 // Test context for copy operations
 struct CopyTestContext : DataSetTestContextBase
 {
   string source_dsn;
   string target_dsn;
 
-  explicit CopyTestContext(vector<string> &list) : DataSetTestContextBase(list)
+  explicit CopyTestContext(vector<string> &list)
+      : DataSetTestContextBase(list)
   {
     source_dsn = get_random_ds(3);
     target_dsn = get_random_ds(3);
@@ -248,6 +271,82 @@ void zds_tests()
                                }
                              }
                              Expect(found).ToBe(dsn);
+                           });
+                      });
+
+             describe("list members",
+                      [&]() -> void
+                      {
+                        it("should list all members when pattern is empty",
+                           [&]() -> void
+                           {
+                             ListMembersTestContext tc(created_dsns);
+                             tc.setup_pds();
+
+                             ZDS zds = {0};
+                             vector<ZDSMem> members;
+                             int rc = zds_list_members(&zds, tc.pds_dsn, members, "");
+                             ExpectWithContext(rc, zds.diag.e_msg).ToBe(0);
+                             Expect(members.size()).ToBe(4); // ABC1, ABC2, XYZ1, TEST
+                           });
+
+                        it("should list specific member by exact name",
+                           [&]() -> void
+                           {
+                             ListMembersTestContext tc(created_dsns);
+                             tc.setup_pds();
+
+                             ZDS zds = {0};
+                             vector<ZDSMem> members;
+                             int rc = zds_list_members(&zds, tc.pds_dsn, members, "XYZ1");
+                             ExpectWithContext(rc, zds.diag.e_msg).ToBe(0);
+                             Expect(members.size()).ToBe(1);
+                             Expect(members[0].name).ToBe("XYZ1");
+                           });
+
+                        it("should list members matching wildcard *",
+                           [&]() -> void
+                           {
+                             ListMembersTestContext tc(created_dsns);
+                             tc.setup_pds();
+
+                             ZDS zds = {0};
+                             vector<ZDSMem> members;
+                             int rc = zds_list_members(&zds, tc.pds_dsn, members, "ABC*");
+                             ExpectWithContext(rc, zds.diag.e_msg).ToBe(0);
+                             Expect(members.size()).ToBe(2); // ABC1, ABC2
+
+                             bool has_abc1 = members[0].name == "ABC1" || members[1].name == "ABC1";
+                             bool has_abc2 = members[0].name == "ABC2" || members[1].name == "ABC2";
+                             Expect(has_abc1).ToBe(true);
+                             Expect(has_abc2).ToBe(true);
+                           });
+
+                        it("should list members matching wildcard ?",
+                           [&]() -> void
+                           {
+                             ListMembersTestContext tc(created_dsns);
+                             tc.setup_pds();
+
+                             ZDS zds = {0};
+                             vector<ZDSMem> members;
+                             // Match exactly 4 characters starting with ABC
+                             int rc = zds_list_members(&zds, tc.pds_dsn, members, "ABC?");
+                             ExpectWithContext(rc, zds.diag.e_msg).ToBe(0);
+                             Expect(members.size()).ToBe(2); // ABC1, ABC2
+                           });
+
+                        it("should return empty list when no members match",
+                           [&]() -> void
+                           {
+                             ListMembersTestContext tc(created_dsns);
+                             tc.setup_pds();
+
+                             ZDS zds = {0};
+                             vector<ZDSMem> members;
+                             int rc = zds_list_members(&zds, tc.pds_dsn, members, "NOMATCH*");
+                             ExpectWithContext(rc, zds.diag.e_msg).ToBe(0);
+                             Expect(members.size()).ToBe(0);
                            });
                       });
 

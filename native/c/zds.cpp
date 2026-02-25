@@ -1838,7 +1838,51 @@ int zds_rename_members(ZDS *zds, const string &dsname, const string &member_befo
   return 0;
 }
 
-int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &members)
+bool is_match(const char *s, const char *p)
+{
+  const char *star_p = nullptr; // Tracks the last '*' seen in the pattern
+  const char *star_s = nullptr; // Tracks where we were in the string when we saw the '*'
+
+  while (*s != '\0')
+  {
+    // Exact match or '?' wildcard: advance both pointers
+    if (*p == '?' || *p == *s)
+    {
+      s++;
+      p++;
+    }
+    // '*' wildcard found: record positions and advance the pattern
+    else if (*p == '*')
+    {
+      star_p = p;
+      star_s = s;
+      p++;
+    }
+    // Mismatch, but we previously saw a '*': backtrack to the star
+    else if (star_p != nullptr)
+    {
+      p = star_p + 1; // Reset pattern pointer to right after the star
+      star_s++;       // Force the star to consume one more character of the string
+      s = star_s;     // Reset string pointer to this new position
+    }
+    // Mismatch and no '*' to save us: immediate failure
+    else
+    {
+      return false;
+    }
+  }
+
+  // Consume any trailing '*' at the end of the pattern
+  while (*p == '*')
+  {
+    p++;
+  }
+
+  // If we've reached the end of the pattern, it's a full match
+  return *p == '\0';
+}
+
+int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &members, const string &pattern)
 {
   // PO
   // PO-E (PDS)
@@ -1884,27 +1928,7 @@ int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &members)
       }
       else
       {
-        total_entries++;
-
-        if (total_entries > zds->max_entries)
-        {
-          zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Reached maximum returned members requested %d", zds->max_entries);
-          zds->diag.detail_rc = ZDS_RSNCD_MAXED_ENTRIES_REACHED;
-          fclose(fp);
-          return RTNCD_WARNING;
-        }
-
-        unsigned char info = entry.info;
-        unsigned char pointer_count = entry.info;
         char name[9] = {0};
-        if (info & 0x80) // bit 0 indicates alias
-        {
-          // TODO(Kelosky): // member name is an alias
-        }
-        pointer_count &= 0x60; // bits 1-2 contain number of user data TTRNs
-        pointer_count >>= 5;   // adjust to byte boundary
-        info &= 0x1F;          // bits 3-7 contain the number of half words of user data
-
         memcpy(name, entry.name, sizeof(entry.name));
 
         for (int j = 8; j >= 0; j--)
@@ -1915,9 +1939,34 @@ int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &members)
           }
         }
 
-        ZDSMem mem = {0};
-        mem.name = string(name);
-        members.push_back(mem);
+        if (pattern.empty() || is_match(name, pattern.c_str()))
+        {
+          total_entries++;
+
+          if (total_entries > zds->max_entries)
+          {
+            zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Reached maximum returned members requested %d", zds->max_entries);
+            zds->diag.detail_rc = ZDS_RSNCD_MAXED_ENTRIES_REACHED;
+            fclose(fp);
+            return RTNCD_WARNING;
+          }
+
+          ZDSMem mem = {0};
+          mem.name = string(name);
+          members.push_back(mem);
+        }
+
+        unsigned char info = entry.info;
+        unsigned char pointer_count = entry.info;
+
+        if (info & 0x80) // bit 0 indicates alias
+        {
+          // TODO(Kelosky): // member name is an alias
+        }
+
+        pointer_count &= 0x60; // bits 1-2 contain number of user data TTRNs
+        pointer_count >>= 5;   // adjust to byte boundary
+        info &= 0x1F;          // bits 3-7 contain the number of half words of user data
 
         data = data + sizeof(entry) + (info * 2); // skip number of half words
         len = sizeof(entry) + (info * 2);
