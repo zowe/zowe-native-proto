@@ -26,7 +26,6 @@ MTL_HEADERS=$(MTL_HEADERS_BASE) -I../ -I../chdsect
 C_FLAGS=$(C_FLAGS_BASE) -I./chdsect
 CPP_FLAGS=$(CPP_FLAGS_BASE)
 CXXFLAGS=$(CPP_FLAGS_BASE) -I../ -I../chdsect
-BND_FLAGS=
 
 # make -DBuildType=DEBUG
 .IF $(BuildType) == DEBUG
@@ -125,7 +124,7 @@ build-out/zlogger.test.o \
 build-out/zlogger_metal.o \
 build-out/zjson.test.o \
 build-out/zjsonm.o
-	$(CXX) $(BND_FLAGS) -o $@ $^
+	$(CXX) $(CPP_BND_FLAGS) -o $@ $^
 
 build-out/zut.o:
 	ln -sf ../../build-out/zut.o build-out/zut.o
