@@ -1938,7 +1938,7 @@ void parse_packed_time(
   *time_out = buffer;
 }
 
-int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &members)
+int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &members, bool show_attributes)
 {
   // PO
   // PO-E (PDS)
@@ -2016,50 +2016,40 @@ int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &members)
 
         ZDSMem mem = {0};
         mem.name = string(name);
-        printf("Member: %s\n", mem.name.c_str());
         int user_data_len = info * 2;
         const unsigned char *stats = data + sizeof(entry);
 
-        if (user_data_len >= 28)
+        if (show_attributes)
         {
-          // user
-          char user[9] = {0};
-          memcpy(user, stats + 20, 8);
-          mem.user = string(user);
-          printf("User: %s\n", mem.user.c_str());
+          if (user_data_len >= 28)
+          {
+            // user
+            char user[9] = {0};
+            memcpy(user, stats + 20, 8);
+            mem.user = string(user);
 
-          // Version and Mod
-          mem.vers = stats[0];
-          printf("Vers: %d\n", mem.vers);
-          mem.mod = stats[1];
-          printf("Mod : %d\n", mem.mod);
+            // Version and Mod
+            mem.vers = stats[0];
+            mem.mod = stats[1];
 
-          // CHANGE THIS TO BOOLEAN
-          unsigned char flags = stats[2];
-          mem.sclm = (flags & 0x80) ? "Y" : "N";
-          printf("SCLM:%s\n", mem.sclm.c_str());
+            unsigned char flags = stats[2];
+            mem.sclm = (flags & 0x80) != 0;
 
-          parse_century_julian_date(stats + 4, &mem.c4date);
-          printf("CDate: %s\n", mem.c4date.c_str());
-          parse_century_julian_date(stats + 8, &mem.m4date);
-          printf("MDate :%s\n", mem.m4date.c_str());
+            parse_century_julian_date(stats + 4, &mem.c4date);
+            parse_century_julian_date(stats + 8, &mem.m4date);
 
-          parse_packed_time(
-              stats[13], // hours
-              stats[14], // minutes
-              stats[3],  // seconds
-              &mem.mtime);
-          printf("MTime  :%s\n", mem.mtime.c_str());
+            parse_packed_time(
+                stats[12], // hours
+                stats[13], // minutes
+                stats[3],  // seconds
+                &mem.mtime);
 
-          // Line counts
-          mem.cnorc = (stats[14] << 8) | stats[15];
-          mem.inorc = (stats[16] << 8) | stats[17];
-          mem.mnorc = (stats[18] << 8) | stats[19];
-          printf("CNORC: %d\n", mem.cnorc);
-          printf("INORC:%d\n", mem.inorc);
-          printf("MNORC: %d\n", mem.mnorc);
+            // Line counts
+            mem.cnorc = (stats[14] << 8) | stats[15];
+            mem.inorc = (stats[16] << 8) | stats[17];
+            mem.mnorc = (stats[18] << 8) | stats[19];
+          }
         }
-
         members.push_back(mem);
 
         data += sizeof(entry) + info * 2;

@@ -199,6 +199,48 @@ const ast::Node build_ds_object(const ZDSEntry &entry, bool attributes)
   return obj_entry;
 }
 
+const ast::Node build_member_object(const ZDSMem &member, bool attributes)
+{
+  const auto obj_member = obj();
+
+  std::string trimmed_name = member.name;
+  obj_member->set("name", str(zut_rtrim(trimmed_name)));
+
+  if (!attributes)
+    return obj_member;
+
+  if (member.vers != -1)
+    obj_member->set("vers", i64(member.vers));
+
+  if (member.mod != -1)
+    obj_member->set("mod", i64(member.mod));
+
+  if (!member.c4date.empty())
+    obj_member->set("c4date", str(member.c4date));
+
+  if (!member.m4date.empty())
+    obj_member->set("m4date", str(member.m4date));
+
+  if (!member.mtime.empty())
+    obj_member->set("mtime", str(member.mtime));
+
+  if (member.cnorc != -1)
+    obj_member->set("cnorc", i64(member.cnorc));
+
+  if (member.inorc != -1)
+    obj_member->set("inorc", i64(member.inorc));
+
+  if (member.mnorc != -1)
+    obj_member->set("mnorc", i64(member.mnorc));
+
+  if (!member.user.empty())
+    obj_member->set("user", str(member.user));
+
+  obj_member->set("sclm", boolean(member.sclm));
+
+  return obj_member;
+}
+
 int handle_data_set_create_fb(InvocationContext &context)
 {
   int rc = 0;
@@ -523,6 +565,8 @@ int handle_data_set_list_members(InvocationContext &context)
   string dsn = context.get<string>("dsn", "");
   long long max_entries = context.get<long long>("max-entries", 0);
   bool warn = context.get<bool>("warn", true);
+  bool attributes = context.get<bool>("attributes", false);
+  bool emit_csv = context.get<bool>("response-format-csv", false);
 
   ZDS zds = {};
   if (max_entries > 0)
@@ -530,17 +574,64 @@ int handle_data_set_list_members(InvocationContext &context)
     zds.max_entries = max_entries;
   }
   vector<ZDSMem> members;
-  rc = zds_list_members(&zds, dsn, members);
+  rc = zds_list_members(&zds, dsn, members, attributes);
 
   if (RTNCD_SUCCESS == rc || RTNCD_WARNING == rc)
   {
+    vector<string> fields;
     const auto entries_array = arr();
     for (vector<ZDSMem>::iterator it = members.begin(); it != members.end(); ++it)
     {
-      context.output_stream() << left << setw(12) << it->name << endl;
-      const auto entry = obj();
-      string trimmed_name = it->name;
-      entry->set("name", str(zut_rtrim(trimmed_name)));
+      // context.output_stream() << left << setw(12) << it->name << endl;
+      // const auto entry = obj();
+      // string trimmed_name = it->name;
+      // entry->set("name", str(zut_rtrim(trimmed_name)));
+      if (emit_csv)
+      {
+        fields.push_back(it->name);
+
+        if (attributes)
+        {
+          fields.push_back(it->vers == -1 ? "" : zut_int_to_string(it->vers));
+          fields.push_back(it->mod == -1 ? "" : zut_int_to_string(it->mod));
+          fields.push_back(it->c4date);
+          fields.push_back(it->m4date);
+          fields.push_back(it->mtime);
+          fields.push_back(it->cnorc == -1 ? "" : zut_int_to_string(it->cnorc));
+          fields.push_back(it->inorc == -1 ? "" : zut_int_to_string(it->inorc));
+          fields.push_back(it->mnorc == -1 ? "" : zut_int_to_string(it->mnorc));
+          fields.push_back(it->user);
+          fields.push_back(it->sclm ? "Y" : "N");
+        }
+
+        context.output_stream() << zut_format_as_csv(fields) << endl;
+        fields.clear();
+      }
+      else
+      {
+        if (attributes)
+        {
+          context.output_stream() << left
+                                  << setw(12) << it->name << " "
+                                  << setw(4) << (it->vers == -1 ? "" : zut_int_to_string(it->vers)) << " "
+                                  << setw(4) << (it->mod == -1 ? "" : zut_int_to_string(it->mod)) << " "
+                                  << setw(10) << it->c4date << " "
+                                  << setw(10) << it->m4date << " "
+                                  << setw(8) << it->mtime << " "
+                                  << setw(6) << (it->cnorc == -1 ? "" : zut_int_to_string(it->cnorc)) << " "
+                                  << setw(6) << (it->inorc == -1 ? "" : zut_int_to_string(it->inorc)) << " "
+                                  << setw(6) << (it->mnorc == -1 ? "" : zut_int_to_string(it->mnorc)) << " "
+                                  << setw(8) << it->user << " "
+                                  << (it->sclm ? "Y" : "N")
+                                  << endl;
+        }
+        else
+        {
+          context.output_stream() << left << setw(12) << it->name << endl;
+        }
+      }
+
+      const auto entry = build_member_object(*it, attributes);
       entries_array->push(entry);
     }
     const auto result = obj();
@@ -1002,8 +1093,10 @@ void register_commands(parser::Command &root_command)
   auto ds_list_members_cmd = command_ptr(new Command("list-members", "list data set members"));
   ds_list_members_cmd->add_alias("lm");
   ds_list_members_cmd->add_positional_arg(DSN);
+  ds_list_members_cmd->add_keyword_arg("attributes", make_aliases("--attributes", "-a"), "display data set attributes", ArgType_Flag, false, ArgValue(false));
   ds_list_members_cmd->add_keyword_arg(MAX_ENTRIES);
   ds_list_members_cmd->add_keyword_arg(WARN);
+  ds_list_members_cmd->add_keyword_arg(RESPONSE_FORMAT_CSV);
   ds_list_members_cmd->set_handler(handle_data_set_list_members);
   data_set_cmd->add_command(ds_list_members_cmd);
 
