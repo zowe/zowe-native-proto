@@ -87,7 +87,7 @@ export interface CopyUssRequest extends common.CommandRequest<"copyUss"> {
     followSymlinks?: boolean;
 
     /**
-     * Set to true if the copy action should **not** preserve permission bits and ownership in the output destination.
+     * Set to true if the copy action should preserve permission bits and ownership in the output destination.
      *   Note: the USS 'cp' utility by default does not preserve these permissions.
      *
      * Default: false
