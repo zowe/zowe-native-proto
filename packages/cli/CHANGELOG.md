@@ -4,7 +4,7 @@ All notable changes to the Client code for "zowe-native-proto-cli" are documente
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## Recent Changes
+## `0.3.0`
 
 - Used new SDK groupings that align with zowex. [#807](https://github.com/zowe/zowe-native-proto/pull/808)
 - Added the `pattern` option to the `list data-set-members` command to filter the returned members. [#817](https://github.com/zowe/zowe-native-proto/pull/817)

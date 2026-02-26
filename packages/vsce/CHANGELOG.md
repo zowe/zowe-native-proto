@@ -4,7 +4,7 @@ All notable changes to the "zowe-native-proto-vsce" extension will be documented
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## Recent Changes
+## `0.3.0`
 
 - Used new SDK groupings that align with zowex. [#807](https://github.com/zowe/zowe-native-proto/pull/808)
 - Added support for passing member patterns when filtering data sets. [#817](https://github.com/zowe/zowe-native-proto/pull/817)
