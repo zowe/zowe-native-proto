@@ -100,7 +100,7 @@ string get_random_string(const int length, const bool allNumbers)
   return ret;
 }
 
-string get_basename(const string fspath)
+string get_basename(const string& fspath)
 {
   if (fspath.empty()) return "";
 
