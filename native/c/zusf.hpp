@@ -27,7 +27,7 @@ struct ListOptions
   bool all_files;
   bool long_format;
   int max_depth;
-  ListOptions(bool all_files = false, bool long_format = false, int max_depth = 1)
+  explicit ListOptions(bool all_files = false, bool long_format = false, int max_depth = 1)
       : all_files(all_files), long_format(long_format), max_depth(max_depth)
   {
   }

@@ -111,7 +111,7 @@ int handle_uss_list(InvocationContext &context)
   int rc = 0;
   std::string uss_file = context.get<std::string>("file-path", "");
 
-  ListOptions list_options;
+  ListOptions list_options{};
   list_options.all_files = context.get<bool>("all", false);
   list_options.long_format = context.get<bool>("long", false);
   list_options.max_depth = context.get<long long>("depth", 1);

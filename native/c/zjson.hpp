@@ -321,14 +321,14 @@ public:
   // Public methods for creating Values to avoid private member access
   static Value create_object()
   {
-    Value result;
+    Value result{};
     result.data_ = std::unordered_map<std::string, Value>();
     return result;
   }
 
   static Value create_array()
   {
-    Value result;
+    Value result{};
     result.data_ = std::vector<Value>();
     return result;
   }
@@ -436,19 +436,19 @@ private:
 
 public:
   Value() = default;
-  Value(bool b)
+  explicit Value(bool b)
       : data_(b)
   {
   }
-  Value(int i)
+  explicit Value(int i)
       : data_(static_cast<long long>(i))
   {
   }
-  Value(long long ll)
+  explicit Value(long long ll)
       : data_(ll)
   {
   }
-  Value(unsigned long long ull)
+  explicit Value(unsigned long long ull)
   {
     if (ull <= static_cast<unsigned long long>(std::numeric_limits<long long>::max()))
     {
@@ -459,15 +459,15 @@ public:
       data_ = static_cast<double>(ull);
     }
   }
-  Value(double d)
+  explicit Value(double d)
       : data_(d)
   {
   }
-  Value(const std::string &s)
+  explicit Value(const std::string &s)
       : data_(s)
   {
   }
-  Value(const char *s)
+  explicit Value(const char *s)
       : data_(std::string(s))
   {
   }
