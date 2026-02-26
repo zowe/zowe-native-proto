@@ -1895,6 +1895,9 @@ int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &members, const string
 
   members.reserve(zds->max_entries);
 
+  string upper_pattern = pattern;
+  transform(upper_pattern.begin(), upper_pattern.end(), upper_pattern.begin(), ::toupper);
+
   RECORD rec = {0};
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=pds-reading-directory-sequentially
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=pdse-reading-directory - long alias names omitted, use DESERV for those
@@ -1939,7 +1942,8 @@ int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &members, const string
           }
         }
 
-        if (pattern.empty() || is_match(name, pattern.c_str()))
+        // Compare the member name against the uppercased pattern
+        if (pattern.empty() || is_match(name, upper_pattern.c_str()))
         {
           total_entries++;
 

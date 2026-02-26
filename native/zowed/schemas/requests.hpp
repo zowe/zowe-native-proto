@@ -87,7 +87,8 @@ ZJSON_SCHEMA(ListDsMembersRequest,
     FIELD_OPTIONAL(responseTimeout, NUMBER),
     FIELD_OPTIONAL(start, STRING),
     FIELD_REQUIRED(dsname, STRING),
-    FIELD_OPTIONAL(attributes, BOOL)
+    FIELD_OPTIONAL(attributes, BOOL),
+    FIELD_OPTIONAL(pattern, STRING)
 );
 
 struct ReadDatasetRequest {};

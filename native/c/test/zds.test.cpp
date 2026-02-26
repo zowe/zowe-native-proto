@@ -427,6 +427,30 @@ void zds_tests()
                              Expect(members.size()).ToBe(1);
                              Expect(members[0].name).ToBe("XYZ1");
                            });
+                        it("should list members matching a lowercase pattern by converting it to uppercase",
+                           [&]() -> void
+                           {
+                             ListMembersTestContext tc(created_dsns);
+                             tc.setup_pds();
+
+                             ZDS zds = {0};
+                             vector<ZDSMem> members;
+
+                             int rc = zds_list_members(&zds, tc.pds_dsn, members, "xyz1");
+                             ExpectWithContext(rc, zds.diag.e_msg).ToBe(0);
+                             Expect(members.size()).ToBe(1);
+                             Expect(members[0].name).ToBe("XYZ1");
+
+                             members.clear();
+                             rc = zds_list_members(&zds, tc.pds_dsn, members, "abc*");
+                             ExpectWithContext(rc, zds.diag.e_msg).ToBe(0);
+                             Expect(members.size()).ToBe(2);
+
+                             bool has_abc1 = members[0].name == "ABC1" || members[1].name == "ABC1";
+                             bool has_abc2 = members[0].name == "ABC2" || members[1].name == "ABC2";
+                             Expect(has_abc1).ToBe(true);
+                             Expect(has_abc2).ToBe(true);
+                           });
                       });
 
              describe("source encoding tests",

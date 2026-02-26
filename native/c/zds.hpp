@@ -231,6 +231,7 @@ int zds_rename_members(ZDS *zds, const std::string &dsn, const std::string &memb
  * @param zds data set returned attributes and error information
  * @param dsn data set name to obtain attributes for
  * @param members populated list returned containing member names within a z/OS data set
+ * @param pattern optional wildcard pattern to filter members (supports '*' and '?')
  * @return int 0 for success; non zero otherwise
  */
 int zds_list_members(ZDS *zds, std::string dsn, std::vector<ZDSMem> &members, const std::string &pattern = "");

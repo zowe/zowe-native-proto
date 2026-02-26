@@ -157,15 +157,6 @@ const ArgTemplate WARN = {
     ArgValue(true),
     make_aliases()};
 
-const ArgTemplate PATTERN = {
-    "pattern",
-    make_aliases("--pattern", "-p"),
-    "warn if truncated or not found",
-    ArgType_Single,
-    false,
-    ArgValue(),
-    make_aliases()};
-
 const ArgTemplate RECURSIVE = {
     "recursive",
     make_aliases("--recursive", "-r"),
