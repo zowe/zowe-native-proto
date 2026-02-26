@@ -32,11 +32,13 @@ export const ListDataSetMembersDefinition: ICommandDefinition = {
             required: true,
         },
     ],
-    options: [{
-        name: "pattern",
-        description: "A wildcard pattern used to filter the returned entries (supports '*' and '?')",
-        type: "string"
-    }],
+    options: [
+        {
+            name: "pattern",
+            description: "A wildcard pattern used to filter the returned entries (supports '*' and '?')",
+            type: "string",
+        },
+    ],
     profile: { optional: ["ssh"] },
     outputFormatOptions: true,
 };
