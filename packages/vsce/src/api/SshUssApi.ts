@@ -119,8 +119,19 @@ export class SshUssApi extends SshCommonApi implements MainframeInteraction.IUss
         return this.buildZosFilesResponse(response, response.success);
     }
 
-    public async rename(_currentUssPath: string, _newUssPath: string): Promise<zosfiles.IZosFilesResponse> {
-        throw new Error("Not yet implemented");
+    public async move(oldPath: string, newPath: string): Promise<void> {
+        await (await this.client).uss.moveFile({
+            source: oldPath,
+            target: newPath,
+        });
+    }
+
+    public async rename(currentUssPath: string, newUssPath: string): Promise<zosfiles.IZosFilesResponse> {
+        const response = await (await this.client).uss.moveFile({
+            source: currentUssPath,
+            target: newUssPath,
+        });
+        return this.buildZosFilesResponse(response, response.success);
     }
 
     public async getTag(ussPath: string): Promise<string> {
