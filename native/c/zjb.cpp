@@ -259,7 +259,7 @@ int zjb_read_job_content_by_dsn(ZJB *zjb, const std::string &jobdsn, std::string
 
   char cddname[8 + 1] = {0};
   memcpy(cddname, &s99tunit_x[4].s99tunit.s99tupar, ddnamelen);
-  std::string ddname = std::string(cddname);
+  auto ddname = std::string(cddname);
 
   zds.encoding_opts.data_type = zjb->encoding_opts.data_type;
   memcpy((void *)&zds.encoding_opts.codepage, (const void *)&zjb->encoding_opts.codepage, sizeof(zjb->encoding_opts.codepage));

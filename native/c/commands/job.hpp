@@ -29,6 +29,6 @@ int handle_job_delete(InvocationContext &result);
 int handle_job_cancel(InvocationContext &result);
 int handle_job_hold(InvocationContext &result);
 int handle_job_release(InvocationContext &result);
-int job_submit_common(InvocationContext &result, std::string jcl, std::string &jobid, std::string identifier);
+int job_submit_common(InvocationContext &result, const std::string &jcl, std::string &jobid, const std::string &identifier);
 void register_commands(parser::Command &root_command);
 } // namespace job

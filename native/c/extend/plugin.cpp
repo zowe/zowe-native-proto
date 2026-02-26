@@ -36,12 +36,12 @@ public:
 
     parser::command_ptr command(new parser::Command(cmd_name, cmd_help));
     m_records.push_back(std::make_unique<CommandRecord>(command));
-    return reinterpret_cast<CommandHandle>(m_records.back().get());
+    return static_cast<CommandHandle>(m_records.back().get());
   }
 
   CommandHandle get_root_command()
   {
-    return reinterpret_cast<CommandHandle>(&m_root_record);
+    return static_cast<CommandHandle>(&m_root_record);
   }
 
   void add_alias(CommandHandle command, const char *alias)
@@ -293,7 +293,7 @@ void PluginManager::register_commands(parser::Command &rootCommand)
 {
   RegistrationContextImpl context(rootCommand);
 
-  for (auto &factory : m_command_providers)
+  for (const auto &factory : m_command_providers)
   {
     if (!factory)
       continue;

@@ -194,7 +194,7 @@ int zds_close_output_bpam(ZDS *zds, IO_CTRL *ioc);
  * @param response messages from dynamic allocation (which may be present even when successful requests are made)
  * @return int 0 for success; non zero otherwise
  */
-int zds_create_dsn(ZDS *zds, const std::string &dsn, DS_ATTRIBUTES attributes, std::string &response);
+int zds_create_dsn(ZDS *, const std::string &dsn, DS_ATTRIBUTES attributes, std::string &response);
 
 /**
  * @brief Delete a data set

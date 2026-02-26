@@ -103,12 +103,12 @@ std::string get_random_string(const int length, const bool allNumbers)
   return ret;
 }
 
-std::string get_random_uss(const std::string base_dir)
+std::string get_random_uss(const std::string &base_dir)
 {
-  std::string ret = base_dir;
+  std::string ret{base_dir};
   if (ret.back() != '/')
   {
-    ret += "/";
+    ret.push_back('/');
   }
 
   ret += "test_" + get_random_string(10);
@@ -130,13 +130,13 @@ std::string get_user()
   return s_user;
 }
 
-std::string get_random_ds(const int qualifier_count, const std::string hlq)
+std::string get_random_ds(const int qualifier_count, const std::string &hlq)
 {
   const auto q = hlq.length() == 0 ? get_user() : hlq;
-  std::string ret = q + ".ZNP#TEST";
+  std::string ret{q + ".ZNP#TEST"};
   for (int i = 0; i < qualifier_count - 2; ++i)
   {
-    ret += ".Z" + get_random_string();
+    ret.append(".Z").append(get_random_string());
   }
   return ret;
 }
@@ -206,7 +206,7 @@ bool wait_for_job(const std::string &jobid, int max_retries, int delay_ms)
 
 // Data set creation helpers
 
-void create_dsn_with_attrs(ZDS *zds, const std::string &dsn, DS_ATTRIBUTES &attrs, const std::string &type_name)
+void create_dsn_with_attrs(ZDS *zds, const std::string &dsn, const DS_ATTRIBUTES &attrs, const std::string &type_name)
 {
   memset(zds, 0, sizeof(ZDS));
   std::string response;

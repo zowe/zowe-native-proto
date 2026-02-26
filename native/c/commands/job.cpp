@@ -717,7 +717,7 @@ int handle_job_release(InvocationContext &context)
   return RTNCD_SUCCESS;
 }
 
-int job_submit_common(InvocationContext &context, std::string jcl, std::string &jobid, std::string identifier)
+int job_submit_common(InvocationContext &context, const std::string &jcl, std::string &jobid, const std::string &identifier)
 {
   int rc = 0;
   ZJB zjb = {};

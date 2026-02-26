@@ -1154,7 +1154,7 @@ static int zds_write_member_bpam(ZDS *zds, const std::string &dsn, std::string &
         // Add overflow blank lines as empty '-' records (for 3+ blank lines)
         for (int i = 0; i < asa_result.overflow_records; i++)
         {
-          lines_to_write.push_back(std::make_pair(std::string(), '-'));
+          lines_to_write.emplace_back(std::make_pair(std::string(), '-'));
         }
 
         asa_char = asa_result.asa_char;
@@ -1183,7 +1183,7 @@ static int zds_write_member_bpam(ZDS *zds, const std::string &dsn, std::string &
         truncation.add_line(line_num);
       }
 
-      lines_to_write.push_back(std::make_pair(line, is_asa ? asa_char : '\0'));
+      lines_to_write.emplace_back(std::make_pair(line, is_asa ? asa_char : '\0'));
       pos = newline_pos + 1;
     }
 
@@ -1214,7 +1214,7 @@ static int zds_write_member_bpam(ZDS *zds, const std::string &dsn, std::string &
             // Add overflow blank lines as empty '-' records
             for (int i = 0; i < asa_result.overflow_records; i++)
             {
-              lines_to_write.push_back(std::make_pair(std::string(), '-'));
+              lines_to_write.emplace_back(std::make_pair(std::string(), '-'));
             }
 
             asa_char = asa_result.asa_char;
@@ -1246,7 +1246,7 @@ static int zds_write_member_bpam(ZDS *zds, const std::string &dsn, std::string &
             truncation.add_line(line_num);
           }
 
-          lines_to_write.push_back(std::make_pair(line, (is_asa && asa_char != '\0') ? asa_char : '\0'));
+          lines_to_write.emplace_back(std::make_pair(line, (is_asa && asa_char != '\0') ? asa_char : '\0'));
         }
       }
     }
@@ -1550,7 +1550,7 @@ int alloc_and_free(const std::string &alloc_dd, const std::string &dsn, unsigned
 }
 
 // TODO(Kelosky): add attributues to ZDS and have other functions populate it
-int zds_create_dsn(ZDS *zds, const std::string &dsn, DS_ATTRIBUTES attributes, std::string &response)
+int zds_create_dsn(ZDS *, const std::string &dsn, DS_ATTRIBUTES attributes, std::string &response)
 {
   unsigned int code = 0;
   std::string parm = "ALLOC DA('" + dsn + "')";
@@ -2563,7 +2563,7 @@ void load_volsers_from_catalog(const unsigned char *&data, const int field_len, 
   {
     memset(buffer, 0x00, sizeof(buffer)); // clear buffer
     memcpy(buffer, data + csi_offset + (i * MAX_VOLSER_LENGTH), MAX_VOLSER_LENGTH);
-    std::string vol = std::string(buffer, MAX_VOLSER_LENGTH);
+    auto vol = std::string(buffer, MAX_VOLSER_LENGTH);
     zut_rtrim(vol);
     if (!vol.empty())
       entry.volsers.push_back(vol);

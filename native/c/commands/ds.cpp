@@ -18,6 +18,7 @@
 #include "../zds.hpp"
 #include "../zut.hpp"
 #include <string>
+#include <string_view>
 #include <vector>
 
 using namespace ast;
@@ -26,7 +27,7 @@ using namespace commands::common;
 
 namespace ds
 {
-int process_data_set_create_result(InvocationContext &context, ZDS *zds, int rc, std::string dsn, std::string response)
+int process_data_set_create_result(InvocationContext &context, ZDS *zds, int rc, const std::string &dsn, std::string_view response)
 {
   if (0 != rc)
   {
