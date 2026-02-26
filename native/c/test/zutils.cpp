@@ -69,6 +69,12 @@ int execute_command_with_output(const string &command, string &output)
   return WEXITSTATUS(exit_status);
 }
 
+int execute_su_command_with_output(const std::string &command, std::string &output) 
+{
+  std::string su_command = "echo '" + command + "' | su";
+  return execute_command_with_output(su_command, output);
+}
+
 string get_random_string(const int length, const bool allNumbers)
 {
   static bool seeded = false;
