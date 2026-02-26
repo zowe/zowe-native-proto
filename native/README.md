@@ -304,4 +304,4 @@ You must ensure `zut_alloc_debug()` is called to allocate an output DD for log m
 
 ```
 
-By default, output is printed to `/tmp/zowex_debug.txt` when using `ZUTDBGMG()`; however, you may provide a Metal C compatible alternative.
+By default, output is printed to `/tmp/zowex_debug_<PID>.txt` (where PID is the current `zowex` process ID) when using `ZUTDBGMG()`; however, you may provide a Metal C compatible alternative.

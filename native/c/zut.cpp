@@ -554,7 +554,7 @@ int zut_alloc_debug()
   int rc = 0;
   unsigned int code = 0;
   std::string response;
-  std::string zowexdbg = "/tmp/zowex_debug.txt";
+  std::string zowexdbg = "/tmp/zowex_debug_" + std::to_string(getpid()) + ".txt";
 
   std::string alloc = "alloc fi(zowexdbg) path('" + zowexdbg + "') pathopts(owronly,ocreat) pathmode(sirusr,siwusr,sirgrp) filedata(text) msg(2)";
   rc = zut_bpxwdyn(alloc, &code, response);
