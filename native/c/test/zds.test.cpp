@@ -348,6 +348,85 @@ void zds_tests()
                              ExpectWithContext(rc, zds.diag.e_msg).ToBe(0);
                              Expect(members.size()).ToBe(0);
                            });
+                        it("should list members matching wildcard * at the beginning",
+                           [&]() -> void
+                           {
+                             ListMembersTestContext tc(created_dsns);
+                             tc.setup_pds(); // Creates ABC1, ABC2, XYZ1, TEST
+
+                             ZDS zds = {0};
+                             vector<ZDSMem> members;
+                             int rc = zds_list_members(&zds, tc.pds_dsn, members, "*1");
+                             ExpectWithContext(rc, zds.diag.e_msg).ToBe(0);
+                             Expect(members.size()).ToBe(2); // ABC1, XYZ1
+
+                             bool has_abc1 = members[0].name == "ABC1" || members[1].name == "ABC1";
+                             bool has_xyz1 = members[0].name == "XYZ1" || members[1].name == "XYZ1";
+                             Expect(has_abc1).ToBe(true);
+                             Expect(has_xyz1).ToBe(true);
+                           });
+
+                        it("should list members matching wildcard * in the middle",
+                           [&]() -> void
+                           {
+                             ListMembersTestContext tc(created_dsns);
+                             tc.setup_pds();
+
+                             ZDS zds = {0};
+                             vector<ZDSMem> members;
+                             int rc = zds_list_members(&zds, tc.pds_dsn, members, "A*2");
+                             ExpectWithContext(rc, zds.diag.e_msg).ToBe(0);
+                             Expect(members.size()).ToBe(1); // ABC2
+                             Expect(members[0].name).ToBe("ABC2");
+                           });
+
+                        it("should list members matching a combination of ? and *",
+                           [&]() -> void
+                           {
+                             ListMembersTestContext tc(created_dsns);
+                             tc.setup_pds();
+
+                             ZDS zds = {0};
+                             vector<ZDSMem> members;
+                             // Starts with any char, followed by B, then any trailing chars
+                             int rc = zds_list_members(&zds, tc.pds_dsn, members, "?B*");
+                             ExpectWithContext(rc, zds.diag.e_msg).ToBe(0);
+                             Expect(members.size()).ToBe(2); // ABC1, ABC2
+
+                             bool has_abc1 = members[0].name == "ABC1" || members[1].name == "ABC1";
+                             bool has_abc2 = members[0].name == "ABC2" || members[1].name == "ABC2";
+                             Expect(has_abc1).ToBe(true);
+                             Expect(has_abc2).ToBe(true);
+                           });
+
+                        it("should list members matching multiple ? wildcards for exact length",
+                           [&]() -> void
+                           {
+                             ListMembersTestContext tc(created_dsns);
+                             tc.setup_pds();
+
+                             ZDS zds = {0};
+                             vector<ZDSMem> members;
+                             // Matches exactly 4 characters
+                             int rc = zds_list_members(&zds, tc.pds_dsn, members, "????");
+                             ExpectWithContext(rc, zds.diag.e_msg).ToBe(0);
+                             Expect(members.size()).ToBe(4); // ABC1, ABC2, XYZ1, TEST
+                           });
+
+                        it("should list members matching an embedded ? and trailing *",
+                           [&]() -> void
+                           {
+                             ListMembersTestContext tc(created_dsns);
+                             tc.setup_pds();
+
+                             ZDS zds = {0};
+                             vector<ZDSMem> members;
+                             // 'X?Z*' matches XYZ1
+                             int rc = zds_list_members(&zds, tc.pds_dsn, members, "X?Z*");
+                             ExpectWithContext(rc, zds.diag.e_msg).ToBe(0);
+                             Expect(members.size()).ToBe(1);
+                             Expect(members[0].name).ToBe("XYZ1");
+                           });
                       });
 
              describe("source encoding tests",
