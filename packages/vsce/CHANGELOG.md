@@ -4,6 +4,10 @@ All notable changes to the "zowe-native-proto-vsce" extension will be documented
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## `0.3.0`
+
+- Used new SDK groupings that align with zowex. [#807](https://github.com/zowe/zowe-native-proto/pull/808)
+
 ## `0.2.4`
 
 - Added the functionality for the **Rename Member** option. [#765] (https://github.com/zowe/zowe-native-proto/pull/765).

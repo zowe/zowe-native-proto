@@ -37,20 +37,10 @@ ZJSON_SCHEMA(DatasetAttributes,
     FIELD_OPTIONAL(vol, STRING)
 );
 
-struct IssueConsoleRequest {};
-ZJSON_SCHEMA(IssueConsoleRequest,
+struct IssueConsoleCmdRequest {};
+ZJSON_SCHEMA(IssueConsoleCmdRequest,
     FIELD_REQUIRED(commandText, STRING),
     FIELD_OPTIONAL(consoleName, STRING)
-);
-
-struct IssueTsoRequest {};
-ZJSON_SCHEMA(IssueTsoRequest,
-    FIELD_REQUIRED(commandText, STRING)
-);
-
-struct IssueUnixRequest {};
-ZJSON_SCHEMA(IssueUnixRequest,
-    FIELD_REQUIRED(commandText, STRING)
 );
 
 struct CreateDatasetRequest {};
@@ -194,6 +184,11 @@ ZJSON_SCHEMA(SubmitUssRequest,
     FIELD_REQUIRED(fspath, STRING)
 );
 
+struct IssueTsoCmdRequest {};
+ZJSON_SCHEMA(IssueTsoCmdRequest,
+    FIELD_REQUIRED(commandText, STRING)
+);
+
 struct ChmodFileRequest {};
 ZJSON_SCHEMA(ChmodFileRequest,
     FIELD_REQUIRED(mode, STRING),
@@ -265,6 +260,11 @@ ZJSON_SCHEMA(WriteFileRequest,
     FIELD_OPTIONAL(data, STRING),
     FIELD_OPTIONAL(stream, ANY),
     FIELD_OPTIONAL(contentLen, NUMBER)
+);
+
+struct IssueUssCmdRequest {};
+ZJSON_SCHEMA(IssueUssCmdRequest,
+    FIELD_REQUIRED(commandText, STRING)
 );
 
 #endif
