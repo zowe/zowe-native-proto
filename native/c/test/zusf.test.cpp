@@ -44,7 +44,7 @@ void zusf_tests()
              CopyOptions copts_force = { false, false, false, true };
              CopyOptions copts_recursive = { true, false, false, false };
              CopyOptions copts_recursive_force = { true, false, false, true };
-             const std::string tmp_base = "/tmp/zusf_chown_tests_" + get_random_string(10);
+             const std::string tmp_base = "/tmp/zusf_copy_tests_" + get_random_string(10);
              string file_a;
              string file_b;
              string dir_a;
