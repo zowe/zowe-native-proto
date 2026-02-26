@@ -109,10 +109,11 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
 
     public async allMembers(
         dataSetName: string,
-        _options?: zosfiles.IListOptions,
+        options?: zosfiles.IListOptions,
     ): Promise<zosfiles.IZosFilesResponse> {
         const response = await (await this.client).ds.listDsMembers({
             dsname: dataSetName,
+            pattern: options?.pattern
         });
         this.attrProvider.cachedAttrs = undefined;
         return this.buildZosFilesResponse({

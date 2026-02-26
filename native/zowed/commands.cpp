@@ -56,7 +56,8 @@ void register_ds_commands(CommandDispatcher &dispatcher)
                               create_ds_builder(ds::handle_data_set_list_members)
                                   .validate<ListDsMembersRequest, ListDsMembersResponse>()
                                   .rename_arg("maxItems", "max-entries")
-                                  .set_default("warn", false));
+                                  .set_default("warn", false)
+                                  .set_default("pattern", ""));
   dispatcher.register_command("readDataset",
                               create_ds_builder(ds::handle_data_set_view)
                                   .validate<ReadDatasetRequest, ReadDatasetResponse>()
