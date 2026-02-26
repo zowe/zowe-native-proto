@@ -30,7 +30,7 @@ public:
   virtual ~Factory()
   {
   }
-  virtual Interface *create() = 0;
+  virtual std::unique_ptr<Interface> create() = 0;
 };
 
 namespace ast
@@ -1185,8 +1185,7 @@ public:
   PluginManager();
   ~PluginManager();
 
-  // Takes ownership of the provider pointer; it will be deleted with the manager.
-  void register_command_provider(CommandProvider *provider);
+  void register_command_provider(std::unique_ptr<CommandProvider> provider);
 
   // Capture metadata the active plug-in supplies during registration.
   void register_plugin_metadata(const char *display_name, const char *version);
@@ -1210,7 +1209,7 @@ private:
   bool is_display_name_in_use(const std::string &name) const;
   void discard_command_providers_from(std::size_t start_index);
 
-  std::vector<CommandProvider *> m_command_providers;
+  std::vector<std::unique_ptr<CommandProvider>> m_command_providers;
   std::vector<LoadedPlugin> m_plugins;
   PluginMetadata m_pending_metadata;
   bool m_metadata_pending;
@@ -1228,31 +1227,17 @@ inline PluginManager::PluginManager()
 
 inline PluginManager::~PluginManager()
 {
-  for (auto it =
-           m_command_providers.begin();
-       it != m_command_providers.end(); ++it)
-  {
-    delete *it;
-  }
-
   unload_plugins();
 }
 
-inline void PluginManager::register_command_provider(CommandProvider *provider)
+inline void PluginManager::register_command_provider(std::unique_ptr<CommandProvider> provider)
 {
-  if (!provider)
+  if (!provider || m_registration_rejected)
   {
     return;
   }
 
-  if (m_registration_rejected)
-  {
-    delete provider;
-    return;
-  }
-
-  // Take ownership of the pointer for the plugin manager lifetime.
-  m_command_providers.push_back(provider);
+  m_command_providers.push_back(std::move(provider));
 }
 
 inline void PluginManager::register_plugin_metadata(const char *display_name, const char *version)
@@ -1293,11 +1278,6 @@ inline void PluginManager::discard_command_providers_from(std::size_t start_inde
   if (start_index >= m_command_providers.size())
   {
     return;
-  }
-
-  for (std::size_t i = start_index; i < m_command_providers.size(); ++i)
-  {
-    delete m_command_providers[i];
   }
 
   m_command_providers.resize(start_index);
