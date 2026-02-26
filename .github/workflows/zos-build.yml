@@ -16,9 +16,9 @@ on:
     secrets:
       SSH_MARIST_RACF_HOST:
         required: true
-      SSH_MARIST_RACF_PASSWORD:
+      SSH_MARIST_ZNP_PASS:
         required: true
-      SSH_MARIST_USERNAME:
+      SSH_MARIST_ZNP_ID:
         required: true
   workflow_dispatch:
 
@@ -50,8 +50,8 @@ jobs:
               sshProfile:
                 host: ${{ secrets.SSH_MARIST_RACF_HOST }}
                 port: 65522
-                user: "${{ secrets.SSH_MARIST_USERNAME }}"
-                password: "${{ secrets.SSH_MARIST_RACF_PASSWORD }}"
+                user: "${{ secrets.SSH_MARIST_ZNP_ID }}"
+                password: "${{ secrets.SSH_MARIST_ZNP_PASS }}"
               deployDir: "/ZOWE/tmp/zowe-native-proto"
               preBuildCmd: "export PATH=/usr/lpp/IBM/cnw/v2r1/openxl/bin:$PATH"
           EOF
