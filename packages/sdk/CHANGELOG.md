@@ -10,7 +10,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## `0.2.4`
 
-- Added support for copying USS files and data sets in the `RpcClientApi` class.[#379](https://github.com/zowe/zowe-native-proto/issues/379)
+- Added support for copying USS files in the `RpcClientApi` class.[#379](https://github.com/zowe/zowe-native-proto/issues/379)
 - Added support for renaming data set members in the `RpcClientApi` class. [#765] (https://github.com/zowe/zowe-native-proto/pull/765)
 - Made the `recursive` property optional for USS request types. [#648](https://github.com/zowe/zowe-native-proto/issues/648)
 - Fixed an issue where deploying to the `/tmp` directory would result in an error. [#781](https://github.com/zowe/zowe-native-proto/pull/781)
