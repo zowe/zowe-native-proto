@@ -18,6 +18,7 @@
 #include <chrono>
 #include <thread>
 #include <stdexcept>
+#include <random>
 
 int execute_command_with_input(const std::string &command, const std::string &input, bool suppress_output)
 {
@@ -73,26 +74,30 @@ int execute_su_command_with_output(const std::string &command, std::string &outp
   return execute_command_with_output(su_command, output);
 }
 
+static std::mt19937 &get_rng()
+{
+  static std::mt19937 rng{std::random_device{}()};
+  return rng;
+}
+
 std::string get_random_string(const int length, const bool allNumbers)
 {
-  static bool seeded = false;
-  if (!seeded)
-  {
-    srand(static_cast<unsigned int>(time(nullptr)));
-    seeded = true;
-  }
-  std::string ret = "";
+  auto &rng = get_rng();
+  std::uniform_int_distribution<int> digit_dist(0, 9);
+  std::uniform_int_distribution<int> letter_dist(0, 25);
+  static const char letters[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
+  std::string ret;
+  ret.reserve(length);
   for (int i = 0; i < length; ++i)
   {
     if (allNumbers)
     {
-      ret += std::to_string(rand() % 10);
+      ret += std::to_string(digit_dist(rng));
     }
     else
     {
-      static const char letters[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-      ret += letters[rand() % 26];
+      ret += letters[letter_dist(rng)];
     }
   }
   return ret;
@@ -100,13 +105,6 @@ std::string get_random_string(const int length, const bool allNumbers)
 
 std::string get_random_uss(const std::string base_dir)
 {
-  static bool seeded = false;
-  if (!seeded)
-  {
-    srand(static_cast<unsigned int>(time(nullptr)));
-    seeded = true;
-  }
-
   std::string ret = base_dir;
   if (ret.back() != '/')
   {
