@@ -61,7 +61,7 @@ ASM_FLAGS=-mRENT
 # Compilation flags
 #
 C_FLAGS_BASE=-fvisibility=default -c
-CPP_FLAGS_BASE=-fvisibility=default -c -std=gnu++17 -fno-aligned-allocation -D_EXT -D_OPEN_SYS_FILE_EXT=1
+CPP_FLAGS_BASE=-fvisibility=default -c -std=gnu++17 -fno-aligned-allocation -D_EXT -D_OPEN_SYS_FILE_EXT=1 -MD
 SWIG_FLAGS_BASE=-DSWIG $(CPP_FLAGS_BASE)
 
 #
