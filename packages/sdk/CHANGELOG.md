@@ -7,7 +7,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 ## Recent Changes
 
 - Added support for invoking the tool search group.
-- Changed SDK groupings to align with zowex.  [#807](https://github.com/zowe/zowe-native-proto/pull/808)
+- Changed SDK groupings to align with zowex. [#807](https://github.com/zowe/zowe-native-proto/pull/808)
 
 ## `0.2.4`
 
