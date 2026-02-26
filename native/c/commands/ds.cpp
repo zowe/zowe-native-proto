@@ -582,10 +582,6 @@ int handle_data_set_list_members(InvocationContext &context)
     const auto entries_array = arr();
     for (vector<ZDSMem>::iterator it = members.begin(); it != members.end(); ++it)
     {
-      // context.output_stream() << left << setw(12) << it->name << endl;
-      // const auto entry = obj();
-      // string trimmed_name = it->name;
-      // entry->set("name", str(zut_rtrim(trimmed_name)));
       if (emit_csv)
       {
         fields.push_back(it->name);
