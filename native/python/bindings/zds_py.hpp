@@ -18,7 +18,7 @@
 #include "../../c/zds.hpp"
 #include "conversion.hpp"
 
-void create_data_set(std::string dsn, DS_ATTRIBUTES attributes);
+void create_data_set(std::string dsn, const DS_ATTRIBUTES &attributes);
 
 std::vector<ZDSEntry> list_data_sets(std::string dsn);
 

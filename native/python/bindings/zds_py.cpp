@@ -17,7 +17,7 @@
  * Dataset Functions
  */
 
-void create_data_set(std::string dsn, DS_ATTRIBUTES attributes)
+void create_data_set(std::string dsn, const DS_ATTRIBUTES &attributes)
 {
   ZDS zds = {0};
   std::string response;
