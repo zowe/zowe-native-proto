@@ -25,6 +25,7 @@ std::string get_random_string(const int length = 7, const bool allNumbers = true
 std::string get_random_uss(const std::string base_dir);
 std::string get_random_ds(const int qualifier_count = 4, const std::string hlq = "");
 std::string get_user();
+std::string get_basename(const std::string& fspath);
 std::string parse_etag_from_output(const std::string &output);
 std::vector<std::string> parse_rfc_response(const std::string input, const char *delim = ",");
 // Wait for a job to be visible in JES (returns true if found, false if timeout)
