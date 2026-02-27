@@ -12,9 +12,18 @@
 #include "zwto.h"
 #include "zmetal.h"
 #include "zsetjmp.h"
+#include "ztime.h"
+#include "zwto.h"
 
 #pragma prolog(main, " ZWEPROLG NEWDSA=(YES,128) ")
 #pragma epilog(main, " ZWEEPILG ")
+
+int main()
+{
+  // demo_setjmp();
+  demo_time();
+  return 0;
+}
 
 void test(ZSETJMP_ENV *zenv)
 {
@@ -22,7 +31,15 @@ void test(ZSETJMP_ENV *zenv)
   zlongjmp(zenv);
 }
 
-int main()
+int demo_time()
+{
+  unsigned long long tod = 0;
+  time(&tod);
+  zwto_debug("time: %llx", tod);
+  return 0;
+}
+
+int demo_setjmp()
 {
   PSW psw = {0};
   get_psw(&psw);
@@ -35,12 +52,12 @@ int main()
   {
     zwto_debug("zsetjmp returned 0");
     test(&zenv);
-    // ZLONGJMP(&zenv);
+    ZLONGJMP(&zenv);
   }
   else
   {
     zwto_debug("zsetjmp returned %d", rc);
   }
 
-  return 0;
+  return rc;
 }
