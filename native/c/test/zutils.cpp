@@ -13,17 +13,17 @@
 #include "zutils.hpp"
 #include <vector>
 #include <string>
-#include <sstream>
 #include <cstring>
 #include <chrono>
 #include <thread>
+#include <unistd.h>
 #include <stdexcept>
 
 using namespace std;
 
-int execute_command_with_input(const std::string &command, const std::string &input, bool suppress_output)
+int execute_command_with_input(const string &command, const string &input, bool suppress_output)
 {
-  std::string final_command = command;
+  string final_command = command;
   if (suppress_output)
   {
     final_command += " > /dev/null";
@@ -32,7 +32,7 @@ int execute_command_with_input(const std::string &command, const std::string &in
   FILE *pipe = popen(final_command.c_str(), "w");
   if (!pipe)
   {
-    throw std::runtime_error("Failed to open pipe for writing");
+    throw runtime_error("Failed to open pipe for writing");
   }
 
   if (!input.empty())
@@ -40,7 +40,7 @@ int execute_command_with_input(const std::string &command, const std::string &in
     if (fprintf(pipe, "%s", input.c_str()) < 0)
     {
       pclose(pipe);
-      throw std::runtime_error("Failed to write to pipe");
+      throw runtime_error("Failed to write to pipe");
     }
   }
 
@@ -48,7 +48,7 @@ int execute_command_with_input(const std::string &command, const std::string &in
   return WEXITSTATUS(exit_status);
 }
 
-int execute_command_with_output(const std::string &command, std::string &output)
+int execute_command_with_output(const string &command, string &output)
 {
   output = "";
 
@@ -56,7 +56,7 @@ int execute_command_with_output(const std::string &command, std::string &output)
   FILE *pipe = popen((command + " 2>&1").c_str(), "r");
   if (!pipe)
   {
-    throw std::runtime_error("Failed to open pipe for reading");
+    throw runtime_error("Failed to open pipe for reading");
   }
 
   char buffer[256];
@@ -120,7 +120,7 @@ string get_random_uss(const string base_dir)
   return ret;
 }
 
-static std::string s_user = "";
+static string s_user = "";
 string get_user()
 {
   if (s_user.empty())
@@ -209,7 +209,6 @@ bool wait_for_job(const string &jobid, int max_retries, int delay_ms)
 }
 
 // Data set creation helpers
-
 void create_dsn_with_attrs(ZDS *zds, const string &dsn, DS_ATTRIBUTES &attrs, const string &type_name)
 {
   memset(zds, 0, sizeof(ZDS));
@@ -265,4 +264,113 @@ void write_to_dsn(const string &dsn, const string &content)
   ZDS zds = {0};
   string data = content;
   zds_write_to_dsn(&zds, dsn, data);
+}
+
+TestFileGuard::TestFileGuard(const char *_filename, const char &mode, const char *_link)
+    : fp()
+{
+  if (mode == 'p')
+  {
+    mkfifo(_filename, 0666);
+    _file = string(_filename);
+  }
+  else if (mode == 'l')
+  {
+    symlink(_link, _filename);
+    _file = string(_filename);
+  }
+  else
+  {
+    _file = string(_filename);
+    fp = FileGuard(_filename, string(1, mode).c_str());
+  }
+}
+
+void TestFileGuard::reset(const char *_filename)
+{
+  struct stat file_stats;
+  if (stat(_file.c_str(), &file_stats) == 0)
+  {
+    if (S_ISDIR(file_stats.st_mode))
+    {
+      rmdir(_file.c_str());
+    }
+    else
+    {
+      unlink(_file.c_str());
+    }
+  }
+  _file = string(_filename);
+  if (stat(_file.c_str(), &file_stats) == -1)
+  {
+    fp = FileGuard(_file.c_str(), "w");
+  }
+}
+
+TestFileGuard::~TestFileGuard()
+{
+  unlink(_file.c_str());
+}
+
+TestFileGuard::operator FILE *() const
+{
+  return fp;
+}
+
+TestFileGuard::operator bool() const
+{
+  return fp != nullptr;
+}
+
+TestDirGuard::TestDirGuard(const char *_dirname, const mode_t mode)
+    : _dir(string(_dirname))
+{
+  struct stat dir_stats;
+  if (stat(_dir.c_str(), &dir_stats) == 0 && S_ISDIR(dir_stats.st_mode))
+  {
+    rmdir(_dir.c_str());
+  }
+  mkdir(_dir.c_str(), mode);
+}
+
+TestDirGuard::~TestDirGuard()
+{
+  struct stat dir_stats;
+  if (stat(_dir.c_str(), &dir_stats) == 0)
+  {
+    if (S_ISDIR(dir_stats.st_mode))
+    {
+      rmdir(_dir.c_str());
+    }
+    else
+    {
+      unlink(_dir.c_str());
+    }
+  }
+}
+
+void TestDirGuard::reset(const char *_dirname)
+{
+  struct stat dir_stats;
+  if (stat(_dir.c_str(), &dir_stats) == 0)
+  {
+    if (S_ISDIR(dir_stats.st_mode))
+    {
+      rmdir(_dir.c_str());
+    }
+    else
+    {
+      unlink(_dir.c_str());
+    }
+  }
+  _dir = string(_dirname);
+  if (stat(_dir.c_str(), &dir_stats) == -1)
+  {
+    mkdir(_dir.c_str(), 0755);
+  }
+}
+
+TestDirGuard::operator string() const
+{
+  return _dir;
 }

@@ -257,4 +257,11 @@ ZJSON_SCHEMA(IssueUssCmdRequest,
     FIELD_REQUIRED(commandText, STRING)
 );
 
+struct MoveFileRequest {};
+ZJSON_SCHEMA(MoveFileRequest,
+    FIELD_REQUIRED(source, STRING),
+    FIELD_REQUIRED(target, STRING),
+    FIELD_OPTIONAL(force, BOOL)
+);
+
 #endif

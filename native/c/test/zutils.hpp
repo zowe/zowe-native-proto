@@ -13,6 +13,8 @@
 #define ZUTILS_HPP
 #include <string>
 #include <vector>
+#include "../zut.hpp"
+#include <sys/stat.h>
 #include "../zds.hpp"
 
 const std::string zowex_command = "./../build-out/zowex";
@@ -29,6 +31,55 @@ std::string parse_etag_from_output(const std::string &output);
 std::vector<std::string> parse_rfc_response(const std::string input, const char *delim = ",");
 // Wait for a job to be visible in JES (returns true if found, false if timeout)
 bool wait_for_job(const std::string &jobid, int max_retries = 30, int delay_ms = 100);
+
+/**
+ * @brief RAII class to manage FILE* pointers
+ *
+ * Opens a file on construction and automatically closes it on destruction.
+ * Provides implicit conversion to FILE* for easy use with C file APIs.
+ */
+class TestFileGuard
+{
+  FILE *fp;
+  std::string _file;
+
+public:
+  TestFileGuard(const char *_filename, const char &mode = 'w', const char *_link = nullptr);
+  ~TestFileGuard();
+
+  TestFileGuard(const TestFileGuard &) = delete;
+  TestFileGuard &operator=(const TestFileGuard &) = delete;
+  TestFileGuard(TestFileGuard &&) = delete;
+  TestFileGuard &operator=(TestFileGuard &&) = delete;
+
+  void reset(const char *_filename);
+
+  operator FILE *() const;
+  operator bool() const;
+};
+
+/**
+ * @brief RAII class to manage directory pointers
+ *
+ * Creates a directory on construction and automatically deletes it on destruction.
+ */
+class TestDirGuard
+{
+  std::string _dir;
+
+public:
+  TestDirGuard(const char *_dirname, const mode_t mode = 0755);
+  ~TestDirGuard();
+
+  TestDirGuard(const TestDirGuard &) = delete;
+  TestDirGuard &operator=(const TestDirGuard &) = delete;
+  TestDirGuard(TestDirGuard &&) = delete;
+  TestDirGuard &operator=(TestDirGuard &&) = delete;
+
+  void reset(const char *_dirname);
+
+  operator std::string() const;
+};
 
 // Data set creation helpers - convenience wrappers around zds_* functions
 // that use sensible defaults for test data sets

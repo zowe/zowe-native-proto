@@ -56,12 +56,13 @@ class TestJobFunctions:
             assert isinstance(job.owner, str)
             assert len(job.jobid) > 0
 
-    def test_list_jobs_by_owner_with_prefix_success(self):
+    def test_list_jobs_by_owner_with_prefix_and_status_success(self):
         """Test successful listing of jobs by owner with prefix filter."""
         prefix = "TSO"  # Common job prefix
+        status = "ACTIVE"
         
         # List jobs with prefix filter
-        jobs = jb.list_jobs_by_owner(self.OWNER, prefix)
+        jobs = jb.list_jobs_by_owner(self.OWNER, prefix, status)
         
         # Verify response structure
         # assert isinstance(jobs, (list, jb.ZJobVector))
@@ -73,6 +74,7 @@ class TestJobFunctions:
             # Job name should start with the prefix (case insensitive)
             if len(job.jobname.strip()) > 0:
                 assert job.jobname.strip().upper().startswith(prefix.upper())
+                assert job.status.strip().upper() == status.upper()
 
     def test_submit_job_success(self):
         """Test successful job submission."""

@@ -58,7 +58,7 @@ def list_data_sets():
                     "name": entry.name if hasattr(entry, "name") else str(entry),
                     "dsorg": entry.dsorg if hasattr(entry, "dsorg") else "",
                     "volser": entry.volser if hasattr(entry, "volser") else "",
-                    "migr": entry.migr if hasattr(entry, "migr") else False,
+                    "migrated": entry.migrated if hasattr(entry, "migrated") else False,
                     "recfm": entry.recfm if hasattr(entry, "recfm") else "",
                 }
                 results.append(csv_row)
@@ -70,7 +70,7 @@ def list_data_sets():
                         "volser": entry.volser if hasattr(entry, "volser") else "",
                         "dsorg": entry.dsorg if hasattr(entry, "dsorg") else "",
                         "recfm": entry.recfm if hasattr(entry, "recfm") else "",
-                        "migr": entry.migr if hasattr(entry, "migr") else False,
+                        "migrated": entry.migrated if hasattr(entry, "migrated") else False,
                     }
                 else:
                     dataset_info = {

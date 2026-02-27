@@ -18,8 +18,10 @@
 #include <vector>
 #include "conversion.hpp"
 
+// We excluded the oner-prefix version since SWIG and C++ have different linking rules for overloaded functions
+// TODO: Create proper wrappers that apply to the python bindings project only
 std::vector<ZJob> list_jobs_by_owner(std::string owner_name);
-std::vector<ZJob> list_jobs_by_owner(std::string owner_name, std::string prefix);
+std::vector<ZJob> list_jobs_by_owner(std::string owner_name, std::string prefix, std::string status);
 
 ZJob get_job_status(std::string jobid);
 

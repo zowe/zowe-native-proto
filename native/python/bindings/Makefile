@@ -39,17 +39,20 @@ build: swig-wrappers
 	$(_SWIG_ENV) python setup.py build_ext
 
 # Build specific modules only
-build-zusf: swig-zusf
+# build-zusf: swig-zusf
+build-zusf:
 	@echo '\nBuilding zusf_py module only'
 	$(SWIG) -python -c++ zusf_py.i
 	$(_SWIG_ENV) ZBIND_MODULES=zusf python setup.py build_ext
 
-build-zds: swig-zds
+# build-zds: swig-zds
+build-zds:
 	@echo '\nBuilding zds_py module only'
 	$(SWIG) -python -c++ zds_py.i
 	$(_SWIG_ENV) ZBIND_MODULES=zds python setup.py build_ext
 
-build-zjb: swig-zjb
+# build-zjb: swig-zjb
+build-zjb:
 	@echo '\nBuilding zjb_py module only'
 	$(SWIG) -python -c++ zjb_py.i
 	$(_SWIG_ENV) ZBIND_MODULES=zjb python setup.py build_ext
@@ -59,18 +62,18 @@ swig-extenders:
 	@echo '\nBuilding SWIG extenders'
 	$(MAKE) -c ../../c swig-extenders
 
-# Selective SWIG extenders for specific modules
-swig-zusf:
-	@echo '\nBuilding SWIG extenders for zusf_py module'
-	$(MAKE) -c ../../c swig-zusf
+# # Selective SWIG extenders for specific modules
+# swig-zusf:
+# 	@echo '\nBuilding SWIG extenders for zusf_py module'
+# 	$(MAKE) -c ../../c swig-zusf
 
-swig-zds:
-	@echo '\nBuilding SWIG extenders for zds_py module'
-	$(MAKE) -c ../../c swig-zds
+# swig-zds:
+# 	@echo '\nBuilding SWIG extenders for zds_py module'
+# 	$(MAKE) -c ../../c swig-zds
 
-swig-zjb:
-	@echo '\nBuilding SWIG extenders for zjb_py module'
-	$(MAKE) -c ../../c swig-zjb
+# swig-zjb:
+# 	@echo '\nBuilding SWIG extenders for zjb_py module'
+# 	$(MAKE) -c ../../c swig-zjb
 
 help:
 	@echo "Available targets:"

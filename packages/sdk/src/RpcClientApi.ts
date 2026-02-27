@@ -65,6 +65,7 @@ export abstract class RpcClientApi implements IRpcClient {
         readFile: this.rpcWithProgress<uss.ReadFileRequest, uss.ReadFileResponse>("readFile"),
         writeFile: this.rpcWithProgress<uss.WriteFileRequest, uss.WriteFileResponse>("writeFile"),
         issueCmd: this.rpc<uss.IssueUssCmdRequest, uss.IssueUssCmdResponse>("unixCommand"),
+        moveFile: this.rpc<uss.MoveFileRequest, uss.MoveFileResponse>("moveFile"),
     };
 
     private rpc<ReqT extends CommandRequest, RespT extends CommandResponse>(command: ReqT["command"]) {

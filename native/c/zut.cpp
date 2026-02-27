@@ -9,6 +9,10 @@
  *
  */
 
+#ifndef _XOPEN_SOURCE
+#define _XOPEN_SOURCE
+#endif
+ 
 #define _OPEN_SYS_EXT
 #include <sys/ps.h>
 #include <stdio.h>
@@ -30,6 +34,45 @@
 #include <_Nascii.h>
 
 using namespace std;
+
+int zut_run_shell_command(string command, string &response)
+{
+  int rc = 0;
+  string response_raw;
+  FILE *cmd = popen(command.c_str(), "r");
+  if (nullptr == cmd)
+  {
+    return RTNCD_FAILURE;
+  }
+
+  char buffer[256] = {0};
+  while (fgets(buffer, sizeof(buffer), cmd) != nullptr)
+  {
+    response_raw += string(buffer);
+  }
+
+  stringstream response_ss(response_raw);
+
+  string line;
+  auto index = 0;
+
+  while (getline(response_ss, line))
+  {
+    index++;
+    if (index > 1)
+    {
+      response += line + '\n';
+    }
+  }
+
+  rc = pclose(cmd);
+  if (0 != rc)
+  {
+    return WEXITSTATUS(rc);
+  }
+
+  return rc;
+}
 
 int zut_search(string parms)
 {
@@ -709,19 +752,17 @@ int zut_free_dynalloc_dds(ZDIAG &diag, vector<string> &list)
   for (vector<string>::iterator it = list.begin(); it != list.end(); it++)
   {
     string alloc_dd = *it;
-    const auto dd_start = alloc_dd.find("dd(");
-    if (dd_start == string::npos)
+    size_t start = alloc_dd.find(" ");
+    size_t end = alloc_dd.find(")", start);
+    if (start == string::npos || end == string::npos)
     {
-      diag.e_msg_len = sprintf(diag.e_msg, "Invalid format in DD alloc string: %s", it->c_str());
+      diag.e_msg_len = sprintf(diag.e_msg, "Invalid format in DD alloc string: %s", (*it).c_str());
       return RTNCD_FAILURE;
     }
-    const auto paren_end = alloc_dd.find(")", dd_start + 3);
-    if (paren_end == string::npos)
+    else
     {
-      diag.e_msg_len = sprintf(diag.e_msg, "Invalid format in DD alloc string: %s", it->c_str());
-      return RTNCD_FAILURE;
+      free_dds.push_back("free " + alloc_dd.substr(start + 1, end - start));
     }
-    free_dds.push_back("free " + alloc_dd.substr(dd_start, paren_end - dd_start + 1));
   }
 
   return zut_loop_dynalloc(diag, free_dds);

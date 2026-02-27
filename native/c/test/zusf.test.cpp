@@ -21,7 +21,7 @@
 #include <time.h>
 
 #include "ztest.hpp"
-#include "zusf.hpp"
+#include "../zusf.hpp"
 #include "ztype.h"
 #include "zutils.hpp"
 
@@ -1416,5 +1416,233 @@ void zusf_tests()
                   // Verify error message was set but encoding preserved
                   Expect(strlen(zusf.diag.e_msg)).ToBeGreaterThan(0);
                 });
+           });
+
+  describe("zusf_move_uss_file_or_dir tests",
+           [&]() -> void
+           {
+             string zusf_test_dir = "/tmp/zusf_test_dir_" + get_random_string(10);
+             TestDirGuard test_dir(zusf_test_dir.c_str());
+
+             ZUSF zusf;
+             beforeEach([&]() -> void
+                        { memset(&zusf, 0, sizeof(zusf)); });
+
+             describe("error conditions", [&]() -> void
+                      {
+                        it("should fail when source or destination is empty",
+                           [&]() -> void
+                           {
+                             int result = zusf_move_uss_file_or_dir(&zusf, "", "");
+                             Expect(result).ToBe(RTNCD_FAILURE);
+                             Expect(string(zusf.diag.e_msg)).ToContain("Source or target is empty");
+
+                             result = zusf_move_uss_file_or_dir(&zusf, "test_file.txt", "");
+                             Expect(result).ToBe(RTNCD_FAILURE);
+                             Expect(string(zusf.diag.e_msg)).ToContain("Source or target is empty");
+
+                             result = zusf_move_uss_file_or_dir(&zusf, "", "test_file.txt");
+                             Expect(result).ToBe(RTNCD_FAILURE);
+                             Expect(string(zusf.diag.e_msg)).ToContain("Source or target is empty");
+                           });
+
+                        it("should fail when source or target path is too long",
+                           [&]() -> void
+                           {
+                             string source = get_random_uss(zusf_test_dir);
+                             string target = get_random_uss(zusf_test_dir);
+                             source.append(PATH_MAX, 'a');
+                             target.append(PATH_MAX, 'a');
+
+                             int rc = zusf_move_uss_file_or_dir(&zusf, source, zusf_test_dir);
+                             Expect(rc).ToBe(RTNCD_FAILURE);
+                             Expect(string(zusf.diag.e_msg)).ToContain("Source or target path is too long");
+
+                             rc = zusf_move_uss_file_or_dir(&zusf, zusf_test_dir, target);
+                             Expect(rc).ToBe(RTNCD_FAILURE);
+                             Expect(string(zusf.diag.e_msg)).ToContain("Source or target path is too long");
+
+                             rc = zusf_move_uss_file_or_dir(&zusf, source, target);
+                             Expect(rc).ToBe(RTNCD_FAILURE);
+                             Expect(string(zusf.diag.e_msg)).ToContain("Source or target path is too long");
+                           });
+
+                        it("should fail when source does not exist",
+                           [&]() -> void
+                           {
+                             string source = get_random_uss(zusf_test_dir);
+                             int result = zusf_move_uss_file_or_dir(&zusf, source, "test_file.txt");
+                             Expect(result).ToBe(RTNCD_FAILURE);
+                             Expect(string(zusf.diag.e_msg)).ToContain("Source path '" + source + "' does not exist");
+                           });
+
+                        it("should fail when source and target are the same",
+                           [&]() -> void
+                           {
+                             string source = get_random_uss(zusf_test_dir);
+                             TestFileGuard file(source.c_str());
+
+                             int result = zusf_move_uss_file_or_dir(&zusf, source, source);
+                             Expect(result).ToBe(RTNCD_FAILURE);
+                             Expect(string(zusf.diag.e_msg)).ToContain("Source '" + source + "' and target '" + source + "' are identical");
+                           });
+
+                        it("should fail when source is a directory and target is not a directory",
+                           [&]() -> void
+                           {
+                             string target = get_random_uss(zusf_test_dir);
+                             TestFileGuard file(target.c_str());
+
+                             int result = zusf_move_uss_file_or_dir(&zusf, zusf_test_dir, target);
+                             Expect(result).ToBe(RTNCD_FAILURE);
+                             Expect(string(zusf.diag.e_msg)).ToContain("Cannot move directory '" + zusf_test_dir + "'. Target '" + target + "' is not a directory");
+                           });
+
+                        it("should fail when source is a pipe and target is not a pipe",
+                           [&]() -> void
+                           {
+                             string source = get_random_uss(zusf_test_dir);
+                             string target = get_random_uss(zusf_test_dir);
+                             TestFileGuard file(source.c_str(), 'p');
+                             TestFileGuard target_file(target.c_str());
+
+                             int result = zusf_move_uss_file_or_dir(&zusf, source, target);
+                             Expect(result).ToBe(RTNCD_FAILURE);
+                             Expect(string(zusf.diag.e_msg)).ToContain("Cannot move pipe '" + source + "'. Target '" + target + "' is not a pipe");
+                           });
+
+                        it("should fail to move a symlink to a file if the symlink points to the same file",
+                           [&]() -> void
+                           {
+                             string source = get_random_uss(zusf_test_dir);
+                             string target = get_random_uss(zusf_test_dir);
+                             TestFileGuard target_file(target.c_str());
+                             TestFileGuard file(source.c_str(), 'l', target.c_str());
+
+                             int result = zusf_move_uss_file_or_dir(&zusf, source, target);
+                             Expect(result).ToBe(RTNCD_FAILURE);
+                             Expect(string(zusf.diag.e_msg)).ToContain("Source '" + source + "' and target '" + target + "' are identical");
+                           });
+
+                        it("should fail to move a symlink to a file if the symlink points to a directory",
+                           [&]() -> void
+                           {
+                             string source = get_random_uss(zusf_test_dir);
+                             string target = get_random_uss(zusf_test_dir);
+                             string test_file = get_random_uss(zusf_test_dir);
+                             TestDirGuard target_dir(target.c_str());
+                             TestFileGuard file(source.c_str(), 'l', target.c_str());
+                             TestFileGuard test_file_guard(test_file.c_str());
+
+                             int result = zusf_move_uss_file_or_dir(&zusf, source, test_file);
+                             Expect(result).ToBe(RTNCD_FAILURE);
+                             Expect(string(zusf.diag.e_msg)).ToContain("Cannot move directory '" + source + "'. Target '" + test_file + "' is not a directory");
+                           });
+
+                        it("should fail when using force false and target exists",
+                           [&]() -> void
+                           {
+                             string source = get_random_uss(zusf_test_dir);
+                             string target = get_random_uss(zusf_test_dir);
+                             TestFileGuard source_file(source.c_str());
+                             TestFileGuard target_file(target.c_str());
+
+                             int result = zusf_move_uss_file_or_dir(&zusf, source, target, false);
+                             Expect(result).ToBe(RTNCD_FAILURE);
+                             Expect(string(zusf.diag.e_msg)).ToContain("Target path '" + target + "' already exists");
+                           });
+                        // Done with error conditions
+                      });
+             describe("target missing - happy paths", [&]() -> void
+                      {
+                        it("should move a file to a new location",
+                           [&]() -> void
+                           {
+                             string source = get_random_uss(zusf_test_dir);
+                             string target = get_random_uss(zusf_test_dir);
+                             TestFileGuard file(source.c_str());
+
+                             int result = zusf_move_uss_file_or_dir(&zusf, source, target);
+                             file.reset(target.c_str());
+                             Expect(result).ToBe(RTNCD_SUCCESS);
+                             Expect(string(zusf.diag.e_msg)).ToBe("");
+
+                             struct stat file_stats;
+                             Expect(stat(target.c_str(), &file_stats)).ToBe(0);
+                             Expect(S_ISREG(file_stats.st_mode)).ToBe(true);
+                           });
+
+                        it("should resolve the path of the source, even when navigating back",
+                           [&]() -> void
+                           {
+                             string source = get_random_uss(zusf_test_dir);
+                             string target = get_random_uss(zusf_test_dir);
+                             TestFileGuard file(source.c_str());
+
+                             string temp_source = zusf_test_dir + "/../" + zusf_test_dir.substr(zusf_test_dir.find_last_of("/") + 1) + "/" + source.substr(source.find_last_of("/") + 1);
+
+                             int result = zusf_move_uss_file_or_dir(&zusf, temp_source, target);
+                             Expect(result).ToBe(RTNCD_SUCCESS);
+                             Expect(string(zusf.diag.e_msg)).ToBe("");
+
+                             struct stat file_stats;
+                             Expect(stat(target.c_str(), &file_stats)).ToBe(0);
+                             Expect(S_ISREG(file_stats.st_mode)).ToBe(true);
+                           });
+                        it("should move a directory inside a directory",
+                           [&]() -> void
+                           {
+                             string source = get_random_uss(zusf_test_dir);
+                             string target = get_random_uss(zusf_test_dir);
+                             TestDirGuard source_dir(source.c_str());
+                             TestDirGuard target_dir(target.c_str());
+
+                             int result = zusf_move_uss_file_or_dir(&zusf, source, target);
+                             Expect(result).ToBe(RTNCD_SUCCESS);
+                             Expect(string(zusf.diag.e_msg)).ToBe("");
+
+                             string new_target = target + "/" + source.substr(source.find_last_of("/") + 1);
+                             source_dir.reset(new_target.c_str());
+
+                             struct stat dir_stats;
+                             Expect(stat(new_target.c_str(), &dir_stats)).ToBe(0);
+                             Expect(S_ISDIR(dir_stats.st_mode)).ToBe(true);
+                           });
+                        it("should move a FIFO pipe to a new location",
+                           [&]() -> void
+                           {
+                             string source = get_random_uss(zusf_test_dir);
+                             string target = get_random_uss(zusf_test_dir);
+                             TestFileGuard file(source.c_str(), 'p');
+
+                             int result = zusf_move_uss_file_or_dir(&zusf, source, target);
+                             file.reset(target.c_str());
+                             Expect(result).ToBe(RTNCD_SUCCESS);
+                             Expect(string(zusf.diag.e_msg)).ToBe("");
+
+                             struct stat file_stats;
+                             Expect(stat(target.c_str(), &file_stats)).ToBe(0);
+                             Expect(S_ISFIFO(file_stats.st_mode)).ToBe(true);
+                           });
+                        it("should move a symlink to a new location",
+                           [&]() -> void
+                           {
+                             string source = get_random_uss(zusf_test_dir);
+                             string target = get_random_uss(zusf_test_dir);
+                             string test_file = get_random_uss(zusf_test_dir);
+                             TestFileGuard target_file_guard(target.c_str());
+                             TestFileGuard file(source.c_str(), 'l', target.c_str());
+
+                             int result = zusf_move_uss_file_or_dir(&zusf, source, test_file);
+                             file.reset(test_file.c_str());
+                             Expect(result).ToBe(RTNCD_SUCCESS);
+                             Expect(string(zusf.diag.e_msg)).ToBe("");
+
+                             struct stat file_stats;
+                             Expect(lstat(test_file.c_str(), &file_stats)).ToBe(0);
+                             Expect(S_ISLNK(file_stats.st_mode)).ToBe(true);
+                           });
+                        // Done with target missing
+                      });
            });
 }
