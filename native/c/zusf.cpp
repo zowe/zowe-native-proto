@@ -966,7 +966,7 @@ int zusf_move_uss_file_or_dir(ZUSF *zusf, const string &source, const string &ta
   char resolved_source[PATH_MAX];
   if (realpath(source.c_str(), resolved_source) == nullptr)
   {
-    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to resolve source path '%s'", truncated_source.c_str());
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to resolve source path '%s'; errno: %d", truncated_source.c_str(), errno);
     return RTNCD_FAILURE;
   }
 
@@ -989,7 +989,7 @@ int zusf_move_uss_file_or_dir(ZUSF *zusf, const string &source, const string &ta
     // resolve target path, save it to resolved_target
     if (realpath(target.c_str(), resolved_target) == nullptr)
     {
-      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to resolve target path '%s'", truncated_target.c_str());
+      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to resolve target path '%s'; errno: %d", truncated_target.c_str(), errno);
       return RTNCD_FAILURE;
     }
 
