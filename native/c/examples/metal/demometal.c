@@ -14,14 +14,18 @@
 #include "zsetjmp.h"
 #include "ztime.h"
 #include "zwto.h"
+#include "zdbg.h"
 
 #pragma prolog(main, " ZWEPROLG NEWDSA=(YES,128) ")
 #pragma epilog(main, " ZWEEPILG ")
 
 int main()
 {
+  unsigned long long tod = 0;
+  __asm(" STCK %0" : "=m"(tod));
+  zut_dump_storage_wto("tod", &tod, sizeof(tod));
+
   // demo_setjmp();
-  demo_time();
   return 0;
 }
 
