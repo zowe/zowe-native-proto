@@ -596,15 +596,16 @@ int zjb_list_by_owner(ZJB *zjb, const std::string &owner_name, const std::string
   return zjb_list_by_owner(zjb, owner_name, prefix_name, "", jobs);
 }
 
-int zjb_list_by_owner(ZJB *zjb, std::string owner_name, const std::string &prefix_name, const std::string &status_name, std::vector<ZJob> &jobs)
+int zjb_list_by_owner(ZJB *zjb, const std::string &owner_name, const std::string &prefix_name, const std::string &status_name, std::vector<ZJob> &jobs)
 {
   int rc = 0;
   ZJB_JOB_INFO *PTR64 job_info = nullptr;
   int entries = 0;
 
-  if ("" == owner_name)
+  std::string resolved_owner = owner_name;
+  if (resolved_owner.empty())
   {
-    zut_get_current_user(owner_name);
+    zut_get_current_user(resolved_owner);
   }
 
   if (0 == zjb->buffer_size)
@@ -612,7 +613,7 @@ int zjb_list_by_owner(ZJB *zjb, std::string owner_name, const std::string &prefi
   if (0 == zjb->jobs_max)
     zjb->jobs_max = ZJB_DEFAULT_MAX_JOBS;
 
-  zut_uppercase_pad_truncate(zjb->owner_name, owner_name, sizeof(zjb->owner_name));
+  zut_uppercase_pad_truncate(zjb->owner_name, resolved_owner, sizeof(zjb->owner_name));
   zut_uppercase_pad_truncate(zjb->prefix_name, prefix_name, sizeof(zjb->prefix_name));
   zut_uppercase_pad_truncate(zjb->status_name, status_name, sizeof(zjb->status_name));
 

@@ -53,17 +53,13 @@ struct ZJobDD
  */
 int zjb_list_by_owner(ZJB *zjb, const std::string &owner_name, std::vector<ZJob> &jobs);
 
-#ifdef SWIG
-extern "C"
-{
-#endif
 /**
  * @brief Return a list of jobs from an input or default owner
  *
  * @param zjb job returned attributes and error information
  * @param owner_name owner name of the job to query, defaults to current user if == "", may use wild cards, i.e.
  * "IBMUS*"
- * @param prefix job prefix, defaults to "*" if == "", may use wild cards, i.e. "IBMUS*"
+ * @param prefix_name job prefix, defaults to "*" if == "", may use wild cards, i.e. "IBMUS*"
  * @param jobs populated list returned containing job information array
  * @return int 0 for success; non zero otherwise
  */
@@ -75,13 +71,17 @@ int zjb_list_by_owner(ZJB *zjb, const std::string &owner_name, const std::string
  * @param zjb job returned attributes and error information
  * @param owner_name owner name of the job to query, defaults to current user if == "", may use wild cards, i.e.
  * "IBMUS*"
- * @param prefix job prefix, defaults to "*" if == "", may use wild cards, i.e. "IBMUS*"
- * @param status job status, defaults to "*" if == "", supports "ACTIVE" only
+ * @param prefix_name job prefix, defaults to "*" if == "", may use wild cards, i.e. "IBMUS*"
+ * @param status_name job status, defaults to "*" if == "", supports "ACTIVE" only
  * @param jobs populated list returned containing job information array
  * @return int 0 for success; non zero otherwise
  */
-int zjb_list_by_owner(ZJB *zjb, std::string owner_name, const std::string &prefix_name, const std::string &status_name, std::vector<ZJob> &jobs);
+int zjb_list_by_owner(ZJB *zjb, const std::string &owner_name, const std::string &prefix_name, const std::string &status_name, std::vector<ZJob> &jobs);
 
+#ifdef SWIG
+extern "C"
+{
+#endif
 /**
  * @brief Return a list of proclib for a job
  *
