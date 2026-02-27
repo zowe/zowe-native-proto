@@ -1838,7 +1838,107 @@ int zds_rename_members(ZDS *zds, const string &dsname, const string &member_befo
   return 0;
 }
 
-int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &members)
+void parse_century_julian_date(
+    const unsigned char *date_bytes, // 4 bytes: [century, YY, DD, DF]
+    std::string *date_out            // Output: "YYYY/MM/DD" or ""
+)
+{
+  // Check if date is all zeros (not set)
+  if (date_bytes[0] == 0 && date_bytes[1] == 0 &&
+      date_bytes[2] == 0 && date_bytes[3] == 0)
+  {
+    *date_out = "";
+    return;
+  }
+
+  // Extract century (byte 0)
+  int base_century = (date_bytes[0] == 0x00) ? 1900 : 2000;
+
+  // Unpack year from byte 1 (packed decimal YY)
+  int year_tens = (date_bytes[1] >> 4) & 0x0F;
+  int year_ones = date_bytes[1] & 0x0F;
+  int year = base_century + (year_tens * 10) + year_ones;
+
+  // Unpack day of year from bytes 2-3 (packed decimal DDDF)
+  int day_hundreds = (date_bytes[2] >> 4) & 0x0F;
+  int day_tens = date_bytes[2] & 0x0F;
+  int day_ones = (date_bytes[3] >> 4) & 0x0F;
+  // Ignore sign nibble in low nibble of byte 3
+  int day_of_year = (day_hundreds * 100) + (day_tens * 10) + day_ones;
+
+  // Validate day of year
+  if (day_of_year < 1 || day_of_year > 366)
+  {
+    *date_out = "";
+    return;
+  }
+
+  // Convert Julian day to calendar date
+  static const int days_in_month[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+  bool is_leap = (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
+
+  int month = 1;
+  int day = day_of_year;
+
+  for (int i = 0; i < 12 && day > days_in_month[i]; i++)
+  {
+    int days_this_month = days_in_month[i];
+    if (i == 1 && is_leap)
+      days_this_month = 29;
+
+    day -= days_this_month;
+    month++;
+  }
+
+  // Format as "YYYY/MM/DD"
+  char buffer[11];
+  sprintf(buffer, "%04d/%02d/%02d", year, month, day);
+  *date_out = buffer;
+}
+
+void parse_packed_time(
+    const unsigned char hours_byte,   // Byte 13: HH
+    const unsigned char minutes_byte, // Byte 14: MM
+    const unsigned char seconds_byte, // Byte 4: SS
+    std::string *time_out             // Output: "HH:MM:SS" or ""
+)
+{
+  // Check if time is all zeros (not set)
+  if (hours_byte == 0 && minutes_byte == 0 && seconds_byte == 0)
+  {
+    *time_out = "";
+    return;
+  }
+
+  // Unpack hours (packed decimal HH)
+  int hours_tens = (hours_byte >> 4) & 0x0F;
+  int hours_ones = hours_byte & 0x0F;
+  int hours = (hours_tens * 10) + hours_ones;
+
+  // Unpack minutes (packed decimal MM)
+  int minutes_tens = (minutes_byte >> 4) & 0x0F;
+  int minutes_ones = minutes_byte & 0x0F;
+  int minutes = (minutes_tens * 10) + minutes_ones;
+
+  // Unpack seconds (packed decimal SS)
+  int seconds_tens = (seconds_byte >> 4) & 0x0F;
+  int seconds_ones = seconds_byte & 0x0F;
+  int seconds = (seconds_tens * 10) + seconds_ones;
+
+  // Validate time values
+  if (hours > 23 || minutes > 59 || seconds > 59)
+  {
+    *time_out = "";
+    return;
+  }
+
+  // Format as "HH:MM:SS"
+  char buffer[9];
+  sprintf(buffer, "%02d:%02d:%02d", hours, minutes, seconds);
+  *time_out = buffer;
+}
+
+int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &members, bool show_attributes)
 {
   // PO
   // PO-E (PDS)
@@ -1871,7 +1971,6 @@ int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &members)
     unsigned char *data = nullptr;
     data = (unsigned char *)&rec;
     data += sizeof(rec.count); // increment past halfword length
-
     int len = sizeof(RECORD_ENTRY);
     for (int i = 0; i < rec.count; i = i + len)
     {
@@ -1917,10 +2016,44 @@ int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &members)
 
         ZDSMem mem = {0};
         mem.name = string(name);
+        int user_data_len = info * 2;
+        const unsigned char *stats = data + sizeof(entry);
+
+        if (show_attributes)
+        {
+          if (user_data_len >= 28)
+          {
+            // user
+            char user[9] = {0};
+            memcpy(user, stats + 20, 8);
+            mem.user = string(user);
+
+            // Version and Mod
+            mem.vers = stats[0];
+            mem.mod = stats[1];
+
+            unsigned char flags = stats[2];
+            mem.sclm = (flags & 0x80) != 0;
+
+            parse_century_julian_date(stats + 4, &mem.c4date);
+            parse_century_julian_date(stats + 8, &mem.m4date);
+
+            parse_packed_time(
+                stats[12], // hours
+                stats[13], // minutes
+                stats[3],  // seconds
+                &mem.mtime);
+
+            // Line counts
+            mem.cnorc = (stats[14] << 8) | stats[15];
+            mem.inorc = (stats[16] << 8) | stats[17];
+            mem.mnorc = (stats[18] << 8) | stats[19];
+          }
+        }
         members.push_back(mem);
 
-        data = data + sizeof(entry) + (info * 2); // skip number of half words
-        len = sizeof(entry) + (info * 2);
+        data += sizeof(entry) + info * 2;
+        len = sizeof(entry) + info * 2;
 
         int remainder = rec.count - (i + len);
         if (remainder < sizeof(entry))

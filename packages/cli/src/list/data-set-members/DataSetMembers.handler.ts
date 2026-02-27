@@ -26,7 +26,7 @@ export default class ListDataSetMembersHandler extends SshBaseHandler {
         params.response.format.output({
             output: response.items,
             format: "table",
-            fields: ["name"],
+            fields: ["name", "vers", "mod", "c4date", "m4date", "mtime", "cnorc", "inorc", "mnorc", "user", "sclm"],
         });
         return response;
     }

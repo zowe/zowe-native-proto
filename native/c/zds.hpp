@@ -22,7 +22,16 @@ extern const size_t MAX_DS_LENGTH;
 struct ZDSMem
 {
   std::string name;
-  // std::string dsorg;
+  int vers;
+  int mod;
+  std::string c4date;
+  std::string m4date;
+  std::string mtime;
+  int cnorc;
+  int inorc;
+  int mnorc;
+  std::string user;
+  bool sclm;
 };
 
 struct ZDSEntry
@@ -110,7 +119,8 @@ struct ZDSCopyOptions
   bool target_created; // Set to true if target data set was created
   bool member_created; // Set to true if target member was created
 
-  ZDSCopyOptions() : replace(false), delete_target_members(false), target_created(false), member_created(false)
+  ZDSCopyOptions()
+      : replace(false), delete_target_members(false), target_created(false), member_created(false)
   {
   }
 };
@@ -232,7 +242,7 @@ int zds_rename_members(ZDS *zds, const std::string &dsn, const std::string &memb
  * @param members populated list returned containing member names within a z/OS data set
  * @return int 0 for success; non zero otherwise
  */
-int zds_list_members(ZDS *zds, std::string dsn, std::vector<ZDSMem> &members);
+int zds_list_members(ZDS *zds, std::string dsn, std::vector<ZDSMem> &members, bool show_attributes = false);
 
 int zds_list_data_sets(ZDS *zds, std::string dsn, std::vector<ZDSEntry> &datasets, bool show_attributes = false);
 #ifdef SWIG
