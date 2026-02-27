@@ -13,7 +13,7 @@
 #include <cstdio>
 #include <ctime>
 #include <fcntl.h>
-#include <stdlib.h>
+#include <cstdlib>
 #include <string>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -28,14 +28,13 @@
 #include "zowex.ds.test.hpp"
 #include "../zusf.hpp"
 
-using namespace std;
 using namespace ztst;
 
 // Generic helper function for creating data sets
-void _create_ds(const string &ds_name, const string &ds_options = "")
+void _create_ds(const std::string &ds_name, const std::string &ds_options = "")
 {
-  string response;
-  string command = zowex_command + " data-set create " + ds_name + " " + ds_options;
+  std::string response;
+  std::string command = zowex_command + " data-set create " + ds_name + " " + ds_options;
   int rc = execute_command_with_output(command, response);
   ExpectWithContext(rc, response).ToBe(0);
   Expect(response).ToContain("Data set created");
@@ -43,7 +42,7 @@ void _create_ds(const string &ds_name, const string &ds_options = "")
 
 void zowex_ds_tests()
 {
-  vector<string> _ds;
+  std::vector<std::string> _ds;
   describe("data-set",
            [&]() -> void
            {
@@ -52,30 +51,30 @@ void zowex_ds_tests()
              afterAll(
                  [&]() -> void
                  {
-                   TestLog("Deleting " + to_string(_ds.size()) + " data sets...");
-                   for (vector<string>::iterator it = _ds.begin(); it != _ds.end(); ++it)
+                   TestLog("Deleting " + std::to_string(_ds.size()) + " data sets...");
+                   for (const auto &ds : _ds)
                    {
                      try
                      {
-                       string command = zowex_command + " data-set delete " + *it;
-                       string response;
+                       std::string command = zowex_command + " data-set delete " + ds;
+                       std::string response;
                        int rc = execute_command_with_output(command, response);
                        ExpectWithContext(rc, response).ToBe(0);
-                       Expect(response).ToContain("Data set '" + *it + "' deleted"); // ds deleted
+                       Expect(response).ToContain("Data set '" + ds + "' deleted"); // ds deleted
                      }
                      catch (...)
                      {
                        try
                        {
-                         string response;
-                         string command = zowex_command + " data-set list " + *it + " --no-warn --me 1";
+                         std::string response;
+                         std::string command = zowex_command + " data-set list " + ds + " --no-warn --me 1";
                          int rc = execute_command_with_output(command, response);
                          ExpectWithContext(rc, response).ToBe(0);
-                         Expect(response).Not().ToContain(*it);
+                         Expect(response).Not().ToContain(ds);
                        }
                        catch (...)
                        {
-                         TestLog("Failed to delete: " + *it);
+                         TestLog("Failed to delete: " + ds);
                        }
                      }
                    }
@@ -84,8 +83,8 @@ void zowex_ds_tests()
              it("should display help", []() -> void
                 {
                   int rc = 0;
-                  string response;
-                  string command = zowex_command + " data-set";
+                  std::string response;
+                  std::string command = zowex_command + " data-set";
                   rc = execute_command_with_output(command, response);
                   ExpectWithContext(rc, response).ToBe(0);
                   Expect(response).ToContain("compress");
@@ -113,11 +112,11 @@ void zowex_ds_tests()
                         it("should error when the data set is PS",
                            [&]() -> void
                            {
-                             string ds = _ds.back();
+                             std::string ds = _ds.back();
                              _create_ds(ds, "--dsorg PS");
 
-                             string response;
-                             string command = zowex_command + " data-set compress " + ds;
+                             std::string response;
+                             std::string command = zowex_command + " data-set compress " + ds;
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).Not().ToBe(0);
                              Expect(response).ToContain("Error: data set '" + ds + "' is not a PDS");
@@ -125,11 +124,11 @@ void zowex_ds_tests()
                         it("should error when the data set is PDS/E",
                            [&]() -> void
                            {
-                             string ds = _ds.back();
+                             std::string ds = _ds.back();
                              _create_ds(ds, "--dsorg PO --dirblk 2 --dsntype LIBRARY");
 
-                             string response;
-                             string command = zowex_command + " data-set compress " + ds;
+                             std::string response;
+                             std::string command = zowex_command + " data-set compress " + ds;
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).Not().ToBe(0);
                              Expect(response).ToContain("Error: data set '" + ds + "' is not a PDS");
@@ -138,10 +137,10 @@ void zowex_ds_tests()
                         it("should error when the data set doesn't exist",
                            [&]() -> void
                            {
-                             string ds = _ds.back() + ".GHOST";
+                             std::string ds = _ds.back() + ".GHOST";
 
-                             string response;
-                             string command = zowex_command + " data-set compress " + ds;
+                             std::string response;
+                             std::string command = zowex_command + " data-set compress " + ds;
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).Not().ToBe(0);
                              Expect(response).ToContain("Error: data set '" + ds + "' is not a PDS");
@@ -150,11 +149,11 @@ void zowex_ds_tests()
                         it("should compress a data set",
                            [&]() -> void
                            {
-                             string ds = _ds.back();
+                             std::string ds = _ds.back();
                              _create_ds(ds, "--dsorg PO --dirblk 2");
 
-                             string response;
-                             string command = zowex_command + " data-set compress " + ds;
+                             std::string response;
+                             std::string command = zowex_command + " data-set compress " + ds;
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain("Data set");
@@ -177,11 +176,11 @@ void zowex_ds_tests()
                         it("should error when the data set already exists",
                            [&]() -> void
                            {
-                             string ds = _ds.back();
+                             std::string ds = _ds.back();
                              _create_ds(ds);
 
-                             string response;
-                             string command = zowex_command + " data-set create " + ds;
+                             std::string response;
+                             std::string command = zowex_command + " data-set create " + ds;
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).Not().ToBe(0);
                              Expect(response).ToContain("Error: could not create data set");
@@ -190,14 +189,14 @@ void zowex_ds_tests()
                         it("should create a data set with default attributes",
                            [&]() -> void
                            {
-                             string ds = _ds.back();
+                             std::string ds = _ds.back();
                              _create_ds(ds);
 
-                             string response;
-                             string command = zowex_command + " data-set list " + ds + " -a --rfc";
+                             std::string response;
+                             std::string command = zowex_command + " data-set list " + ds + " -a --rfc";
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
-                             vector<string> tokens = parse_rfc_response(response, ",");
+                             std::vector<std::string> tokens = parse_rfc_response(response, ",");
                              // NOTE: Non-SMS managed systems return `--` for dsorg if not specified
                              Expect(tokens[3]).ToBe("PS");
                              Expect(tokens[4]).ToBe("FB");
@@ -206,14 +205,14 @@ void zowex_ds_tests()
                         it("should create a simple PDS/E data set - dsorg: PO and dsntype: LIBRARY",
                            [&]() -> void
                            {
-                             string ds = _ds.back();
+                             std::string ds = _ds.back();
                              _create_ds(ds, "--dsorg PO --dirblk 2 --dsntype LIBRARY");
 
-                             string response;
-                             string command = zowex_command + " data-set list " + ds + " -a --rfc";
+                             std::string response;
+                             std::string command = zowex_command + " data-set list " + ds + " -a --rfc";
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
-                             vector<string> tokens = parse_rfc_response(response, ",");
+                             std::vector<std::string> tokens = parse_rfc_response(response, ",");
                              Expect(tokens[3]).ToBe("PO");
                              // DSNTYPE may be LIBRARY or PDS depending on system SMS settings
                              Expect(tokens[9] == "LIBRARY" || tokens[9] == "PDS").ToBe(true);
@@ -222,15 +221,15 @@ void zowex_ds_tests()
                         it("should create a data set - recfm:VB dsorg:PO",
                            [&]() -> void
                            {
-                             string ds = _ds.back();
+                             std::string ds = _ds.back();
                              _create_ds(ds, "--recfm VB --dsorg PO --dirblk 2");
 
-                             string response;
+                             std::string response;
 
-                             string command = zowex_command + " data-set list " + ds + " -a --rfc";
+                             std::string command = zowex_command + " data-set list " + ds + " -a --rfc";
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
-                             vector<string> tokens = parse_rfc_response(response, ",");
+                             std::vector<std::string> tokens = parse_rfc_response(response, ",");
                              Expect(tokens[3]).ToBe("PO");
                              Expect(tokens[4]).ToBe("VB");
                            });
@@ -238,14 +237,14 @@ void zowex_ds_tests()
                         it("should create a PS data set - recfm:VB dsorg:PS",
                            [&]() -> void
                            {
-                             string ds = _ds.back();
+                             std::string ds = _ds.back();
                              _create_ds(ds, "--recfm VB --dsorg PS");
 
-                             string response;
-                             string command = zowex_command + " data-set list " + ds + " -a --rfc";
+                             std::string response;
+                             std::string command = zowex_command + " data-set list " + ds + " -a --rfc";
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
-                             vector<string> tokens = parse_rfc_response(response, ",");
+                             std::vector<std::string> tokens = parse_rfc_response(response, ",");
                              Expect(tokens[3]).ToBe("PS");
                              Expect(tokens[4]).ToBe("VB");
                            });
@@ -254,14 +253,14 @@ void zowex_ds_tests()
                         it("should create a data set - dsorg: PO, primary: 10, secondary: 2, lrecl: 20, blksize:10, dirblk: 5, alcunit: CYL",
                            [&]() -> void
                            {
-                             string ds = _ds.back();
+                             std::string ds = _ds.back();
                              _create_ds(ds, "--dsorg PO --primary 10 --secondary 2 --lrecl 20 --blksize 10 --dirblk 5 --alcunit CYL");
 
-                             string response;
-                             string command = zowex_command + " data-set list " + ds + " -a --rfc";
+                             std::string response;
+                             std::string command = zowex_command + " data-set list " + ds + " -a --rfc";
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
-                             vector<string> tokens = parse_rfc_response(response, ",");
+                             std::vector<std::string> tokens = parse_rfc_response(response, ",");
                              Expect(tokens[3]).ToBe("PO"); // dsorg
                              Expect(tokens[4]).ToBe("FB"); // recfm
                              Expect(tokens[5]).ToBe("20"); // lrecl
@@ -273,9 +272,9 @@ void zowex_ds_tests()
                            []() -> void
                            {
                              int rc = 0;
-                             string ds = get_random_ds(8);
-                             string response;
-                             string command = zowex_command + " data-set create " + ds;
+                             std::string ds = get_random_ds(8);
+                             std::string response;
+                             std::string command = zowex_command + " data-set create " + ds;
                              rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).Not().ToBe(0);
                              Expect(response).ToContain("Error: could not create data set: '" + ds + "'");
@@ -288,11 +287,11 @@ void zowex_ds_tests()
                            [&]() -> void
                            {
                              int rc = 0;
-                             string ds = get_random_ds();
+                             std::string ds = get_random_ds();
                              _ds.push_back(ds);
 
-                             string response;
-                             string command = zowex_command + " data-set create-adata " + ds;
+                             std::string response;
+                             std::string command = zowex_command + " data-set create-adata " + ds;
                              rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain("Data set created");
@@ -300,7 +299,7 @@ void zowex_ds_tests()
                              command = zowex_command + " data-set list " + ds + " -a --rfc";
                              rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
-                             vector<string> tokens = parse_rfc_response(response, ",");
+                             std::vector<std::string> tokens = parse_rfc_response(response, ",");
                              Expect(tokens[3]).ToBe("PO");
                              Expect(tokens[4]).ToBe("VB");
                              // DSNTYPE may be LIBRARY or PDS depending on system SMS settings
@@ -312,11 +311,11 @@ void zowex_ds_tests()
                            [&]() -> void
                            {
                              int rc = 0;
-                             string ds = get_random_ds();
+                             std::string ds = get_random_ds();
                              _ds.push_back(ds);
 
-                             string response;
-                             string command = zowex_command + " data-set create-adata " + ds;
+                             std::string response;
+                             std::string command = zowex_command + " data-set create-adata " + ds;
                              rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain("Data set created");
@@ -330,9 +329,9 @@ void zowex_ds_tests()
                            []() -> void
                            {
                              int rc = 0;
-                             string ds = get_random_ds(8);
-                             string response;
-                             string command = zowex_command + " data-set create-adata " + ds;
+                             std::string ds = get_random_ds(8);
+                             std::string response;
+                             std::string command = zowex_command + " data-set create-adata " + ds;
                              rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).Not().ToBe(0);
                              Expect(response).ToContain("Error: could not create data set: '" + ds + "'");
@@ -346,11 +345,11 @@ void zowex_ds_tests()
                            [&]() -> void
                            {
                              int rc = 0;
-                             string ds = get_random_ds();
+                             std::string ds = get_random_ds();
                              _ds.push_back(ds);
 
-                             string response;
-                             string command = zowex_command + " data-set create-fb " + ds;
+                             std::string response;
+                             std::string command = zowex_command + " data-set create-fb " + ds;
                              rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain("Data set created");
@@ -358,7 +357,7 @@ void zowex_ds_tests()
                              command = zowex_command + " data-set list " + ds + " -a --rfc";
                              rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
-                             vector<string> tokens = parse_rfc_response(response, ",");
+                             std::vector<std::string> tokens = parse_rfc_response(response, ",");
                              Expect(tokens[3]).ToBe("PO");
                              Expect(tokens[4]).ToBe("FB");
                              // DSNTYPE may be LIBRARY or PDS depending on system SMS settings
@@ -369,11 +368,11 @@ void zowex_ds_tests()
                            [&]() -> void
                            {
                              int rc = 0;
-                             string ds = get_random_ds();
+                             std::string ds = get_random_ds();
                              _ds.push_back(ds);
 
-                             string response;
-                             string command = zowex_command + " data-set create-fb " + ds;
+                             std::string response;
+                             std::string command = zowex_command + " data-set create-fb " + ds;
                              rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain("Data set created");
@@ -387,9 +386,9 @@ void zowex_ds_tests()
                            []() -> void
                            {
                              int rc = 0;
-                             string ds = get_random_ds(8);
-                             string response;
-                             string command = zowex_command + " data-set create-fb " + ds;
+                             std::string ds = get_random_ds(8);
+                             std::string response;
+                             std::string command = zowex_command + " data-set create-fb " + ds;
                              rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).Not().ToBe(0);
                              Expect(response).ToContain("Error: could not create data set: '" + ds + "'");
@@ -402,11 +401,11 @@ void zowex_ds_tests()
                            [&]() -> void
                            {
                              int rc = 0;
-                             string ds = get_random_ds();
+                             std::string ds = get_random_ds();
                              _ds.push_back(ds);
 
-                             string response;
-                             string command = zowex_command + " data-set create-loadlib " + ds;
+                             std::string response;
+                             std::string command = zowex_command + " data-set create-loadlib " + ds;
                              rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain("Data set created");
@@ -414,7 +413,7 @@ void zowex_ds_tests()
                              command = zowex_command + " data-set list " + ds + " -a --rfc";
                              rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
-                             vector<string> tokens = parse_rfc_response(response, ",");
+                             std::vector<std::string> tokens = parse_rfc_response(response, ",");
                              Expect(tokens[3]).ToBe("PO");
                              Expect(tokens[4]).ToBe("U");
                              Expect(tokens[5]).ToBe("0"); // lrecl
@@ -425,11 +424,11 @@ void zowex_ds_tests()
                            [&]() -> void
                            {
                              int rc = 0;
-                             string ds = get_random_ds();
+                             std::string ds = get_random_ds();
                              _ds.push_back(ds);
 
-                             string response;
-                             string command = zowex_command + " data-set create-loadlib " + ds;
+                             std::string response;
+                             std::string command = zowex_command + " data-set create-loadlib " + ds;
                              rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain("Data set created");
@@ -443,9 +442,9 @@ void zowex_ds_tests()
                            []() -> void
                            {
                              int rc = 0;
-                             string ds = get_random_ds(8);
-                             string response;
-                             string command = zowex_command + " data-set create-loadlib " + ds;
+                             std::string ds = get_random_ds(8);
+                             std::string response;
+                             std::string command = zowex_command + " data-set create-loadlib " + ds;
                              rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).Not().ToBe(0);
                              Expect(response).ToContain("Error: could not create data set: '" + ds + "'");
@@ -457,11 +456,11 @@ void zowex_ds_tests()
                         beforeEach(
                             [&]() -> void
                             {
-                              string ds = get_random_ds();
+                              std::string ds = get_random_ds();
                               _ds.push_back(ds);
 
-                              string response;
-                              string command = zowex_command + " data-set create-fb " + ds;
+                              std::string response;
+                              std::string command = zowex_command + " data-set create-fb " + ds;
                               int rc = execute_command_with_output(command, response);
                               ExpectWithContext(rc, response).ToBe(0);
                               Expect(response).ToContain("Data set created");
@@ -469,9 +468,9 @@ void zowex_ds_tests()
                         it("should error if no member name is specified",
                            [&]() -> void
                            {
-                             string ds = _ds.back();
-                             string response;
-                             string command = zowex_command + " data-set create-member " + ds;
+                             std::string ds = _ds.back();
+                             std::string response;
+                             std::string command = zowex_command + " data-set create-member " + ds;
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).Not().ToBe(0);
                              Expect(response).ToContain("Error: could not find member name in dsn");
@@ -479,9 +478,9 @@ void zowex_ds_tests()
                         it("should error if the data set doesn't exist",
                            [&]() -> void
                            {
-                             string ds = _ds.back() + ".GHOST";
-                             string response;
-                             string command = zowex_command + " data-set create-member '" + ds + "(TEST)'";
+                             std::string ds = _ds.back() + ".GHOST";
+                             std::string response;
+                             std::string command = zowex_command + " data-set create-member '" + ds + "(TEST)'";
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).Not().ToBe(0);
                              Expect(response).ToContain("Error: could not create data set member");
@@ -490,9 +489,9 @@ void zowex_ds_tests()
                         it("should create a member in a PDS",
                            [&]() -> void
                            {
-                             string ds = _ds.back();
-                             string response;
-                             string command = zowex_command + " data-set create-member '" + ds + "(TEST)'";
+                             std::string ds = _ds.back();
+                             std::string response;
+                             std::string command = zowex_command + " data-set create-member '" + ds + "(TEST)'";
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain("Data set and/or member created");
@@ -502,9 +501,9 @@ void zowex_ds_tests()
                         xit("should not overwrite existing members",
                             [&]() -> void
                             {
-                              string ds = "'" + _ds.back() + "(TEST)'";
-                              string response;
-                              string command = zowex_command + " data-set create-member " + ds;
+                              std::string ds = "'" + _ds.back() + "(TEST)'";
+                              std::string response;
+                              std::string command = zowex_command + " data-set create-member " + ds;
                               int rc = execute_command_with_output(command, response);
                               ExpectWithContext(rc, response).ToBe(0);
                               Expect(response).ToContain("Data set and/or member created");
@@ -545,10 +544,10 @@ void zowex_ds_tests()
                         it("should create a data set with default attributes",
                            [&]() -> void
                            {
-                             string ds = _ds.back();
+                             std::string ds = _ds.back();
 
-                             string response;
-                             string command = zowex_command + " data-set create-vb " + ds;
+                             std::string response;
+                             std::string command = zowex_command + " data-set create-vb " + ds;
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain("Data set created");
@@ -556,7 +555,7 @@ void zowex_ds_tests()
                              command = zowex_command + " data-set list " + ds + " -a --rfc";
                              rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
-                             vector<string> tokens = parse_rfc_response(response, ",");
+                             std::vector<std::string> tokens = parse_rfc_response(response, ",");
                              Expect(tokens[3]).ToBe("PO");
                              Expect(tokens[4]).ToBe("VB");
                              // DSNTYPE may be LIBRARY or PDS depending on system SMS settings
@@ -566,10 +565,10 @@ void zowex_ds_tests()
                         it("should error when the data set already exists",
                            [&]() -> void
                            {
-                             string ds = _ds.back();
+                             std::string ds = _ds.back();
 
-                             string response;
-                             string command = zowex_command + " data-set create-vb " + ds;
+                             std::string response;
+                             std::string command = zowex_command + " data-set create-vb " + ds;
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain("Data set created");
@@ -583,9 +582,9 @@ void zowex_ds_tests()
                            []() -> void
                            {
                              int rc = 0;
-                             string ds = get_random_ds(8);
-                             string response;
-                             string command = zowex_command + " data-set create-vb " + ds;
+                             std::string ds = get_random_ds(8);
+                             std::string response;
+                             std::string command = zowex_command + " data-set create-vb " + ds;
                              rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).Not().ToBe(0);
                              Expect(response).ToContain("Error: could not create data set: '" + ds + "'");
@@ -603,11 +602,11 @@ void zowex_ds_tests()
                         it("should delete a sequential data set",
                            [&]() -> void
                            {
-                             string ds = _ds.back();
+                             std::string ds = _ds.back();
                              _create_ds(ds, "--dsorg PS");
 
-                             string response;
-                             string command = zowex_command + " data-set delete " + ds;
+                             std::string response;
+                             std::string command = zowex_command + " data-set delete " + ds;
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain("Data set '" + ds + "' deleted");
@@ -615,11 +614,11 @@ void zowex_ds_tests()
                         it("should delete a partitioned data set (PDS)",
                            [&]() -> void
                            {
-                             string ds = _ds.back();
+                             std::string ds = _ds.back();
                              _create_ds(ds, "--dsorg PO --dirblk 2");
 
-                             string response;
-                             string command = zowex_command + " data-set delete " + ds;
+                             std::string response;
+                             std::string command = zowex_command + " data-set delete " + ds;
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain("Data set '" + ds + "' deleted");
@@ -627,11 +626,11 @@ void zowex_ds_tests()
                         it("should delete a partitioned data set extended (PDSE)",
                            [&]() -> void
                            {
-                             string ds = _ds.back();
+                             std::string ds = _ds.back();
                              _create_ds(ds, "--dsorg PO --dirblk 2 --dsntype LIBRARY");
 
-                             string response;
-                             string command = zowex_command + " data-set delete " + ds;
+                             std::string response;
+                             std::string command = zowex_command + " data-set delete " + ds;
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain("Data set '" + ds + "' deleted");
@@ -640,10 +639,10 @@ void zowex_ds_tests()
                         it("should fail to delete a non-existent data set",
                            [&]() -> void
                            {
-                             string ds = _ds.back();
+                             std::string ds = _ds.back();
 
-                             string response;
-                             string command = zowex_command + " data-set delete " + ds;
+                             std::string response;
+                             std::string command = zowex_command + " data-set delete " + ds;
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).Not().ToBe(0);
                              Expect(response).ToContain("Error: could not delete data set: '" + ds + "'");
@@ -651,10 +650,10 @@ void zowex_ds_tests()
                         it("should fail to delete a data set if the data set name is too long",
                            []() -> void
                            {
-                             string ds = get_random_ds(8);
+                             std::string ds = get_random_ds(8);
 
-                             string response;
-                             string command = zowex_command + " data-set delete " + ds;
+                             std::string response;
+                             std::string command = zowex_command + " data-set delete " + ds;
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).Not().ToBe(0);
                              Expect(response).ToContain("Error: could not delete data set: '" + ds + "'");
@@ -695,11 +694,11 @@ void zowex_ds_tests()
                         it("should list a data set",
                            [&]() -> void
                            {
-                             string ds = _ds.back();
+                             std::string ds = _ds.back();
                              _create_ds(ds);
 
-                             string response;
-                             string command = zowex_command + " data-set list " + ds;
+                             std::string response;
+                             std::string command = zowex_command + " data-set list " + ds;
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain(ds);
@@ -707,14 +706,14 @@ void zowex_ds_tests()
                         it("should list data sets based on pattern and warn about listing too many data sets",
                            [&]() -> void
                            {
-                             string ds = _ds.back();
+                             std::string ds = _ds.back();
                              _create_ds(ds);
                              _create_ds(ds + ".T00");
                              _ds.push_back(ds + ".T00");
 
-                             string response;
-                             string pattern = ds;
-                             string command = zowex_command + " data-set list " + pattern + " --me 1";
+                             std::string response;
+                             std::string pattern = ds;
+                             std::string command = zowex_command + " data-set list " + pattern + " --me 1";
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(RTNCD_WARNING);
                              Expect(response).ToContain(ds);
@@ -724,14 +723,14 @@ void zowex_ds_tests()
                         it("should list up to the max entries specified and not warn",
                            [&]() -> void
                            {
-                             string ds = _ds.back();
+                             std::string ds = _ds.back();
                              _create_ds(ds);
                              _create_ds(ds + ".T00");
                              _ds.push_back(ds + ".T00");
 
-                             string response;
-                             string pattern = ds;
-                             string command = zowex_command + " data-set list " + pattern + " --no-warn --me 1";
+                             std::string response;
+                             std::string pattern = ds;
+                             std::string command = zowex_command + " data-set list " + pattern + " --no-warn --me 1";
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain(ds);
@@ -741,10 +740,10 @@ void zowex_ds_tests()
                         it("should warn when listing a non-existent data set",
                            [&]() -> void
                            {
-                             string ds = _ds.back();
+                             std::string ds = _ds.back();
 
-                             string response;
-                             string command = zowex_command + " data-set list " + ds;
+                             std::string response;
+                             std::string command = zowex_command + " data-set list " + ds;
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(RTNCD_WARNING);
                              Expect(response).ToContain("Warning: no matching results found");
@@ -752,10 +751,10 @@ void zowex_ds_tests()
                         it("should error when the data set name is too long",
                            [&]() -> void
                            {
-                             string ds = get_random_ds(8);
+                             std::string ds = get_random_ds(8);
 
-                             string response;
-                             string command = zowex_command + " data-set list " + ds;
+                             std::string response;
+                             std::string command = zowex_command + " data-set list " + ds;
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).Not().ToBe(0);
                              Expect(response).ToContain("Error: data set pattern exceeds 44 character length limit");
@@ -774,12 +773,12 @@ void zowex_ds_tests()
              describe("list-members",
                       [&]() -> void
                       {
-                        string data_set = "SYS1.MACLIB";
+                        std::string data_set = "SYS1.MACLIB";
                         it("should list a member of a data set",
                            [&]() -> void
                            {
-                             string response;
-                             string command = zowex_command + " data-set lm " + data_set + " --no-warn --me 1";
+                             std::string response;
+                             std::string command = zowex_command + " data-set lm " + data_set + " --no-warn --me 1";
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
                            });
@@ -787,26 +786,26 @@ void zowex_ds_tests()
                            [&]() -> void
                            {
                              int rc = 0;
-                             string response;
-                             string command = zowex_command + " data-set lm " + data_set + " --me 1";
+                             std::string response;
+                             std::string command = zowex_command + " data-set lm " + data_set + " --me 1";
                              rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(RTNCD_WARNING);
                            });
                         it("should error when the data set name is too long",
                            [&]() -> void
                            {
-                             string ds = get_random_ds(8);
-                             string response;
-                             string command = zowex_command + " data-set lm " + ds;
+                             std::string ds = get_random_ds(8);
+                             std::string response;
+                             std::string command = zowex_command + " data-set lm " + ds;
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).Not().ToBe(0);
                            });
                         it("should fail if the data set doesn't exist",
                            [&]() -> void
                            {
-                             string ds = _ds.back() + ".GHOST";
-                             string response;
-                             string command = zowex_command + " data-set lm " + ds;
+                             std::string ds = _ds.back() + ".GHOST";
+                             std::string response;
+                             std::string command = zowex_command + " data-set lm " + ds;
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).Not().ToBe(0);
                              Expect(response).ToContain("Error: could not list members: '" + ds + "'");
@@ -825,10 +824,10 @@ void zowex_ds_tests()
                          it("should restore a data set",
                             [&]() -> void
                             {
-                              string ds = _ds.back();
+                              std::string ds = _ds.back();
 
-                              string response;
-                              string command = zowex_command + " data-set restore " + ds;
+                              std::string response;
+                              std::string command = zowex_command + " data-set restore " + ds;
                               int rc = execute_command_with_output(command, response);
                               ExpectWithContext(rc, response).ToBe(0);
                               Expect(response).ToContain("Data set '" + ds + "' restored");
@@ -836,10 +835,10 @@ void zowex_ds_tests()
                          it("should fail to restore a non-existent backup",
                             [&]() -> void
                             {
-                              string ds = _ds.back() + ".GHOST";
+                              std::string ds = _ds.back() + ".GHOST";
 
-                              string response;
-                              string command = zowex_command + " data-set restore " + ds;
+                              std::string response;
+                              std::string command = zowex_command + " data-set restore " + ds;
                               int rc = execute_command_with_output(command, response);
                               ExpectWithContext(rc, response).Not().ToBe(0);
                               Expect(response).ToContain("Error: could not restore data set: '" + ds + "'");
@@ -858,12 +857,12 @@ void zowex_ds_tests()
                         it("should view the content of a sequential data set",
                            [&]() -> void
                            {
-                             string ds = _ds.back();
+                             std::string ds = _ds.back();
                              _create_ds(ds, "--dsorg PS");
-                             string response;
+                             std::string response;
 
-                             string random_string = get_random_string(80, false);
-                             string command = "echo " + random_string + " | " + zowex_command + " data-set write " + ds;
+                             std::string random_string = get_random_string(80, false);
+                             std::string command = "echo " + random_string + " | " + zowex_command + " data-set write " + ds;
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain("Wrote data to '" + ds + "'");
@@ -876,12 +875,12 @@ void zowex_ds_tests()
                         it("should view the content of a PDS member",
                            [&]() -> void
                            {
-                             string ds = _ds.back();
+                             std::string ds = _ds.back();
                              _create_ds(ds, "--dsorg PO --dirblk 2");
-                             string response;
+                             std::string response;
 
-                             string random_string = get_random_string(80, false);
-                             string command = "echo " + random_string + " | " + zowex_command + " data-set write '" + ds + "(TEST)'";
+                             std::string random_string = get_random_string(80, false);
+                             std::string command = "echo " + random_string + " | " + zowex_command + " data-set write '" + ds + "(TEST)'";
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain("Wrote data to '" + ds + "(TEST)'");
@@ -894,10 +893,10 @@ void zowex_ds_tests()
                         it("should view a data set with different encoding",
                            [&]() -> void
                            {
-                             string ds = _ds.back();
+                             std::string ds = _ds.back();
                              _create_ds(ds, "--dsorg PS");
-                             string response;
-                             string command = "echo 'test!' | " + zowex_command + " data-set write " + ds + " --local-encoding IBM-1047 --encoding IBM-1147";
+                             std::string response;
+                             std::string command = "echo 'test!' | " + zowex_command + " data-set write " + ds + " --local-encoding IBM-1047 --encoding IBM-1147";
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain("Wrote data to '" + ds + "'");
@@ -920,9 +919,9 @@ void zowex_ds_tests()
                         it("should fail to view a non-existent data set",
                            [&]() -> void
                            {
-                             string ds = _ds.back() + ".GHOST";
-                             string response;
-                             string command = zowex_command + " data-set view " + ds;
+                             std::string ds = _ds.back() + ".GHOST";
+                             std::string response;
+                             std::string command = zowex_command + " data-set view " + ds;
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).Not().ToBe(0);
                              Expect(response).ToContain("Error: could not read data set: '" + ds + "'");
@@ -930,9 +929,9 @@ void zowex_ds_tests()
                         it("should error when the data set name too long",
                            [&]() -> void
                            {
-                             string ds = get_random_ds(8);
-                             string response;
-                             string command = zowex_command + " data-set view " + ds;
+                             std::string ds = get_random_ds(8);
+                             std::string response;
+                             std::string command = zowex_command + " data-set view " + ds;
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).Not().ToBe(0);
                              Expect(response).ToContain("Error: could not read data set: '" + ds + "'");
@@ -958,12 +957,12 @@ void zowex_ds_tests()
                         it("should write content to a sequential data set",
                            [&]() -> void
                            {
-                             string ds = _ds.back();
+                             std::string ds = _ds.back();
                              _create_ds(ds, "--dsorg PS");
 
-                             string response;
-                             string random_string = get_random_string(80, false);
-                             string command = "echo " + random_string + " | " + zowex_command + " data-set write " + ds;
+                             std::string response;
+                             std::string random_string = get_random_string(80, false);
+                             std::string command = "echo " + random_string + " | " + zowex_command + " data-set write " + ds;
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain("Wrote data to '" + ds + "'");
@@ -976,16 +975,16 @@ void zowex_ds_tests()
                         it("should write content to a PDS member",
                            [&]() -> void
                            {
-                             string ds = _ds.back();
+                             std::string ds = _ds.back();
                              _create_ds(ds, "--dsorg PO --dirblk 2");
 
-                             string response;
-                             string command = zowex_command + " data-set create-member '" + ds + "(TEST)'";
+                             std::string response;
+                             std::string command = zowex_command + " data-set create-member '" + ds + "(TEST)'";
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain("Data set and/or member created");
 
-                             string random_string = get_random_string(80, false);
+                             std::string random_string = get_random_string(80, false);
                              command = "echo " + random_string + " | " + zowex_command + " data-set write '" + ds + "(TEST)'";
                              rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
@@ -1000,12 +999,12 @@ void zowex_ds_tests()
                         it("should fail to write to a RECFM=U data set",
                            [&]() -> void
                            {
-                             string ds = get_random_ds();
+                             std::string ds = get_random_ds();
                              _ds.push_back(ds);
                              _create_ds(ds, "--dsorg PO --dirblk 2 --recfm U --lrecl 0 --blksize 32760");
 
-                             string response;
-                             string command = "echo 'test' | " + zowex_command + " data-set write '" + ds + "(TEST)'";
+                             std::string response;
+                             std::string command = "echo 'test' | " + zowex_command + " data-set write '" + ds + "(TEST)'";
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).Not().ToBe(0);
                              Expect(response).ToContain("Writing to RECFM=U data sets is not supported");
@@ -1013,12 +1012,12 @@ void zowex_ds_tests()
                         it("should be able to write to a RECFM=A data set",
                            [&]() -> void
                            {
-                             string ds = get_random_ds();
+                             std::string ds = get_random_ds();
                              _ds.push_back(ds);
                              _create_ds(ds, "--dsorg PS --recfm A --lrecl 80 --blksize 800");
 
-                             string response;
-                             string command = "echo 'test' | " + zowex_command + " data-set write " + ds;
+                             std::string response;
+                             std::string command = "echo 'test' | " + zowex_command + " data-set write " + ds;
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain("Wrote data to '" + ds + "'");
@@ -1026,14 +1025,14 @@ void zowex_ds_tests()
                         it("should overwrite content in a sequential data set",
                            [&]() -> void
                            {
-                             string ds = _ds.back();
+                             std::string ds = _ds.back();
                              _create_ds(ds, "--dsorg PS");
 
-                             string response;
-                             string random_string = get_random_string(80, false);
-                             string random_string1 = get_random_string(80, false);
-                             string random_string2 = get_random_string(80, false);
-                             string command = "echo '" + random_string + "\n" + random_string1 + "' | " + zowex_command + " data-set write " + ds;
+                             std::string response;
+                             std::string random_string = get_random_string(80, false);
+                             std::string random_string1 = get_random_string(80, false);
+                             std::string random_string2 = get_random_string(80, false);
+                             std::string command = "echo '" + random_string + "\n" + random_string1 + "' | " + zowex_command + " data-set write " + ds;
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain("Wrote data to '" + ds + "'");
@@ -1060,18 +1059,18 @@ void zowex_ds_tests()
                         it("should overwrite content in a PDS member",
                            [&]() -> void
                            {
-                             string ds = _ds.back();
+                             std::string ds = _ds.back();
                              _create_ds(ds, "--dsorg PO --dirblk 2");
 
-                             string response;
-                             string command = zowex_command + " data-set create-member '" + ds + "(TEST)'";
+                             std::string response;
+                             std::string command = zowex_command + " data-set create-member '" + ds + "(TEST)'";
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain("Data set and/or member created");
 
-                             string random_string = get_random_string(80, false);
-                             string random_string1 = get_random_string(80, false);
-                             string random_string2 = get_random_string(80, false);
+                             std::string random_string = get_random_string(80, false);
+                             std::string random_string1 = get_random_string(80, false);
+                             std::string random_string2 = get_random_string(80, false);
                              command = "echo '" + random_string + "\n" + random_string1 + "' | " + zowex_command + " data-set write '" + ds + "(TEST)' --local-encoding IBM-1047";
                              rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
@@ -1100,10 +1099,10 @@ void zowex_ds_tests()
                         it("should only print the etag when requested",
                            [&]() -> void
                            {
-                             string ds = _ds.back();
+                             std::string ds = _ds.back();
                              _create_ds(ds, "--dsorg PS");
-                             string response;
-                             string command = "echo 'test' | " + zowex_command + " data-set write " + ds + " --etag-only";
+                             std::string response;
+                             std::string command = "echo 'test' | " + zowex_command + " data-set write " + ds + " --etag-only";
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain("etag: 8890283"); // etag for "test"
@@ -1113,10 +1112,10 @@ void zowex_ds_tests()
                         it("should fail if the provided etag is different from the current etag",
                            [&]() -> void
                            {
-                             string ds = _ds.back();
+                             std::string ds = _ds.back();
                              _create_ds(ds, "--dsorg PS");
-                             string response;
-                             string command = "echo 'test' | " + zowex_command + " data-set write " + ds;
+                             std::string response;
+                             std::string command = "echo 'test' | " + zowex_command + " data-set write " + ds;
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain("Wrote data to '" + ds + "'");
@@ -1131,10 +1130,10 @@ void zowex_ds_tests()
                         it("should fail if the provided etag is different and evaluates to a number",
                            [&]() -> void
                            {
-                             string ds = _ds.back();
+                             std::string ds = _ds.back();
                              _create_ds(ds, "--dsorg PS");
-                             string response;
-                             string command = "echo 'zowe' | " + zowex_command + " data-set write " + ds;
+                             std::string response;
+                             std::string command = "echo 'zowe' | " + zowex_command + " data-set write " + ds;
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain("Wrote data to '" + ds + "'");
@@ -1149,10 +1148,10 @@ void zowex_ds_tests()
                         it("should write content to a data set with different encoding",
                            [&]() -> void
                            {
-                             string ds = _ds.back();
+                             std::string ds = _ds.back();
                              _create_ds(ds, "--dsorg PS");
-                             string response;
-                             string command = "echo 'test!' | " + zowex_command + " data-set write " + ds + " --local-encoding IBM-1047 --encoding IBM-1147";
+                             std::string response;
+                             std::string command = "echo 'test!' | " + zowex_command + " data-set write " + ds + " --local-encoding IBM-1047 --encoding IBM-1147";
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain("Wrote data to '" + ds + "'");
@@ -1171,10 +1170,10 @@ void zowex_ds_tests()
                         it("should write content to a data set with multibyte encoding",
                            [&]() -> void
                            {
-                             string ds = _ds.back();
+                             std::string ds = _ds.back();
                              _create_ds(ds, "--dsorg PS");
-                             string response;
-                             string command = "echo '\xe3\x81\x93\xe3\x82\x93\xe3\x81\xab\xe3\x81\xa1\xe3\x81\xaf' | " + zowex_command + " data-set write " + ds + " --encoding IBM-939";
+                             std::string response;
+                             std::string command = "echo '\xe3\x81\x93\xe3\x82\x93\xe3\x81\xab\xe3\x81\xa1\xe3\x81\xaf' | " + zowex_command + " data-set write " + ds + " --encoding IBM-939";
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain("Wrote data to '" + ds + "'");
@@ -1188,9 +1187,9 @@ void zowex_ds_tests()
                         it("should fail to write to a non-existent data set",
                            [&]() -> void
                            {
-                             string ds = _ds.back() + ".GHOST";
-                             string response;
-                             string command = "echo 'test' | " + zowex_command + " data-set write " + ds;
+                             std::string ds = _ds.back() + ".GHOST";
+                             std::string response;
+                             std::string command = "echo 'test' | " + zowex_command + " data-set write " + ds;
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).Not().ToBe(0);
                              Expect(response).ToContain("Error: could not write to data set: '" + ds + "'");
@@ -1198,9 +1197,9 @@ void zowex_ds_tests()
                         it("should error when the data set name is too long",
                            []() -> void
                            {
-                             string ds = get_random_ds(8);
-                             string response;
-                             string command = "echo 'test' | " + zowex_command + " data-set write " + ds;
+                             std::string ds = get_random_ds(8);
+                             std::string response;
+                             std::string command = "echo 'test' | " + zowex_command + " data-set write " + ds;
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).Not().ToBe(0);
                              Expect(response).ToContain("Error: could not write to data set: '" + ds + "'");
@@ -1208,21 +1207,21 @@ void zowex_ds_tests()
                         it("should write content from a USS file to a sequential data set",
                            [&]() -> void
                            {
-                             string ds = _ds.back();
+                             std::string ds = _ds.back();
                              _create_ds(ds, "--dsorg PS --lrecl 120 --blksize 18480");
-                             string response;
+                             std::string response;
 
                              // Create a temporary USS file
-                             string temp_file = "/tmp/zowex_test_uss_" + get_random_string(8, false);
-                             string content = "This is a test content for USS file write.";
+                             std::string temp_file = "/tmp/zowex_test_uss_" + get_random_string(8, false);
+                             std::string content = "This is a test content for USS file write.";
 
                              ZUSF zusf = {};
-                             string write_content = content;
+                             std::string write_content = content;
                              int write_rc = zusf_write_to_uss_file(&zusf, temp_file, write_content);
                              Expect(write_rc).ToBe(RTNCD_SUCCESS);
 
-                             string get_uss_file_command = zowex_command + " uss view '" + temp_file + "'";
-                             string command = get_uss_file_command + " | " + zowex_command + " data-set write " + ds;
+                             std::string get_uss_file_command = zowex_command + " uss view '" + temp_file + "'";
+                             std::string command = get_uss_file_command + " | " + zowex_command + " data-set write " + ds;
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain("Wrote data to '" + ds + "'");
@@ -1242,16 +1241,16 @@ void zowex_ds_tests()
                                    it("should write and read a PDS member using BPAM",
                                       [&]() -> void
                                       {
-                                        string ds = _ds.back();
+                                        std::string ds = _ds.back();
                                         _create_ds(ds, "--dsorg PO --dirblk 2");
 
-                                        string response;
-                                        string command = zowex_command + " data-set create-member '" + ds + "(PDS1)'";
+                                        std::string response;
+                                        std::string command = zowex_command + " data-set create-member '" + ds + "(PDS1)'";
                                         int rc = execute_command_with_output(command, response);
                                         ExpectWithContext(rc, response).ToBe(0);
                                         Expect(response).ToContain("Data set and/or member created");
 
-                                        string payload = "PDSDATA";
+                                        std::string payload = "PDSDATA";
                                         command = "echo " + payload + " | " + zowex_command + " data-set write '" + ds + "(PDS1)'";
                                         rc = execute_command_with_output(command, response);
                                         ExpectWithContext(rc, response).ToBe(0);
@@ -1265,16 +1264,16 @@ void zowex_ds_tests()
                                    it("should write and read a PDSE member using BPAM",
                                       [&]() -> void
                                       {
-                                        string ds = _ds.back();
+                                        std::string ds = _ds.back();
                                         _create_ds(ds, "--dsorg PO --dirblk 2 --dsntype LIBRARY");
 
-                                        string response;
-                                        string command = zowex_command + " data-set create-member '" + ds + "(MEM1)'";
+                                        std::string response;
+                                        std::string command = zowex_command + " data-set create-member '" + ds + "(MEM1)'";
                                         int rc = execute_command_with_output(command, response);
                                         ExpectWithContext(rc, response).ToBe(0);
                                         Expect(response).ToContain("Data set and/or member created");
 
-                                        string payload = "MEMBERDATA";
+                                        std::string payload = "MEMBERDATA";
                                         command = "echo " + payload + " | " + zowex_command + " data-set write '" + ds + "(MEM1)'";
                                         rc = execute_command_with_output(command, response);
                                         ExpectWithContext(rc, response).ToBe(0);
@@ -1289,16 +1288,16 @@ void zowex_ds_tests()
                                    it("should write multi-line content to a PDSE member",
                                       [&]() -> void
                                       {
-                                        string ds = _ds.back();
+                                        std::string ds = _ds.back();
                                         _create_ds(ds, "--dsorg PO --dirblk 2 --dsntype LIBRARY");
 
-                                        string response;
-                                        string command = zowex_command + " data-set create-member '" + ds + "(MEM2)'";
+                                        std::string response;
+                                        std::string command = zowex_command + " data-set create-member '" + ds + "(MEM2)'";
                                         int rc = execute_command_with_output(command, response);
                                         ExpectWithContext(rc, response).ToBe(0);
                                         Expect(response).ToContain("Data set and/or member created");
 
-                                        string command_payload = "printf 'LINEA\\nLINEB\\n' | " + zowex_command + " data-set write '" + ds + "(MEM2)'";
+                                        std::string command_payload = "printf 'LINEA\\nLINEB\\n' | " + zowex_command + " data-set write '" + ds + "(MEM2)'";
                                         rc = execute_command_with_output(command_payload, response);
                                         ExpectWithContext(rc, response).ToBe(0);
                                         Expect(response).ToContain("Wrote data to '" + ds + "(MEM2)'");
@@ -1313,16 +1312,16 @@ void zowex_ds_tests()
                                    it("should overwrite a PDSE member using BPAM",
                                       [&]() -> void
                                       {
-                                        string ds = _ds.back();
+                                        std::string ds = _ds.back();
                                         _create_ds(ds, "--dsorg PO --dirblk 2 --dsntype LIBRARY");
 
-                                        string response;
-                                        string command = zowex_command + " data-set create-member '" + ds + "(MEM3)'";
+                                        std::string response;
+                                        std::string command = zowex_command + " data-set create-member '" + ds + "(MEM3)'";
                                         int rc = execute_command_with_output(command, response);
                                         ExpectWithContext(rc, response).ToBe(0);
                                         Expect(response).ToContain("Data set and/or member created");
 
-                                        string command_payload = "echo FIRSTDATA | " + zowex_command + " data-set write '" + ds + "(MEM3)'";
+                                        std::string command_payload = "echo FIRSTDATA | " + zowex_command + " data-set write '" + ds + "(MEM3)'";
                                         rc = execute_command_with_output(command_payload, response);
                                         ExpectWithContext(rc, response).ToBe(0);
                                         Expect(response).ToContain("Wrote data to '" + ds + "(MEM3)'");
@@ -1342,16 +1341,16 @@ void zowex_ds_tests()
                                    it("should warn when a PDSE member line exceeds LRECL",
                                       [&]() -> void
                                       {
-                                        string ds = _ds.back();
+                                        std::string ds = _ds.back();
                                         _create_ds(ds, "--dsorg PO --dirblk 2 --dsntype LIBRARY --lrecl 10 --blksize 80");
 
-                                        string response;
-                                        string command = zowex_command + " data-set create-member '" + ds + "(MEM4)'";
+                                        std::string response;
+                                        std::string command = zowex_command + " data-set create-member '" + ds + "(MEM4)'";
                                         int rc = execute_command_with_output(command, response);
                                         ExpectWithContext(rc, response).ToBe(0);
                                         Expect(response).ToContain("Data set and/or member created");
 
-                                        string long_line = "ABCDEFGHIJKLMNOPQRST";
+                                        std::string long_line = "ABCDEFGHIJKLMNOPQRST";
                                         command = "echo " + long_line + " | " + zowex_command + " data-set write '" + ds + "(MEM4)'";
                                         rc = execute_command_with_output(command, response);
                                         ExpectWithContext(rc, response).ToBe(0);
@@ -1366,11 +1365,11 @@ void zowex_ds_tests()
                                    it("should add ASA control characters for a PDS member",
                                       [&]() -> void
                                       {
-                                        string ds = _ds.back();
+                                        std::string ds = _ds.back();
                                         _create_ds(ds, "--dsorg PO --dirblk 2 --recfm FBA --lrecl 81 --blksize 810");
 
-                                        string response;
-                                        string command = zowex_command + " data-set create-member '" + ds + "(ASA2)'";
+                                        std::string response;
+                                        std::string command = zowex_command + " data-set create-member '" + ds + "(ASA2)'";
                                         int rc = execute_command_with_output(command, response);
                                         ExpectWithContext(rc, response).ToBe(0);
                                         Expect(response).ToContain("Data set and/or member created");
@@ -1390,12 +1389,12 @@ void zowex_ds_tests()
                                    it("should add ASA control characters for FBA data sets",
                                       [&]() -> void
                                       {
-                                        string ds = _ds.back();
+                                        std::string ds = _ds.back();
                                         _create_ds(ds, "--dsorg PS --recfm FBA --lrecl 81 --blksize 810");
 
-                                        string response;
-                                        string command = "printf 'AAA\\nBBB\\n' | " + zowex_command +
-                                                         " data-set write " + ds + " --local-encoding IBM-1047 --encoding IBM-1047";
+                                        std::string response;
+                                        std::string command = "printf 'AAA\\nBBB\\n' | " + zowex_command +
+                                                              " data-set write " + ds + " --local-encoding IBM-1047 --encoding IBM-1047";
                                         int rc = execute_command_with_output(command, response);
                                         ExpectWithContext(rc, response).ToBe(0);
                                         Expect(response).ToContain("Wrote data to '" + ds + "'");
@@ -1410,12 +1409,12 @@ void zowex_ds_tests()
                                    it("should convert a single blank line into ASA double space",
                                       [&]() -> void
                                       {
-                                        string ds = _ds.back();
+                                        std::string ds = _ds.back();
                                         _create_ds(ds, "--dsorg PS --recfm FBA --lrecl 81 --blksize 810");
 
-                                        string response;
-                                        string command = "printf 'AAA\\n\\nBBB\\n' | " + zowex_command +
-                                                         " data-set write " + ds + " --local-encoding IBM-1047 --encoding IBM-1047";
+                                        std::string response;
+                                        std::string command = "printf 'AAA\\n\\nBBB\\n' | " + zowex_command +
+                                                              " data-set write " + ds + " --local-encoding IBM-1047 --encoding IBM-1047";
                                         int rc = execute_command_with_output(command, response);
                                         ExpectWithContext(rc, response).ToBe(0);
                                         Expect(response).ToContain("Wrote data to '" + ds + "'");
@@ -1430,12 +1429,12 @@ void zowex_ds_tests()
                                    it("should handle multiple blank lines with ASA overflow",
                                       [&]() -> void
                                       {
-                                        string ds = _ds.back();
+                                        std::string ds = _ds.back();
                                         _create_ds(ds, "--dsorg PS --recfm FBA --lrecl 81 --blksize 810");
 
-                                        string response;
-                                        string command = "printf 'AAA\\n\\n\\n\\nDDD\\n' | " + zowex_command +
-                                                         " data-set write " + ds + " --local-encoding IBM-1047 --encoding IBM-1047";
+                                        std::string response;
+                                        std::string command = "printf 'AAA\\n\\n\\n\\nDDD\\n' | " + zowex_command +
+                                                              " data-set write " + ds + " --local-encoding IBM-1047 --encoding IBM-1047";
                                         int rc = execute_command_with_output(command, response);
                                         ExpectWithContext(rc, response).ToBe(0);
                                         Expect(response).ToContain("Wrote data to '" + ds + "'");
@@ -1451,12 +1450,12 @@ void zowex_ds_tests()
                                    it("should convert form feed to ASA page break",
                                       [&]() -> void
                                       {
-                                        string ds = _ds.back();
+                                        std::string ds = _ds.back();
                                         _create_ds(ds, "--dsorg PS --recfm FBA --lrecl 81 --blksize 810");
 
-                                        string response;
-                                        string command = "printf '\\fEEE\\n' | " + zowex_command +
-                                                         " data-set write " + ds + " --local-encoding IBM-1047 --encoding IBM-1047";
+                                        std::string response;
+                                        std::string command = "printf '\\fEEE\\n' | " + zowex_command +
+                                                              " data-set write " + ds + " --local-encoding IBM-1047 --encoding IBM-1047";
                                         int rc = execute_command_with_output(command, response);
                                         ExpectWithContext(rc, response).ToBe(0);
                                         Expect(response).ToContain("Wrote data to '" + ds + "'");
@@ -1469,12 +1468,12 @@ void zowex_ds_tests()
                                    it("should read ASA VBA without RDW bytes",
                                       [&]() -> void
                                       {
-                                        string ds = _ds.back();
+                                        std::string ds = _ds.back();
                                         _create_ds(ds, "--dsorg PS --recfm VBA --lrecl 81 --blksize 810");
 
-                                        string response;
-                                        string command = "printf ' ABC\\n' | " + zowex_command +
-                                                         " data-set write " + ds + " --local-encoding IBM-1047 --encoding IBM-1047";
+                                        std::string response;
+                                        std::string command = "printf ' ABC\\n' | " + zowex_command +
+                                                              " data-set write " + ds + " --local-encoding IBM-1047 --encoding IBM-1047";
                                         int rc = execute_command_with_output(command, response);
                                         ExpectWithContext(rc, response).ToBe(0);
                                         Expect(response).ToContain("Wrote data to '" + ds + "'");
@@ -1484,29 +1483,29 @@ void zowex_ds_tests()
                                         ExpectWithContext(rc, response).ToBe(0);
 
                                         const size_t first_byte_pos = response.find_first_not_of(" \r\n\t");
-                                        ExpectWithContext(first_byte_pos != string::npos, response).ToBe(true);
-                                        string first_byte = response.substr(first_byte_pos, 2);
+                                        ExpectWithContext(first_byte_pos != std::string::npos, response).ToBe(true);
+                                        std::string first_byte = response.substr(first_byte_pos, 2);
                                         Expect(first_byte).ToBe("40");
                                       });
 
                                    it("should stream ASA conversion to a member via pipe-path",
                                       [&]() -> void
                                       {
-                                        string ds = _ds.back();
+                                        std::string ds = _ds.back();
                                         _create_ds(ds, "--dsorg PO --dirblk 2 --dsntype LIBRARY --recfm FBA --lrecl 81 --blksize 810");
 
-                                        string response;
-                                        string command = zowex_command + " data-set create-member '" + ds + "(ASA3)'";
+                                        std::string response;
+                                        std::string command = zowex_command + " data-set create-member '" + ds + "(ASA3)'";
                                         int rc = execute_command_with_output(command, response);
                                         ExpectWithContext(rc, response).ToBe(0);
                                         Expect(response).ToContain("Data set and/or member created");
 
-                                        const string pipe_path = "/tmp/zowex_ds_pipe_" + get_random_string(10);
+                                        const std::string pipe_path = "/tmp/zowex_ds_pipe_" + get_random_string(10);
                                         mkfifo(pipe_path.c_str(), 0777);
 
-                                        const string payload = "AAA\n\nBBB\n";
+                                        const std::string payload = "AAA\n\nBBB\n";
                                         const auto encoded = zbase64::encode(payload.c_str(), payload.size());
-                                        const string encoded_payload(encoded.begin(), encoded.end());
+                                        const std::string encoded_payload(encoded.begin(), encoded.end());
 
                                         std::thread writer([&]() -> void
                                                            {

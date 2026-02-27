@@ -18,8 +18,7 @@
 #include <chrono>
 #include <thread>
 #include <stdexcept>
-
-using namespace std;
+#include <random>
 
 int execute_command_with_input(const std::string &command, const std::string &input, bool suppress_output)
 {
@@ -69,59 +68,56 @@ int execute_command_with_output(const std::string &command, std::string &output)
   return WEXITSTATUS(exit_status);
 }
 
-int execute_su_command_with_output(const std::string &command, std::string &output) 
+int execute_su_command_with_output(const std::string &command, std::string &output)
 {
   std::string su_command = "echo '" + command + "' | su";
   return execute_command_with_output(su_command, output);
 }
 
-string get_random_string(const int length, const bool allNumbers)
+static std::mt19937 &get_rng()
 {
-  static bool seeded = false;
-  if (!seeded)
-  {
-    srand(static_cast<unsigned int>(time(NULL)));
-    seeded = true;
-  }
-  string ret = "";
+  static std::mt19937 rng{std::random_device{}()};
+  return rng;
+}
 
+std::string get_random_string(const int length, const bool allNumbers)
+{
+  auto &rng = get_rng();
+  std::uniform_int_distribution<int> digit_dist(0, 9);
+  std::uniform_int_distribution<int> letter_dist(0, 25);
+  static const char letters[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+  std::string ret;
+  ret.reserve(length);
   for (int i = 0; i < length; ++i)
   {
     if (allNumbers)
     {
-      ret += to_string(rand() % 10);
+      ret += std::to_string(digit_dist(rng));
     }
     else
     {
-      static const char letters[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-      ret += letters[rand() % 26];
+      ret += letters[letter_dist(rng)];
     }
   }
   return ret;
 }
 
-std::string get_basename(const std::string& fspath)
+std::string get_basename(const std::string &fspath)
 {
   if (fspath.empty()) return "";
 
   auto lastSlash = fspath.find_last_of("/\\");
 
   return (lastSlash == std::string::npos) ? std::string(fspath) : fspath.substr(lastSlash + 1);
-} 
+}
 
-string get_random_uss(const string base_dir)
+std::string get_random_uss(const std::string &base_dir)
 {
-  static bool seeded = false;
-  if (!seeded)
-  {
-    srand(static_cast<unsigned int>(time(NULL)));
-    seeded = true;
-  }
-
-  string ret = base_dir;
+  std::string ret{base_dir};
   if (ret.back() != '/')
   {
-    ret += "/";
+    ret.push_back('/');
   }
 
   ret += "test_" + get_random_string(10);
@@ -130,11 +126,11 @@ string get_random_uss(const string base_dir)
 }
 
 static std::string s_user = "";
-string get_user()
+std::string get_user()
 {
   if (s_user.empty())
   {
-    string user;
+    std::string user;
     // Note: using `basename $HOME` instead of `whoami` to get the current user
     // because `whoami` may be mapped to a kernel user instead of a real one.
     execute_command_with_output("basename $HOME | tr '[:lower:]' '[:upper:]'", user);
@@ -143,24 +139,24 @@ string get_user()
   return s_user;
 }
 
-string get_random_ds(const int qualifier_count, const string hlq)
+std::string get_random_ds(const int qualifier_count, const std::string &hlq)
 {
   const auto q = hlq.length() == 0 ? get_user() : hlq;
-  string ret = q + ".ZNP#TEST";
+  std::string ret{q + ".ZNP#TEST"};
   for (int i = 0; i < qualifier_count - 2; ++i)
   {
-    ret += ".Z" + get_random_string();
+    ret.append(".Z").append(get_random_string());
   }
   return ret;
 }
 
 // Helper function to get etag from command response
-string parse_etag_from_output(const string &output)
+std::string parse_etag_from_output(const std::string &output)
 {
-  const string label = "etag: ";
+  const std::string label = "etag: ";
   size_t etag_label_pos = output.find(label);
 
-  if (etag_label_pos == string::npos)
+  if (etag_label_pos == std::string::npos)
   {
     return "";
   }
@@ -169,20 +165,20 @@ string parse_etag_from_output(const string &output)
 
   size_t end_value_pos = output.find_first_of("\r\n", start_value_pos);
 
-  if (end_value_pos == string::npos)
+  if (end_value_pos == std::string::npos)
   {
     end_value_pos = output.length();
   }
 
-  string etag = output.substr(start_value_pos, end_value_pos - start_value_pos);
+  std::string etag = output.substr(start_value_pos, end_value_pos - start_value_pos);
 
   return etag;
 }
 
-vector<string> parse_rfc_response(const string input, const char *delim)
+std::vector<std::string> parse_rfc_response(const std::string input, const char *delim)
 {
-  vector<string> ret;
-  string current;
+  std::vector<std::string> ret;
+  std::string current;
   char delimiter = delim[0];
 
   for (size_t i = 0; i < input.length(); ++i)
@@ -202,40 +198,40 @@ vector<string> parse_rfc_response(const string input, const char *delim)
   return ret;
 }
 
-bool wait_for_job(const string &jobid, int max_retries, int delay_ms)
+bool wait_for_job(const std::string &jobid, int max_retries, int delay_ms)
 {
-  string output;
+  std::string output;
   for (int i = 0; i < max_retries; ++i)
   {
     int rc = execute_command_with_output(zowex_command + " job view-status " + jobid, output);
-    if (rc == 0 && output.find(jobid) != string::npos)
+    if (rc == 0 && output.find(jobid) != std::string::npos)
     {
       return true;
     }
-    this_thread::sleep_for(chrono::milliseconds(delay_ms));
+    std::this_thread::sleep_for(std::chrono::milliseconds(delay_ms));
   }
   return false;
 }
 
 // Data set creation helpers
 
-void create_dsn_with_attrs(ZDS *zds, const string &dsn, DS_ATTRIBUTES &attrs, const string &type_name)
+void create_dsn_with_attrs(ZDS *zds, const std::string &dsn, const DS_ATTRIBUTES &attrs, const std::string &type_name)
 {
   memset(zds, 0, sizeof(ZDS));
-  string response;
+  std::string response;
   int rc = zds_create_dsn(zds, dsn, attrs, response);
   if (rc != 0)
   {
-    string err = zds->diag.e_msg_len > 0 ? string(zds->diag.e_msg)
-                 : response.length() > 0 ? response
-                                         : "rc=" + to_string(rc);
-    throw runtime_error("Failed to create " + type_name + ": " + err);
+    std::string err = zds->diag.e_msg_len > 0 ? std::string(zds->diag.e_msg)
+                      : response.length() > 0 ? response
+                                              : "rc=" + std::to_string(rc);
+    throw std::runtime_error("Failed to create " + type_name + ": " + err);
   }
 }
 
-void create_pds(ZDS *zds, const string &dsn)
+void create_pds(ZDS *zds, const std::string &dsn)
 {
-  DS_ATTRIBUTES attrs = {0};
+  DS_ATTRIBUTES attrs{};
   attrs.dsorg = "PO";
   attrs.dsntype = "PDS";
   attrs.recfm = "F,B";
@@ -245,9 +241,9 @@ void create_pds(ZDS *zds, const string &dsn)
   create_dsn_with_attrs(zds, dsn, attrs, "PDS");
 }
 
-void create_pdse(ZDS *zds, const string &dsn)
+void create_pdse(ZDS *zds, const std::string &dsn)
 {
-  DS_ATTRIBUTES attrs = {0};
+  DS_ATTRIBUTES attrs{};
   attrs.dsorg = "PO";
   attrs.dsntype = "LIBRARY";
   attrs.recfm = "F,B";
@@ -257,9 +253,9 @@ void create_pdse(ZDS *zds, const string &dsn)
   create_dsn_with_attrs(zds, dsn, attrs, "PDSE");
 }
 
-void create_seq(ZDS *zds, const string &dsn)
+void create_seq(ZDS *zds, const std::string &dsn)
 {
-  DS_ATTRIBUTES attrs = {0};
+  DS_ATTRIBUTES attrs{};
   attrs.dsorg = "PS";
   attrs.recfm = "F,B";
   attrs.lrecl = 80;
@@ -269,9 +265,9 @@ void create_seq(ZDS *zds, const string &dsn)
   create_dsn_with_attrs(zds, dsn, attrs, "sequential data set");
 }
 
-void write_to_dsn(const string &dsn, const string &content)
+void write_to_dsn(const std::string &dsn, const std::string &content)
 {
-  ZDS zds = {0};
-  string data = content;
+  ZDS zds{};
+  std::string data = content;
   zds_write_to_dsn(&zds, dsn, data);
 }

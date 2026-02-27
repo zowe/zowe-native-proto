@@ -43,6 +43,7 @@ function localeCompare(a: string, b: string): number {
 
 const localDeployDir = "./../native";
 const args = process.argv.slice(2);
+let preBuildCmd: string | undefined;
 let deployDirs: {
     root: string;
     cDir: string;
@@ -415,7 +416,8 @@ class WatchUtils {
                 await new Promise<void>((resolve) => stream.once("data", resolve));
 
                 const cwd = inDir ?? deployDirs.cDir;
-                const cmd = `cd ${cwd}\nmake\nexit $?\n`;
+                const envSetup = preBuildCmd ? `${preBuildCmd}\n` : "";
+                const cmd = `${envSetup}cd ${cwd}\nmake\nexit $?\n`;
                 stream.write(cmd);
 
                 let outText = "";
@@ -448,7 +450,7 @@ class WatchUtils {
                     .stderr.on("data", (data: Buffer) => {
                         // Filter out INFO level messages and ones about compiler optimizations
                         const str = data.toString().trim();
-                        if (/IGD\d{5}I /.test(str) || /WARNING CLC1145:/.test(str)) return;
+                        if (/IGD\d{5}I /.test(str) || /WARNING CLC\d+:/.test(str)) return;
                         if (str.length > 0) {
                             errText += (errText.length > 0 ? "\n" : "") + str;
                         }
@@ -474,7 +476,7 @@ class WatchUtils {
                 stream.write("echo\n");
                 await new Promise<void>((resolve) => stream.once("data", resolve));
 
-                const testEnv = '_CEE_RUNOPTS="TRAP(ON,NOSPIE)"';
+                const testEnv = '_CEE_RUNOPTS="TRAP(ON,NOSPIE) TERMTHDACT(UADUMP)"';
                 const cmd = `cd ${testDir}\n${testEnv} ./build-out/${runner}\nexit $?\n`;
                 stream.write(cmd);
 
@@ -1153,6 +1155,9 @@ interface RunCommandOpts {
 }
 
 async function runCommandInShell(connection: Client, command: string, opts?: RunCommandOpts) {
+    if (preBuildCmd) {
+        command = `${preBuildCmd}\n${command}`;
+    }
     // For multi-line commands, show only the first line in the spinner
     const firstLine = command.trim().split("\n")[0];
     const spinnerText = opts?.stepName ?? (command.includes("\n") ? `$ ${firstLine}...` : `$ ${command.trim()}`);
@@ -1281,17 +1286,16 @@ async function upload(connection: Client, sshProfile: IProfile) {
     });
 }
 
-async function build(connection: Client, { preBuildCmd }: IConfig) {
-    preBuildCmd = preBuildCmd ? `${preBuildCmd} && ` : "";
+async function build(connection: Client) {
     let response = await runCommandInShell(
         connection,
-        `${preBuildCmd}cd ${deployDirs.cDir} && make ${DEBUG_MODE() ? "-DBuildType=DEBUG" : ""}\n`,
+        `cd ${deployDirs.cDir} && make ${DEBUG_MODE() ? "-DBuildType=DEBUG" : ""}\n`,
         { stepName: "Building native/c" },
     );
     DEBUG_MODE() && console.log(response);
     response = await runCommandInShell(
         connection,
-        `${preBuildCmd}cd ${deployDirs.zowedDir} && make ${DEBUG_MODE() ? "-DBuildType=DEBUG" : ""}\n`,
+        `cd ${deployDirs.zowedDir} && make ${DEBUG_MODE() ? "-DBuildType=DEBUG" : ""}\n`,
         { stepName: "Building native/zowed" },
     );
     DEBUG_MODE() && console.log(response);
@@ -1310,7 +1314,7 @@ async function make(connection: Client, inDir?: string) {
 }
 
 async function test(connection: Client) {
-    const testEnv = '_CEE_RUNOPTS="TRAP(ON,NOSPIE)"';
+    const testEnv = '_CEE_RUNOPTS="TRAP(ON,NOSPIE) TERMTHDACT(UADUMP)"';
     const cTestCmd = `cd ${deployDirs.cTestDir} && ${testEnv} ./build-out/ztest_runner ${args[1] ?? ""}`;
     const zowedTestCmd = `cd ${path.posix.relative(deployDirs.cTestDir, deployDirs.zowedTestDir)} && ${testEnv} ./build-out/zowed_test_runner ${args[1] ?? ""}`;
     const exitMaxRc = `[ "$rc1" -gt "$rc2" ] && exit "$rc1" || exit "$rc2"`;
@@ -1323,7 +1327,7 @@ async function test(connection: Client) {
 }
 
 async function testSingle(connection: Client, scope: "zowex" | "zowed") {
-    const testEnv = '_CEE_RUNOPTS="TRAP(ON,NOSPIE)"';
+    const testEnv = '_CEE_RUNOPTS="TRAP(ON,NOSPIE) TERMTHDACT(UADUMP)"';
     const testDir = scope === "zowex" ? deployDirs.cTestDir : deployDirs.zowedTestDir;
     const runner = scope === "zowex" ? "ztest_runner" : "zowed_test_runner";
     const testCmd = `cd ${testDir} && ${testEnv} ./build-out/${runner} ${args[1] ?? ""}`;
@@ -1336,52 +1340,70 @@ async function testSingle(connection: Client, scope: "zowex" | "zowed") {
     await retrieve(connection, [xmlPath], "native", false, true);
 }
 
-async function chdsect(connection: Client) {
-    return new Promise<void>((finish, reject) => {
-        if (args[1] == null) {
-            console.log("Usage: npm run z:chdsect <target_name>");
-            console.log("  example: npm run z:chdsect cvt.s");
-            reject(new Error("Usage: npm run z:chdsect <target_name>"));
-        }
+async function buildChdsect(connection: Client, sftpcon: SFTPWrapper, target: string) {
+    await uploadFile(
+        sftpcon,
+        path.resolve(__dirname, `${localDeployDir}/asmchdr/${target}`),
+        `${deployDirs.asmchdrDir}/${target}`,
+    );
+    const response = await runCommandInShell(
+        connection,
+        `cd ${deployDirs.asmchdrDir} && make build-${target} 2>&1 \n`,
+        { stepName: `Building chdsect ${target}` },
+    );
+    console.log(response);
 
+    const headerName = target.replace(".s", ".h");
+    const from = `${deployDirs.asmchdrDir}/build-out/${headerName}`;
+    const to = path.resolve(__dirname, `${localDeployDir}/c/chdsect/${headerName}`);
+    console.log(`Downloading file from '${from}' to '${to}'`);
+    await download(sftpcon, from, to);
+}
+
+async function chdsect(connection: Client) {
+    const targets =
+        args[1] == null
+            ? fs
+                  .readdirSync(path.resolve(__dirname, `${localDeployDir}/asmchdr`))
+                  .filter((f) => f.endsWith(".s"))
+            : [args[1]];
+
+    if (targets.length === 0) {
+        throw new Error("No .s files found in native/asmchdr");
+    }
+
+    console.log(`Building chdsect target(s): ${targets.join(", ")}`);
+
+    return new Promise<void>((finish, reject) => {
         connection.sftp(async (err, sftpcon) => {
             if (err) {
-                console.log("Chdsect err");
                 reject(err);
+                return;
             }
-            await uploadFile(
-                sftpcon,
-                path.resolve(__dirname, `${localDeployDir}/asmchdr/${args[1]}`),
-                `${deployDirs.asmchdrDir}/${args[1]}`,
-            );
-            let response = "";
             try {
-                response = await runCommandInShell(
-                    connection,
-                    `cd ${deployDirs.asmchdrDir} && make build-${args[1]} 2>&1 \n`,
-                    { stepName: `Building chdsect ${args[1]}` },
+                await uploadFile(
+                    sftpcon,
+                    path.resolve(__dirname, `${localDeployDir}/asmchdr/gen_chdsect.sh`),
+                    `${deployDirs.asmchdrDir}/gen_chdsect.sh`,
                 );
+                await uploadFile(
+                    sftpcon,
+                    path.resolve(__dirname, `${localDeployDir}/asmchdr/makefile`),
+                    `${deployDirs.asmchdrDir}/makefile`,
+                );
+                for (const target of targets) {
+                    await buildChdsect(connection, sftpcon, target);
+                }
+                console.log("Chdsect complete!");
             } catch (err) {
-                console.log("Chdsect err");
                 reject(err);
+                return;
+            } finally {
+                sftpcon.end();
             }
-            console.log(response);
-            console.log("Chdsect complete!");
-
-            const from = `${deployDirs.asmchdrDir}/build-out/${args[1].replace(".s", ".h")}`;
-            const to = path.resolve(__dirname, `${localDeployDir}/c/chdsect/${args[1].replace(".s", ".h")}`);
-            console.log(`Downloading file from '${from}' to '${to}'`);
-
-            await download(sftpcon, from, to);
-            sftpcon.end();
             finish();
         });
     });
-
-    // console.log("Running chdsect ...");
-    // const response = await runCommandInShell(connection, `cd ${deployDirs.asmchdrDir} && make build-${args[1]}\n`);
-    // console.log(response);
-    // console.log("Chdsect complete!");
 }
 
 async function clean(connection: Client) {
@@ -1541,6 +1563,7 @@ async function buildSshClient(sshProfile: IProfile): Promise<Client> {
 
 async function main() {
     const config = await loadConfig();
+    preBuildCmd = config.preBuildCmd;
     deployDirs = {
         root: config.deployDir,
         cDir: `${config.deployDir}/c`,
@@ -1559,7 +1582,7 @@ async function main() {
                 await artifacts(sshClient, false);
                 break;
             case "build":
-                await build(sshClient, config);
+                await build(sshClient);
                 break;
             case "build:chdsect":
                 await chdsect(sshClient);
@@ -1584,7 +1607,7 @@ async function main() {
                 break;
             case "rebuild":
                 await upload(sshClient, config.sshProfile as IProfile);
-                await build(sshClient, config);
+                await build(sshClient);
                 break;
             case "test":
                 await test(sshClient);

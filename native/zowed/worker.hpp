@@ -80,6 +80,10 @@ private:
   std::string current_request_data;
   std::mutex current_request_mutex;
 
+  // Signaled when worker_loop() exits (normal or faulted)
+  std::mutex exit_mutex;
+  std::condition_variable exit_condition;
+
   void worker_loop();
   void process_request(const std::string &data);
   void update_heartbeat();

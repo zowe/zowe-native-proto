@@ -29,29 +29,19 @@ public:
   {
   }
 
-  ~RegistrationContextImpl()
-  {
-    for (std::vector<CommandRecord *>::iterator it = m_records.begin();
-         it != m_records.end(); ++it)
-    {
-      delete *it;
-    }
-  }
-
   CommandHandle create_command(const char *name, const char *help)
   {
     std::string cmd_name = name ? name : "";
     std::string cmd_help = help ? help : "";
 
     parser::command_ptr command(new parser::Command(cmd_name, cmd_help));
-    CommandRecord *record = new CommandRecord(command);
-    m_records.push_back(record);
-    return reinterpret_cast<CommandHandle>(record);
+    m_records.push_back(std::make_unique<CommandRecord>(command));
+    return static_cast<CommandHandle>(m_records.back().get());
   }
 
   CommandHandle get_root_command()
   {
-    return reinterpret_cast<CommandHandle>(&m_root_record);
+    return static_cast<CommandHandle>(&m_root_record);
   }
 
   void add_alias(CommandHandle command, const char *alias)
@@ -214,7 +204,7 @@ private:
 
   parser::Command &m_root;
   CommandRecord m_root_record;
-  std::vector<CommandRecord *> m_records;
+  std::vector<std::unique_ptr<CommandRecord>> m_records;
 };
 
 void PluginManager::load_plugins()
@@ -303,20 +293,16 @@ void PluginManager::register_commands(parser::Command &rootCommand)
 {
   RegistrationContextImpl context(rootCommand);
 
-  for (std::vector<CommandProvider *>::iterator it =
-           m_command_providers.begin();
-       it != m_command_providers.end(); ++it)
+  for (const auto &factory : m_command_providers)
   {
-    CommandProvider *factory = *it;
     if (!factory)
       continue;
 
-    CommandProviderImpl *provider = factory->create();
+    auto provider = factory->create();
     if (!provider)
       continue;
 
     provider->register_commands(context);
-    delete provider;
   }
 }
 } // namespace plugin

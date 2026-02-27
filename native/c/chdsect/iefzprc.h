@@ -1,4 +1,8 @@
+#ifdef __open_xl__
+#pragma pack(1)
+#else
 #pragma pack(packed)
+#endif
 
 #ifndef __iefzprc__
 #define __iefzprc__
@@ -48,4 +52,8 @@ struct iefzprc
 
 #endif
 
+#ifdef __open_xl__
+#pragma pack()
+#else
 #pragma pack(reset)
+#endif

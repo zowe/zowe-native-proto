@@ -11,7 +11,7 @@
 
 #include <cstddef>
 #include <ctime>
-#include <stdlib.h>
+#include <cstdlib>
 #include <string>
 #include <vector>
 #include <fstream>
@@ -23,14 +23,13 @@
 #include "zowex.job.submit.test.hpp"
 #include "zowex.job.manage.test.hpp"
 
-using namespace std;
 using namespace ztst;
 
 void zowex_job_tests()
 {
-  static vector<string> _jobs;
-  static vector<string> _ds;
-  static vector<string> _files;
+  static std::vector<std::string> _jobs;
+  static std::vector<std::string> _ds;
+  static std::vector<std::string> _files;
 
   describe("job",
            [&]() -> void
@@ -38,11 +37,11 @@ void zowex_job_tests()
              // Helper to delete tracked jobs
              auto _cleanup_jobs = [&]() -> void
              {
-               TestLog("Cleaning up " + to_string(_jobs.size()) + " jobs...");
+               TestLog("Cleaning up " + std::to_string(_jobs.size()) + " jobs...");
                for (const auto &jobid : _jobs)
                {
-                 string response;
-                 execute_command_with_output(zowex_command + " job delete " + jobid, response);
+                 std::string response;
+                 execute_command_with_output(zowex_command + " job delete \"" + jobid + "\"", response);
                }
                _jobs.clear();
              };
@@ -50,10 +49,10 @@ void zowex_job_tests()
              // Helper to delete tracked datasets
              auto _cleanup_ds = [&]() -> void
              {
-               TestLog("Cleaning up " + to_string(_ds.size()) + " data sets...");
+               TestLog("Cleaning up " + std::to_string(_ds.size()) + " data sets...");
                for (const auto &ds : _ds)
                {
-                 string response;
+                 std::string response;
                  execute_command_with_output(zowex_command + " data-set delete " + ds, response);
                }
                _ds.clear();

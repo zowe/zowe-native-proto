@@ -36,13 +36,7 @@
 
 #define ZJB_UNKNOWN_RC ""
 
-#if (defined(__IBMCPP__) || defined(__IBMC__))
-#if defined(__clang__)
-#pragma pack(1)
-#else
-#pragma pack(packed)
-#endif
-#endif
+ZNP_PACK_ON
 
 // NOTE(Kelosky): struct is padded to nearest double word boundary; ensure proper alignment for fields
 typedef struct
@@ -72,8 +66,6 @@ typedef struct
 
 } ZJB;
 
-#if (defined(__IBMCPP__) || defined(__IBMC__))
-#pragma pack(reset)
-#endif
+ZNP_PACK_OFF
 
 #endif

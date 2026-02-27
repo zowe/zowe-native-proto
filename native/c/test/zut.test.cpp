@@ -17,7 +17,6 @@
 #include "zut.hpp"
 #include "zstorage.metal.test.h"
 
-using namespace std;
 using namespace ztst;
 
 void zut_tests()
@@ -29,7 +28,7 @@ void zut_tests()
              it("should run shell command",
                 []() -> void
                 {
-                  string output;
+                  std::string output;
                   int rc = zut_run_shell_command("echo 'hello world' 2>&1", output);
                   expect(rc).ToBe(0);
                   // TODO: Why is output an empty string? The below doesn't work
@@ -41,18 +40,18 @@ void zut_tests()
                 []() -> void
                 {
                   char buffer[9] = {0};
-                  string data = "lowercaselongstring";
+                  std::string data = "lowercaselongstring";
                   zut_uppercase_pad_truncate(buffer, data, sizeof(buffer) - 1);
-                  expect(string(buffer)).ToBe("LOWERCAS");
+                  expect(std::string(buffer)).ToBe("LOWERCAS");
                 });
 
              it("should upper case and pad a short string",
                 []() -> void
                 {
                   char buffer[9] = {0};
-                  string data = "abc";
+                  std::string data = "abc";
                   zut_uppercase_pad_truncate(buffer, data, sizeof(buffer) - 1);
-                  expect(string(buffer)).ToBe("ABC     ");
+                  expect(std::string(buffer)).ToBe("ABC     ");
                 });
 
              describe("zut_list_parmlib",
@@ -62,7 +61,7 @@ void zut_tests()
                            []() -> void
                            {
                              ZDIAG diag = {0};
-                             vector<string> parmlibs;
+                             std::vector<std::string> parmlibs;
                              zut_list_parmlib(diag, parmlibs);
                              expect(parmlibs.size()).ToBeGreaterThan(0);
                            });
@@ -105,13 +104,13 @@ void zut_tests()
              describe("zut_read_input",
                       []() -> void
                       {
-                        it("should read all content from a stringstream (simulates non-TTY piped input)",
+                        it("should read all content from a std::stringstream (simulates non-TTY piped input)",
                            []() -> void
                            {
-                             string input_data = "line1\nline2\nline3";
-                             istringstream input_stream(input_data);
+                             std::string input_data = "line1\nline2\nline3";
+                             std::istringstream input_stream(input_data);
 
-                             string result = zut_read_input(input_stream);
+                             std::string result = zut_read_input(input_stream);
 
                              expect(result).ToBe(input_data);
                            });
@@ -119,9 +118,9 @@ void zut_tests()
                         it("should handle empty input stream",
                            []() -> void
                            {
-                             istringstream input_stream("");
+                             std::istringstream input_stream("");
 
-                             string result = zut_read_input(input_stream);
+                             std::string result = zut_read_input(input_stream);
 
                              expect(result).ToBe("");
                              expect(result.length()).ToBe(0);
@@ -130,11 +129,11 @@ void zut_tests()
                         it("should preserve binary data with null bytes",
                            []() -> void
                            {
-                             string input_data = "before\0after";
+                             std::string input_data = "before\0after";
                              input_data[6] = '\0'; // Ensure null byte is present
-                             istringstream input_stream(input_data);
+                             std::istringstream input_stream(input_data);
 
-                             string result = zut_read_input(input_stream);
+                             std::string result = zut_read_input(input_stream);
 
                              expect(result.length()).ToBe(input_data.length());
                              expect(result[6]).ToBe('\0');
@@ -143,10 +142,10 @@ void zut_tests()
                         it("should handle single line without newline",
                            []() -> void
                            {
-                             string input_data = "single line no newline";
-                             istringstream input_stream(input_data);
+                             std::string input_data = "single line no newline";
+                             std::istringstream input_stream(input_data);
 
-                             string result = zut_read_input(input_stream);
+                             std::string result = zut_read_input(input_stream);
 
                              expect(result).ToBe(input_data);
                            });
@@ -154,10 +153,10 @@ void zut_tests()
                         it("should handle content with trailing newline",
                            []() -> void
                            {
-                             string input_data = "line with trailing newline\n";
-                             istringstream input_stream(input_data);
+                             std::string input_data = "line with trailing newline\n";
+                             std::istringstream input_stream(input_data);
 
-                             string result = zut_read_input(input_stream);
+                             std::string result = zut_read_input(input_stream);
 
                              expect(result).ToBe(input_data);
                            });
@@ -165,10 +164,10 @@ void zut_tests()
                         it("should handle multiple consecutive newlines",
                            []() -> void
                            {
-                             string input_data = "line1\n\n\nline2";
-                             istringstream input_stream(input_data);
+                             std::string input_data = "line1\n\n\nline2";
+                             std::istringstream input_stream(input_data);
 
-                             string result = zut_read_input(input_stream);
+                             std::string result = zut_read_input(input_stream);
 
                              expect(result).ToBe(input_data);
                            });
@@ -176,10 +175,10 @@ void zut_tests()
                         it("should handle Windows-style line endings",
                            []() -> void
                            {
-                             string input_data = "line1\r\nline2\r\nline3";
-                             istringstream input_stream(input_data);
+                             std::string input_data = "line1\r\nline2\r\nline3";
+                             std::istringstream input_stream(input_data);
 
-                             string result = zut_read_input(input_stream);
+                             std::string result = zut_read_input(input_stream);
 
                              expect(result).ToBe(input_data);
                            });
@@ -187,14 +186,14 @@ void zut_tests()
                         it("should handle large input",
                            []() -> void
                            {
-                             string input_data;
+                             std::string input_data;
                              for (int i = 0; i < 1000; i++)
                              {
-                               input_data += "Line " + zut_int_to_string(i) + " with some content\n";
+                               input_data += "Line " + std::to_string(i) + " with some content\n";
                              }
-                             istringstream input_stream(input_data);
+                             std::istringstream input_stream(input_data);
 
-                             string result = zut_read_input(input_stream);
+                             std::string result = zut_read_input(input_stream);
 
                              expect(result).ToBe(input_data);
                              expect(result.length()).ToBe(input_data.length());
@@ -208,9 +207,9 @@ void zut_tests()
                            []() -> void
                            {
                              ZDIAG diag = {0};
-                             // Default string literals are IBM-1047 on z/OS
-                             string input = "Hello World";
-                             string result = zut_encode(input, "IBM-1047", "IBM-1047", diag);
+                             // Default std::string literals are IBM-1047 on z/OS
+                             std::string input = "Hello World";
+                             std::string result = zut_encode(input, "IBM-1047", "IBM-1047", diag);
 
                              expect(result).ToBe("Hello World");
                              expect(result.length()).ToBe(input.length());
@@ -223,16 +222,16 @@ void zut_tests()
                              ZDIAG diag = {0};
 
                              // Create ASCII "HELLO" using known byte values: 0x48 0x45 0x4C 0x4C 0x4F
-                             vector<char> ascii_hello = {0x48, 0x45, 0x4C, 0x4C, 0x4F}; // "HELLO" in ASCII
+                             std::vector<char> ascii_hello = {0x48, 0x45, 0x4C, 0x4C, 0x4F}; // "HELLO" in ASCII
 
                              // Convert ASCII to EBCDIC
-                             vector<char> ebcdic_result = zut_encode(ascii_hello.data(), ascii_hello.size(), "ISO8859-1", "IBM-1047", diag);
+                             std::vector<char> ebcdic_result = zut_encode(ascii_hello.data(), ascii_hello.size(), "ISO8859-1", "IBM-1047", diag);
 
                              expect(diag.e_msg_len).ToBe(0);
                              expect(ebcdic_result.size()).ToBe(5);
 
                              // Convert back to ASCII to verify round-trip
-                             vector<char> ascii_roundtrip = zut_encode(ebcdic_result.data(), ebcdic_result.size(), "IBM-1047", "ISO8859-1", diag);
+                             std::vector<char> ascii_roundtrip = zut_encode(ebcdic_result.data(), ebcdic_result.size(), "IBM-1047", "ISO8859-1", diag);
                              expect(diag.e_msg_len).ToBe(0);
                              expect(ascii_roundtrip.size()).ToBe(5);
 
@@ -247,25 +246,25 @@ void zut_tests()
                            []() -> void
                            {
                              ZDIAG diag = {0};
-                             string input = "Test data";
-                             string result = zut_encode(input, "INVALID-ENCODING", "UTF-8", diag);
+                             std::string input = "Test data";
+                             std::string result = zut_encode(input, "INVALID-ENCODING", "UTF-8", diag);
 
                              expect(result).ToBe("");
                              expect(diag.e_msg_len).ToBeGreaterThan(0);
-                             expect(string(diag.e_msg)).ToContain("Cannot open converter");
+                             expect(std::string(diag.e_msg)).ToContain("Cannot open converter");
                            });
 
                         it("should handle round-trip conversion without data loss",
                            []() -> void
                            {
                              ZDIAG diag = {0};
-                             string original = "Round trip test data 12345";
+                             std::string original = "Round trip test data 12345";
 
                              // Convert IBM-1047 -> ISO8859-1 -> IBM-1047
-                             string step1 = zut_encode(original, "IBM-1047", "ISO8859-1", diag);
+                             std::string step1 = zut_encode(original, "IBM-1047", "ISO8859-1", diag);
                              expect(diag.e_msg_len).ToBe(0);
 
-                             string step2 = zut_encode(step1, "ISO8859-1", "IBM-1047", diag);
+                             std::string step2 = zut_encode(step1, "ISO8859-1", "IBM-1047", diag);
                              expect(diag.e_msg_len).ToBe(0);
 
                              expect(step2).ToBe(original);
@@ -276,8 +275,8 @@ void zut_tests()
                            []() -> void
                            {
                              ZDIAG diag = {0};
-                             string input = "";
-                             string result = zut_encode(input, "UTF-8", "ISO8859-1", diag);
+                             std::string input = "";
+                             std::string result = zut_encode(input, "UTF-8", "ISO8859-1", diag);
 
                              expect(result).ToBe("");
                              expect(result.length()).ToBe(0);
@@ -288,11 +287,10 @@ void zut_tests()
                            []() -> void
                            {
                              ZDIAG diag = {0};
-                             string input = "A";
-                             string result = zut_encode(input, "IBM-1047", "ISO8859-1", diag);
-                             char iso8859_1_a[1] = {0x41};
+                             std::string input = "A";
+                             std::string result = zut_encode(input, "IBM-1047", "ISO8859-1", diag);
 
-                             expect(result).ToBe(iso8859_1_a);
+                             expect(result).ToBe(std::string(1, 0x41)); // "A" in ISO8859-1
                              expect(result.length()).ToBe(1);
                              expect(diag.e_msg_len).ToBe(0);
                            });
@@ -301,11 +299,11 @@ void zut_tests()
                            []() -> void
                            {
                              ZDIAG diag = {0};
-                             string input = "1234567890";
-                             string result = zut_encode(input, "IBM-1047", "ISO8859-1", diag);
+                             std::string input = "1234567890";
+                             std::string result = zut_encode(input, "IBM-1047", "ISO8859-1", diag);
                              char iso8859_1_1234567890[10] = {0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x30};
 
-                             expect(result).ToBe(iso8859_1_1234567890);
+                             expect(result).ToBe(std::string(iso8859_1_1234567890, 10));
                              expect(result.length()).ToBe(10);
                              expect(diag.e_msg_len).ToBe(0);
                            });
@@ -314,8 +312,8 @@ void zut_tests()
                            []() -> void
                            {
                              ZDIAG diag = {0};
-                             string input = "Line 1\nLine 2\r\nLine 3\tTabbed";
-                             string result = zut_encode(input, "IBM-1047", "ISO8859-1", diag);
+                             std::string input = "Line 1\nLine 2\r\nLine 3\tTabbed";
+                             std::string result = zut_encode(input, "IBM-1047", "ISO8859-1", diag);
                              char iso8859_1_line_breaks[29] = {0x4C, 0x69, 0x6E, 0x65, 0x20, 0x31, 0x0A, 0x4C, 0x69, 0x6E, 0x65, 0x20, 0x32, 0x0D, 0x0A, 0x4C, 0x69, 0x6E, 0x65, 0x20, 0x33, 0x09, 0x54, 0x61, 0x62, 0x62, 0x65, 0x64};
 
                              expect(result).ToBe(iso8859_1_line_breaks);
@@ -327,12 +325,12 @@ void zut_tests()
                            []() -> void
                            {
                              ZDIAG diag = {0};
-                             string input = "This is a longer piece of text that contains multiple words, "
-                                            "punctuation marks, numbers like 123 and 456, and various symbols "
-                                            "such as @#$%^&*()_+ to test that the encoding conversion maintains "
-                                            "data integrity across larger content blocks.";
-                             string result = zut_encode(input, "IBM-1047", "ISO8859-1", diag);
-                             string result_original = zut_encode(result, "ISO8859-1", "IBM-1047", diag);
+                             std::string input = "This is a longer piece of text that contains multiple words, "
+                                                 "punctuation marks, numbers like 123 and 456, and various symbols "
+                                                 "such as @#$%^&*()_+ to test that the encoding conversion maintains "
+                                                 "data integrity across larger content blocks.";
+                             std::string result = zut_encode(input, "IBM-1047", "ISO8859-1", diag);
+                             std::string result_original = zut_encode(result, "ISO8859-1", "IBM-1047", diag);
 
                              expect(result_original).ToBe(input);
                              expect(result.length()).ToBe(input.length());
@@ -343,38 +341,38 @@ void zut_tests()
                            []() -> void
                            {
                              ZDIAG diag = {0};
-                             string input = "Test data";
-                             string result = zut_encode(input, "INVALID-ENCODING", "UTF-8", diag);
+                             std::string input = "Test data";
+                             std::string result = zut_encode(input, "INVALID-ENCODING", "UTF-8", diag);
 
                              expect(result).ToBe("");
                              expect(diag.e_msg_len).ToBeGreaterThan(0);
-                             expect(string(diag.e_msg)).ToContain("Cannot open converter");
+                             expect(std::string(diag.e_msg)).ToContain("Cannot open converter");
                            });
 
                         it("should handle target encoding failure gracefully",
                            []() -> void
                            {
                              ZDIAG diag = {0};
-                             string input = "Test data";
-                             string result = zut_encode(input, "UTF-8", "INVALID-TARGET", diag);
+                             std::string input = "Test data";
+                             std::string result = zut_encode(input, "UTF-8", "INVALID-TARGET", diag);
 
                              expect(result).ToBe("");
                              expect(diag.e_msg_len).ToBeGreaterThan(0);
-                             expect(string(diag.e_msg)).ToContain("Cannot open converter");
+                             expect(std::string(diag.e_msg)).ToContain("Cannot open converter");
                            });
 
-                        it("should handle vector conversion with same encodings",
+                        it("should handle std::vector conversion with same encodings",
                            []() -> void
                            {
                              ZDIAG diag = {0};
-                             string input = "Same encoding vector test";
+                             std::string input = "Same encoding vector test";
 
-                             vector<char> result = zut_encode(input.data(), input.size(), "UTF-8", "UTF-8", diag);
+                             std::vector<char> result = zut_encode(input.data(), input.size(), "UTF-8", "UTF-8", diag);
 
                              expect(diag.e_msg_len).ToBe(0);
                              expect(result.size()).ToBe(input.length());
 
-                             string result_str(result.begin(), result.end());
+                             std::string result_str(result.begin(), result.end());
                              expect(result_str).ToBe(input);
                            });
 
@@ -384,9 +382,9 @@ void zut_tests()
                              ZDIAG diag = {0};
 
                              // Create test data with null bytes and binary content
-                             vector<char> binary_input = {'H', 'e', 'l', 'l', 'o', '\0', 'W', 'o', 'r', 'l', 'd'};
+                             std::vector<char> binary_input = {'H', 'e', 'l', 'l', 'o', '\0', 'W', 'o', 'r', 'l', 'd'};
 
-                             vector<char> result = zut_encode(binary_input.data(), binary_input.size(), "UTF-8", "UTF-8", diag);
+                             std::vector<char> result = zut_encode(binary_input.data(), binary_input.size(), "UTF-8", "UTF-8", diag);
 
                              expect(diag.e_msg_len).ToBe(0);
                              expect(result.size()).ToBe(binary_input.size());
@@ -405,16 +403,16 @@ void zut_tests()
 
                              // Create UTF-8 "Hello, world!" using known byte values
                              // UTF-8 bytes for "Hello, world!": 0x48 0x65 0x6C 0x6C 0x6F 0x2C 0x20 0x77 0x6F 0x72 0x6C 0x64 0x21
-                             vector<char> utf8_hello_world = {0x48, 0x65, 0x6C, 0x6C, 0x6F, 0x2C, 0x20, 0x77, 0x6F, 0x72, 0x6C, 0x64, 0x21};
+                             std::vector<char> utf8_hello_world = {0x48, 0x65, 0x6C, 0x6C, 0x6F, 0x2C, 0x20, 0x77, 0x6F, 0x72, 0x6C, 0x64, 0x21};
 
                              // Convert UTF-8 to EBCDIC (IBM-1047)
-                             vector<char> ebcdic_result = zut_encode(utf8_hello_world.data(), utf8_hello_world.size(), "UTF-8", "IBM-1047", diag);
+                             std::vector<char> ebcdic_result = zut_encode(utf8_hello_world.data(), utf8_hello_world.size(), "UTF-8", "IBM-1047", diag);
 
                              expect(diag.e_msg_len).ToBe(0);
                              expect(ebcdic_result.size()).ToBe(13); // "Hello, world!" is 13 characters
 
                              // Convert back to UTF-8 to verify round-trip
-                             vector<char> utf8_roundtrip = zut_encode(ebcdic_result.data(), ebcdic_result.size(), "IBM-1047", "UTF-8", diag);
+                             std::vector<char> utf8_roundtrip = zut_encode(ebcdic_result.data(), ebcdic_result.size(), "IBM-1047", "UTF-8", diag);
                              expect(diag.e_msg_len).ToBe(0);
                              expect(utf8_roundtrip.size()).ToBe(13);
 
@@ -431,7 +429,7 @@ void zut_tests()
                              ZDIAG diag = {0};
 
                              // UTF-8 bytes for emoji characters:
-                             vector<char> utf8_emoji = {
+                             std::vector<char> utf8_emoji = {
                                  0xF0, 0x9F, 0xA6, 0x80, // 🦀
                                  0xF0, 0x9F, 0x8F, 0x86, // 🏆
                                  0xF0, 0x9F, 0x98, 0x8F, // 😏
@@ -440,13 +438,13 @@ void zut_tests()
                              };
 
                              // Convert UTF-8 to UCS-2
-                             vector<char> ucs2_result = zut_encode(utf8_emoji.data(), utf8_emoji.size(), "UTF-8", "UCS-2", diag);
+                             std::vector<char> ucs2_result = zut_encode(utf8_emoji.data(), utf8_emoji.size(), "UTF-8", "UCS-2", diag);
 
                              expect(diag.e_msg_len).ToBe(0);
                              expect(ucs2_result.size()).ToBeGreaterThan(0); // UCS-2 will have different size
 
                              // Convert back to UTF-8 to verify round-trip
-                             vector<char> utf8_roundtrip = zut_encode(ucs2_result.data(), ucs2_result.size(), "UCS-2", "UTF-8", diag);
+                             std::vector<char> utf8_roundtrip = zut_encode(ucs2_result.data(), ucs2_result.size(), "UCS-2", "UTF-8", diag);
                              expect(diag.e_msg_len).ToBe(0);
                              expect(utf8_roundtrip.size()).ToBe(utf8_emoji.size());
 
@@ -462,17 +460,17 @@ void zut_tests()
                            {
                              ZDIAG diag = {0};
 
-                             // Note: String literals on z/OS are typically IBM-1047 by default
-                             string input_str = "It's a clean machine";
+                             // Note: string literals on z/OS are typically IBM-1047 by default
+                             std::string input_str = "It's a clean machine";
 
                              // Convert IBM-1047 to IBM-037
-                             string result = zut_encode(input_str, "IBM-1047", "IBM-037", diag);
+                             std::string result = zut_encode(input_str, "IBM-1047", "IBM-037", diag);
 
                              expect(diag.e_msg_len).ToBe(0);
                              expect(result.length()).ToBe(input_str.length());
 
                              // Convert back to IBM-1047 to verify round-trip
-                             string roundtrip = zut_encode(result, "IBM-037", "IBM-1047", diag);
+                             std::string roundtrip = zut_encode(result, "IBM-037", "IBM-1047", diag);
                              expect(diag.e_msg_len).ToBe(0);
                              expect(roundtrip.length()).ToBe(input_str.length());
 
@@ -484,14 +482,14 @@ void zut_tests()
                            []() -> void
                            {
                              ZDIAG diag = {0};
-                             string input_str = "Muller & Sohne GmbH - Grosse: 15cm"; // Using basic ASCII chars for compatibility
+                             std::string input_str = "Muller & Sohne GmbH - Grosse: 15cm"; // Using basic ASCII chars for compatibility
 
                              // Convert IBM-1047 to CCSID 273 (German EBCDIC)
-                             string result = zut_encode(input_str, "IBM-1047", "IBM-273", diag);
+                             std::string result = zut_encode(input_str, "IBM-1047", "IBM-273", diag);
                              expect(diag.e_msg_len).ToBe(0);
 
                              // Convert back to verify round-trip
-                             string roundtrip = zut_encode(result, "IBM-273", "IBM-1047", diag);
+                             std::string roundtrip = zut_encode(result, "IBM-273", "IBM-1047", diag);
                              expect(diag.e_msg_len).ToBe(0);
                              expect(roundtrip).ToBe(input_str);
                            });
@@ -500,14 +498,14 @@ void zut_tests()
                            []() -> void
                            {
                              ZDIAG diag = {0};
-                             string input_str = "International characters & symbols";
+                             std::string input_str = "International characters & symbols";
 
                              // Convert IBM-1047 to CCSID 500
-                             string result = zut_encode(input_str, "IBM-1047", "IBM-500", diag);
+                             std::string result = zut_encode(input_str, "IBM-1047", "IBM-500", diag);
                              expect(diag.e_msg_len).ToBe(0);
 
                              // Convert back to verify round-trip
-                             string roundtrip = zut_encode(result, "IBM-500", "IBM-1047", diag);
+                             std::string roundtrip = zut_encode(result, "IBM-500", "IBM-1047", diag);
                              expect(diag.e_msg_len).ToBe(0);
                              expect(roundtrip).ToBe(input_str);
                            });
@@ -516,12 +514,12 @@ void zut_tests()
                            []() -> void
                            {
                              ZDIAG diag = {0};
-                             string input_str = "50.00 - proper behaviour"; // Using basic chars for compatibility
+                             std::string input_str = "50.00 - proper behaviour"; // Using basic chars for compatibility
 
-                             string result = zut_encode(input_str, "IBM-1047", "IBM-285", diag);
+                             std::string result = zut_encode(input_str, "IBM-1047", "IBM-285", diag);
                              expect(diag.e_msg_len).ToBe(0);
 
-                             string roundtrip = zut_encode(result, "IBM-285", "IBM-1047", diag);
+                             std::string roundtrip = zut_encode(result, "IBM-285", "IBM-1047", diag);
                              expect(diag.e_msg_len).ToBe(0);
                              expect(roundtrip).ToBe(input_str);
                            });
@@ -530,12 +528,12 @@ void zut_tests()
                            []() -> void
                            {
                              ZDIAG diag = {0};
-                             string input_str = "Cafe francais - resume naif"; // Using basic chars for compatibility
+                             std::string input_str = "Cafe francais - resume naif"; // Using basic chars for compatibility
 
-                             string result = zut_encode(input_str, "IBM-1047", "IBM-297", diag);
+                             std::string result = zut_encode(input_str, "IBM-1047", "IBM-297", diag);
                              expect(diag.e_msg_len).ToBe(0);
 
-                             string roundtrip = zut_encode(result, "IBM-297", "IBM-1047", diag);
+                             std::string roundtrip = zut_encode(result, "IBM-297", "IBM-1047", diag);
                              expect(diag.e_msg_len).ToBe(0);
                              expect(roundtrip).ToBe(input_str);
                            });
@@ -544,12 +542,12 @@ void zut_tests()
                            []() -> void
                            {
                              ZDIAG diag = {0};
-                             string input_str = "Nino espanol - ano manana"; // Using basic chars for compatibility
+                             std::string input_str = "Nino espanol - ano manana"; // Using basic chars for compatibility
 
-                             string result = zut_encode(input_str, "IBM-1047", "IBM-284", diag);
+                             std::string result = zut_encode(input_str, "IBM-1047", "IBM-284", diag);
                              expect(diag.e_msg_len).ToBe(0);
 
-                             string roundtrip = zut_encode(result, "IBM-284", "IBM-1047", diag);
+                             std::string roundtrip = zut_encode(result, "IBM-284", "IBM-1047", diag);
                              expect(diag.e_msg_len).ToBe(0);
                              expect(roundtrip).ToBe(input_str);
                            });
@@ -558,12 +556,12 @@ void zut_tests()
                            []() -> void
                            {
                              ZDIAG diag = {0};
-                             string input_str = "Citta italiana - piu cosi"; // Using basic chars for compatibility
+                             std::string input_str = "Citta italiana - piu cosi"; // Using basic chars for compatibility
 
-                             string result = zut_encode(input_str, "IBM-1047", "IBM-280", diag);
+                             std::string result = zut_encode(input_str, "IBM-1047", "IBM-280", diag);
                              expect(diag.e_msg_len).ToBe(0);
 
-                             string roundtrip = zut_encode(result, "IBM-280", "IBM-1047", diag);
+                             std::string roundtrip = zut_encode(result, "IBM-280", "IBM-1047", diag);
                              expect(diag.e_msg_len).ToBe(0);
                              expect(roundtrip).ToBe(input_str);
                            });
@@ -572,12 +570,12 @@ void zut_tests()
                            []() -> void
                            {
                              ZDIAG diag = {0};
-                             string input_str = "Price: 125.50 USD 150.00"; // Using basic chars, Euro symbol handling may vary
+                             std::string input_str = "Price: 125.50 USD 150.00"; // Using basic chars, Euro symbol handling may vary
 
-                             string result = zut_encode(input_str, "IBM-037", "IBM-1140", diag);
+                             std::string result = zut_encode(input_str, "IBM-037", "IBM-1140", diag);
                              expect(diag.e_msg_len).ToBe(0);
 
-                             string roundtrip = zut_encode(result, "IBM-1140", "IBM-037", diag);
+                             std::string roundtrip = zut_encode(result, "IBM-1140", "IBM-037", diag);
                              expect(diag.e_msg_len).ToBe(0);
                              expect(roundtrip).ToBe(input_str);
                            });
@@ -586,12 +584,12 @@ void zut_tests()
                            []() -> void
                            {
                              ZDIAG diag = {0};
-                             string input_str = "Preis: 99,99 - Grosse: Muller"; // Using basic chars for compatibility
+                             std::string input_str = "Preis: 99,99 - Grosse: Muller"; // Using basic chars for compatibility
 
-                             string result = zut_encode(input_str, "IBM-273", "IBM-1141", diag);
+                             std::string result = zut_encode(input_str, "IBM-273", "IBM-1141", diag);
                              expect(diag.e_msg_len).ToBe(0);
 
-                             string roundtrip = zut_encode(result, "IBM-1141", "IBM-273", diag);
+                             std::string roundtrip = zut_encode(result, "IBM-1141", "IBM-273", diag);
                              expect(diag.e_msg_len).ToBe(0);
                              expect(roundtrip).ToBe(input_str);
                            });
@@ -600,12 +598,12 @@ void zut_tests()
                            []() -> void
                            {
                              ZDIAG diag = {0};
-                             string input_str = "ASCII + Latin extras: cafe resume";
+                             std::string input_str = "ASCII + Latin extras: cafe resume";
 
-                             string result = zut_encode(input_str, "IBM-1047", "ISO8859-1", diag);
+                             std::string result = zut_encode(input_str, "IBM-1047", "ISO8859-1", diag);
                              expect(diag.e_msg_len).ToBe(0);
 
-                             string roundtrip = zut_encode(result, "ISO8859-1", "IBM-1047", diag);
+                             std::string roundtrip = zut_encode(result, "ISO8859-1", "IBM-1047", diag);
                              expect(diag.e_msg_len).ToBe(0);
                              expect(roundtrip).ToBe(input_str);
                            });
@@ -614,12 +612,12 @@ void zut_tests()
                            []() -> void
                            {
                              ZDIAG diag = {0};
-                             string input_str = "Windows smart quotes - em-dash"; // Using basic chars for compatibility
+                             std::string input_str = "Windows smart quotes - em-dash"; // Using basic chars for compatibility
 
-                             string result = zut_encode(input_str, "IBM-1047", "IBM-1252", diag);
+                             std::string result = zut_encode(input_str, "IBM-1047", "IBM-1252", diag);
                              expect(diag.e_msg_len).ToBe(0);
 
-                             string roundtrip = zut_encode(result, "IBM-1252", "IBM-1047", diag);
+                             std::string roundtrip = zut_encode(result, "IBM-1252", "IBM-1047", diag);
                              expect(diag.e_msg_len).ToBe(0);
                              expect(roundtrip).ToBe(input_str);
                            });
@@ -628,12 +626,12 @@ void zut_tests()
                            []() -> void
                            {
                              ZDIAG diag = {0};
-                             string input_str = "Katakana Test"; // Using basic chars for compatibility
+                             std::string input_str = "Katakana Test"; // Using basic chars for compatibility
 
-                             string result = zut_encode(input_str, "IBM-1047", "IBM-290", diag);
+                             std::string result = zut_encode(input_str, "IBM-1047", "IBM-290", diag);
                              expect(diag.e_msg_len).ToBe(0);
 
-                             string roundtrip = zut_encode(result, "IBM-290", "IBM-1047", diag);
+                             std::string roundtrip = zut_encode(result, "IBM-290", "IBM-1047", diag);
                              expect(diag.e_msg_len).ToBe(0);
                              expect(roundtrip).ToBe(input_str);
                            });
@@ -642,12 +640,12 @@ void zut_tests()
                            []() -> void
                            {
                              ZDIAG diag = {0};
-                             string input_str = "Simplified Chinese Test"; // Using basic chars for compatibility
+                             std::string input_str = "Simplified Chinese Test"; // Using basic chars for compatibility
 
-                             string result = zut_encode(input_str, "IBM-1047", "IBM-935", diag);
+                             std::string result = zut_encode(input_str, "IBM-1047", "IBM-935", diag);
                              expect(diag.e_msg_len).ToBe(0);
 
-                             string roundtrip = zut_encode(result, "IBM-935", "IBM-1047", diag);
+                             std::string roundtrip = zut_encode(result, "IBM-935", "IBM-1047", diag);
                              expect(diag.e_msg_len).ToBe(0);
                              expect(roundtrip).ToBe(input_str);
                            });
@@ -656,12 +654,12 @@ void zut_tests()
                            []() -> void
                            {
                              ZDIAG diag = {0};
-                             string input_str = "Traditional Chinese Test"; // Using basic chars for compatibility
+                             std::string input_str = "Traditional Chinese Test"; // Using basic chars for compatibility
 
-                             string result = zut_encode(input_str, "IBM-1047", "IBM-937", diag);
+                             std::string result = zut_encode(input_str, "IBM-1047", "IBM-937", diag);
                              expect(diag.e_msg_len).ToBe(0);
 
-                             string roundtrip = zut_encode(result, "IBM-937", "IBM-1047", diag);
+                             std::string roundtrip = zut_encode(result, "IBM-937", "IBM-1047", diag);
                              expect(diag.e_msg_len).ToBe(0);
                              expect(roundtrip).ToBe(input_str);
                            });
@@ -670,12 +668,12 @@ void zut_tests()
                            []() -> void
                            {
                              ZDIAG diag = {0};
-                             string input_str = "Arabic Test"; // Using basic chars for compatibility
+                             std::string input_str = "Arabic Test"; // Using basic chars for compatibility
 
-                             string result = zut_encode(input_str, "IBM-1047", "IBM-420", diag);
+                             std::string result = zut_encode(input_str, "IBM-1047", "IBM-420", diag);
                              expect(diag.e_msg_len).ToBe(0);
 
-                             string roundtrip = zut_encode(result, "IBM-420", "IBM-1047", diag);
+                             std::string roundtrip = zut_encode(result, "IBM-420", "IBM-1047", diag);
                              expect(diag.e_msg_len).ToBe(0);
                              expect(roundtrip).ToBe(input_str);
                            });
@@ -684,12 +682,12 @@ void zut_tests()
                            []() -> void
                            {
                              ZDIAG diag = {0};
-                             string input_str = "Hebrew Test"; // Using basic chars for compatibility
+                             std::string input_str = "Hebrew Test"; // Using basic chars for compatibility
 
-                             string result = zut_encode(input_str, "IBM-1047", "IBM-424", diag);
+                             std::string result = zut_encode(input_str, "IBM-1047", "IBM-424", diag);
                              expect(diag.e_msg_len).ToBe(0);
 
-                             string roundtrip = zut_encode(result, "IBM-424", "IBM-1047", diag);
+                             std::string roundtrip = zut_encode(result, "IBM-424", "IBM-1047", diag);
                              expect(diag.e_msg_len).ToBe(0);
                              expect(roundtrip).ToBe(input_str);
                            });
@@ -698,12 +696,12 @@ void zut_tests()
                            []() -> void
                            {
                              ZDIAG diag = {0};
-                             string input_str = "Pristup cestina - Laszlo"; // Using basic chars for compatibility
+                             std::string input_str = "Pristup cestina - Laszlo"; // Using basic chars for compatibility
 
-                             string result = zut_encode(input_str, "IBM-1047", "IBM-870", diag);
+                             std::string result = zut_encode(input_str, "IBM-1047", "IBM-870", diag);
                              expect(diag.e_msg_len).ToBe(0);
 
-                             string roundtrip = zut_encode(result, "IBM-870", "IBM-1047", diag);
+                             std::string roundtrip = zut_encode(result, "IBM-870", "IBM-1047", diag);
                              expect(diag.e_msg_len).ToBe(0);
                              expect(roundtrip).ToBe(input_str);
                            });

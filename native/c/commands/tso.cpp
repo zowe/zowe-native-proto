@@ -13,22 +13,21 @@
 #include "../ztso.hpp"
 
 using namespace parser;
-using namespace std;
 
 namespace tso
 {
 int handle_tso_issue(InvocationContext &context)
 {
   int rc = 0;
-  string command = context.get<std::string>("command", "");
-  string response;
+  std::string command = context.get<std::string>("command", "");
+  std::string response;
 
   rc = ztso_issue(command, response);
 
   if (0 != rc)
   {
-    context.error_stream() << "Error running command, rc '" << rc << "'" << endl;
-    context.error_stream() << "  Details: " << response << endl;
+    context.error_stream() << "Error running command, rc '" << rc << "'" << std::endl;
+    context.error_stream() << "  Details: " << response << std::endl;
   }
 
   context.output_stream() << response;

@@ -24,7 +24,7 @@
 
 #include <sys/stat.h>
 #include <unistd.h>
-#include <errno.h>
+#include <cerrno>
 
 typedef zlog_level_t LogLevel;
 
@@ -115,7 +115,7 @@ public:
     char cwd[260] = {0};
     std::string log_path_str;
 
-    if (getcwd(cwd, sizeof(cwd)) != NULL)
+    if (getcwd(cwd, sizeof(cwd)) != nullptr)
     {
       log_path_str = std::string(cwd) + "/logs/zowex.log";
     }

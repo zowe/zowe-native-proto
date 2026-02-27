@@ -19,7 +19,6 @@
 
 using namespace ast;
 using namespace parser;
-using namespace std;
 using namespace commands::common;
 
 namespace job
@@ -35,7 +34,7 @@ namespace job
  * @param pattern Output parameter for the extracted pattern
  * @return true if input is a regex pattern, false otherwise
  */
-bool parse_regex_pattern(const string &input, string &pattern)
+bool parse_regex_pattern(const std::string &input, std::string &pattern)
 {
   pattern = input;
 
@@ -53,9 +52,9 @@ int handle_job_list(InvocationContext &context)
 {
   int rc = 0;
   ZJB zjb = {};
-  string owner_name = context.get<string>("owner", "");
-  string prefix_name = context.get<string>("prefix", "*");
-  string status_name = context.get<string>("status", "*");
+  std::string owner_name = context.get<std::string>("owner", "");
+  std::string prefix_name = context.get<std::string>("prefix", "*");
+  std::string status_name = context.get<std::string>("status", "*");
   long long max_entries = context.get<long long>("max-entries", 0);
   bool warn = context.get<bool>("warn", true);
 
@@ -64,7 +63,7 @@ int handle_job_list(InvocationContext &context)
     zjb.jobs_max = max_entries;
   }
 
-  vector<ZJob> jobs;
+  std::vector<ZJob> jobs;
   rc = zjb_list_by_owner(&zjb, owner_name, prefix_name, status_name, jobs);
 
   if (RTNCD_SUCCESS == rc || RTNCD_WARNING == rc)
@@ -72,44 +71,44 @@ int handle_job_list(InvocationContext &context)
     bool emit_csv = context.get<bool>("response-format-csv", false);
     const auto entries_array = arr();
 
-    for (vector<ZJob>::iterator it = jobs.begin(); it != jobs.end(); it++)
+    for (const auto &job : jobs)
     {
       if (emit_csv)
       {
-        vector<string> fields;
+        std::vector<std::string> fields;
         fields.reserve(5);
-        fields.push_back(it->jobid);
-        fields.push_back(it->jobname);
-        fields.push_back(it->owner);
-        fields.push_back(it->status);
-        fields.push_back(it->retcode);
-        context.output_stream() << zut_format_as_csv(fields) << endl;
+        fields.push_back(job.jobid);
+        fields.push_back(job.jobname);
+        fields.push_back(job.owner);
+        fields.push_back(job.status);
+        fields.push_back(job.retcode);
+        context.output_stream() << zut_format_as_csv(fields) << std::endl;
       }
       else
       {
-        context.output_stream() << it->jobid << " " << it->jobname << " " << it->owner << " " << left << setw(7) << it->status << " " << it->retcode << endl;
+        context.output_stream() << job.jobid << " " << job.jobname << " " << job.owner << " " << std::left << std::setw(7) << job.status << " " << job.retcode << std::endl;
       }
 
       const auto entry = obj();
-      entry->set("id", str(it->jobid));
-      string trimmed_name = it->jobname;
+      entry->set("id", str(job.jobid));
+      std::string trimmed_name = job.jobname;
       entry->set("name", str(zut_rtrim(trimmed_name)));
-      trimmed_name = it->subsystem;
+      trimmed_name = job.subsystem;
       if (!zut_rtrim(trimmed_name).empty())
         entry->set("subsystem", str(trimmed_name));
-      trimmed_name = it->owner;
+      trimmed_name = job.owner;
       entry->set("owner", str(zut_rtrim(trimmed_name)));
-      entry->set("status", str(it->status));
-      entry->set("type", str(it->type));
-      trimmed_name = it->jobclass;
+      entry->set("status", str(job.status));
+      entry->set("type", str(job.type));
+      trimmed_name = job.jobclass;
       entry->set("class", str(zut_rtrim(trimmed_name)));
-      if (!it->retcode.empty())
-        entry->set("retcode", str(it->retcode));
-      trimmed_name = it->correlator;
+      if (!job.retcode.empty())
+        entry->set("retcode", str(job.retcode));
+      trimmed_name = job.correlator;
       if (!zut_rtrim(trimmed_name).empty())
         entry->set("correlator", str(trimmed_name));
-      entry->set("phase", i64(it->phase));
-      entry->set("phaseName", str(it->full_status));
+      entry->set("phase", i64(job.phase));
+      entry->set("phaseName", str(job.full_status));
       entries_array->push(entry);
     }
 
@@ -121,13 +120,13 @@ int handle_job_list(InvocationContext &context)
   {
     if (warn)
     {
-      context.error_stream() << "Warning: results truncated" << endl;
+      context.error_stream() << "Warning: results truncated" << std::endl;
     }
   }
   if (RTNCD_SUCCESS != rc && RTNCD_WARNING != rc)
   {
-    context.error_stream() << "Error: could not list jobs for: '" << owner_name << "' rc: '" << rc << "'" << endl;
-    context.error_stream() << "  Details: " << zjb.diag.e_msg << endl;
+    context.error_stream() << "Error: could not list jobs for: '" << owner_name << "' rc: '" << rc << "'" << std::endl;
+    context.error_stream() << "  Details: " << zjb.diag.e_msg << std::endl;
     return RTNCD_FAILURE;
   }
 
@@ -138,7 +137,7 @@ int handle_job_list_files(InvocationContext &context)
 {
   int rc = 0;
   ZJB zjb = {};
-  string jobid = context.get<std::string>("jobid", "");
+  std::string jobid = context.get<std::string>("jobid", "");
   long long max_entries = context.get<long long>("max-entries", 0);
   bool warn = context.get<bool>("warn", true);
 
@@ -147,40 +146,40 @@ int handle_job_list_files(InvocationContext &context)
     zjb.dds_max = max_entries;
   }
 
-  vector<ZJobDD> job_dds;
+  std::vector<ZJobDD> job_dds;
   rc = zjb_list_dds(&zjb, jobid, job_dds);
   if (RTNCD_SUCCESS == rc || RTNCD_WARNING == rc)
   {
     bool emit_csv = context.get<bool>("response-format-csv", false);
-    std::vector<string> fields;
+    std::vector<std::string> fields;
     fields.reserve(5);
     const auto entries_array = arr();
 
-    for (vector<ZJobDD>::iterator it = job_dds.begin(); it != job_dds.end(); ++it)
+    for (const auto &dd : job_dds)
     {
-      fields.push_back(it->ddn);
-      fields.push_back(it->dsn);
-      fields.push_back(zut_int_to_string(it->key));
-      fields.push_back(it->stepname);
-      fields.push_back(it->procstep);
+      fields.push_back(dd.ddn);
+      fields.push_back(dd.dsn);
+      fields.push_back(std::to_string(dd.key));
+      fields.push_back(dd.stepname);
+      fields.push_back(dd.procstep);
       if (emit_csv)
       {
-        context.output_stream() << zut_format_as_csv(fields) << endl;
+        context.output_stream() << zut_format_as_csv(fields) << std::endl;
       }
       else
       {
-        context.output_stream() << left << setw(9) << it->ddn << " " << it->dsn << " " << setw(4) << it->key << " " << it->stepname << " " << it->procstep << endl;
+        context.output_stream() << std::left << std::setw(9) << dd.ddn << " " << dd.dsn << " " << std::setw(4) << dd.key << " " << dd.stepname << " " << dd.procstep << std::endl;
       }
 
       const auto entry = obj();
-      string trimmed_name = it->ddn;
+      std::string trimmed_name = dd.ddn;
       entry->set("ddname", str(zut_rtrim(trimmed_name)));
-      trimmed_name = it->dsn;
+      trimmed_name = dd.dsn;
       entry->set("dsname", str(zut_rtrim(trimmed_name)));
-      entry->set("id", i64(it->key));
-      trimmed_name = it->stepname;
+      entry->set("id", i64(dd.key));
+      trimmed_name = dd.stepname;
       entry->set("stepname", str(zut_rtrim(trimmed_name)));
-      trimmed_name = it->procstep;
+      trimmed_name = dd.procstep;
       entry->set("procstep", str(zut_rtrim(trimmed_name)));
       entries_array->push(entry);
     }
@@ -194,14 +193,14 @@ int handle_job_list_files(InvocationContext &context)
   {
     if (warn)
     {
-      context.error_stream() << "Warning: " << zjb.diag.e_msg << endl;
+      context.error_stream() << "Warning: " << zjb.diag.e_msg << std::endl;
     }
   }
 
   if (RTNCD_SUCCESS != rc && RTNCD_WARNING != rc)
   {
-    context.error_stream() << "Error: could not list files for: '" << jobid << "' rc: '" << rc << "'" << endl;
-    context.error_stream() << "  Details: " << zjb.diag.e_msg << endl;
+    context.error_stream() << "Error: could not list files for: '" << jobid << "' rc: '" << rc << "'" << std::endl;
+    context.error_stream() << "  Details: " << zjb.diag.e_msg << std::endl;
     return RTNCD_FAILURE;
   }
 
@@ -213,18 +212,18 @@ int handle_job_list_proclib(InvocationContext &context)
   int rc = 0;
   ZJB zjb = {};
 
-  vector<string> proclib;
+  std::vector<std::string> proclib;
   rc = zjb_list_proclib(&zjb, proclib);
   if (0 != rc)
   {
-    context.error_stream() << "Error: could not list proclib for rc: '" << rc << "'" << endl;
-    context.error_stream() << "  Details: " << zjb.diag.e_msg << endl;
+    context.error_stream() << "Error: could not list proclib for rc: '" << rc << "'" << std::endl;
+    context.error_stream() << "  Details: " << zjb.diag.e_msg << std::endl;
     return RTNCD_FAILURE;
   }
 
-  for (vector<string>::iterator it = proclib.begin(); it != proclib.end(); it++)
+  for (const auto &lib : proclib)
   {
-    context.output_stream() << *it << endl;
+    context.output_stream() << lib << std::endl;
   }
 
   return RTNCD_SUCCESS;
@@ -234,8 +233,8 @@ int handle_job_view_status(InvocationContext &context)
 {
   int rc = 0;
   ZJB zjb = {};
-  ZJob job = {0};
-  string jobid = context.get<std::string>("jobid", "");
+  ZJob job = {};
+  std::string jobid = context.get<std::string>("jobid", "");
 
   bool emit_csv = context.get<bool>("response-format-csv", false);
 
@@ -243,14 +242,14 @@ int handle_job_view_status(InvocationContext &context)
 
   if (0 != rc)
   {
-    context.error_stream() << "Error: could not view job status for: '" << jobid << "' rc: '" << rc << "'" << endl;
-    context.error_stream() << "  Details: " << zjb.diag.e_msg << endl;
+    context.error_stream() << "Error: could not view job status for: '" << jobid << "' rc: '" << rc << "'" << std::endl;
+    context.error_stream() << "  Details: " << zjb.diag.e_msg << std::endl;
     return RTNCD_FAILURE;
   }
 
   if (emit_csv)
   {
-    vector<string> fields;
+    std::vector<std::string> fields;
     fields.reserve(7);
     fields.push_back(job.jobid);
     fields.push_back(job.jobname);
@@ -259,18 +258,18 @@ int handle_job_view_status(InvocationContext &context)
     fields.push_back(job.retcode);
     fields.push_back(job.correlator);
     fields.push_back(job.full_status);
-    context.output_stream() << zut_format_as_csv(fields) << endl;
+    context.output_stream() << zut_format_as_csv(fields) << std::endl;
   }
   else
   {
-    string trimmed_correlator = job.correlator;
+    std::string trimmed_correlator = job.correlator;
     zut_rtrim(trimmed_correlator);
-    context.output_stream() << job.jobid << " " << job.jobname << " " << job.owner << " " << left << setw(7) << job.status << " " << left << setw(10) << job.retcode << " " << left << setw(33) << trimmed_correlator << " " << job.full_status << endl;
+    context.output_stream() << job.jobid << " " << job.jobname << " " << job.owner << " " << std::left << std::setw(7) << job.status << " " << std::left << std::setw(10) << job.retcode << " " << std::left << std::setw(33) << trimmed_correlator << " " << job.full_status << std::endl;
   }
 
   const auto result = obj();
   result->set("id", str(jobid));
-  string trimmed_name = job.jobname;
+  std::string trimmed_name = job.jobname;
   result->set("name", str(zut_rtrim(trimmed_name)));
   trimmed_name = job.subsystem;
   if (!zut_rtrim(trimmed_name).empty())
@@ -298,7 +297,7 @@ int handle_job_view_file(InvocationContext &context)
   // Note: Middleware doesn't use this command - it lists jobs by ID instead of DSN
   int rc = 0;
   ZJB zjb = {};
-  string dsn = context.get<std::string>("dsn", "");
+  std::string dsn = context.get<std::string>("dsn", "");
 
   if (context.has("encoding"))
   {
@@ -313,13 +312,13 @@ int handle_job_view_file(InvocationContext &context)
     }
   }
 
-  string resp;
+  std::string resp;
   rc = zjb_read_job_content_by_dsn(&zjb, dsn, resp);
 
   if (0 != rc)
   {
-    context.error_stream() << "Error: could not view job file for: '" << dsn << "' rc: '" << rc << "'" << endl;
-    context.error_stream() << "  Details: " << zjb.diag.e_msg << endl;
+    context.error_stream() << "Error: could not view job file for: '" << dsn << "' rc: '" << rc << "'" << std::endl;
+    context.error_stream() << "  Details: " << zjb.diag.e_msg << std::endl;
     return RTNCD_FAILURE;
   }
 
@@ -342,7 +341,7 @@ int handle_job_view_file_by_id(InvocationContext &context)
 {
   int rc = 0;
   ZJB zjb = {};
-  string jobid = context.get<std::string>("jobid", "");
+  std::string jobid = context.get<std::string>("jobid", "");
   long long key = context.get<long long>("key", 0);
 
   if (context.has("encoding"))
@@ -358,13 +357,13 @@ int handle_job_view_file_by_id(InvocationContext &context)
     }
   }
 
-  string resp;
+  std::string resp;
   rc = zjb_read_jobs_output_by_key(&zjb, jobid, key, resp);
 
   if (0 != rc)
   {
-    context.error_stream() << "Error: could not view job file for: '" << jobid << "' with key '" << key << "' rc: '" << rc << "'" << endl;
-    context.error_stream() << "  Details: " << zjb.diag.e_msg << endl;
+    context.error_stream() << "Error: could not view job file for: '" << jobid << "' with key '" << key << "' rc: '" << rc << "'" << std::endl;
+    context.error_stream() << "  Details: " << zjb.diag.e_msg << std::endl;
     return RTNCD_FAILURE;
   }
 
@@ -387,15 +386,15 @@ int handle_job_view_jcl(InvocationContext &context)
 {
   int rc = 0;
   ZJB zjb = {};
-  string jobid = context.get<std::string>("jobid", "");
+  std::string jobid = context.get<std::string>("jobid", "");
 
-  string resp;
+  std::string resp;
   rc = zjb_read_job_jcl(&zjb, jobid, resp);
 
   if (0 != rc)
   {
-    context.error_stream() << "Error: could not view job file for: '" << jobid << "' rc: '" << rc << "'" << endl;
-    context.error_stream() << "  Details: " << zjb.diag.e_msg << endl;
+    context.error_stream() << "Error: could not view job file for: '" << jobid << "' rc: '" << rc << "'" << std::endl;
+    context.error_stream() << "  Details: " << zjb.diag.e_msg << std::endl;
     return RTNCD_FAILURE;
   }
 
@@ -407,16 +406,16 @@ int handle_job_view_jcl(InvocationContext &context)
 int handle_job_submit(InvocationContext &context)
 {
   int rc = 0;
-  string dsn = context.get<std::string>("dsn", "");
-  string jobid;
+  std::string dsn = context.get<std::string>("dsn", "");
+  std::string jobid;
 
   ZDS zds = {};
-  string contents;
+  std::string contents;
   rc = zds_read_from_dsn(&zds, dsn, contents);
   if (0 != rc)
   {
-    context.error_stream() << "Error: could not read data set: '" << dsn << "' rc: '" << rc << "'" << endl;
-    context.error_stream() << "  Details: " << zds.diag.e_msg << endl;
+    context.error_stream() << "Error: could not read data set: '" << dsn << "' rc: '" << rc << "'" << std::endl;
+    context.error_stream() << "  Details: " << zds.diag.e_msg << std::endl;
     return RTNCD_FAILURE;
   }
 
@@ -426,21 +425,21 @@ int handle_job_submit(InvocationContext &context)
 int handle_job_submit_uss(InvocationContext &context)
 {
   int rc = 0;
-  string file = context.get<std::string>("file-path", "");
+  std::string file = context.get<std::string>("file-path", "");
 
   ZUSF zusf = {};
-  string response;
+  std::string response;
   rc = zusf_read_from_uss_file(&zusf, file, response);
   if (0 != rc)
   {
-    context.error_stream() << "Error: could not view USS file: '" << file << "' rc: '" << rc << "'" << endl;
+    context.error_stream() << "Error: could not view USS file: '" << file << "' rc: '" << rc << "'" << std::endl;
     context.error_stream() << "  Details:\n"
-                           << zusf.diag.e_msg << endl
-                           << response << endl;
+                           << zusf.diag.e_msg << std::endl
+                           << response << std::endl;
     return RTNCD_FAILURE;
   }
 
-  string jobid;
+  std::string jobid;
 
   return job_submit_common(context, response, jobid, file);
 }
@@ -448,8 +447,8 @@ int handle_job_submit_uss(InvocationContext &context)
 int handle_job_submit_jcl(InvocationContext &context)
 {
   ZJB zjb = {};
-  string jobid;
-  string data = zut_read_input(context.input_stream());
+  std::string jobid;
+  std::string data = zut_read_input(context.input_stream());
 
   ZEncode encoding_opts = {};
   bool encoding_prepared = context.has("encoding") && zut_prepare_encoding(context.get<std::string>("encoding", ""), &encoding_opts);
@@ -465,8 +464,8 @@ int handle_job_submit_jcl(InvocationContext &context)
 
   if (encoding_prepared && encoding_opts.data_type != eDataTypeBinary)
   {
-    const auto source_encoding = strlen(encoding_opts.source_codepage) > 0 ? string(encoding_opts.source_codepage) : "UTF-8";
-    data = zut_encode(data, source_encoding, string(encoding_opts.codepage), zjb.diag);
+    const auto source_encoding = strlen(encoding_opts.source_codepage) > 0 ? std::string(encoding_opts.source_codepage) : "UTF-8";
+    data = zut_encode(data, source_encoding, std::string(encoding_opts.codepage), zjb.diag);
   }
 
   return job_submit_common(context, data, jobid, "JCL");
@@ -476,18 +475,18 @@ int handle_job_delete(InvocationContext &context)
 {
   int rc = 0;
   ZJB zjb = {};
-  string jobid = context.get<std::string>("jobid", "");
+  std::string jobid = context.get<std::string>("jobid", "");
 
   rc = zjb_delete(&zjb, jobid);
 
   if (0 != rc)
   {
-    context.error_stream() << "Error: could not delete job: '" << jobid << "' rc: '" << rc << "'" << endl;
-    context.error_stream() << "  Details: " << zjb.diag.e_msg << endl;
+    context.error_stream() << "Error: could not delete job: '" << jobid << "' rc: '" << rc << "'" << std::endl;
+    context.error_stream() << "  Details: " << zjb.diag.e_msg << std::endl;
     return RTNCD_FAILURE;
   }
 
-  context.output_stream() << "Job " << jobid << " deleted " << endl;
+  context.output_stream() << "Job " << jobid << " deleted " << std::endl;
 
   return RTNCD_SUCCESS;
 }
@@ -501,8 +500,8 @@ int handle_job_watch(InvocationContext &context)
 {
   int rc = 0;
   ZJB zjb = {};
-  string job_dsn = context.get<std::string>("job-dsn", "");
-  string until_match = context.get<std::string>("pattern", "");
+  std::string job_dsn = context.get<std::string>("job-dsn", "");
+  std::string until_match = context.get<std::string>("pattern", "");
   long long max_sleep_seconds = context.get<long long>("max-wait-seconds");
   bool any_case = context.get<bool>("ignore-case", false);
 
@@ -510,37 +509,37 @@ int handle_job_watch(InvocationContext &context)
 
   if (max_sleep_seconds > MAX_WAIT_SECONDS)
   {
-    context.error_stream() << "Error: max-wait-seconds must be less than " << MAX_WAIT_SECONDS << " seconds" << endl;
+    context.error_stream() << "Error: max-wait-seconds must be less than " << MAX_WAIT_SECONDS << " seconds" << std::endl;
     return RTNCD_FAILURE;
   }
 
   if (max_sleep_seconds <= 0)
   {
-    context.error_stream() << "Error: max-wait-seconds must be greater than 0 seconds" << endl;
+    context.error_stream() << "Error: max-wait-seconds must be greater than 0 seconds" << std::endl;
     return RTNCD_FAILURE;
   }
 
-  string pattern;
+  std::string pattern;
   bool is_regex = parse_regex_pattern(until_match, pattern);
 
   if (any_case && is_regex)
   {
-    context.error_stream() << "Error: ignore-case is not supported for regex patterns" << endl;
+    context.error_stream() << "Error: ignore-case is not supported for regex patterns" << std::endl;
     return RTNCD_FAILURE;
   }
 
   bool found_match = false;
-  string matched;
+  std::string matched;
   long long total_sleep_seconds = 0;
 
   do
   {
-    string response;
+    std::string response;
     rc = zjb_read_job_content_by_dsn(&zjb, job_dsn, response);
     if (0 != rc)
     {
-      context.error_stream() << "Error: could not read job content: '" << job_dsn << "' rc: '" << rc << "'" << endl;
-      context.error_stream() << "  Details: " << zjb.diag.e_msg << endl;
+      context.error_stream() << "Error: could not read job content: '" << job_dsn << "' rc: '" << rc << "'" << std::endl;
+      context.error_stream() << "  Details: " << zjb.diag.e_msg << std::endl;
       return RTNCD_FAILURE;
     }
 
@@ -595,7 +594,7 @@ int handle_job_watch(InvocationContext &context)
         {
           char errbuf[256];
           regerror(exec_ret, &re, errbuf, sizeof(errbuf));
-          context.error_stream() << "Debug: regexec error: " << errbuf << endl;
+          context.error_stream() << "Debug: regexec error: " << errbuf << std::endl;
         }
         regfree(&re);
       }
@@ -603,7 +602,7 @@ int handle_job_watch(InvocationContext &context)
       {
         char errbuf[256];
         regerror(ret, &re, errbuf, sizeof(errbuf));
-        context.error_stream() << "Error: invalid regex pattern: '" << pattern << "' - " << errbuf << endl;
+        context.error_stream() << "Error: invalid regex pattern: '" << pattern << "' - " << errbuf << std::endl;
       }
     }
     else
@@ -619,7 +618,7 @@ int handle_job_watch(InvocationContext &context)
       }
       else
       {
-        if (response.find(pattern) != string::npos)
+        if (response.find(pattern) != std::string::npos)
         {
           matched = pattern;
           found_match = true;
@@ -637,14 +636,14 @@ int handle_job_watch(InvocationContext &context)
 
   if (found_match)
   {
-    context.output_stream() << (is_regex ? "'Regex'" : "'String'") << " pattern '" << pattern << "' in job spool files matched in " << total_sleep_seconds << "s on:"
-                            << endl;
-    context.output_stream() << matched << endl;
+    context.output_stream() << (is_regex ? "'Regex'" : "'string'") << " pattern '" << pattern << "' in job spool files matched in " << total_sleep_seconds << "s on:"
+                            << std::endl;
+    context.output_stream() << matched << std::endl;
     return RTNCD_SUCCESS;
   }
   else
   {
-    context.error_stream() << "Error: " << (is_regex ? "'Regex'" : "'String'") << " pattern '" << pattern << "' in job spool files was not found in " << total_sleep_seconds << "s" << endl;
+    context.error_stream() << "Error: " << (is_regex ? "'Regex'" : "'string'") << " pattern '" << pattern << "' in job spool files was not found in " << total_sleep_seconds << "s" << std::endl;
     return RTNCD_FAILURE;
   }
 
@@ -655,7 +654,7 @@ int handle_job_cancel(InvocationContext &context)
 {
   int rc = 0;
   ZJB zjb = {};
-  string jobid = context.get<std::string>("jobid", "");
+  std::string jobid = context.get<std::string>("jobid", "");
 
   // Note: Cancel options (dump, force, purge, restart) are currently not used by the backend
   // but are defined for future compatibility
@@ -668,12 +667,12 @@ int handle_job_cancel(InvocationContext &context)
 
   if (0 != rc)
   {
-    context.error_stream() << "Error: could not cancel job: '" << jobid << "' rc: '" << rc << "'" << endl;
-    context.error_stream() << "  Details: " << zjb.diag.e_msg << endl;
+    context.error_stream() << "Error: could not cancel job: '" << jobid << "' rc: '" << rc << "'" << std::endl;
+    context.error_stream() << "  Details: " << zjb.diag.e_msg << std::endl;
     return RTNCD_FAILURE;
   }
 
-  context.output_stream() << "Job " << jobid << " cancelled " << endl;
+  context.output_stream() << "Job " << jobid << " cancelled " << std::endl;
 
   return RTNCD_SUCCESS;
 }
@@ -682,18 +681,18 @@ int handle_job_hold(InvocationContext &context)
 {
   int rc = 0;
   ZJB zjb = {};
-  string jobid = context.get<std::string>("jobid", "");
+  std::string jobid = context.get<std::string>("jobid", "");
 
   rc = zjb_hold(&zjb, jobid);
 
   if (0 != rc)
   {
-    context.error_stream() << "Error: could not hold job: '" << jobid << "' rc: '" << rc << "'" << endl;
-    context.error_stream() << "  Details: " << zjb.diag.e_msg << endl;
+    context.error_stream() << "Error: could not hold job: '" << jobid << "' rc: '" << rc << "'" << std::endl;
+    context.error_stream() << "  Details: " << zjb.diag.e_msg << std::endl;
     return RTNCD_FAILURE;
   }
 
-  context.output_stream() << "Job " << jobid << " held " << endl;
+  context.output_stream() << "Job " << jobid << " held " << std::endl;
 
   return RTNCD_SUCCESS;
 }
@@ -702,23 +701,23 @@ int handle_job_release(InvocationContext &context)
 {
   int rc = 0;
   ZJB zjb = {};
-  string jobid = context.get<std::string>("jobid", "");
+  std::string jobid = context.get<std::string>("jobid", "");
 
   rc = zjb_release(&zjb, jobid);
 
   if (0 != rc)
   {
-    context.error_stream() << "Error: could not release job: '" << jobid << "' rc: '" << rc << "'" << endl;
-    context.error_stream() << "  Details: " << zjb.diag.e_msg << endl;
+    context.error_stream() << "Error: could not release job: '" << jobid << "' rc: '" << rc << "'" << std::endl;
+    context.error_stream() << "  Details: " << zjb.diag.e_msg << std::endl;
     return RTNCD_FAILURE;
   }
 
-  context.output_stream() << "Job " << jobid << " released " << endl;
+  context.output_stream() << "Job " << jobid << " released " << std::endl;
 
   return RTNCD_SUCCESS;
 }
 
-int job_submit_common(InvocationContext &context, string jcl, string &jobid, string identifier)
+int job_submit_common(InvocationContext &context, const std::string &jcl, std::string &jobid, const std::string &identifier)
 {
   int rc = 0;
   ZJB zjb = {};
@@ -726,31 +725,31 @@ int job_submit_common(InvocationContext &context, string jcl, string &jobid, str
 
   if (0 != rc)
   {
-    context.error_stream() << "Error: could not submit JCL: '" << identifier << "' rc: '" << rc << "'" << endl;
-    context.error_stream() << "  Details: " << zjb.diag.e_msg << endl;
+    context.error_stream() << "Error: could not submit JCL: '" << identifier << "' rc: '" << rc << "'" << std::endl;
+    context.error_stream() << "  Details: " << zjb.diag.e_msg << std::endl;
     return RTNCD_FAILURE;
   }
 
   ZJob job = {};
-  rc = zjb_view(&zjb, string(zjb.correlator, sizeof(zjb.correlator)), job);
+  rc = zjb_view(&zjb, std::string(zjb.correlator, sizeof(zjb.correlator)), job);
   if (0 != rc)
   {
-    context.error_stream() << "Error: could not get job status for: '" << jobid << "' rc: '" << rc << "'" << endl;
-    context.error_stream() << "  Details: " << zjb.diag.e_msg << endl;
+    context.error_stream() << "Error: could not get job status for: '" << jobid << "' rc: '" << rc << "'" << std::endl;
+    context.error_stream() << "  Details: " << zjb.diag.e_msg << std::endl;
     return RTNCD_FAILURE;
   }
 
   bool only_jobid = context.get<bool>("only-jobid", false);
   bool only_correlator = context.get<bool>("only-correlator", false);
-  string wait = context.get<std::string>("wait", "");
-  transform(wait.begin(), wait.end(), wait.begin(), ::toupper);
+  std::string wait = context.get<std::string>("wait", "");
+  std::transform(wait.begin(), wait.end(), wait.begin(), ::toupper);
 
   if (only_jobid)
-    context.output_stream() << jobid << endl;
+    context.output_stream() << jobid << std::endl;
   else if (only_correlator)
-    context.output_stream() << string(zjb.correlator, sizeof(zjb.correlator)) << endl;
+    context.output_stream() << std::string(zjb.correlator, sizeof(zjb.correlator)) << std::endl;
   else
-    context.output_stream() << "Submitted " << identifier << ", " << job.jobname << "(" << jobid << ")" << endl;
+    context.output_stream() << "Submitted " << identifier << ", " << job.jobname << "(" << jobid << ")" << std::endl;
 
 #define JOB_STATUS_OUTPUT "OUTPUT"
 #define JOB_STATUS_INPUT "ACTIVE"
@@ -760,14 +759,14 @@ int job_submit_common(InvocationContext &context, string jcl, string &jobid, str
     rc = zjb_wait(&zjb, wait);
     if (0 != rc)
     {
-      context.error_stream() << "Error: could not wait for job status: '" << wait << "' rc: '" << rc << "'" << endl;
-      context.error_stream() << "  Details: " << zjb.diag.e_msg << endl;
+      context.error_stream() << "Error: could not wait for job status: '" << wait << "' rc: '" << rc << "'" << std::endl;
+      context.error_stream() << "  Details: " << zjb.diag.e_msg << std::endl;
       return RTNCD_FAILURE;
     }
   }
   else if ("" != wait)
   {
-    context.error_stream() << "Error: cannot wait for unknown status '" << wait << "'" << endl;
+    context.error_stream() << "Error: cannot wait for unknown status '" << wait << "'" << std::endl;
     return RTNCD_FAILURE;
   }
 

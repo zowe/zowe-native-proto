@@ -27,13 +27,7 @@
 #define ZCN_POST_TIMEOUT 1
 #define ZCN_POST_ABEND 2
 
-#if (defined(__IBMCPP__) || defined(__IBMC__))
-#if defined(__clang__)
-#pragma pack(1)
-#else
-#pragma pack(packed)
-#endif
-#endif
+ZNP_PACK_ON
 
 #define ZCN_EYE "ZCN"
 
@@ -66,8 +60,6 @@ typedef struct
 
 } ZCN;
 
-#if (defined(__IBMCPP__) || defined(__IBMC__))
-#pragma pack(reset)
-#endif
+ZNP_PACK_OFF
 
 #endif

@@ -1,4 +1,8 @@
+#ifdef __open_xl__
+#pragma pack(1)
+#else
 #pragma pack(packed)
+#endif
 
 #ifndef __jsymparm__
 #define __jsymparm__
@@ -85,4 +89,8 @@ struct jsyentry
 
 #endif
 
+#ifdef __open_xl__
+#pragma pack()
+#else
 #pragma pack(reset)
+#endif

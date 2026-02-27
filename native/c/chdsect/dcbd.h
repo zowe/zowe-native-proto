@@ -1,4 +1,8 @@
+#ifdef __open_xl__
+#pragma pack(1)
+#else
 #pragma pack(packed)
+#endif
  
 #ifndef __ihadcb__
 #define __ihadcb__
@@ -749,4 +753,8 @@ struct ihadcb {
  
 #endif
  
+#ifdef __open_xl__
+#pragma pack()
+#else
 #pragma pack(reset)
+#endif

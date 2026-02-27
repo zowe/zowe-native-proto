@@ -12,6 +12,7 @@
 #ifndef PLUGIN_HPP
 #define PLUGIN_HPP
 
+#include <algorithm>
 #include <memory>
 #include <iostream>
 #include <ostream>
@@ -20,11 +21,7 @@
 #include <vector>
 #include <cstddef>
 
-#if defined(__IBMTR1_CPP__) && !defined(__clang__)
-#include <tr1/unordered_map>
-#else
 #include <unordered_map>
-#endif
 
 template <typename Interface>
 class Factory
@@ -33,27 +30,18 @@ public:
   virtual ~Factory()
   {
   }
-  virtual Interface *create() = 0;
+  virtual std::unique_ptr<Interface> create() = 0;
 };
 
 namespace ast
 {
-using namespace std;
 struct Ast;
 
-#if !defined(__clang__)
-typedef tr1::shared_ptr<Ast> Node;
-typedef tr1::shared_ptr<string> StringPtr;
-typedef tr1::shared_ptr<vector<Node>> VecPtr;
-typedef tr1::unordered_map<string, Node> ObjMap;
-typedef tr1::shared_ptr<ObjMap> ObjPtr;
-#else
-typedef shared_ptr<Ast> Node;
-typedef shared_ptr<string> StringPtr;
-typedef shared_ptr<vector<Node>> VecPtr;
-typedef unordered_map<string, Node> ObjMap;
-typedef shared_ptr<ObjMap> ObjPtr;
-#endif
+typedef std::shared_ptr<Ast> Node;
+typedef std::shared_ptr<std::string> StringPtr;
+typedef std::shared_ptr<std::vector<Node>> VecPtr;
+typedef std::unordered_map<std::string, Node> ObjMap;
+typedef std::shared_ptr<ObjMap> ObjPtr;
 
 struct Ast
 {
@@ -783,11 +771,7 @@ struct ArgGetter<std::vector<std::string>>
   }
 };
 
-#if defined(__clang__)
 typedef std::unordered_map<std::string, Argument> ArgumentMap;
-#else
-typedef std::tr1::unordered_map<std::string, Argument> ArgumentMap;
-#endif
 
 class Io
 {
@@ -809,14 +793,14 @@ public:
 
   const Argument *find(const std::string &key) const
   {
-    ArgumentMap::const_iterator it = m_args.find(key);
+    auto it = m_args.find(key);
     return it != m_args.end() ? &it->second : nullptr;
   }
 
   template <typename T>
   const T *get_if(const std::string &key) const
   {
-    ArgumentMap::const_iterator it = m_args.find(key);
+    auto it = m_args.find(key);
     if (it == m_args.end())
       return nullptr;
     return ArgGetter<T>::get(it->second);
@@ -1201,8 +1185,7 @@ public:
   PluginManager();
   ~PluginManager();
 
-  // Takes ownership of the provider pointer; it will be deleted with the manager.
-  void register_command_provider(CommandProvider *provider);
+  void register_command_provider(std::unique_ptr<CommandProvider> provider);
 
   // Capture metadata the active plug-in supplies during registration.
   void register_plugin_metadata(const char *display_name, const char *version);
@@ -1226,7 +1209,7 @@ private:
   bool is_display_name_in_use(const std::string &name) const;
   void discard_command_providers_from(std::size_t start_index);
 
-  std::vector<CommandProvider *> m_command_providers;
+  std::vector<std::unique_ptr<CommandProvider>> m_command_providers;
   std::vector<LoadedPlugin> m_plugins;
   PluginMetadata m_pending_metadata;
   bool m_metadata_pending;
@@ -1244,31 +1227,17 @@ inline PluginManager::PluginManager()
 
 inline PluginManager::~PluginManager()
 {
-  for (auto it =
-           m_command_providers.begin();
-       it != m_command_providers.end(); ++it)
-  {
-    delete *it;
-  }
-
   unload_plugins();
 }
 
-inline void PluginManager::register_command_provider(CommandProvider *provider)
+inline void PluginManager::register_command_provider(std::unique_ptr<CommandProvider> provider)
 {
-  if (!provider)
+  if (!provider || m_registration_rejected)
   {
     return;
   }
 
-  if (m_registration_rejected)
-  {
-    delete provider;
-    return;
-  }
-
-  // Take ownership of the pointer for the plugin manager lifetime.
-  m_command_providers.push_back(provider);
+  m_command_providers.push_back(std::move(provider));
 }
 
 inline void PluginManager::register_plugin_metadata(const char *display_name, const char *version)
@@ -1299,15 +1268,9 @@ inline bool PluginManager::is_display_name_in_use(const std::string &name) const
     return false;
   }
 
-  for (std::vector<LoadedPlugin>::const_iterator it = m_plugins.begin(); it != m_plugins.end(); ++it)
-  {
-    if (it->metadata.display_name == name)
-    {
-      return true;
-    }
-  }
-
-  return false;
+  return std::any_of(m_plugins.begin(), m_plugins.end(), [&name](const auto &plugin) {
+    return plugin.metadata.display_name == name;
+  });
 }
 
 inline void PluginManager::discard_command_providers_from(std::size_t start_index)
@@ -1315,11 +1278,6 @@ inline void PluginManager::discard_command_providers_from(std::size_t start_inde
   if (start_index >= m_command_providers.size())
   {
     return;
-  }
-
-  for (std::size_t i = start_index; i < m_command_providers.size(); ++i)
-  {
-    delete m_command_providers[i];
   }
 
   m_command_providers.resize(start_index);

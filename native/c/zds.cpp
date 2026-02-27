@@ -19,8 +19,8 @@
 #define _POSIX_SOURCE
 #endif
 #include <unistd.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include <cstdio>
+#include <cstdlib>
 #include <climits>
 #include <cstring>
 #include <fstream>
@@ -36,7 +36,6 @@
 #include "iefzb4d2.h"
 #include "zdsm.h"
 #include <fcntl.h>
-#include <stdlib.h>
 #include "zbase64.h"
 #include "zdsm.h"
 
@@ -46,8 +45,6 @@ const size_t MAX_VOLSER_LENGTH = 6u;
 const char CR_CHAR = '\x0D';
 // form feed character, used for stripping off lines in ASA mode
 const char FF_CHAR = '\x0C';
-
-using namespace std;
 
 /**
  * Helper function to check if codepage encoding should be used.
@@ -79,9 +76,9 @@ static int get_effective_lrecl(IO_CTRL *ioc)
 }
 
 // https://www.ibm.com/docs/en/zos/2.5.0?topic=functions-fldata-retrieve-file-information#fldata__fldat
-string zds_get_recfm(const fldata_t &file_info)
+std::string zds_get_recfm(const fldata_t &file_info)
 {
-  string recfm = ZDS_RECFM_U;
+  std::string recfm = ZDS_RECFM_U;
 
   if (file_info.__recfmF)
   {
@@ -126,29 +123,29 @@ struct ZDSTypeInfo
 {
   bool exists;
   ZDS_TYPE type;
-  string base_dsn;
-  string member_name;
+  std::string base_dsn;
+  std::string member_name;
   ZDSEntry entry; // Basic attributes if it exists
 };
 
-static vector<string> get_member_names(const string &pds_dsn)
+static std::vector<std::string> get_member_names(const std::string &pds_dsn)
 {
-  vector<string> names;
-  vector<ZDSMem> members;
+  std::vector<std::string> names;
+  std::vector<ZDSMem> members;
   ZDS temp_zds = {};
   zds_list_members(&temp_zds, pds_dsn, members);
-  for (vector<ZDSMem>::iterator it = members.begin(); it != members.end(); ++it)
+  for (const auto &mem : members)
   {
-    string name = it->name;
+    std::string name = mem.name;
     zut_trim(name);
     names.push_back(name);
   }
   return names;
 }
 
-static bool member_exists_in_pds(const string &pds_dsn, const string &member_name)
+static bool member_exists_in_pds(const std::string &pds_dsn, const std::string &member_name)
 {
-  vector<string> names = get_member_names(pds_dsn);
+  std::vector<std::string> names = get_member_names(pds_dsn);
   for (auto it = names.begin(); it != names.end(); ++it)
   {
     if (*it == member_name)
@@ -157,7 +154,7 @@ static bool member_exists_in_pds(const string &pds_dsn, const string &member_nam
   return false;
 }
 
-static int zds_get_type_info(const string &dsn, ZDSTypeInfo &info)
+static int zds_get_type_info(const std::string &dsn, ZDSTypeInfo &info)
 {
   info.exists = false;
   info.type = ZDS_TYPE_UNKNOWN;
@@ -165,20 +162,20 @@ static int zds_get_type_info(const string &dsn, ZDSTypeInfo &info)
   info.member_name = "";
 
   size_t member_idx = dsn.find('(');
-  if (member_idx != string::npos)
+  if (member_idx != std::string::npos)
   {
     info.base_dsn = dsn.substr(0, member_idx);
     size_t end_idx = dsn.find(')', member_idx);
-    if (end_idx != string::npos && end_idx > member_idx + 1)
+    if (end_idx != std::string::npos && end_idx > member_idx + 1)
     {
       info.member_name = dsn.substr(member_idx + 1, end_idx - member_idx - 1);
     }
   }
 
   zut_trim(info.base_dsn);
-  transform(info.base_dsn.begin(), info.base_dsn.end(), info.base_dsn.begin(), ::toupper);
+  std::transform(info.base_dsn.begin(), info.base_dsn.end(), info.base_dsn.begin(), ::toupper);
   zut_trim(info.member_name);
-  transform(info.member_name.begin(), info.member_name.end(), info.member_name.begin(), ::toupper);
+  std::transform(info.member_name.begin(), info.member_name.end(), info.member_name.begin(), ::toupper);
 
   if (!zds_dataset_exists(info.base_dsn))
   {
@@ -186,7 +183,7 @@ static int zds_get_type_info(const string &dsn, ZDSTypeInfo &info)
   }
 
   ZDS zds = {};
-  vector<ZDSEntry> entries;
+  std::vector<ZDSEntry> entries;
   int rc = zds_list_data_sets(&zds, info.base_dsn, entries, true);
   if (rc == RTNCD_SUCCESS && entries.size() == 1)
   {
@@ -220,21 +217,21 @@ static int zds_get_type_info(const string &dsn, ZDSTypeInfo &info)
   return RTNCD_SUCCESS;
 }
 
-static int copy_sequential(ZDS *zds, const string &src_dsn, const string &dst_dsn);
+static int copy_sequential(ZDS *zds, const std::string &src_dsn, const std::string &dst_dsn);
 
 // PDS-to-PDS copy using member-by-member binary I/O.
 // This approach provides granular control for --replace semantics (skip/overwrite individual members)
 // and naturally supports --delete-target-members workflow.
 static int copy_pds_to_pds(ZDS *zds, const ZDSTypeInfo &src, const ZDSTypeInfo &dst, bool replace)
 {
-  vector<string> src_members = get_member_names(src.base_dsn);
+  std::vector<std::string> src_members = get_member_names(src.base_dsn);
   for (size_t i = 0; i < src_members.size(); i++)
   {
-    const string &member = src_members[i];
+    const std::string &member = src_members[i];
     if (!replace && member_exists_in_pds(dst.base_dsn, member))
       continue;
-    string src_mem_dsn = src.base_dsn + "(" + member + ")";
-    string dst_mem_dsn = dst.base_dsn + "(" + member + ")";
+    std::string src_mem_dsn = src.base_dsn + "(" + member + ")";
+    std::string dst_mem_dsn = dst.base_dsn + "(" + member + ")";
     int rc = copy_sequential(zds, src_mem_dsn, dst_mem_dsn);
     if (rc != RTNCD_SUCCESS)
       return rc;
@@ -246,10 +243,10 @@ static int copy_pds_to_pds(ZDS *zds, const ZDSTypeInfo &src, const ZDSTypeInfo &
 // Note: RECFM=U data sets are not explicitly checked here because fldata() returns
 // unreliable RECFM information when files are opened in binary mode. The write
 // operation will fail naturally if the target is truly RECFM=U.
-static int copy_sequential(ZDS *zds, const string &src_dsn, const string &dst_dsn)
+static int copy_sequential(ZDS *zds, const std::string &src_dsn, const std::string &dst_dsn)
 {
-  string src_path = "//'" + src_dsn + "'";
-  string dst_path = "//'" + dst_dsn + "'";
+  std::string src_path = "//'" + src_dsn + "'";
+  std::string dst_path = "//'" + dst_dsn + "'";
 
   FILE *fin = fopen(src_path.c_str(), "rb");
   if (!fin)
@@ -286,12 +283,12 @@ static int copy_sequential(ZDS *zds, const string &src_dsn, const string &dst_ds
 }
 
 // Delete all members from a PDS
-static int delete_all_members(ZDS *zds, const string &pds_dsn)
+static int delete_all_members(ZDS *zds, const std::string &pds_dsn)
 {
-  vector<string> members = get_member_names(pds_dsn);
+  std::vector<std::string> members = get_member_names(pds_dsn);
   for (size_t i = 0; i < members.size(); i++)
   {
-    string member_dsn = pds_dsn + "(" + members[i] + ")";
+    std::string member_dsn = pds_dsn + "(" + members[i] + ")";
     int rc = zds_delete_dsn(zds, member_dsn);
     if (rc != RTNCD_SUCCESS)
     {
@@ -302,7 +299,7 @@ static int delete_all_members(ZDS *zds, const string &pds_dsn)
   return RTNCD_SUCCESS;
 }
 
-int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2, ZDSCopyOptions *options)
+int zds_copy_dsn(ZDS *zds, const std::string &dsn1, const std::string &dsn2, ZDSCopyOptions *options)
 {
   int rc = 0;
   ZDSCopyOptions default_options;
@@ -365,8 +362,8 @@ int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2, ZDSCopyOption
   {
     // Create the target data set
     ZDS create_zds = {};
-    string create_resp;
-    DS_ATTRIBUTES attrs = {0};
+    std::string create_resp;
+    DS_ATTRIBUTES attrs = {};
 
     // Common attributes for all data set types
     attrs.recfm = info1.entry.recfm.c_str();
@@ -464,8 +461,8 @@ int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2, ZDSCopyOption
     if (same_pds)
     {
       // Same PDS: copy member to member using binary I/O
-      string src_mem_dsn = info1.base_dsn + "(" + info1.member_name + ")";
-      string dst_mem_dsn = info2.base_dsn + "(" + info2.member_name + ")";
+      std::string src_mem_dsn = info1.base_dsn + "(" + info1.member_name + ")";
+      std::string dst_mem_dsn = info2.base_dsn + "(" + info2.member_name + ")";
       rc = copy_sequential(zds, src_mem_dsn, dst_mem_dsn);
     }
     else
@@ -482,10 +479,10 @@ int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2, ZDSCopyOption
   }
 }
 
-bool zds_dataset_exists(const string &dsn)
+bool zds_dataset_exists(const std::string &dsn)
 {
   const auto member_idx = dsn.find('(');
-  const string dsn_without_member = member_idx == string::npos ? dsn : dsn.substr(0, member_idx);
+  const std::string dsn_without_member = member_idx == std::string::npos ? dsn : dsn.substr(0, member_idx);
   FILE *fp = fopen(("//'" + dsn_without_member + "'").c_str(), "r");
   if (fp)
   {
@@ -495,9 +492,9 @@ bool zds_dataset_exists(const string &dsn)
   return false;
 }
 
-bool zds_member_exists(const string &dsn, const string &member_before)
+bool zds_member_exists(const std::string &dsn, const std::string &member_before)
 {
-  string mem_before = "//'" + dsn + "(" + member_before + ")'";
+  std::string mem_before = "//'" + dsn + "(" + member_before + ")'";
   FILE *fp = fopen(mem_before.c_str(), "r");
   if (fp)
   {
@@ -526,11 +523,11 @@ bool zds_is_valid_member_name(const std::string &name)
   return true;
 }
 
-int zds_read_from_dd(ZDS *zds, string ddname, string &response)
+int zds_read_from_dd(ZDS *zds, std::string ddname, std::string &response)
 {
   ddname = "DD:" + ddname;
 
-  ifstream in(ddname.c_str());
+  std::ifstream in(ddname.c_str());
   if (!in.is_open())
   {
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open file '%s'", ddname.c_str());
@@ -539,8 +536,8 @@ int zds_read_from_dd(ZDS *zds, string ddname, string &response)
 
   int index = 0;
 
-  string line;
-  while (getline(in, line))
+  std::string line;
+  while (std::getline(in, line))
   {
     if (index > 0 || line.size() > 0)
     {
@@ -557,14 +554,14 @@ int zds_read_from_dd(ZDS *zds, string ddname, string &response)
   const size_t size = response.size() + 1;
   if (size > 0 && strlen(zds->encoding_opts.codepage) > 0)
   {
-    string temp = response;
-    const auto source_encoding = strlen(zds->encoding_opts.source_codepage) > 0 ? string(zds->encoding_opts.source_codepage) : "UTF-8";
+    std::string temp = response;
+    const auto source_encoding = strlen(zds->encoding_opts.source_codepage) > 0 ? std::string(zds->encoding_opts.source_codepage) : "UTF-8";
     try
     {
-      const auto bytes_with_encoding = zut_encode(temp, string(zds->encoding_opts.codepage), source_encoding, zds->diag);
+      const auto bytes_with_encoding = zut_encode(temp, std::string(zds->encoding_opts.codepage), source_encoding, zds->diag);
       temp = bytes_with_encoding;
     }
-    catch (exception &e)
+    catch (std::exception &e)
     {
       zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from %s to %s", source_encoding.c_str(), zds->encoding_opts.codepage);
       return RTNCD_FAILURE;
@@ -582,13 +579,13 @@ int zds_read_from_dd(ZDS *zds, string ddname, string &response)
  * Helper function to get data set attributes (RECFM, LRECL) from DSCB.
  * Returns a DscbAttributes struct with recfm, lrecl, and is_asa flag.
  */
-static DscbAttributes zds_get_dscb_attributes(const string &dsn)
+static DscbAttributes zds_get_dscb_attributes(const std::string &dsn)
 {
   DscbAttributes attrs;
-  const string base_dsn = dsn.find('(') != string::npos ? dsn.substr(0, dsn.find('(')) : dsn;
+  const std::string base_dsn = dsn.find('(') != std::string::npos ? dsn.substr(0, dsn.find('(')) : dsn;
 
-  ZDS zds = {0};
-  vector<ZDSEntry> datasets;
+  ZDS zds{};
+  std::vector<ZDSEntry> datasets;
 
   // Use catalog lookup with DSCB to get the actual attributes
   int rc = zds_list_data_sets(&zds, base_dsn, datasets, true);
@@ -599,7 +596,7 @@ static DscbAttributes zds_get_dscb_attributes(const string &dsn)
 
   attrs.recfm = datasets[0].recfm;
   attrs.lrecl = datasets[0].lrecl;
-  attrs.is_asa = attrs.recfm.find('A') != string::npos;
+  attrs.is_asa = attrs.recfm.find('A') != std::string::npos;
 
   return attrs;
 }
@@ -612,7 +609,7 @@ static int get_effective_lrecl_from_attrs(const DscbAttributes &attrs)
 {
   int lrecl = attrs.lrecl;
   // For variable records, subtract RDW size (4 bytes)
-  if (attrs.recfm.find('V') != string::npos)
+  if (attrs.recfm.find('V') != std::string::npos)
   {
     lrecl -= 4;
   }
@@ -633,14 +630,14 @@ static int get_effective_lrecl_from_attrs(const DscbAttributes &attrs)
  * @param newline_char The newline character to use for line splitting
  * @param truncation The TruncationTracker to populate
  */
-static void scan_for_truncated_lines(const string &data, int max_len,
+static void scan_for_truncated_lines(const std::string &data, int max_len,
                                      char newline_char, TruncationTracker &truncation)
 {
   int line_num = 0;
   size_t pos = 0;
   size_t newline_pos;
 
-  while ((newline_pos = data.find(newline_char, pos)) != string::npos)
+  while ((newline_pos = data.find(newline_char, pos)) != std::string::npos)
   {
     line_num++;
     size_t line_len = newline_pos - pos;
@@ -676,19 +673,19 @@ static void scan_for_truncated_lines(const string &data, int max_len,
   truncation.flush_range();
 }
 
-int zds_read_from_dsn(ZDS *zds, const string &dsn, string &response)
+int zds_read_from_dsn(ZDS *zds, const std::string &dsn, std::string &response)
 {
-  string dsname = "//'" + dsn + "'";
+  std::string dsname = "//'" + dsn + "'";
   if (strlen(zds->ddname) > 0)
   {
-    dsname = "//DD:" + string(zds->ddname);
+    dsname = "//DD:" + std::string(zds->ddname);
   }
 
   // Check if ASA format - use record I/O to preserve ASA control characters
   const DscbAttributes attrs = zds_get_dscb_attributes(dsn);
   const bool is_asa = attrs.is_asa && zds->encoding_opts.data_type != eDataTypeBinary;
 
-  string fopen_flags;
+  std::string fopen_flags;
   if (zds->encoding_opts.data_type == eDataTypeBinary)
   {
     fopen_flags = "rb";
@@ -718,7 +715,7 @@ int zds_read_from_dsn(ZDS *zds, const string &dsn, string &response)
     // For ASA, read record by record and append newlines between records
     // This preserves the ASA control character as the first byte of each line
     const int lrecl = attrs.lrecl > 0 ? attrs.lrecl : 32760;
-    vector<char> buffer(lrecl);
+    std::vector<char> buffer(lrecl);
     bool first_record = true;
 
     while ((bytes_read = fread(&buffer[0], 1, lrecl, fp)) > 0)
@@ -751,7 +748,7 @@ int zds_read_from_dsn(ZDS *zds, const string &dsn, string &response)
   else
   {
     // Non-ASA: read in chunks as before
-    char buffer[4096] = {0};
+    char buffer[4096] = {};
     while ((bytes_read = fread(buffer, 1, sizeof(buffer), fp)) > 0)
     {
       total_size += bytes_read;
@@ -764,14 +761,14 @@ int zds_read_from_dsn(ZDS *zds, const string &dsn, string &response)
 
   if (total_size > 0 && encoding_provided)
   {
-    string temp = response;
-    const auto source_encoding = strlen(zds->encoding_opts.source_codepage) > 0 ? string(zds->encoding_opts.source_codepage) : "UTF-8";
+    std::string temp = response;
+    const auto source_encoding = strlen(zds->encoding_opts.source_codepage) > 0 ? std::string(zds->encoding_opts.source_codepage) : "UTF-8";
     try
     {
-      const auto bytes_with_encoding = zut_encode(temp, string(zds->encoding_opts.codepage), source_encoding, zds->diag);
+      const auto bytes_with_encoding = zut_encode(temp, std::string(zds->encoding_opts.codepage), source_encoding, zds->diag);
       temp = bytes_with_encoding;
     }
-    catch (exception &e)
+    catch (std::exception &e)
     {
       zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from %s to %s", source_encoding.c_str(), zds->encoding_opts.codepage);
       return RTNCD_FAILURE;
@@ -785,10 +782,10 @@ int zds_read_from_dsn(ZDS *zds, const string &dsn, string &response)
   return 0;
 }
 
-int zds_write_to_dd(ZDS *zds, string ddname, const string &data)
+int zds_write_to_dd(ZDS *zds, std::string ddname, const std::string &data)
 {
   ddname = "DD:" + ddname;
-  ofstream out(ddname.c_str());
+  std::ofstream out(ddname.c_str());
 
   if (!out.is_open())
   {
@@ -807,7 +804,7 @@ int zds_write_to_dd(ZDS *zds, string ddname, const string &data)
  * This uses zut_encode to handle the conversion properly for any encoding.
  * If encoding is empty, returns the native IBM-1047 newline character.
  */
-static char get_newline_char(const string &encoding, ZDIAG &diag)
+static char get_newline_char(const std::string &encoding, ZDIAG &diag)
 {
   // If no encoding specified, return native IBM-1047 newline
   if (encoding.empty())
@@ -817,7 +814,7 @@ static char get_newline_char(const string &encoding, ZDIAG &diag)
 
   try
   {
-    const string result = zut_encode("\n", "IBM-1047", encoding, diag);
+    const std::string result = zut_encode("\n", "IBM-1047", encoding, diag);
     if (!result.empty())
     {
       return result[0];
@@ -898,7 +895,7 @@ private:
    * For non-empty lines, returns ' ' to indicate it should be written.
    * After this returns non-'\0', call has_overflow_blanks() then get_asa_char_and_reset().
    */
-  char process_line_internal(string &line, bool &has_formfeed_out)
+  char process_line_internal(std::string &line, bool &has_formfeed_out)
   {
     // Check for form feed at start of line
     has_formfeed_out = (!line.empty() && line[0] == FF_CHAR);
@@ -936,7 +933,7 @@ public:
    * @param line The line content (may be modified to strip formfeed character)
    * @return PrepareResult indicating whether to skip, overflow records to write, and ASA char
    */
-  PrepareResult prepare_line(string &line)
+  PrepareResult prepare_line(std::string &line)
   {
     PrepareResult result = {false, 0, '\0'};
 
@@ -962,20 +959,20 @@ public:
 /**
  * Helper function to check if a DSN contains a member name
  */
-static bool zds_has_member(const string &dsn)
+static bool zds_has_member(const std::string &dsn)
 {
   const auto open_paren = dsn.find('(');
   const auto close_paren = dsn.find(')');
-  return (open_paren != string::npos && close_paren != string::npos && close_paren > open_paren);
+  return (open_paren != std::string::npos && close_paren != std::string::npos && close_paren > open_paren);
 }
 
 /**
  * Helper function to extract the base DSN (without member) from a fully qualified DSN
  */
-static string zds_get_base_dsn(const string &dsn)
+static std::string zds_get_base_dsn(const std::string &dsn)
 {
   const auto open_paren = dsn.find('(');
-  if (open_paren != string::npos)
+  if (open_paren != std::string::npos)
   {
     return dsn.substr(0, open_paren);
   }
@@ -985,28 +982,28 @@ static string zds_get_base_dsn(const string &dsn)
 /**
  * Internal function to write to a sequential data set using fopen/fwrite
  */
-static int zds_write_sequential(ZDS *zds, const string &dsn, string &data, const DscbAttributes &attrs)
+static int zds_write_sequential(ZDS *zds, const std::string &dsn, std::string &data, const DscbAttributes &attrs)
 {
   const auto has_encoding = zds_use_codepage(zds);
-  const auto codepage = string(zds->encoding_opts.codepage);
+  const auto codepage = std::string(zds->encoding_opts.codepage);
   const bool isTextMode = zds->encoding_opts.data_type != eDataTypeBinary;
 
   // Determine source encoding for encoding conversion
-  const auto source_encoding = strlen(zds->encoding_opts.source_codepage) > 0 ? string(zds->encoding_opts.source_codepage) : "UTF-8";
+  const auto source_encoding = strlen(zds->encoding_opts.source_codepage) > 0 ? std::string(zds->encoding_opts.source_codepage) : "UTF-8";
 
-  string dsname = "//'" + dsn + "'";
+  std::string dsname = "//'" + dsn + "'";
   if (strlen(zds->ddname) > 0)
   {
-    dsname = "//DD:" + string(zds->ddname);
+    dsname = "//DD:" + std::string(zds->ddname);
   }
 
   TruncationTracker truncation;
   // Build fopen flags with actual recfm from DSCB
   // Use text mode - the C runtime handles ASA control characters and record boundaries
-  const string recfm_flag = attrs.recfm.empty() ? "*" : attrs.recfm;
-  const string fopen_flags = zds->encoding_opts.data_type == eDataTypeBinary
-                                 ? "wb"
-                                 : "w,recfm=" + recfm_flag;
+  const std::string recfm_flag = attrs.recfm.empty() ? "*" : attrs.recfm;
+  const std::string fopen_flags = zds->encoding_opts.data_type == eDataTypeBinary
+                                      ? "wb"
+                                      : "w,recfm=" + recfm_flag;
 
   {
     FileGuard fp(dsname.c_str(), fopen_flags.c_str());
@@ -1019,14 +1016,14 @@ static int zds_write_sequential(ZDS *zds, const string &dsn, string &data, const
     if (!data.empty())
     {
       // Encode entire buffer and write - the C runtime handles ASA and record boundaries in text mode
-      string temp = data;
+      std::string temp = data;
       if (has_encoding)
       {
         try
         {
           temp = zut_encode(temp, source_encoding, codepage, zds->diag);
         }
-        catch (exception &e)
+        catch (std::exception &e)
         {
           zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from %s to %s", source_encoding.c_str(), codepage.c_str());
           return RTNCD_FAILURE;
@@ -1070,7 +1067,7 @@ static int write_asa_overflow_records(ZDS *zds, IO_CTRL *ioc, int overflow_count
 {
   for (int i = 0; i < overflow_count; i++)
   {
-    string empty_record(1, '-');
+    std::string empty_record(1, '-');
     int rc = zds_write_output_bpam(zds, ioc, empty_record);
     if (rc != RTNCD_SUCCESS)
     {
@@ -1083,13 +1080,13 @@ static int write_asa_overflow_records(ZDS *zds, IO_CTRL *ioc, int overflow_count
 /**
  * Internal function to write to a PDS/PDSE member using BPAM (updates ISPF stats)
  */
-static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
+static int zds_write_member_bpam(ZDS *zds, const std::string &dsn, std::string &data)
 {
   int rc = 0;
   IO_CTRL *ioc = nullptr;
 
   const auto has_encoding = zds_use_codepage(zds);
-  const auto codepage = string(zds->encoding_opts.codepage);
+  const auto codepage = std::string(zds->encoding_opts.codepage);
 
   // Open the member for BPAM output
   rc = zds_open_output_bpam(zds, dsn, ioc);
@@ -1102,7 +1099,7 @@ static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
   const bool is_asa = (ioc->dcb.dcbrecfm & dcbrecca) != 0;
 
   // Determine source encoding for line splitting
-  const auto source_encoding = strlen(zds->encoding_opts.source_codepage) > 0 ? string(zds->encoding_opts.source_codepage) : "UTF-8";
+  const auto source_encoding = strlen(zds->encoding_opts.source_codepage) > 0 ? std::string(zds->encoding_opts.source_codepage) : "UTF-8";
 
   // Track truncated lines
   TruncationTracker truncation;
@@ -1125,7 +1122,7 @@ static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
   const char newline_char = get_newline_char(has_encoding ? source_encoding : "", zds->diag);
 
   // Collect all lines first, then write them (so we can append flush bytes to the last line)
-  std::vector<std::pair<string, char>> lines_to_write; // pair of (encoded line, asa_char)
+  std::vector<std::pair<std::string, char>> lines_to_write; // std::pair of (encoded line, asa_char)
 
   // Parse data line by line
   if (!data.empty())
@@ -1133,9 +1130,9 @@ static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
     size_t pos = 0;
     size_t newline_pos;
 
-    while ((newline_pos = data.find(newline_char, pos)) != string::npos)
+    while ((newline_pos = data.find(newline_char, pos)) != std::string::npos)
     {
-      string line = data.substr(pos, newline_pos - pos);
+      std::string line = data.substr(pos, newline_pos - pos);
 
       // Remove trailing CR if present (Windows line endings)
       if (!line.empty() && line[line.size() - 1] == CR_CHAR)
@@ -1157,7 +1154,7 @@ static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
         // Add overflow blank lines as empty '-' records (for 3+ blank lines)
         for (int i = 0; i < asa_result.overflow_records; i++)
         {
-          lines_to_write.push_back(std::make_pair(string(), '-'));
+          lines_to_write.emplace_back(std::make_pair(std::string(), '-'));
         }
 
         asa_char = asa_result.asa_char;
@@ -1172,7 +1169,7 @@ static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
         {
           line = zut_encode(line, iconv_guard.get(), zds->diag);
         }
-        catch (exception &e)
+        catch (std::exception &e)
         {
           zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from %s to %s", source_encoding.c_str(), codepage.c_str());
           zds_close_output_bpam(zds, ioc);
@@ -1186,14 +1183,14 @@ static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
         truncation.add_line(line_num);
       }
 
-      lines_to_write.push_back(std::make_pair(line, is_asa ? asa_char : '\0'));
+      lines_to_write.emplace_back(std::make_pair(line, is_asa ? asa_char : '\0'));
       pos = newline_pos + 1;
     }
 
     // Handle remaining content after last newline
     if (pos < data.size())
     {
-      string line = data.substr(pos);
+      std::string line = data.substr(pos);
 
       // Remove trailing carriage return if present
       if (!line.empty() && line[line.size() - 1] == CR_CHAR)
@@ -1217,7 +1214,7 @@ static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
             // Add overflow blank lines as empty '-' records
             for (int i = 0; i < asa_result.overflow_records; i++)
             {
-              lines_to_write.push_back(std::make_pair(string(), '-'));
+              lines_to_write.emplace_back(std::make_pair(std::string(), '-'));
             }
 
             asa_char = asa_result.asa_char;
@@ -1235,7 +1232,7 @@ static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
             {
               line = zut_encode(line, iconv_guard.get(), zds->diag);
             }
-            catch (exception &e)
+            catch (std::exception &e)
             {
               zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from %s to %s", source_encoding.c_str(), codepage.c_str());
               zds_close_output_bpam(zds, ioc);
@@ -1249,7 +1246,7 @@ static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
             truncation.add_line(line_num);
           }
 
-          lines_to_write.push_back(std::make_pair(line, (is_asa && asa_char != '\0') ? asa_char : '\0'));
+          lines_to_write.emplace_back(std::make_pair(line, (is_asa && asa_char != '\0') ? asa_char : '\0'));
         }
       }
     }
@@ -1324,15 +1321,15 @@ static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
  * @param include_standard Whether to include "S" record formats in the check (minor logic optimization for members as its only supported for sequential).
  * @return true if the record format is unsupported, false otherwise.
  */
-static bool zds_write_recfm_unsupported(const string &recfm, const bool include_standard = false)
+static bool zds_write_recfm_unsupported(const std::string &recfm, const bool include_standard = false)
 {
   return recfm == ZDS_RECFM_U || (include_standard && recfm.find(ZDS_RECFM_S) != std::string::npos);
 }
 
-int zds_validate_etag(ZDS *zds, const string &dsn, bool has_encoding)
+int zds_validate_etag(ZDS *zds, const std::string &dsn, bool has_encoding)
 {
-  ZDS read_ds = {0};
-  string current_contents = "";
+  ZDS read_ds = {};
+  std::string current_contents = "";
   if (has_encoding)
   {
     memcpy(&read_ds.encoding_opts, &zds->encoding_opts, sizeof(ZEncode));
@@ -1354,11 +1351,11 @@ int zds_validate_etag(ZDS *zds, const string &dsn, bool has_encoding)
 
   if (given_etag != new_etag)
   {
-    ostringstream ss;
+    std::ostringstream ss;
     ss << "Etag mismatch: expected ";
-    ss << hex << given_etag << dec;
+    ss << std::hex << given_etag << std::dec;
     ss << ", actual ";
-    ss << hex << new_etag << dec;
+    ss << std::hex << new_etag << std::dec;
 
     const auto error_msg = ss.str();
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "%s", error_msg.c_str());
@@ -1368,7 +1365,7 @@ int zds_validate_etag(ZDS *zds, const string &dsn, bool has_encoding)
   return RTNCD_SUCCESS;
 }
 
-int zds_write_to_dsn(ZDS *zds, const string &dsn, string &data)
+int zds_write_to_dsn(ZDS *zds, const std::string &dsn, std::string &data)
 {
   if (!zds_dataset_exists(dsn))
   {
@@ -1413,26 +1410,26 @@ int zds_write_to_dsn(ZDS *zds, const string &dsn, string &data)
   }
 
   // Print new e-tag to stdout as response
-  string saved_contents = "";
+  std::string saved_contents = "";
   const auto read_rc = zds_read_from_dsn(zds, dsn, saved_contents);
   if (0 != read_rc)
   {
     return RTNCD_FAILURE;
   }
 
-  stringstream etag_stream;
-  etag_stream << hex << zut_calc_adler32_checksum(saved_contents);
+  std::stringstream etag_stream;
+  etag_stream << std::hex << zut_calc_adler32_checksum(saved_contents);
   strcpy(zds->etag, etag_stream.str().c_str());
 
   return rc;
 }
 
-int zds_open_output_bpam(ZDS *zds, std::string dsname, IO_CTRL *&ioc)
+int zds_open_output_bpam(ZDS *zds, const std::string &dsname, IO_CTRL *&ioc)
 {
-  string alloc_cmd = "ALLOC DA('" + dsname + "') SHR"; // TODO(Kelosky): log this command
+  std::string alloc_cmd = "ALLOC DA('" + dsname + "') SHR"; // TODO(Kelosky): log this command
   unsigned int code = 0;
-  string resp = "";
-  string ddname = "";
+  std::string resp = "";
+  std::string ddname = "";
   int rc = zut_bpxwdyn_rtdd(alloc_cmd, &code, resp, ddname);
   if (0 != rc)
   {
@@ -1454,13 +1451,13 @@ int zds_open_output_bpam(ZDS *zds, std::string dsname, IO_CTRL *&ioc)
   return RTNCD_SUCCESS;
 }
 
-int zds_write_output_bpam(ZDS *zds, IO_CTRL *ioc, string &data, char asa_char)
+int zds_write_output_bpam(ZDS *zds, IO_CTRL *ioc, std::string &data, char asa_char)
 {
   int rc = 0;
   int length = 0;
   if (asa_char != '\0')
   {
-    string asa_data;
+    std::string asa_data;
     asa_data.reserve(data.length() + 1);
     asa_data = asa_char;
     asa_data += data;
@@ -1487,8 +1484,8 @@ int zds_close_output_bpam(ZDS *zds, IO_CTRL *ioc)
 {
   int rc = 0;
   unsigned int code = 0;
-  string resp = "";
-  if (ioc == NULL)
+  std::string resp = "";
+  if (ioc == nullptr)
   {
     zds->diag.detail_rc = RTNCD_WARNING;
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "IO_CTRL is NULL");
@@ -1509,7 +1506,7 @@ int zds_close_output_bpam(ZDS *zds, IO_CTRL *ioc)
   }
   else
   {
-    string free_cmd = "FREE DD(" + string(zds->ddname, sizeof(zds->ddname)) + ")";
+    std::string free_cmd = "FREE DD(" + std::string(zds->ddname, sizeof(zds->ddname)) + ")";
     int rc = zut_bpxwdyn(free_cmd, &code, resp);
     if (0 != rc)
     {
@@ -1542,7 +1539,7 @@ typedef struct
   unsigned char info;
 } RECORD_ENTRY;
 
-int alloc_and_free(const string &alloc_dd, const string &dsn, unsigned int *code, string &resp)
+int alloc_and_free(const std::string &alloc_dd, const std::string &dsn, unsigned int *code, std::string &resp)
 {
   int rc = zut_bpxwdyn(alloc_dd, code, resp);
   if (RTNCD_SUCCESS == rc)
@@ -1553,12 +1550,11 @@ int alloc_and_free(const string &alloc_dd, const string &dsn, unsigned int *code
 }
 
 // TODO(Kelosky): add attributues to ZDS and have other functions populate it
-int zds_create_dsn(ZDS *zds, string dsn, DS_ATTRIBUTES attributes, string &response)
+int zds_create_dsn(ZDS *, const std::string &dsn, DS_ATTRIBUTES attributes, std::string &response)
 {
-  int rc = 0;
   unsigned int code = 0;
-  string parm = "ALLOC DA('" + dsn + "')";
-  transform(attributes.alcunit.begin(), attributes.alcunit.end(), attributes.alcunit.begin(), ::toupper);
+  std::string parm = "ALLOC DA('" + dsn + "')";
+  std::transform(attributes.alcunit.begin(), attributes.alcunit.end(), attributes.alcunit.begin(), ::toupper);
   if (attributes.alcunit.empty() || attributes.alcunit == "TRACKS" || attributes.alcunit == "TRK")
   {
     attributes.alcunit = "TRACKS"; // Allocation Unit
@@ -1587,8 +1583,6 @@ int zds_create_dsn(ZDS *zds, string dsn, DS_ATTRIBUTES attributes, string &respo
     attributes.lrecl = 80; // Record Length
   }
 
-  char numberAsString[6];
-
   // Required options, default to PS if not specified
   if (!attributes.dsorg.empty())
     parm += " DSORG(" + attributes.dsorg + ")";
@@ -1599,13 +1593,11 @@ int zds_create_dsn(ZDS *zds, string dsn, DS_ATTRIBUTES attributes, string &respo
 
   if (attributes.primary > 0)
   {
-    memset(numberAsString, 0, sizeof(numberAsString));
-    parm += " SPACE(" + string(itoa(attributes.primary, numberAsString, 10));
+    parm += " SPACE(" + std::to_string(attributes.primary);
 
     if (attributes.secondary > 0)
     {
-      memset(numberAsString, 0, sizeof(numberAsString));
-      parm += "," + string(itoa(attributes.secondary, numberAsString, 10));
+      parm += "," + std::to_string(attributes.secondary);
     }
 
     parm += ") " + attributes.alcunit;
@@ -1619,14 +1611,12 @@ int zds_create_dsn(ZDS *zds, string dsn, DS_ATTRIBUTES attributes, string &respo
   bool is_recfm_u = (attributes.recfm == "U" || attributes.recfm == ZDS_RECFM_U);
   if (attributes.lrecl > 0 && !is_recfm_u)
   {
-    memset(numberAsString, 0, sizeof(numberAsString));
-    parm += " LRECL(" + string(itoa(attributes.lrecl, numberAsString, 10)) + ")";
+    parm += " LRECL(" + std::to_string(attributes.lrecl) + ")";
   }
 
   if (attributes.dirblk > 0)
   {
-    memset(numberAsString, 0, sizeof(numberAsString));
-    parm += " DIR(" + string(itoa(attributes.dirblk, numberAsString, 10)) + ")";
+    parm += " DIR(" + std::to_string(attributes.dirblk) + ")";
   }
 
   parm += " NEW CATALOG";
@@ -1648,19 +1638,15 @@ int zds_create_dsn(ZDS *zds, string dsn, DS_ATTRIBUTES attributes, string &respo
   // Skip BLKSIZE for RECFM=U to let the system determine the appropriate value
   if (attributes.blksize >= 0 && !is_recfm_u)
   {
-    memset(numberAsString, 0, sizeof(numberAsString));
-    parm += " BLKSIZE(" + string(itoa(attributes.blksize, numberAsString, 10)) + ")";
+    parm += " BLKSIZE(" + std::to_string(attributes.blksize) + ")";
   }
 
   return alloc_and_free(parm, dsn, &code, response);
 }
 
-int zds_create_dsn_fb(ZDS *zds, const string &dsn, string &response)
+int zds_create_dsn_fb(ZDS *zds, const std::string &dsn, std::string &response)
 {
-  int rc = 0;
-  unsigned int code = 0;
-
-  DS_ATTRIBUTES attributes = {0};
+  DS_ATTRIBUTES attributes = {};
   attributes.dsorg = "PO";
   attributes.primary = 5;
   attributes.secondary = 5;
@@ -1672,11 +1658,9 @@ int zds_create_dsn_fb(ZDS *zds, const string &dsn, string &response)
   return zds_create_dsn(zds, dsn, attributes, response);
 }
 
-int zds_create_dsn_vb(ZDS *zds, const string &dsn, string &response)
+int zds_create_dsn_vb(ZDS *zds, const std::string &dsn, std::string &response)
 {
-  int rc = 0;
-  unsigned int code = 0;
-  DS_ATTRIBUTES attributes = {0};
+  DS_ATTRIBUTES attributes = {};
   attributes.dsorg = "PO";
   attributes.primary = 5;
   attributes.secondary = 5;
@@ -1688,11 +1672,9 @@ int zds_create_dsn_vb(ZDS *zds, const string &dsn, string &response)
   return zds_create_dsn(zds, dsn, attributes, response);
 }
 
-int zds_create_dsn_adata(ZDS *zds, const string &dsn, string &response)
+int zds_create_dsn_adata(ZDS *zds, const std::string &dsn, std::string &response)
 {
-  int rc = 0;
-  unsigned int code = 0;
-  DS_ATTRIBUTES attributes = {0};
+  DS_ATTRIBUTES attributes = {};
   attributes.dsorg = "PO";
   attributes.primary = 5;
   attributes.secondary = 5;
@@ -1705,11 +1687,9 @@ int zds_create_dsn_adata(ZDS *zds, const string &dsn, string &response)
   return zds_create_dsn(zds, dsn, attributes, response);
 }
 
-int zds_create_dsn_loadlib(ZDS *zds, const string &dsn, string &response)
+int zds_create_dsn_loadlib(ZDS *zds, const std::string &dsn, std::string &response)
 {
-  int rc = 0;
-  unsigned int code = 0;
-  DS_ATTRIBUTES attributes = {0};
+  DS_ATTRIBUTES attributes = {};
   attributes.dsorg = "PO";
   attributes.primary = 5;
   attributes.secondary = 5;
@@ -1723,7 +1703,7 @@ int zds_create_dsn_loadlib(ZDS *zds, const string &dsn, string &response)
 }
 
 #define NUM_DELETE_TEXT_UNITS 2
-int zds_delete_dsn(ZDS *zds, string dsn)
+int zds_delete_dsn(ZDS *zds, std::string dsn)
 {
   int rc = 0;
 
@@ -1743,7 +1723,7 @@ int zds_delete_dsn(ZDS *zds, string dsn)
   return 0;
 }
 
-int zds_rename_dsn(ZDS *zds, string dsn_before, string dsn_after)
+int zds_rename_dsn(ZDS *zds, std::string dsn_before, std::string dsn_after)
 {
   int rc = 0;
   if (dsn_before.empty() || dsn_after.empty())
@@ -1786,7 +1766,7 @@ int zds_rename_dsn(ZDS *zds, string dsn_before, string dsn_after)
   return 0;
 }
 
-int zds_rename_members(ZDS *zds, const string &dsname, const string &member_before, const string &member_after)
+int zds_rename_members(ZDS *zds, const std::string &dsname, const std::string &member_before, const std::string &member_after)
 {
   int rc = 0;
   if (dsname.empty())
@@ -1838,7 +1818,7 @@ int zds_rename_members(ZDS *zds, const string &dsname, const string &member_befo
   return 0;
 }
 
-int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &members)
+int zds_list_members(ZDS *zds, std::string dsn, std::vector<ZDSMem> &members)
 {
   // PO
   // PO-E (PDS)
@@ -1851,14 +1831,11 @@ int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &members)
 
   members.reserve(zds->max_entries);
 
-  RECORD rec = {0};
+  RECORD rec = {};
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=pds-reading-directory-sequentially
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=pdse-reading-directory - long alias names omitted, use DESERV for those
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=pds-directory
   FILE *fp = fopen(dsn.c_str(), "rb,recfm=u");
-
-  const int bufsize = 256;
-  char buffer[bufsize] = {0};
 
   if (!fp)
   {
@@ -1875,7 +1852,7 @@ int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &members)
     int len = sizeof(RECORD_ENTRY);
     for (int i = 0; i < rec.count; i = i + len)
     {
-      RECORD_ENTRY entry = {0};
+      RECORD_ENTRY entry = {};
       memcpy(&entry, data, sizeof(entry));
       long long int end = 0xFFFFFFFFFFFFFFFF; // indicates end of entries
       if (memcmp(entry.name, &end, sizeof(end)) == 0)
@@ -1895,15 +1872,15 @@ int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &members)
         }
 
         unsigned char info = entry.info;
-        unsigned char pointer_count = entry.info;
-        char name[9] = {0};
+        // unsigned char pointer_count = entry.info;
+        char name[9] = {};
         if (info & 0x80) // bit 0 indicates alias
         {
           // TODO(Kelosky): // member name is an alias
         }
-        pointer_count &= 0x60; // bits 1-2 contain number of user data TTRNs
-        pointer_count >>= 5;   // adjust to byte boundary
-        info &= 0x1F;          // bits 3-7 contain the number of half words of user data
+        // pointer_count &= 0x60; // bits 1-2 contain number of user data TTRNs
+        // pointer_count >>= 5;   // adjust to byte boundary
+        info &= 0x1F; // bits 3-7 contain the number of half words of user data
 
         memcpy(name, entry.name, sizeof(entry.name));
 
@@ -1915,8 +1892,8 @@ int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &members)
           }
         }
 
-        ZDSMem mem = {0};
-        mem.name = string(name);
+        ZDSMem mem = {};
+        mem.name = std::string(name);
         members.push_back(mem);
 
         data = data + sizeof(entry) + (info * 2); // skip number of half words
@@ -1933,7 +1910,7 @@ int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &members)
   return 0;
 }
 
-#pragma pack(1)
+ZNP_PACK_ON
 
 // https://www.ibm.com/docs/en/zos/3.1.0?topic=format-work-area-table
 // https://www.ibm.com/docs/en/zos/3.1.0?topic=format-work-area-picture
@@ -2014,7 +1991,7 @@ typedef struct
   ZDS_CSI_ENTRY entry;
 } ZDS_CSI_WORK_AREA;
 
-#pragma pack() // restore default packing
+ZNP_PACK_OFF
 
 #define DS1DSGPS_MASK 0x4000 // PS: Bit 2 is set
 #define DS1DSGDA_MASK 0x2000 // DA: Bit 3 is set
@@ -2024,7 +2001,7 @@ typedef struct
 #define DS1PDSE_MASK 0x10    // PDSE: Bit 4 in ds1smsfg
 #define DS1ENCRP_MASK 0x04   // Encrypted: Bit 5 in ds1flag1
 
-void load_dsorg_from_dscb(const DSCBFormat1 *dscb, string *dsorg)
+void load_dsorg_from_dscb(const DSCBFormat1 *dscb, std::string *dsorg)
 {
   // Bitmasks translated from binary to hex from "DFSMSdfp advanced services" PDF, Chapter 1 page 7 (PDF page 39)
   if (dscb->ds1dsorg & DS1DSGPS_MASK)
@@ -2056,7 +2033,7 @@ void load_dsorg_from_dscb(const DSCBFormat1 *dscb, string *dsorg)
   }
 }
 
-void load_recfm_from_dscb(const DSCBFormat1 *dscb, string *recfm)
+void load_recfm_from_dscb(const DSCBFormat1 *dscb, std::string *recfm)
 {
   // Bitmasks translated from binary to hex from "DFSMSdfp advanced services" PDF, Chapter 1 page 7 (PDF page 39)
   // Fixed: First bit is set
@@ -2105,7 +2082,7 @@ void load_recfm_from_dscb(const DSCBFormat1 *dscb, string *recfm)
   }
 }
 
-void load_date_from_dscb(const char *date_in, string *date_out, bool is_expiration_date = false)
+void load_date_from_dscb(const char *date_in, std::string *date_out, bool is_expiration_date = false)
 {
   // Date is in 'YDD' format (3 bytes): Year offset and day of year
   // If all zeros, date is not maintained
@@ -2581,12 +2558,12 @@ void load_volsers_from_catalog(const unsigned char *&data, const int field_len, 
   entry.multivolume = num_volumes > 1;
   entry.volsers.reserve(num_volumes);
 
-  char buffer[MAX_VOLSER_LENGTH + 1] = {0};
+  char buffer[MAX_VOLSER_LENGTH + 1] = {};
   for (int i = 0; i < num_volumes; i++)
   {
     memset(buffer, 0x00, sizeof(buffer)); // clear buffer
     memcpy(buffer, data + csi_offset + (i * MAX_VOLSER_LENGTH), MAX_VOLSER_LENGTH);
-    std::string vol = string(buffer, MAX_VOLSER_LENGTH);
+    auto vol = std::string(buffer, MAX_VOLSER_LENGTH);
     zut_rtrim(vol);
     if (!vol.empty())
       entry.volsers.push_back(vol);
@@ -2600,8 +2577,8 @@ void load_volsers_from_catalog(const unsigned char *&data, const int field_len, 
 
   if (0 == strcmp(IPL_VOLUME, entry.volser.c_str()))
   {
-    string symbol(IPL_VOLUME_SYMBOL);
-    string value;
+    std::string symbol(IPL_VOLUME_SYMBOL);
+    std::string value;
     int rc = zut_substitute_symbol(symbol, value);
     if (0 == rc)
     {
@@ -2627,7 +2604,7 @@ void load_devtype_from_catalog(const unsigned char *&data, const int field_len, 
   csi_offset += field_len;
 }
 
-void load_storage_attr_from_catalog(const unsigned char *&data, const int field_len, int &csi_offset, string &attr)
+void load_storage_attr_from_catalog(const unsigned char *&data, const int field_len, int &csi_offset, std::string &attr)
 {
   attr = "";
 
@@ -2638,7 +2615,7 @@ void load_storage_attr_from_catalog(const unsigned char *&data, const int field_
                           static_cast<unsigned char>(data[csi_offset + 1]);
     if (actual_len > 0 && actual_len <= (field_len - 2))
     {
-      attr = string((char *)(data + csi_offset + 2), actual_len);
+      attr = std::string((char *)(data + csi_offset + 2), actual_len);
     }
   }
 
@@ -2679,16 +2656,16 @@ void zds_get_attrs_from_dscb(ZDS *zds, ZDSEntry &entry)
   free(dscb);
 }
 
-int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &datasets, bool show_attributes)
+int zds_list_data_sets(ZDS *zds, std::string dsn, std::vector<ZDSEntry> &datasets, bool show_attributes)
 {
   int rc = 0;
 
-  zds->csi = NULL;
+  zds->csi = nullptr;
 
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=directory-catalog-field-names
-  string fields_long[CSI_FIELD_COUNT][CSI_FIELD_LEN] = {{"VOLSER"}, {"DEVTYP"}, {"DATACLAS"}, {"MGMTCLAS"}, {"STORCLAS"}};
+  std::string fields_long[CSI_FIELD_COUNT][CSI_FIELD_LEN] = {{"VOLSER"}, {"DEVTYP"}, {"DATACLAS"}, {"MGMTCLAS"}, {"STORCLAS"}};
 
-  string(*fields)[CSI_FIELD_LEN] = nullptr;
+  std::string(*fields)[CSI_FIELD_LEN] = nullptr;
   int number_of_fields = 0;
 
   if (show_attributes)
@@ -2735,7 +2712,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &datasets, bool sh
 
   // init blanks in query and set input DSN name
   memset(selection_criteria->csifiltk, ' ', sizeof(selection_criteria->csifiltk));
-  transform(dsn.begin(), dsn.end(), dsn.begin(), ::toupper); // upper case
+  std::transform(dsn.begin(), dsn.end(), dsn.begin(), ::toupper); // upper case
   memcpy(selection_criteria->csifiltk, dsn.c_str(), dsn.size());
   memset(&selection_criteria->csicldi, 'Y', sizeof(selection_criteria->csicldi));
   memset(&selection_criteria->csiresum, ' ', sizeof(selection_criteria->csiresum));
@@ -2830,11 +2807,11 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &datasets, bool sh
     work_area_total -= sizeof(ZDS_CSI_HEADER);
     work_area_total -= sizeof(ZDS_CSI_CATALOG);
 
-    char buffer[sizeof(f->name) + 1] = {0};
+    char buffer[sizeof(f->name) + 1] = {};
 
     while (work_area_total > 0)
     {
-      ZDSEntry entry = {0};
+      ZDSEntry entry = {};
       f = (ZDS_CSI_ENTRY *)p;
 
       if (ERROR == f->flag)
@@ -2877,7 +2854,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &datasets, bool sh
 
       memset(buffer, 0x00, sizeof(buffer));     // clear buffer
       memcpy(buffer, f->name, sizeof(f->name)); // copy all & leave a null
-      entry.name = string(buffer);
+      entry.name = std::string(buffer);
 
       // Only process catalog fields and DSCB if show_attributes is true
       if (show_attributes)
@@ -2915,7 +2892,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &datasets, bool sh
           zds_get_attrs_from_dscb(zds, entry);
         }
 
-        string old_volser = entry.volser;
+        std::string old_volser = entry.volser;
         switch (f->type)
         {
         case NON_VSAM_DATA_SET:
@@ -2989,7 +2966,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &datasets, bool sh
  *
  * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
  */
-int zds_read_from_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, size_t *content_len)
+int zds_read_from_dsn_streamed(ZDS *zds, const std::string &dsn, const std::string &pipe, size_t *content_len)
 {
   if (content_len == nullptr)
   {
@@ -2997,17 +2974,17 @@ int zds_read_from_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, 
     return RTNCD_FAILURE;
   }
 
-  string dsname = "//'" + dsn + "'";
+  std::string dsname = "//'" + dsn + "'";
   if (strlen(zds->ddname) > 0)
   {
-    dsname = "//DD:" + string(zds->ddname);
+    dsname = "//DD:" + std::string(zds->ddname);
   }
 
   // Check if ASA format - use record I/O to preserve ASA control characters
   const DscbAttributes attrs = zds_get_dscb_attributes(dsn);
   const bool is_asa = attrs.is_asa && zds->encoding_opts.data_type != eDataTypeBinary;
 
-  string fopen_flags;
+  std::string fopen_flags;
   if (zds->encoding_opts.data_type == eDataTypeBinary)
   {
     fopen_flags = "rb";
@@ -3039,13 +3016,13 @@ int zds_read_from_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, 
   }
 
   const auto has_encoding = zds_use_codepage(zds);
-  const auto codepage = string(zds->encoding_opts.codepage);
+  const auto codepage = std::string(zds->encoding_opts.codepage);
 
   std::vector<char> temp_encoded;
   std::vector<char> left_over;
 
   // Open iconv descriptor once for all chunks (for stateful encodings like IBM-939)
-  const string source_encoding = has_encoding && strlen(zds->encoding_opts.source_codepage) > 0 ? string(zds->encoding_opts.source_codepage) : "UTF-8";
+  const std::string source_encoding = has_encoding && strlen(zds->encoding_opts.source_codepage) > 0 ? std::string(zds->encoding_opts.source_codepage) : "UTF-8";
   IconvGuard iconv_guard(has_encoding ? source_encoding.c_str() : nullptr, has_encoding ? codepage.c_str() : nullptr);
   if (has_encoding && !iconv_guard.is_valid())
   {
@@ -3065,7 +3042,7 @@ int zds_read_from_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, 
     while ((bytes_read = fread(&buf[0], 1, lrecl, fin)) > 0)
     {
       // Add newline before each record (except the first)
-      string record_data;
+      std::string record_data;
       if (!first_record)
       {
         record_data.append(1, '\n');
@@ -3204,34 +3181,34 @@ int zds_read_from_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, 
 /**
  * Internal function to write to a sequential data set in streaming mode using fopen/fwrite
  */
-static int zds_write_sequential_streamed(ZDS *zds, const string &dsn, const string &pipe, size_t *content_len, const DscbAttributes &attrs)
+static int zds_write_sequential_streamed(ZDS *zds, const std::string &dsn, const std::string &pipe, size_t *content_len, const DscbAttributes &attrs)
 {
-  string dsname = "//'" + dsn + "'";
+  std::string dsname = "//'" + dsn + "'";
   if (strlen(zds->ddname) > 0)
   {
-    dsname = "//DD:" + string(zds->ddname);
+    dsname = "//DD:" + std::string(zds->ddname);
   }
 
   const auto has_encoding = zds_use_codepage(zds);
-  const auto codepage = string(zds->encoding_opts.codepage);
+  const auto codepage = std::string(zds->encoding_opts.codepage);
   const bool isTextMode = zds->encoding_opts.data_type != eDataTypeBinary;
 
   const int max_len = get_effective_lrecl_from_attrs(attrs);
 
   // Build fopen flags with actual recfm from DSCB
   // Use text mode - the C runtime handles ASA control characters and record boundaries
-  const string recfm_flag = attrs.recfm.empty() ? "*" : attrs.recfm;
-  const string fopen_flags = zds->encoding_opts.data_type == eDataTypeBinary
-                                 ? "wb"
-                                 : "w,recfm=" + recfm_flag;
+  const std::string recfm_flag = attrs.recfm.empty() ? "*" : attrs.recfm;
+  const std::string fopen_flags = zds->encoding_opts.data_type == eDataTypeBinary
+                                      ? "wb"
+                                      : "w,recfm=" + recfm_flag;
 
   // Track truncated lines for text mode
   TruncationTracker truncation;
   int line_num = 0;
-  string line_buffer;
+  std::string line_buffer;
 
   // Determine source encoding for encoding conversion
-  const auto source_encoding = strlen(zds->encoding_opts.source_codepage) > 0 ? string(zds->encoding_opts.source_codepage) : "UTF-8";
+  const auto source_encoding = strlen(zds->encoding_opts.source_codepage) > 0 ? std::string(zds->encoding_opts.source_codepage) : "UTF-8";
 
   {
     FileGuard fout(dsname.c_str(), fopen_flags.c_str());
@@ -3303,7 +3280,7 @@ static int zds_write_sequential_streamed(ZDS *zds, const string &dsn, const stri
 
         size_t pos = 0;
         size_t newline_pos;
-        while ((newline_pos = line_buffer.find(newline_char, pos)) != string::npos)
+        while ((newline_pos = line_buffer.find(newline_char, pos)) != std::string::npos)
         {
           line_num++;
           size_t line_len = newline_pos - pos;
@@ -3402,13 +3379,13 @@ static int zds_write_sequential_streamed(ZDS *zds, const string &dsn, const stri
 /**
  * Internal function to write to a PDS/PDSE member in streaming mode using BPAM (updates ISPF stats)
  */
-static int zds_write_member_bpam_streamed(ZDS *zds, const string &dsn, const string &pipe, size_t *content_len)
+static int zds_write_member_bpam_streamed(ZDS *zds, const std::string &dsn, const std::string &pipe, size_t *content_len)
 {
   int rc = 0;
   IO_CTRL *ioc = nullptr;
 
   const auto has_encoding = zds_use_codepage(zds);
-  const auto codepage = string(zds->encoding_opts.codepage);
+  const auto codepage = std::string(zds->encoding_opts.codepage);
 
   // Open the member for BPAM output
   rc = zds_open_output_bpam(zds, dsn, ioc);
@@ -3444,7 +3421,7 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const string &dsn, const str
   const int max_len = get_effective_lrecl(ioc);
 
   // Determine source encoding for line splitting
-  const auto source_encoding = strlen(zds->encoding_opts.source_codepage) > 0 ? string(zds->encoding_opts.source_codepage) : "UTF-8";
+  const auto source_encoding = strlen(zds->encoding_opts.source_codepage) > 0 ? std::string(zds->encoding_opts.source_codepage) : "UTF-8";
 
   // ASA state tracking for streaming
   AsaStreamState asa_state;
@@ -3465,10 +3442,10 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const string &dsn, const str
   size_t bytes_read;
   std::vector<char> temp_encoded;
   std::vector<char> left_over;
-  string line_buffer; // Buffer for accumulating partial lines across chunks
+  std::string line_buffer; // Buffer for accumulating partial lines across chunks
 
   // Buffer the previous line so we can append flush bytes to the last one
-  string prev_line;
+  std::string prev_line;
   char prev_asa_char = '\0';
   bool has_prev_line = false;
 
@@ -3482,9 +3459,9 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const string &dsn, const str
 
     size_t pos = 0;
     size_t newline_pos;
-    while ((newline_pos = line_buffer.find(newline_char, pos)) != string::npos)
+    while ((newline_pos = line_buffer.find(newline_char, pos)) != std::string::npos)
     {
-      string line = line_buffer.substr(pos, newline_pos - pos);
+      std::string line = line_buffer.substr(pos, newline_pos - pos);
 
       // Remove trailing carriage return if present (Windows line endings)
       if (!line.empty() && line[line.size() - 1] == CR_CHAR)
@@ -3704,7 +3681,7 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const string &dsn, const str
  *
  * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
  */
-int zds_write_to_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, size_t *content_len)
+int zds_write_to_dsn_streamed(ZDS *zds, const std::string &dsn, const std::string &pipe, size_t *content_len)
 {
   if (content_len == nullptr)
   {
@@ -3754,14 +3731,14 @@ int zds_write_to_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, s
   }
 
   // Update the etag
-  string saved_contents = "";
+  std::string saved_contents = "";
   const auto read_rc = zds_read_from_dsn(zds, dsn, saved_contents);
   if (0 != read_rc)
   {
     return RTNCD_FAILURE;
   }
 
-  stringstream etag_stream;
+  std::stringstream etag_stream;
   etag_stream << std::hex << zut_calc_adler32_checksum(saved_contents) << std::dec;
   strcpy(zds->etag, etag_stream.str().c_str());
 

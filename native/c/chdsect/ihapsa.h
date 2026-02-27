@@ -1,4 +1,8 @@
+#ifdef __open_xl__
+#pragma pack(1)
+#else
 #pragma pack(packed)
+#endif
 
 #ifndef __psa__
 #define __psa__
@@ -1605,4 +1609,8 @@ struct psa
 
 #endif
 
+#ifdef __open_xl__
+#pragma pack()
+#else
 #pragma pack(reset)
+#endif

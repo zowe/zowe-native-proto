@@ -9,19 +9,18 @@
 #  Shared toolchain definitions for Zowe native components.
 #
 
-XLC_FLAGS=_CC_ACCEPTABLE_RC=0 _C89_ACCEPTABLE_RC=0 _CXX_ACCEPTABLE_RC=0
-CXX=$(XLC_FLAGS) xlc++
-CXXLANG=xlclang++
-CC=$(XLC_FLAGS) xlc
+CXX=ibm-clang++64
+METALC_CC_FLAGS=_CC_ACCEPTABLE_RC=0 _C89_ACCEPTABLE_RC=0 _CXX_ACCEPTABLE_RC=0
+CC=$(METALC_CC_FLAGS) xlc
 ASM=as
 
-CPP_BND_BASE_FLAGS=-W "l,lp64,xplink,map"
-CPP_BND_BASE_FLAGS_AUTH=-W "l,lp64,xplink,map,ac=1"
-CPP_BND_DEBUG_FLAGS=-W "l,lp64,xplink,map,list"
-CPP_BND_DEBUG_FLAGS_AUTH=-W "l,lp64,xplink,map,list,ac=1"
+CPP_BND_BASE_FLAGS=-Wl,-bMAP $(LDFLAGS)
+CPP_BND_BASE_FLAGS_AUTH=-Wl,-bMAP -Wl,-bAC=1 $(LDFLAGS)
+CPP_BND_DEBUG_FLAGS=-Wl,-bMAP -Wl,-bLIST $(LDFLAGS)
+CPP_BND_DEBUG_FLAGS_AUTH=-Wl,-bMAP -Wl,-bLIST -Wl,-bAC=1 $(LDFLAGS)
 
-DLL_BND_BASE_FLAGS=-W "l,lp64,dll,dynam=dll,xplink,map"
-DLL_BND_DEBUG_FLAGS=-W "l,lp64,dll,dynam=dll,xplink,map,list"
+DLL_BND_BASE_FLAGS=-shared -Wl,-bMAP $(LDFLAGS)
+DLL_BND_DEBUG_FLAGS=-shared -Wl,-bMAP -Wl,-bLIST $(LDFLAGS)
 
 #
 # Metal C compilation options
@@ -61,11 +60,9 @@ ASM_FLAGS=-mRENT
 #
 # Compilation flags
 #
-C_FLAGS_BASE=-W "c,lp64,langlvl(extended),xplink,exportall" -c
-DLL_CPP_FLAGS_BASE=-W "c,lp64,langlvl(extended0x),dll,xplink,exportall" -c
-CPP_FLAGS_BASE=-W "c,lp64,langlvl(extended0x),dll,xplink" -c -D__IBMCPP_TR1__=1
-CXXLANG_FLAGS_BASE=-W "c,lp64" -c
-SWIG_FLAGS_BASE=-W "c,lp64,define(SWIG)" -c -DSWIG
+C_FLAGS_BASE=-fvisibility=default -c
+CPP_FLAGS_BASE=-fvisibility=default -c -std=gnu++17 -fno-aligned-allocation -D_EXT -D_OPEN_SYS_FILE_EXT=1 -MD
+SWIG_FLAGS_BASE=-DSWIG $(CPP_FLAGS_BASE)
 
 #
 # Logging support
@@ -79,6 +76,6 @@ LOG_FLAGS=-DZLOG_ENABLE
 #
 .IF $(BuildType) == DEBUG
 LOG_FLAGS=-DZLOG_ENABLE
-DEBUGGER_FLAGS=-qSOURCE -g9
-OTHER_C_FLAGS=-qSHOWINC -qSHOWMACROS
+DEBUGGER_FLAGS=-g
+OTHER_C_FLAGS=-H -dM
 .END

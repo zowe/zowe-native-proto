@@ -46,7 +46,6 @@ void register_commands(parser::Command &root_command);
 
 using namespace ast;
 using namespace parser;
-using namespace std;
 
 namespace sample
 {
@@ -55,18 +54,18 @@ namespace sample
 int handle_ping(InvocationContext &context)
 {
   // Parse the optional message argument
-  string message = context.get<string>("message", "hello");
+  std::string message = context.get<std::string>("message", "hello");
 
   // Get current timestamp
   time_t now = time(nullptr);
   char *dt = ctime(&now);
 
   // Remove newline from ctime output
-  string timestamp(dt);
+  std::string timestamp(dt);
   timestamp.erase(timestamp.find_last_not_of("\n\r") + 1);
 
   // Print to stdout (for CLI output)
-  context.output_stream() << "PONG: " << message << " at " << timestamp << endl;
+  context.output_stream() << "PONG: " << message << " at " << timestamp << std::endl;
 
   // Set return object (for programmatic access)
   const auto result = obj();

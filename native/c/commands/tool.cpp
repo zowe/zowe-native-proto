@@ -17,7 +17,6 @@
 #include <unistd.h>
 
 using namespace parser;
-using namespace std;
 using namespace commands::common;
 
 namespace tool
@@ -27,25 +26,25 @@ int handle_tool_convert_dsect(InvocationContext &context)
 {
   int rc = 0;
   unsigned int code = 0;
-  string resp;
+  std::string resp;
 
-  string adata_dsn = context.get<std::string>("adata-dsn", "");
-  string chdr_dsn = context.get<std::string>("chdr-dsn", "");
-  string sysprint = context.get<std::string>("sysprint", "");
-  string sysout = context.get<std::string>("sysout", "");
+  std::string adata_dsn = context.get<std::string>("adata-dsn", "");
+  std::string chdr_dsn = context.get<std::string>("chdr-dsn", "");
+  std::string sysprint = context.get<std::string>("sysprint", "");
+  std::string sysout = context.get<std::string>("sysout", "");
 
   const char *user = getlogin();
-  string struser(user);
-  transform(struser.begin(), struser.end(), struser.begin(), ::tolower);
+  std::string struser(user);
+  std::transform(struser.begin(), struser.end(), struser.begin(), ::tolower);
 
   if (sysprint.empty())
     sysprint = "/tmp/" + struser + "_sysprint.txt";
   if (sysout.empty())
     sysout = "/tmp/" + struser + "_sysout.txt";
 
-  context.output_stream() << adata_dsn << " " << chdr_dsn << " " << sysprint << " " << sysout << endl;
+  context.output_stream() << adata_dsn << " " << chdr_dsn << " " << sysprint << " " << sysout << std::endl;
 
-  vector<string> dds;
+  std::vector<std::string> dds;
   dds.reserve(4);
   dds.push_back("alloc fi(sysprint) path('" + sysprint + "') pathopts(owronly,ocreat,otrunc) pathmode(sirusr,siwusr,sirgrp) filedata(text) msg(2)");
   dds.push_back("alloc fi(sysout) path('" + sysout + "') pathopts(owronly,ocreat,otrunc) pathmode(sirusr,siwusr,sirgrp) filedata(text) msg(2)");
@@ -56,22 +55,22 @@ int handle_tool_convert_dsect(InvocationContext &context)
   rc = zut_loop_dynalloc(diag, dds);
   if (0 != rc)
   {
-    context.error_stream() << "Error: allocation failed" << endl;
-    context.error_stream() << "  Details: " << diag.e_msg << endl;
+    context.error_stream() << "Error: allocation failed" << std::endl;
+    context.error_stream() << "  Details: " << diag.e_msg << std::endl;
     return RTNCD_FAILURE;
   }
 
   rc = zut_convert_dsect();
   if (0 != rc)
   {
-    context.error_stream() << "Error: convert failed with rc: '" << rc << "'" << endl;
-    context.output_stream() << "  See '" << sysprint << "' and '" << sysout << "' for more details" << endl;
+    context.error_stream() << "Error: convert failed with rc: '" << rc << "'" << std::endl;
+    context.output_stream() << "  See '" << sysprint << "' and '" << sysout << "' for more details" << std::endl;
     zut_free_dynalloc_dds(diag, dds);
     return RTNCD_FAILURE;
   }
 
-  context.output_stream() << "DSECT converted to '" << chdr_dsn << "'" << endl;
-  context.output_stream() << "Copy it via `cp \"//'" + chdr_dsn + "'\" <member>.h`" << endl;
+  context.output_stream() << "DSECT converted to '" << chdr_dsn << "'" << std::endl;
+  context.output_stream() << "Copy it via `cp \"//'" + chdr_dsn + "'\" <member>.h`" << std::endl;
 
   // Free dynalloc dds
   zut_free_dynalloc_dds(diag, dds);
@@ -83,19 +82,19 @@ int handle_tool_dynalloc(InvocationContext &context)
 {
   int rc = 0;
   unsigned int code = 0;
-  string resp;
+  std::string resp;
 
-  string parm = context.get<std::string>("parm", "");
+  std::string parm = context.get<std::string>("parm", "");
 
   rc = zut_bpxwdyn(parm, &code, resp);
   if (0 != rc)
   {
-    context.error_stream() << "Error: bpxwdyn with parm '" << parm << "' rc: '" << rc << "'" << endl;
-    context.error_stream() << "  Details: " << resp << endl;
+    context.error_stream() << "Error: bpxwdyn with parm '" << parm << "' rc: '" << rc << "'" << std::endl;
+    context.error_stream() << "  Details: " << resp << std::endl;
     return RTNCD_FAILURE;
   }
 
-  context.output_stream() << resp << endl;
+  context.output_stream() << resp << std::endl;
 
   return rc;
 }
@@ -103,17 +102,17 @@ int handle_tool_dynalloc(InvocationContext &context)
 int handle_tool_display_symbol(InvocationContext &context)
 {
   int rc = 0;
-  string symbol = context.get<std::string>("symbol", "");
-  transform(symbol.begin(), symbol.end(), symbol.begin(), ::toupper);
+  std::string symbol = context.get<std::string>("symbol", "");
+  std::transform(symbol.begin(), symbol.end(), symbol.begin(), ::toupper);
   symbol = "&" + symbol;
-  string value;
+  std::string value;
   rc = zut_substitute_symbol(symbol, value);
   if (0 != rc)
   {
-    context.error_stream() << "Error: asasymbf with parm '" << symbol << "' rc: '" << rc << "'" << endl;
+    context.error_stream() << "Error: asasymbf with parm '" << symbol << "' rc: '" << rc << "'" << std::endl;
     return RTNCD_FAILURE;
   }
-  context.output_stream() << value << endl;
+  context.output_stream() << value << std::endl;
 
   return RTNCD_SUCCESS;
 }
@@ -126,14 +125,14 @@ int handle_tool_list_parmlib(InvocationContext &context)
   rc = zut_list_parmlib(diag, parmlibs);
   if (0 != rc)
   {
-    context.error_stream() << "Error: could not list parmlibs rc: '" << rc << "'" << endl;
-    context.error_stream() << "  Details: " << diag.e_msg << endl;
+    context.error_stream() << "Error: could not list parmlibs rc: '" << rc << "'" << std::endl;
+    context.error_stream() << "  Details: " << diag.e_msg << std::endl;
     return RTNCD_FAILURE;
   }
 
-  for (vector<string>::iterator it = parmlibs.begin(); it != parmlibs.end(); ++it)
+  for (const auto &lib : parmlibs)
   {
-    context.output_stream() << *it << endl;
+    context.output_stream() << lib << std::endl;
   }
 
   return rc;
@@ -143,12 +142,12 @@ int handle_tool_search(InvocationContext &context)
 {
   int rc = 0;
 
-  string pattern = context.get<std::string>("string", "");
-  string parms = context.get<std::string>("parms", "");
-  string dsn = context.get<std::string>("dsn", "");
+  std::string pattern = context.get<std::string>("string", "");
+  std::string parms = context.get<std::string>("parms", "");
+  std::string dsn = context.get<std::string>("dsn", "");
 
   // Perform dynalloc
-  vector<string> dds;
+  std::vector<std::string> dds;
   dds.reserve(3);
   dds.push_back("alloc dd(newdd) da('" + dsn + "') shr");
   dds.push_back("alloc dd(outdd)");
@@ -158,25 +157,25 @@ int handle_tool_search(InvocationContext &context)
   rc = zut_loop_dynalloc(diag, dds);
   if (0 != rc)
   {
-    context.error_stream() << "Error: allocation failed" << endl;
-    context.error_stream() << "  Details: " << diag.e_msg << endl;
+    context.error_stream() << "Error: allocation failed" << std::endl;
+    context.error_stream() << "  Details: " << diag.e_msg << std::endl;
     return RTNCD_FAILURE;
   }
 
   // Build super c selection criteria
-  string data = " SRCHFOR '" + pattern + "'\n";
+  std::string data = " SRCHFOR '" + pattern + "'\n";
 
   // Write control statements
   ZDS zds = {0};
   zds_write_to_dd(&zds, "sysin", data);
   if (0 != rc)
   {
-    context.error_stream() << "Error: could not write to dd: '" << "sysin" << "' rc: '" << rc << "'" << endl;
-    context.error_stream() << "  Details: " << zds.diag.e_msg << endl;
+    context.error_stream() << "Error: could not write to dd: '" << "sysin" << "' rc: '" << rc << "'" << std::endl;
+    context.error_stream() << "  Details: " << zds.diag.e_msg << std::endl;
     return RTNCD_FAILURE;
   }
 
-  transform(parms.begin(), parms.end(), parms.begin(), ::toupper);
+  std::transform(parms.begin(), parms.end(), parms.begin(), ::toupper);
 
   // Perform search
   rc = zut_search(parms);
@@ -185,22 +184,22 @@ int handle_tool_search(InvocationContext &context)
       ZUT_RTNCD_SEARCH_SUCCESS != rc &&
       ZUT_RTNCD_SEARCH_WARNING != rc)
   {
-    context.error_stream() << "Error: could not invoke ISRSUPC rc: '" << rc << "'" << endl;
+    context.error_stream() << "Error: could not invoke ISRSUPC rc: '" << rc << "'" << std::endl;
     zut_free_dynalloc_dds(diag, dds);
     return RTNCD_FAILURE;
   }
 
   // Read output from super c
-  string output;
+  std::string output;
   rc = zds_read_from_dd(&zds, "outdd", output);
   if (0 != rc)
   {
-    context.error_stream() << "Error: could not read from dd: '" << "outdd" << "' rc: '" << rc << "'" << endl;
-    context.error_stream() << "  Details: " << zds.diag.e_msg << endl;
+    context.error_stream() << "Error: could not read from dd: '" << "outdd" << "' rc: '" << rc << "'" << std::endl;
+    context.error_stream() << "  Details: " << zds.diag.e_msg << std::endl;
     zut_free_dynalloc_dds(diag, dds);
     return RTNCD_FAILURE;
   }
-  context.output_stream() << output << endl;
+  context.output_stream() << output << std::endl;
 
   // Free dynalloc dds
   zut_free_dynalloc_dds(diag, dds);
@@ -212,11 +211,11 @@ int handle_tool_amblist(InvocationContext &context)
 {
   int rc = 0;
 
-  string dsn = context.get<std::string>("dsn", "");
-  string statements = " " + context.get<std::string>("control-statements", "");
+  std::string dsn = context.get<std::string>("dsn", "");
+  std::string statements = " " + context.get<std::string>("control-statements", "");
 
   // Perform dynalloc
-  vector<string> dds;
+  std::vector<std::string> dds;
   dds.reserve(3);
   dds.push_back("alloc dd(syslib) da('" + dsn + "') shr");
   dds.push_back("alloc dd(sysprint) lrecl(80) recfm(f,b) blksize(80)");
@@ -226,20 +225,20 @@ int handle_tool_amblist(InvocationContext &context)
   rc = zut_loop_dynalloc(diag, dds);
   if (0 != rc)
   {
-    context.error_stream() << "Error: allocation failed" << endl;
-    context.error_stream() << "  Details: " << diag.e_msg << endl;
+    context.error_stream() << "Error: allocation failed" << std::endl;
+    context.error_stream() << "  Details: " << diag.e_msg << std::endl;
     return RTNCD_FAILURE;
   }
 
-  transform(statements.begin(), statements.end(), statements.begin(), ::toupper);
+  std::transform(statements.begin(), statements.end(), statements.begin(), ::toupper);
 
   // Write control statements
   ZDS zds = {0};
   zds_write_to_dd(&zds, "sysin", statements);
   if (0 != rc)
   {
-    context.error_stream() << "Error: could not write to dd: '" << "sysin" << "' rc: '" << rc << "'" << endl;
-    context.error_stream() << "  Details: " << zds.diag.e_msg << endl;
+    context.error_stream() << "Error: could not write to dd: '" << "sysin" << "' rc: '" << rc << "'" << std::endl;
+    context.error_stream() << "  Details: " << zds.diag.e_msg << std::endl;
     zut_free_dynalloc_dds(diag, dds);
     return RTNCD_FAILURE;
   }
@@ -248,22 +247,22 @@ int handle_tool_amblist(InvocationContext &context)
   rc = zut_run("AMBLIST");
   if (RTNCD_SUCCESS != rc)
   {
-    context.error_stream() << "Error: could not invoke AMBLIST rc: '" << rc << "'" << endl;
+    context.error_stream() << "Error: could not invoke AMBLIST rc: '" << rc << "'" << std::endl;
     zut_free_dynalloc_dds(diag, dds);
     return RTNCD_FAILURE;
   }
 
   // Read output from amblist
-  string output;
+  std::string output;
   rc = zds_read_from_dd(&zds, "sysprint", output);
   if (0 != rc)
   {
-    context.error_stream() << "Error: could not read from dd: '" << "sysprint" << "' rc: '" << rc << "'" << endl;
-    context.error_stream() << "  Details: " << zds.diag.e_msg << endl;
+    context.error_stream() << "Error: could not read from dd: '" << "sysprint" << "' rc: '" << rc << "'" << std::endl;
+    context.error_stream() << "  Details: " << zds.diag.e_msg << std::endl;
     zut_free_dynalloc_dds(diag, dds);
     return RTNCD_FAILURE;
   }
-  context.output_stream() << output << endl;
+  context.output_stream() << output << std::endl;
 
   // Free dynalloc dds
   zut_free_dynalloc_dds(diag, dds);
@@ -271,7 +270,7 @@ int handle_tool_amblist(InvocationContext &context)
   return RTNCD_SUCCESS;
 }
 
-string parse_escape_chars(string &input)
+std::string parse_escape_chars(std::string &input)
 {
   std::string result;
   result.reserve(input.size());
@@ -321,57 +320,57 @@ string parse_escape_chars(string &input)
 int handle_tool_run(InvocationContext &context)
 {
   int rc = 0;
-  string program = context.get<std::string>("program", "");
-  string parms = context.get<std::string>("parms", "");
-  vector<string> dds;
+  std::string program = context.get<std::string>("program", "");
+  std::string parms = context.get<std::string>("parms", "");
+  std::vector<std::string> dds;
 
   const ArgumentMap &dynamic_args = context.dynamic_arguments();
-  for (ArgumentMap::const_iterator it = dynamic_args.begin(); it != dynamic_args.end(); ++it)
+  for (const auto &kv : dynamic_args)
   {
-    dds.push_back("alloc dd(" + it->first + ") " + it->second.get_string_value());
+    dds.push_back("alloc dd(" + kv.first + ") " + kv.second.get_string_value());
   }
 
   ZDIAG diag = {};
   rc = zut_loop_dynalloc(diag, dds);
   if (0 != rc)
   {
-    context.error_stream() << "Error: allocation failed" << endl;
-    context.error_stream() << "  Details: " << diag.e_msg << endl;
+    context.error_stream() << "Error: allocation failed" << std::endl;
+    context.error_stream() << "  Details: " << diag.e_msg << std::endl;
     return RTNCD_FAILURE;
   }
 
-  string indd = context.get<std::string>("in-dd", "");
+  std::string indd = context.get<std::string>("in-dd", "");
   if (indd.length() > 0)
   {
-    string ddname = "DD:" + indd;
-    ofstream out(ddname.c_str());
+    std::string ddname = "DD:" + indd;
+    std::ofstream out(ddname.c_str());
     if (!out.is_open())
     {
-      context.error_stream() << "Error: could not open input '" << ddname << "'" << endl;
+      context.error_stream() << "Error: could not open input '" << ddname << "'" << std::endl;
       if (dds.size() > 0)
       {
-        context.error_stream() << "  Allocations: " << endl;
-        for (vector<string>::iterator it = dds.begin(); it != dds.end(); ++it)
+        context.error_stream() << "  Allocations: " << std::endl;
+        for (const auto &dd : dds)
         {
-          context.error_stream() << "    " << *it << endl;
+          context.error_stream() << "    " << dd << std::endl;
         }
       }
       zut_free_dynalloc_dds(diag, dds);
       return RTNCD_FAILURE;
     }
 
-    string input = context.get<std::string>("in-dd-parms", "");
+    std::string input = context.get<std::string>("in-dd-parms", "");
     input = parse_escape_chars(input);
 
     if (context.has("in-dd-parms"))
     {
-      out << input << endl;
+      out << input << std::endl;
     }
 
     out.close();
   }
 
-  transform(program.begin(), program.end(), program.begin(), ::toupper);
+  std::transform(program.begin(), program.end(), program.begin(), ::toupper);
   parms = parse_escape_chars(parms);
 
   rc = zut_run(diag, program, parms);
@@ -380,43 +379,43 @@ int handle_tool_run(InvocationContext &context)
   {
     if (diag.e_msg_len > 0)
     {
-      context.error_stream() << "Error: program '" << program << "' ended with rc: '" << rc << "'" << endl;
-      context.error_stream() << "  Details: " << diag.e_msg << endl;
+      context.error_stream() << "Error: program '" << program << "' ended with rc: '" << rc << "'" << std::endl;
+      context.error_stream() << "  Details: " << diag.e_msg << std::endl;
       if (dds.size() > 0)
       {
-        context.error_stream() << "  Allocations: " << endl;
-        for (vector<string>::iterator it = dds.begin(); it != dds.end(); ++it)
+        context.error_stream() << "  Allocations: " << std::endl;
+        for (const auto &dd : dds)
         {
-          context.error_stream() << "    " << *it << endl;
+          context.error_stream() << "    " << dd << std::endl;
         }
       }
     }
   }
 
-  string outdd = context.get<std::string>("out-dd", "");
+  std::string outdd = context.get<std::string>("out-dd", "");
   if (outdd.length() > 0)
   {
-    string ddname = "DD:" + outdd;
-    ifstream in(ddname.c_str());
+    std::string ddname = "DD:" + outdd;
+    std::ifstream in(ddname.c_str());
     if (!in.is_open())
     {
-      context.error_stream() << "Error: could not open output '" << ddname << "'" << endl;
+      context.error_stream() << "Error: could not open output '" << ddname << "'" << std::endl;
       if (dds.size() > 0)
       {
-        context.error_stream() << "  Allocations: " << endl;
-        for (vector<string>::iterator it = dds.begin(); it != dds.end(); ++it)
+        context.error_stream() << "  Allocations: " << std::endl;
+        for (const auto &dd : dds)
         {
-          context.error_stream() << "    " << *it << endl;
+          context.error_stream() << "    " << dd << std::endl;
         }
       }
       zut_free_dynalloc_dds(diag, dds);
       return RTNCD_FAILURE;
     }
 
-    string line;
-    while (getline(in, line))
+    std::string line;
+    while (std::getline(in, line))
     {
-      context.output_stream() << line << endl;
+      context.output_stream() << line << std::endl;
     }
     in.close();
   }

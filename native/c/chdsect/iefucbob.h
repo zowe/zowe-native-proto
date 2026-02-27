@@ -1,4 +1,8 @@
+#ifdef __open_xl__
+#pragma pack(1)
+#else
 #pragma pack(packed)
+#endif
 
 #ifndef __ucb__
 #define __ucb__
@@ -725,4 +729,8 @@ struct ucbpdcta {
 
 #endif
 
+#ifdef __open_xl__
+#pragma pack()
+#else
 #pragma pack(reset)
+#endif

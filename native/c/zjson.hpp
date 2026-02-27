@@ -25,53 +25,27 @@
 #include <cstdio>
 #include <cmath>
 #include <limits>
+#include <optional>
+#include <variant>
+#include <string_view>
+#include <memory>
+#include <type_traits>
 #include "zjsonm.h"
 #include "zjsontype.h"
 #include "zstd.hpp"
 #include "zlogger.hpp"
 #include <hwtjic.h> // ensure to include /usr/include
 
-#if defined(__clang__)
-#define ZJSON_CONSTEXPR constexpr
-#define ZJSON_NOEXCEPT noexcept
-#else
-#define ZJSON_CONSTEXPR const
-#define ZJSON_NOEXCEPT throw()
-namespace std
-{
-// Alias TR1 unordered_map to std namespace for XLC compatibility
-using std::tr1::unordered_map;
-
-template <typename T, T v>
-struct integral_constant
-{
-  static ZJSON_CONSTEXPR T value = v;
-  typedef T value_type;
-  typedef integral_constant type;
-};
-typedef integral_constant<bool, true> true_type;
-typedef integral_constant<bool, false> false_type;
-} // namespace std
-#endif
-
 /*
  * ZJson - C++ JSON library with automatic struct serialization
  *
  * ==================== COMPILER REQUIREMENTS ====================
  *
- * This library supports two compilation modes:
- *
- *   - Minimal mode: Compatible with z/OS XLC (C++98/03)
- *     Only dynamic JSON with zjson::Value is supported, making this a minimal
- *     header-only library with faster compilation times.
- *
- *   - Full mode: Requires xlclang (C++11/14)
- *     Enables automatic struct serialization/deserialization with ZJSON_DERIVE
- *     and ZJSON_SERIALIZABLE macros.
+ * Requires ibm-clang (IBM Open XL C/C++) with C++17 support.
  *
  * ==================== QUICK REFERENCE ====================
  *
- * Parsing (from struct requires xlclang):
+ * Parsing:
  *   zjson::Value data = zjson::from_str(json_string);
  *   auto result = zjson::from_str<MyStruct>(json_string);
  *
@@ -79,16 +53,16 @@ typedef integral_constant<bool, false> false_type;
  *   std::string json = zjson::to_string(obj);
  *   std::string pretty = zjson::to_string_pretty(obj);
  *
- * Struct Registration (requires xlclang):
+ * Struct Registration:
  *   ZJSON_DERIVE(StructName, field1, field2, ...)
  *   ZJSON_SERIALIZABLE(StructName, ZJSON_FIELD(StructName, field).rename("name"))
  *
- * Dynamic JSON (always available):
+ * Dynamic JSON:
  *   zjson::Value obj = zjson::Value::create_object();
  *   zjson::Value arr = zjson::Value::create_array();
  *   obj["name"] = "John"; arr[0] = "item";
  *
- * Type Conversion (requires xlclang):
+ * Type Conversion:
  *   zjson::Value val = zjson::to_value(obj);
  *   auto obj = zjson::from_value<MyStruct>(val);
  *
@@ -101,14 +75,14 @@ typedef integral_constant<bool, false> false_type;
  *   auto result = zjson::from_str<MyStruct>(json);
  *   if (result.has_value()) { auto obj = result.value(); }
  *
- * Field Attributes (requires xlclang):
+ * Field Attributes:
  *   .rename("newName")        // JSON field name
  *   .skip()                   // Skip serialization/deserialization
  *   .skip_serializing_if_none()  // Skip if optional field is empty
  *   .with_default(func)       // Default value for missing fields
  *
  * Optional Fields:
- *   zstd::optional<T> field; // Nullable fields (null when empty)
+ *   std::optional<T> field; // Nullable fields (null when empty)
  */
 
 // Forward declarations
@@ -148,18 +122,18 @@ struct RenameAll
     case lowercase:
     {
       std::string result;
-      for (auto it = name.begin(); it != name.end(); ++it)
+      for (char c : name)
       {
-        result += std::tolower(*it);
+        result += std::tolower(c);
       }
       return result;
     }
     case UPPERCASE:
     {
       std::string result;
-      for (auto it = name.begin(); it != name.end(); ++it)
+      for (char c : name)
       {
-        result += std::toupper(*it);
+        result += std::toupper(c);
       }
       return result;
     }
@@ -169,20 +143,20 @@ struct RenameAll
     {
       std::string result;
       bool capitalize_next = false;
-      for (auto it = name.begin(); it != name.end(); ++it)
+      for (char c : name)
       {
-        if (*it == '_')
+        if (c == '_')
         {
           capitalize_next = true;
         }
         else if (capitalize_next)
         {
-          result += std::toupper(*it);
+          result += std::toupper(c);
           capitalize_next = false;
         }
         else
         {
-          result += std::tolower(*it);
+          result += std::tolower(c);
         }
       }
       return result;
@@ -199,41 +173,27 @@ struct RenameAll
     case SCREAMING_SNAKE_CASE:
     {
       std::string result;
-      for (auto it = name.begin(); it != name.end(); ++it)
+      for (char c : name)
       {
-        result += std::toupper(*it);
+        result += std::toupper(c);
       }
       return result;
     }
     case kebab_case:
     {
       std::string result;
-      for (auto it = name.begin(); it != name.end(); ++it)
+      for (char c : name)
       {
-        if (*it == '_')
-        {
-          result += '-';
-        }
-        else
-        {
-          result += std::tolower(*it);
-        }
+        result += (c == '_') ? '-' : std::tolower(c);
       }
       return result;
     }
     case SCREAMING_KEBAB_CASE:
     {
       std::string result;
-      for (auto it = name.begin(); it != name.end(); ++it)
+      for (char c : name)
       {
-        if (*it == '_')
-        {
-          result += '-';
-        }
-        else
-        {
-          result += std::toupper(*it);
-        }
+        result += (c == '_') ? '-' : std::toupper(c);
       }
       return result;
     }
@@ -259,6 +219,16 @@ attributes::RenameAll::CaseStyle StructConfig<T>::rename_all_case = attributes::
 
 template <typename T>
 bool StructConfig<T>::deny_unknown_fields = false;
+
+template <typename T>
+struct is_optional : std::false_type
+{
+};
+
+template <typename T>
+struct is_optional<std::optional<T>> : std::true_type
+{
+};
 } // namespace detail
 
 /**
@@ -351,14 +321,14 @@ public:
   // Public methods for creating Values to avoid private member access
   static Value create_object()
   {
-    Value result;
+    Value result{};
     result.data_ = std::unordered_map<std::string, Value>();
     return result;
   }
 
   static Value create_array()
   {
-    Value result;
+    Value result{};
     result.data_ = std::vector<Value>();
     return result;
   }
@@ -401,84 +371,84 @@ public:
 
 private:
   // Variant type for JSON values
-  typedef zstd::variant<
-      zstd::monostate,                       // Null
+  using ValueVariant = std::variant<
+      std::monostate,                        // Null
       bool,                                  // Bool
       long long,                             // Integer
       double,                                // Float
       std::string,                           // String
       std::vector<Value>,                    // Array
       std::unordered_map<std::string, Value> // Object
-      >
-      ValueVariant;
+      >;
 
   ValueVariant data_;
 
-  // Helper methods to avoid .template syntax for XLC compatibility
+  // Helper methods for variant access
   inline bool &get_bool()
   {
-    return data_.get<bool>();
+    return std::get<bool>(data_);
   }
   inline long long &get_long_long()
   {
-    return data_.get<long long>();
+    return std::get<long long>(data_);
   }
   inline double &get_double()
   {
-    return data_.get<double>();
+    return std::get<double>(data_);
   }
   inline std::string &get_string()
   {
-    return data_.get<std::string>();
+    return std::get<std::string>(data_);
   }
   inline std::vector<Value> &get_array()
   {
-    return data_.get<std::vector<Value>>();
+    return std::get<std::vector<Value>>(data_);
   }
   inline std::unordered_map<std::string, Value> &get_object()
   {
-    return data_.get<std::unordered_map<std::string, Value>>();
+    return std::get<std::unordered_map<std::string, Value>>(data_);
   }
 
   inline const bool &get_bool() const
   {
-    return data_.get<bool>();
+    return std::get<bool>(data_);
   }
   inline const long long &get_long_long() const
   {
-    return data_.get<long long>();
+    return std::get<long long>(data_);
   }
   inline const double &get_double() const
   {
-    return data_.get<double>();
+    return std::get<double>(data_);
   }
   inline const std::string &get_string() const
   {
-    return data_.get<std::string>();
+    return std::get<std::string>(data_);
   }
   inline const std::vector<Value> &get_array() const
   {
-    return data_.get<std::vector<Value>>();
+    return std::get<std::vector<Value>>(data_);
   }
   inline const std::unordered_map<std::string, Value> &get_object() const
   {
-    return data_.get<std::unordered_map<std::string, Value>>();
+    return std::get<std::unordered_map<std::string, Value>>(data_);
   }
 
 public:
-  Value() : data_(zstd::monostate())
+  Value() = default;
+  explicit Value(bool b)
+      : data_(b)
   {
   }
-  Value(bool b) : data_(b)
+  explicit Value(int i)
+      : data_(static_cast<long long>(i))
   {
   }
-  Value(int i) : data_(static_cast<long long>(i))
+  explicit Value(long long ll)
+      : data_(ll)
   {
   }
-  Value(long long ll) : data_(ll)
-  {
-  }
-  Value(unsigned long long ull)
+  explicit Value(unsigned long long ull)
   {
     if (ull <= static_cast<unsigned long long>(std::numeric_limits<long long>::max()))
     {
@@ -489,18 +459,22 @@ public:
       data_ = static_cast<double>(ull);
     }
   }
-  Value(double d) : data_(d)
+  explicit Value(double d)
+      : data_(d)
   {
   }
-  Value(const std::string &s) : data_(s)
+  explicit Value(const std::string &s)
+      : data_(s)
   {
   }
-  Value(const char *s) : data_(std::string(s))
+  explicit Value(const char *s)
+      : data_(std::string(s))
   {
   }
 
   // Copy constructor and assignment
-  Value(const Value &other) : data_(other.data_)
+  Value(const Value &other)
+      : data_(other.data_)
   {
   }
 
@@ -676,31 +650,31 @@ public:
 
   inline bool is_null() const
   {
-    return zstd::holds_alternative<zstd::monostate>(data_);
+    return std::holds_alternative<std::monostate>(data_);
   }
   inline bool is_bool() const
   {
-    return zstd::holds_alternative<bool>(data_);
+    return std::holds_alternative<bool>(data_);
   }
   inline bool is_integer() const
   {
-    return zstd::holds_alternative<long long>(data_);
+    return std::holds_alternative<long long>(data_);
   }
   inline bool is_double() const
   {
-    return zstd::holds_alternative<double>(data_);
+    return std::holds_alternative<double>(data_);
   }
   inline bool is_string() const
   {
-    return zstd::holds_alternative<std::string>(data_);
+    return std::holds_alternative<std::string>(data_);
   }
   inline bool is_array() const
   {
-    return zstd::holds_alternative<std::vector<Value>>(data_);
+    return std::holds_alternative<std::vector<Value>>(data_);
   }
   inline bool is_object() const
   {
-    return zstd::holds_alternative<std::unordered_map<std::string, Value>>(data_);
+    return std::holds_alternative<std::unordered_map<std::string, Value>>(data_);
   }
 
   // Object access by key
@@ -837,8 +811,8 @@ struct Deserializable
 template <>
 struct Serializable<bool>
 {
-  static ZJSON_CONSTEXPR bool value = true;
-  static Value serialize(const bool &obj) ZJSON_NOEXCEPT
+  static constexpr bool value = true;
+  static Value serialize(const bool &obj) noexcept
   {
     return Value(obj);
   }
@@ -847,7 +821,7 @@ struct Serializable<bool>
 template <>
 struct Deserializable<bool>
 {
-  static ZJSON_CONSTEXPR bool value = true;
+  static constexpr bool value = true;
   static zstd::expected<bool, Error> deserialize(const Value &value)
   {
     try
@@ -864,8 +838,8 @@ struct Deserializable<bool>
 template <>
 struct Serializable<int>
 {
-  static ZJSON_CONSTEXPR bool value = true;
-  static Value serialize(const int &obj) ZJSON_NOEXCEPT
+  static constexpr bool value = true;
+  static Value serialize(const int &obj) noexcept
   {
     return Value(obj);
   }
@@ -874,7 +848,7 @@ struct Serializable<int>
 template <>
 struct Deserializable<int>
 {
-  static ZJSON_CONSTEXPR bool value = true;
+  static constexpr bool value = true;
   static zstd::expected<int, Error> deserialize(const Value &value)
   {
     try
@@ -900,8 +874,8 @@ struct Deserializable<int>
 template <>
 struct Serializable<unsigned int>
 {
-  static ZJSON_CONSTEXPR bool value = true;
-  static Value serialize(const unsigned int &obj) ZJSON_NOEXCEPT
+  static constexpr bool value = true;
+  static Value serialize(const unsigned int &obj) noexcept
   {
     return Value(static_cast<unsigned long long>(obj));
   }
@@ -910,7 +884,7 @@ struct Serializable<unsigned int>
 template <>
 struct Deserializable<unsigned int>
 {
-  static ZJSON_CONSTEXPR bool value = true;
+  static constexpr bool value = true;
   static zstd::expected<unsigned int, Error> deserialize(const Value &value)
   {
     try
@@ -935,8 +909,8 @@ struct Deserializable<unsigned int>
 template <>
 struct Serializable<long long>
 {
-  static ZJSON_CONSTEXPR bool value = true;
-  static Value serialize(const long long &obj) ZJSON_NOEXCEPT
+  static constexpr bool value = true;
+  static Value serialize(const long long &obj) noexcept
   {
     return Value(obj);
   }
@@ -945,7 +919,7 @@ struct Serializable<long long>
 template <>
 struct Deserializable<long long>
 {
-  static ZJSON_CONSTEXPR bool value = true;
+  static constexpr bool value = true;
   static zstd::expected<long long, Error> deserialize(const Value &value)
   {
     try
@@ -962,8 +936,8 @@ struct Deserializable<long long>
 template <>
 struct Serializable<unsigned long long>
 {
-  static ZJSON_CONSTEXPR bool value = true;
-  static Value serialize(const unsigned long long &obj) ZJSON_NOEXCEPT
+  static constexpr bool value = true;
+  static Value serialize(const unsigned long long &obj) noexcept
   {
     return Value(obj);
   }
@@ -972,7 +946,7 @@ struct Serializable<unsigned long long>
 template <>
 struct Deserializable<unsigned long long>
 {
-  static ZJSON_CONSTEXPR bool value = true;
+  static constexpr bool value = true;
   static zstd::expected<unsigned long long, Error> deserialize(const Value &value)
   {
     try
@@ -990,8 +964,8 @@ struct Deserializable<unsigned long long>
 template <>
 struct Serializable<size_t>
 {
-  static ZJSON_CONSTEXPR bool value = true;
-  static Value serialize(const size_t &obj) ZJSON_NOEXCEPT
+  static constexpr bool value = true;
+  static Value serialize(const size_t &obj) noexcept
   {
     return Value(static_cast<unsigned long long>(obj));
   }
@@ -1000,7 +974,7 @@ struct Serializable<size_t>
 template <>
 struct Deserializable<size_t>
 {
-  static ZJSON_CONSTEXPR bool value = true;
+  static constexpr bool value = true;
   static zstd::expected<size_t, Error> deserialize(const Value &value)
   {
     try
@@ -1025,8 +999,8 @@ struct Deserializable<size_t>
 template <>
 struct Serializable<double>
 {
-  static ZJSON_CONSTEXPR bool value = true;
-  static Value serialize(const double &obj) ZJSON_NOEXCEPT
+  static constexpr bool value = true;
+  static Value serialize(const double &obj) noexcept
   {
     return Value(obj);
   }
@@ -1035,7 +1009,7 @@ struct Serializable<double>
 template <>
 struct Deserializable<double>
 {
-  static ZJSON_CONSTEXPR bool value = true;
+  static constexpr bool value = true;
   static zstd::expected<double, Error> deserialize(const Value &value)
   {
     try
@@ -1052,8 +1026,8 @@ struct Deserializable<double>
 template <>
 struct Serializable<std::string>
 {
-  static ZJSON_CONSTEXPR bool value = true;
-  static Value serialize(const std::string &obj) ZJSON_NOEXCEPT
+  static constexpr bool value = true;
+  static Value serialize(const std::string &obj) noexcept
   {
     return Value(obj);
   }
@@ -1062,7 +1036,7 @@ struct Serializable<std::string>
 template <>
 struct Deserializable<std::string>
 {
-  static ZJSON_CONSTEXPR bool value = true;
+  static constexpr bool value = true;
   static zstd::expected<std::string, Error> deserialize(const Value &value)
   {
     try
@@ -1080,7 +1054,7 @@ struct Deserializable<std::string>
 template <>
 struct Serializable<Value>
 {
-  static ZJSON_CONSTEXPR bool value = true;
+  static constexpr bool value = true;
   static Value serialize(const Value &obj)
   {
     return obj; // Value serializes to itself (identity)
@@ -1090,7 +1064,7 @@ struct Serializable<Value>
 template <>
 struct Deserializable<Value>
 {
-  static ZJSON_CONSTEXPR bool value = true;
+  static constexpr bool value = true;
   static zstd::expected<Value, Error> deserialize(const Value &value)
   {
     // Value to Value is just a copy - already parsed from JSON
@@ -1102,15 +1076,15 @@ struct Deserializable<Value>
 template <typename T>
 struct Serializable<std::vector<T>>
 {
-  static ZJSON_CONSTEXPR bool value = Serializable<T>::value;
+  static constexpr bool value = Serializable<T>::value;
   static Value serialize(const std::vector<T> &vec)
   {
     Value result = Value::create_array();
     result.reserve_array(vec.size());
 
-    for (auto it = vec.begin(); it != vec.end(); ++it)
+    for (const auto &item : vec)
     {
-      result.add_to_array(Serializable<T>::serialize(*it));
+      result.add_to_array(Serializable<T>::serialize(item));
     }
     return result;
   }
@@ -1119,7 +1093,7 @@ struct Serializable<std::vector<T>>
 template <typename T>
 struct Deserializable<std::vector<T>>
 {
-  static ZJSON_CONSTEXPR bool value = Deserializable<T>::value;
+  static constexpr bool value = Deserializable<T>::value;
   static zstd::expected<std::vector<T>, Error> deserialize(const Value &value)
   {
     if (!value.is_array())
@@ -1131,9 +1105,9 @@ struct Deserializable<std::vector<T>>
     const std::vector<Value> &array = value.as_array();
     result.reserve(array.size());
 
-    for (auto it = array.begin(); it != array.end(); ++it)
+    for (const auto &element : array)
     {
-      zstd::expected<T, Error> item_result = Deserializable<T>::deserialize(*it);
+      zstd::expected<T, Error> item_result = Deserializable<T>::deserialize(element);
       if (!item_result.has_value())
       {
         return zstd::make_unexpected(item_result.error());
@@ -1145,12 +1119,12 @@ struct Deserializable<std::vector<T>>
   }
 };
 
-// Specializations for zstd::optional<T>
+// Specializations for std::optional<T>
 template <typename T>
-struct Serializable<zstd::optional<T>>
+struct Serializable<std::optional<T>>
 {
-  static ZJSON_CONSTEXPR bool value = Serializable<T>::value;
-  static Value serialize(const zstd::optional<T> &opt)
+  static constexpr bool value = Serializable<T>::value;
+  static Value serialize(const std::optional<T> &opt)
   {
     if (opt.has_value())
     {
@@ -1164,14 +1138,14 @@ struct Serializable<zstd::optional<T>>
 };
 
 template <typename T>
-struct Deserializable<zstd::optional<T>>
+struct Deserializable<std::optional<T>>
 {
-  static ZJSON_CONSTEXPR bool value = Deserializable<T>::value;
-  static zstd::expected<zstd::optional<T>, Error> deserialize(const Value &value)
+  static constexpr bool value = Deserializable<T>::value;
+  static zstd::expected<std::optional<T>, Error> deserialize(const Value &value)
   {
     if (value.is_null())
     {
-      return zstd::optional<T>(); // Empty optional
+      return std::optional<T>(); // Empty optional
     }
     else
     {
@@ -1180,12 +1154,11 @@ struct Deserializable<zstd::optional<T>>
       {
         return zstd::make_unexpected(result.error());
       }
-      return zstd::optional<T>(result.value());
+      return std::optional<T>(result.value());
     }
   }
 };
 
-#if defined(__clang__)
 /**
  * Field descriptor for reflection-like behavior
  */
@@ -1302,74 +1275,10 @@ public:
     return static_cast<bool>(get_deserializer());
   }
 };
-#endif
 
 /**
  * Main serialization and deserialization functions
  */
-
-// Helper implementation functions for C++14 compatibility
-template <typename T>
-zstd::expected<std::string, Error> to_string_impl(const T &value, std::true_type)
-{
-  try
-  {
-    Value serialized = Serializable<T>::serialize(value);
-    std::string json_str = value_to_json_string(serialized);
-    return json_str;
-  }
-  catch (const Error &e)
-  {
-    return zstd::make_unexpected(e);
-  }
-  catch (const std::exception &e)
-  {
-    return zstd::make_unexpected(Error(Error::Custom, e.what()));
-  }
-}
-
-template <typename T>
-zstd::expected<std::string, Error> to_string_impl(const T &value, std::false_type)
-{
-#if defined(__clang__)
-  try
-  {
-    if (SerializationRegistry<T>::has_serializer())
-    {
-      Value serialized = SerializationRegistry<T>::get_serializer()(value);
-      std::string json_str = value_to_json_string(serialized);
-      return json_str;
-    }
-  }
-  catch (const Error &e)
-  {
-    return zstd::make_unexpected(e);
-  }
-  catch (const std::exception &e)
-  {
-    return zstd::make_unexpected(Error(Error::Custom, e.what()));
-  }
-#endif
-  return zstd::make_unexpected(Error::invalid_type("serializable", "unknown"));
-}
-
-template <typename T>
-zstd::expected<T, Error> from_str_impl(const Value &parsed, std::true_type)
-{
-  return Deserializable<T>::deserialize(parsed);
-}
-
-template <typename T>
-zstd::expected<T, Error> from_str_impl(const Value &parsed, std::false_type)
-{
-#if defined(__clang__)
-  if (SerializationRegistry<T>::has_deserializer())
-  {
-    return SerializationRegistry<T>::get_deserializer()(parsed);
-  }
-#endif
-  return zstd::make_unexpected(Error::invalid_type("deserializable", "unknown"));
-}
 
 // to_string function for JSON serialization
 template <typename T>
@@ -1377,7 +1286,20 @@ zstd::expected<std::string, Error> to_string(const T &value)
 {
   try
   {
-    return to_string_impl<T>(value, typename std::integral_constant<bool, Serializable<T>::value>::type());
+    Value serialized;
+    if constexpr (Serializable<T>::value)
+    {
+      serialized = Serializable<T>::serialize(value);
+    }
+    else
+    {
+      if (!SerializationRegistry<T>::has_serializer())
+      {
+        return zstd::make_unexpected(Error::invalid_type("serializable", "unknown"));
+      }
+      serialized = SerializationRegistry<T>::get_serializer()(value);
+    }
+    return value_to_json_string(serialized);
   }
   catch (const Error &e)
   {
@@ -1395,9 +1317,8 @@ inline std::string escape_json_string(const std::string &input)
   std::string output;
   output.reserve(input.length());
 
-  for (auto it = input.begin(); it != input.end(); ++it)
+  for (char c : input)
   {
-    char c = *it;
     switch (c)
     {
     case '"':
@@ -1570,12 +1491,7 @@ inline Value json_handle_to_value(JSON_INSTANCE *instance, KEY_HANDLE *key_handl
         else
         {
           char *endptr = nullptr;
-#if defined(__clang__)
           long long int_val = std::strtoll(str_val.c_str(), &endptr, 10);
-#else
-          // XLC doesn't have strtoll, use strtol (limits supported range to 32-bit numbers)
-          long long int_val = static_cast<long long>(std::strtol(str_val.c_str(), &endptr, 10));
-#endif
           if (endptr == str_val.c_str() || *endptr != '\0')
           {
             return Value();
@@ -1718,7 +1634,18 @@ zstd::expected<T, Error> from_value(const Value &value)
 {
   try
   {
-    return from_str_impl<T>(value, typename std::integral_constant<bool, Deserializable<T>::value>::type());
+    if constexpr (Deserializable<T>::value)
+    {
+      return Deserializable<T>::deserialize(value);
+    }
+    else
+    {
+      if (SerializationRegistry<T>::has_deserializer())
+      {
+        return SerializationRegistry<T>::get_deserializer()(value);
+      }
+      return zstd::make_unexpected(Error::invalid_type("deserializable", "unknown"));
+    }
   }
   catch (const Error &e)
   {
@@ -1730,32 +1657,24 @@ zstd::expected<T, Error> from_value(const Value &value)
   }
 }
 
-// Helper implementation functions for to_value for C++14 compatibility
-template <typename T>
-zstd::expected<Value, Error> to_value_impl(const T &obj, std::true_type)
-{
-  return Serializable<T>::serialize(obj);
-}
-
-template <typename T>
-zstd::expected<Value, Error> to_value_impl(const T &obj, std::false_type)
-{
-#if defined(__clang__)
-  if (SerializationRegistry<T>::has_serializer())
-  {
-    return SerializationRegistry<T>::get_serializer()(obj);
-  }
-#endif
-  return zstd::make_unexpected(Error::invalid_type("serializable", "unknown"));
-}
-
 // to_value function - convert any serializable type to Value
 template <typename T>
 zstd::expected<Value, Error> to_value(const T &obj)
 {
   try
   {
-    return to_value_impl<T>(obj, typename std::integral_constant<bool, Serializable<T>::value>::type());
+    if constexpr (Serializable<T>::value)
+    {
+      return Serializable<T>::serialize(obj);
+    }
+    else
+    {
+      if (SerializationRegistry<T>::has_serializer())
+      {
+        return SerializationRegistry<T>::get_serializer()(obj);
+      }
+      return zstd::make_unexpected(Error::invalid_type("serializable", "unknown"));
+    }
   }
   catch (const Error &e)
   {
@@ -1794,7 +1713,7 @@ zstd::expected<T, Error> from_str(const std::string &json_str)
     // Clean up
     ZJSMTERM(&instance);
 
-    return from_str_impl<T>(parsed, typename std::integral_constant<bool, Deserializable<T>::value>::type());
+    return from_value<T>(parsed);
   }
   catch (const Error &e)
   {
@@ -1822,9 +1741,8 @@ inline std::string add_json_indentation(const std::string &json_str, int spaces)
   bool in_string = false;
   bool escape_next = false;
 
-  for (auto it = json_str.begin(); it != json_str.end(); ++it)
+  for (char ch : json_str)
   {
-    char ch = *it;
     if (escape_next)
     {
       result += ch;
@@ -1970,10 +1888,9 @@ inline int value_to_json_instance(JSON_INSTANCE *instance, KEY_HANDLE *parent_ha
       break;
 
     // Add all array elements
-    const std::vector<Value> &arr = value.as_array();
-    for (auto it = arr.begin(); it != arr.end(); ++it)
+    for (const auto &element : value.as_array())
     {
-      rc = value_to_json_instance(instance, &new_entry_handle, "", *it);
+      rc = value_to_json_instance(instance, &new_entry_handle, "", element);
       if (rc != 0)
         break;
     }
@@ -1988,10 +1905,9 @@ inline int value_to_json_instance(JSON_INSTANCE *instance, KEY_HANDLE *parent_ha
       break;
 
     // Add all object properties
-    const auto &obj = value.as_object();
-    for (auto it = obj.begin(); it != obj.end(); ++it)
+    for (const auto &[key, val] : value.as_object())
     {
-      rc = value_to_json_instance(instance, &new_entry_handle, it->first, it->second);
+      rc = value_to_json_instance(instance, &new_entry_handle, key, val);
       if (rc != 0)
         break;
     }
@@ -2041,16 +1957,15 @@ inline std::string value_to_json_string(const Value &value)
       // Clear the initial content and rebuild
       if (value.is_object())
       {
-        const auto &obj = value.as_object();
-        for (auto it = obj.begin(); it != obj.end(); ++it)
+        for (const auto &[key, val] : value.as_object())
         {
-          rc = value_to_json_instance(&instance, &root_handle, it->first, it->second);
+          rc = value_to_json_instance(&instance, &root_handle, key, val);
           if (rc != 0)
           {
             ZJSMTERM(&instance);
             std::stringstream ss;
             ss << std::hex << rc;
-            throw Error(Error::Custom, "Failed to serialize object property '" + it->first + "'. RC: x'" + ss.str() + "'");
+            throw Error(Error::Custom, "Failed to serialize object property '" + key + "'. RC: x'" + ss.str() + "'");
           }
         }
       }
@@ -2187,7 +2102,6 @@ inline Value parse_json_string(const std::string &json_str)
   }
 }
 
-#if defined(__clang__)
 /**
  * Macro system for automatic serialization
  */
@@ -2376,117 +2290,44 @@ inline Value parse_json_string(const std::string &json_str)
 namespace detail
 {
 
-// Forward declare the _impl functions
-template <typename T, typename FieldType>
-void serialize_field_impl(const T &obj, Value &result, const Field<T, FieldType> &field, std::true_type);
-
-template <typename T, typename FieldType>
-void serialize_field_impl(const T &obj, Value &result, const Field<T, FieldType> &field, std::false_type);
-
-template <typename T, typename FieldType>
-bool deserialize_field_impl(T &obj, const Field<T, FieldType> &field, const Value &value, std::true_type);
-
-template <typename T, typename FieldType>
-bool deserialize_field_impl(T &obj, const Field<T, FieldType> &field, const Value &value, std::false_type);
-
-// Implementation of serialize_field_impl functions
-template <typename T, typename FieldType>
-void serialize_field_impl(const T &obj, Value &result, const Field<T, FieldType> &field, std::true_type)
-{
-  const FieldType &field_value = obj.*(field.member);
-
-  // Handle flattening for struct types
-  if (field.flatten_field)
-  {
-    // Serialize the nested struct and merge its fields into the parent
-    Value nested_value = Serializable<FieldType>::serialize(field_value);
-    if (nested_value.is_object())
-    {
-      const auto &nested_obj = nested_value.as_object();
-      for (const auto &nested_field : nested_obj)
-      {
-        // Check for name collisions before adding flattened fields
-        if (result.is_object())
-        {
-          const auto &existing_obj = result.as_object();
-          if (existing_obj.find(nested_field.first) != existing_obj.end())
-          {
-            // Name collision detected - this should be an error to match standard JSON library behavior
-            throw Error::invalid_data("Field name collision during flattening: '" + nested_field.first + "' already exists in parent struct");
-          }
-        }
-        result.add_to_object(nested_field.first, nested_field.second);
-      }
-      return;
-    }
-  }
-
-  // Normal serialization
-  result.add_to_object(field.get_serialized_name(), Serializable<FieldType>::serialize(field_value));
-}
-
-// Specialized implementation for optional types - by default include as null
-// Use .skip_if_none() field attribute to skip empty optionals
-template <typename T, typename OptionalType>
-void serialize_field_impl(const T &obj, Value &result, const Field<T, zstd::optional<OptionalType>> &field, std::true_type)
-{
-  const zstd::optional<OptionalType> &field_value = obj.*(field.member);
-
-  // Check if field has skip_if_none attribute
-  if (!field_value.has_value() && field.skip_if_none)
-  {
-    return; // Skip field entirely
-  }
-
-  // Otherwise, serialize normally (null if empty, value if present)
-  result.add_to_object(field.get_serialized_name(), Serializable<zstd::optional<OptionalType>>::serialize(field_value));
-}
-
-template <typename T, typename FieldType>
-void serialize_field_impl(const T &obj, Value &result, const Field<T, FieldType> &field, std::false_type)
-{
-  // Type is not serializable - skip or handle error
-}
-
-// Implementation of deserialize_field_impl functions
-template <typename T, typename FieldType>
-bool deserialize_field_impl(T &obj, const Field<T, FieldType> &field, const Value &value, std::true_type)
-{
-  auto result = Deserializable<FieldType>::deserialize(value);
-  if (!result.has_value())
-  {
-    return false;
-  }
-  obj.*(field.member) = result.value();
-  return true;
-}
-
-// Specialized implementation for optional types - handle null values gracefully
-template <typename T, typename OptionalType>
-bool deserialize_field_impl(T &obj, const Field<T, zstd::optional<OptionalType>> &field, const Value &value, std::true_type)
-{
-  auto result = Deserializable<zstd::optional<OptionalType>>::deserialize(value);
-  if (!result.has_value())
-  {
-    return false;
-  }
-  obj.*(field.member) = result.value();
-  return true;
-}
-
-template <typename T, typename FieldType>
-bool deserialize_field_impl(T &obj, const Field<T, FieldType> &field, const Value &value, std::false_type)
-{
-  // Type is not deserializable
-  return false;
-}
-
 template <typename T, typename FieldType>
 void serialize_field(const T &obj, Value &result, const Field<T, FieldType> &field)
 {
-  if (!field.skip_serializing)
+  if (field.skip_serializing)
   {
-    serialize_field_impl(obj, result, field, typename std::integral_constant<bool, Serializable<FieldType>::value>{});
+    return;
+  }
+
+  if constexpr (Serializable<FieldType>::value)
+  {
+    const FieldType &field_value = obj.*(field.member);
+
+    if (field.flatten_field)
+    {
+      Value nested_value = Serializable<FieldType>::serialize(field_value);
+      if (nested_value.is_object())
+      {
+        for (const auto &[key, val] : nested_value.as_object())
+        {
+          if (result.is_object() && result.as_object().find(key) != result.as_object().end())
+          {
+            throw Error::invalid_data("Field name collision during flattening: '" + key + "' already exists in parent struct");
+          }
+          result.add_to_object(key, val);
+        }
+        return;
+      }
+    }
+
+    if constexpr (is_optional<FieldType>::value)
+    {
+      if (!field_value.has_value() && field.skip_if_none)
+      {
+        return;
+      }
+    }
+
+    result.add_to_object(field.get_serialized_name(), Serializable<FieldType>::serialize(field_value));
   }
 }
 
@@ -2495,64 +2336,57 @@ bool deserialize_field(T &obj, const std::unordered_map<std::string, Value> &obj
 {
   if (field.skip_deserializing)
   {
-    return true; // Skip field successfully
-  }
-
-  // Handle flattening for struct types during deserialization
-  if (field.flatten_field)
-  {
-    // Create a Value object from the current object map to deserialize the nested struct
-    Value flattened_value = Value::create_object();
-    for (const auto &pair : object)
-    {
-      flattened_value.add_to_object(pair.first, pair.second);
-    }
-    auto result = Deserializable<FieldType>::deserialize(flattened_value);
-    if (result.has_value())
-    {
-      obj.*(field.member) = result.value();
-      return true;
-    }
-    return false;
-  }
-
-  auto it = object.find(field.get_serialized_name());
-  if (it == object.end())
-  {
-    if (field.default_value)
-    {
-      obj.*(field.member) = field.default_value();
-      return true; // Used default value
-    }
-    return false; // Missing required field
-  }
-
-  return deserialize_field_impl(obj, field, it->second, typename std::integral_constant<bool, Deserializable<FieldType>::value>{});
-}
-
-// Specialized deserialize_field for optional types - missing fields are OK
-template <typename T, typename OptionalType>
-bool deserialize_field(T &obj, const std::unordered_map<std::string, Value> &object, const Field<T, zstd::optional<OptionalType>> &field)
-{
-  if (field.skip_deserializing)
-  {
-    return true; // Skip field successfully
-  }
-
-  auto it = object.find(field.get_serialized_name());
-  if (it == object.end())
-  {
-    if (field.default_value)
-    {
-      obj.*(field.member) = field.default_value();
-      return true; // Used default value
-    }
-    // For optional fields, missing is OK - leave as empty optional
-    obj.*(field.member) = zstd::optional<OptionalType>();
     return true;
   }
 
-  return deserialize_field_impl(obj, field, it->second, typename std::integral_constant<bool, Deserializable<zstd::optional<OptionalType>>::value>{});
+  if constexpr (!Deserializable<FieldType>::value)
+  {
+    return false;
+  }
+  else
+  {
+    if (field.flatten_field)
+    {
+      Value flattened_value = Value::create_object();
+      for (const auto &[key, val] : object)
+      {
+        flattened_value.add_to_object(key, val);
+      }
+      auto result = Deserializable<FieldType>::deserialize(flattened_value);
+      if (result.has_value())
+      {
+        obj.*(field.member) = result.value();
+        return true;
+      }
+      return false;
+    }
+
+    auto it = object.find(field.get_serialized_name());
+    if (it == object.end())
+    {
+      if (field.default_value)
+      {
+        obj.*(field.member) = field.default_value();
+        return true;
+      }
+
+      if constexpr (is_optional<FieldType>::value)
+      {
+        obj.*(field.member) = FieldType{};
+        return true;
+      }
+
+      return false;
+    }
+
+    auto result = Deserializable<FieldType>::deserialize(it->second);
+    if (!result.has_value())
+    {
+      return false;
+    }
+    obj.*(field.member) = result.value();
+    return true;
+  }
 }
 
 // Variadic template helpers for field processing
@@ -2657,11 +2491,11 @@ zstd::expected<bool, Error> validate_no_unknown_fields(const std::unordered_map<
   collect_field_names(expected_fields, fields...);
 
   // Check for unknown fields
-  for (const auto &pair : object)
+  for (const auto &[key, val] : object)
   {
-    if (expected_fields.find(pair.first) == expected_fields.end())
+    if (expected_fields.find(key) == expected_fields.end())
     {
-      return zstd::make_unexpected(Error::unknown_field(pair.first));
+      return zstd::make_unexpected(Error::unknown_field(key));
     }
   }
 
@@ -2708,14 +2542,6 @@ using detail::serialize_fields;
 #define zjson_skip_serializing_if_none() .skip_serializing_if_none()
 #define zjson_default(func) .with_default(func)
 #define zjson_flatten() .flatten()
-#else
-// XLC (minimal mode) - struct serialization macros not supported
-#define ZJSON_DERIVE(StructType, ...) \
-  typedef zjson::ERROR_ZJSON_DERIVE_requires_xlclang_compiler ZJSON_DERIVE_ERROR
-
-#define ZJSON_SERIALIZABLE(StructType, ...) \
-  typedef zjson::ERROR_ZJSON_SERIALIZABLE_requires_xlclang_compiler ZJSON_SERIALIZABLE_ERROR
-#endif
 
 } // namespace zjson
 

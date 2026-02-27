@@ -12,9 +12,8 @@
 #ifndef LEXER_HPP
 #define LEXER_HPP
 
-#include "compat.hpp"
-
 #include <cctype>
+#include <memory>
 #include <cerrno>
 #include <cstdlib>
 #include <cstring>
@@ -746,7 +745,7 @@ private:
     case TokFlagLong:
       return "<long_flag>";
     default:
-      return NULL;
+      return nullptr;
     }
   }
 

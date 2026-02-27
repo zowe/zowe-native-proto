@@ -62,7 +62,7 @@ Longer term, we may be able to make use of [Catch2](https://github.com/catchorg/
 - `ztest.hpp`
 - `ztest.cpp`
 
-This infrastructure requires `xlclang` compiler to enable "new" language features (lambdas) in order to provide a ~[Jest](https://jestjs.io/) testing syntax.
+This infrastructure requires `ibm-clang` compiler to enable "new" language features (lambdas) in order to provide a ~[Jest](https://jestjs.io/) testing syntax.
 
 #### Format
 
@@ -304,4 +304,4 @@ You must ensure `zut_alloc_debug()` is called to allocate an output DD for log m
 
 ```
 
-By default, output is printed to `/tmp/zowex_debug.txt` when using `ZUTDBGMG()`; however, you may provide a Metal C compatible alternative.
+By default, output is printed to `/tmp/zowex_debug_<PID>.txt` (where PID is the current `zowex` process ID) when using `ZUTDBGMG()`; however, you may provide a Metal C compatible alternative.

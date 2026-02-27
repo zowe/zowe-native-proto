@@ -15,7 +15,7 @@
  
 #define _OPEN_SYS_EXT
 #include <sys/ps.h>
-#include <stdio.h>
+#include <cstdio>
 #include <cstring>
 #include <fstream>
 #include <iostream>
@@ -33,12 +33,10 @@
 #include "zuttype.h"
 #include <_Nascii.h>
 
-using namespace std;
-
-int zut_run_shell_command(string command, string &response)
+int zut_run_shell_command(std::string command, std::string &response)
 {
   int rc = 0;
-  string response_raw;
+  std::string response_raw;
   FILE *cmd = popen(command.c_str(), "r");
   if (nullptr == cmd)
   {
@@ -48,15 +46,15 @@ int zut_run_shell_command(string command, string &response)
   char buffer[256] = {0};
   while (fgets(buffer, sizeof(buffer), cmd) != nullptr)
   {
-    response_raw += string(buffer);
+    response_raw += std::string(buffer);
   }
 
-  stringstream response_ss(response_raw);
+  std::stringstream response_ss(response_raw);
 
-  string line;
+  std::string line;
   auto index = 0;
 
-  while (getline(response_ss, line))
+  while (std::getline(response_ss, line))
   {
     index++;
     if (index > 1)
@@ -74,20 +72,20 @@ int zut_run_shell_command(string command, string &response)
   return rc;
 }
 
-int zut_search(string parms)
+int zut_search(const std::string &parms)
 {
   return ZUTSRCH(parms.c_str());
 }
 
-int zut_run(ZDIAG &diag, string program, string parms)
+int zut_run(ZDIAG &diag, const std::string &program, const std::string &parms)
 {
   return ZUTRUN(&diag, program.c_str(), parms.c_str());
 }
 
-int zut_run(string program)
+int zut_run(const std::string &program)
 {
   ZDIAG diag = {};
-  return ZUTRUN(&diag, program.c_str(), NULL);
+  return ZUTRUN(&diag, program.c_str(), nullptr);
 }
 
 unsigned char zut_get_key()
@@ -95,7 +93,7 @@ unsigned char zut_get_key()
   return ZUTMGKEY();
 }
 
-int zut_substitute_symbol(string pattern, string &result)
+int zut_substitute_symbol(const std::string &pattern, std::string &result)
 {
   SYMBOL_DATA *parms = (SYMBOL_DATA *)__malloc31(sizeof(SYMBOL_DATA));
   if (parms == nullptr)
@@ -118,7 +116,7 @@ int zut_substitute_symbol(string pattern, string &result)
     free(parms);
     return rc;
   }
-  result += string(parms->output);
+  result += std::string(parms->output);
   free(parms);
   return RTNCD_SUCCESS;
 }
@@ -128,16 +126,16 @@ int zut_convert_dsect()
   return ZUTEDSCT();
 }
 
-void zut_uppercase_pad_truncate(char *target, string source, int len)
+void zut_uppercase_pad_truncate(char *target, std::string source, int len)
 {
-  memset(target, ' ', len);                                           // pad with spaces
-  transform(source.begin(), source.end(), source.begin(), ::toupper); // upper case
-  int length = source.size() > len ? len : source.size();             // truncate
+  memset(target, ' ', len);                                                // pad with spaces
+  std::transform(source.begin(), source.end(), source.begin(), ::toupper); // upper case
+  int length = source.size() > len ? len : source.size();                  // truncate
   strncpy(target, source.c_str(), length);
 }
 
 // https://www.ibm.com/docs/en/zos/3.2.0?topic=output-requesting-dynamic-allocation
-int zut_bpxwdyn_common(string parm, unsigned int *code, string &resp, string &ddname, string &dsname)
+int zut_bpxwdyn_common(const std::string &parm, unsigned int *code, std::string &resp, std::string &ddname, std::string &dsname)
 {
   char bpx_response[RET_ARG_MAX_LEN * MSG_ENTRIES + 1] = {0};
 
@@ -165,14 +163,14 @@ int zut_bpxwdyn_common(string parm, unsigned int *code, string &resp, string &dd
 
   if (bparm->rtdd)
   {
-    ddname = string(response->ddname);
+    ddname = std::string(response->ddname);
   }
   else if (bparm->rtdsn)
   {
-    dsname = string(response->dsname);
+    dsname = std::string(response->dsname);
   }
 
-  resp = string(response->response);
+  resp = std::string(response->response);
   *code = response->code;
 
   free(p);
@@ -180,37 +178,37 @@ int zut_bpxwdyn_common(string parm, unsigned int *code, string &resp, string &dd
   return rc;
 }
 
-int zut_bpxwdyn(string parm, unsigned int *code, string &resp)
+int zut_bpxwdyn(const std::string &parm, unsigned int *code, std::string &resp)
 {
-  string ddname = "";
-  string dsname = "";
+  std::string ddname = "";
+  std::string dsname = "";
   return zut_bpxwdyn_common(parm, code, resp, ddname, dsname);
 }
 
-int zut_bpxwdyn_rtdd(string parm, unsigned int *code, string &resp, string &ddname)
+int zut_bpxwdyn_rtdd(const std::string &parm, unsigned int *code, std::string &resp, std::string &ddname)
 {
   ddname = "RTDDN";
-  string dsname = "";
+  std::string dsname = "";
   return zut_bpxwdyn_common(parm, code, resp, ddname, dsname);
 }
 
-int zut_bpxwdyn_rtdsn(string parm, unsigned int *code, string &resp, string &dsname)
+int zut_bpxwdyn_rtdsn(const std::string &parm, unsigned int *code, std::string &resp, std::string &dsname)
 {
-  string ddname = "";
+  std::string ddname = "";
   dsname = "RTDSN";
   return zut_bpxwdyn_common(parm, code, resp, ddname, dsname);
 }
 
-string zut_build_etag(const size_t mtime, const size_t byte_size)
+std::string zut_build_etag(const size_t mtime, const size_t byte_size)
 {
-  stringstream ss;
+  std::stringstream ss;
   ss << std::hex << mtime;
   ss << "-";
   ss << std::hex << byte_size;
   return ss.str();
 }
 
-int zut_get_current_user(string &struser)
+int zut_get_current_user(std::string &struser)
 {
   int rc = 0;
   char user[9] = {0};
@@ -219,21 +217,21 @@ int zut_get_current_user(string &struser)
   if (0 != rc)
     return rc;
 
-  struser = string(user);
+  struser = std::string(user);
   zut_rtrim(struser);
   return rc;
 }
 
-int zut_hello(string name)
+int zut_hello(const std::string &name)
 {
   // #if defined(__IBMC__) || defined(__IBMCPP__)
   // #pragma convert(819)
   // #endif
 
   if (name.empty())
-    cout << "Hello world!" << endl;
+    std::cout << "Hello world!" << std::endl;
   else
-    cout << "Hello " << name << endl;
+    std::cout << "Hello " << name << std::endl;
   return 0;
 
   // #if defined(__IBMC__) || defined(__IBMCPP__)
@@ -258,95 +256,20 @@ int zut_list_parmlib(ZDIAG &diag, std::vector<std::string> &parmlibs)
   parmlibs.reserve(num_dsns);
   for (int i = 0; i < num_dsns; i++)
   {
-    parmlibs.push_back(string(dsns.dsn[i].val, sizeof(dsns.dsn[i].val)));
+    parmlibs.emplace_back(std::string(dsns.dsn[i].val, sizeof(dsns.dsn[i].val)));
   }
 
   return rc;
 }
 
-/**
- * Get char value from hex byte, e.g. 0x0E -> 'E'
- */
 char zut_get_hex_char(int num)
 {
-  char val = '?';
-
-  switch (num)
-  {
-  case 0:
-    /* code */
-    val = '0';
-    break;
-  case 1:
-    /* code */
-    val = '1';
-    break;
-  case 2:
-    /* code */
-    val = '2';
-    break;
-  case 3:
-    /* code */
-    val = '3';
-    break;
-  case 4:
-    /* code */
-    val = '4';
-    break;
-  case 5:
-    /* code */
-    val = '5';
-    break;
-  case 6:
-    /* code */
-    val = '6';
-    break;
-  case 7:
-    /* code */
-    val = '7';
-    break;
-  case 8:
-    /* code */
-    val = '8';
-    break;
-  case 9:
-    /* code */
-    val = '9';
-    break;
-  case 10:
-    /* code */
-    val = 'A';
-    break;
-  case 11:
-    /* code */
-    val = 'B';
-    break;
-  case 12:
-    /* code */
-    val = 'C';
-    break;
-  case 13:
-    /* code */
-    val = 'D';
-    break;
-  case 14:
-    /* code */
-    val = 'E';
-    break;
-  case 15:
-    /* code */
-    val = 'F';
-    break;
-  default:
-    break;
-  }
-
-  return val;
+  return "0123456789ABCDEF"[num & 0xF];
 }
 
 // built from pseudocode in https://en.wikipedia.org/wiki/Adler-32#Calculation
 // exploits SIMD for performance boosts on z13+
-uint32_t zut_calc_adler32_checksum(const string &input)
+uint32_t zut_calc_adler32_checksum(const std::string &input)
 {
   const uint32_t MOD_ADLER = 65521u;
   uint32_t a = 1u;
@@ -394,7 +317,7 @@ uint32_t zut_calc_adler32_checksum(const string &input)
  * @param input The input string to be printed.
  * @param output_stream Pointer to output stream (nullptr uses std::cout).
  */
-void zut_print_string_as_bytes(string &input, std::ostream *out_stream)
+void zut_print_string_as_bytes(std::string &input, std::ostream *out_stream)
 {
   std::ostream &output_stream = out_stream ? *out_stream : std::cout;
   char buf[4];
@@ -410,7 +333,7 @@ void zut_print_string_as_bytes(string &input, std::ostream *out_stream)
     }
     output_stream << buf;
   }
-  output_stream << endl;
+  output_stream << std::endl;
 }
 
 /**
@@ -418,9 +341,9 @@ void zut_print_string_as_bytes(string &input, std::ostream *out_stream)
  * @param hex_string The hex string to convert.
  * @return A vector of bytes representing the hex string.
  */
-vector<uint8_t> zut_get_contents_as_bytes(const string &hex_string)
+std::vector<uint8_t> zut_get_contents_as_bytes(const std::string &hex_string)
 {
-  vector<uint8_t> bytes;
+  std::vector<uint8_t> bytes;
   bytes.reserve(hex_string.length() / 2);
 
   // If the hex string is not zero-padded, return an empty vector
@@ -497,7 +420,7 @@ size_t zut_iconv(iconv_t cd, ZConvData &data, ZDIAG &diag, bool flush_state)
   // Flush the shift state for stateful encodings (e.g., IBM-939 with SI/SO sequences)
   if (flush_state)
   {
-    size_t flush_rc = iconv(cd, NULL, NULL, &data.output_iter, &output_bytes_remaining);
+    size_t flush_rc = iconv(cd, nullptr, nullptr, &data.output_iter, &output_bytes_remaining);
     if (-1 == flush_rc)
     {
       diag.e_msg_len = sprintf(diag.e_msg, "[zut_iconv] Error flushing shift state. rc=%zu,errno=%d", flush_rc, errno);
@@ -517,19 +440,19 @@ size_t zut_iconv(iconv_t cd, ZConvData &data, ZDIAG &diag, bool flush_state)
  *
  * @return vector containing the flushed bytes (empty on error)
  */
-vector<char> zut_iconv_flush(iconv_t cd, ZDIAG &diag)
+std::vector<char> zut_iconv_flush(iconv_t cd, ZDIAG &diag)
 {
   const size_t max_output_size = 16; // Small buffer for shift state flush (SI/SO sequences are typically 1-2 bytes)
-  vector<char> output_buffer(max_output_size, 0);
+  std::vector<char> output_buffer(max_output_size, 0);
   char *output_iter = &output_buffer[0];
   size_t output_bytes_remaining = max_output_size;
 
   char *start_pos = output_iter;
-  size_t flush_rc = iconv(cd, NULL, NULL, &output_iter, &output_bytes_remaining);
+  size_t flush_rc = iconv(cd, nullptr, nullptr, &output_iter, &output_bytes_remaining);
   if (-1 == flush_rc)
   {
     diag.e_msg_len = sprintf(diag.e_msg, "[zut_iconv_flush] Error flushing shift state. rc=%zu,errno=%d", flush_rc, errno);
-    return vector<char>(); // Return empty vector on error
+    return std::vector<char>(); // Return empty vector on error
   }
 
   // Resize to actual bytes written
@@ -545,15 +468,15 @@ vector<char> zut_iconv_flush(iconv_t cd, ZDIAG &diag)
  * @param to_encoding desired codepage for the data
  * @param diag diagnostic structure to store error information
  */
-string zut_encode(const string &input_str, const string &from_encoding, const string &to_encoding, ZDIAG &diag)
+std::string zut_encode(const std::string &input_str, const std::string &from_encoding, const std::string &to_encoding, ZDIAG &diag)
 {
   if (from_encoding == to_encoding)
   {
     return input_str;
   }
 
-  vector<char> result = zut_encode(input_str.data(), input_str.size(), from_encoding, to_encoding, diag);
-  return string(result.begin(), result.end());
+  std::vector<char> result = zut_encode(input_str.data(), input_str.size(), from_encoding, to_encoding, diag);
+  return std::string(result.begin(), result.end());
 }
 
 /**
@@ -564,7 +487,7 @@ string zut_encode(const string &input_str, const string &from_encoding, const st
  * @param to_encoding desired codepage for the data
  * @param diag diagnostic structure to store error information
  */
-vector<char> zut_encode(const char *input_str, const size_t input_size, const string &from_encoding, const string &to_encoding, ZDIAG &diag)
+std::vector<char> zut_encode(const char *input_str, const size_t input_size, const std::string &from_encoding, const std::string &to_encoding, ZDIAG &diag)
 {
   if (from_encoding == to_encoding)
   {
@@ -575,13 +498,13 @@ vector<char> zut_encode(const char *input_str, const size_t input_size, const st
   if (cd == (iconv_t)(-1))
   {
     diag.e_msg_len = sprintf(diag.e_msg, "Cannot open converter from %s to %s", from_encoding.c_str(), to_encoding.c_str());
-    return vector<char>();
+    return std::vector<char>();
   }
 
   // maximum possible size assumes UTF-8 data with 4-byte character sequences
   const size_t max_output_size = input_size * 4;
 
-  vector<char> output_buffer(max_output_size, 0);
+  std::vector<char> output_buffer(max_output_size, 0);
 
   // Prepare iconv parameters (copy output_buffer ptr to output_iter to cache start and end positions)
   char *input = const_cast<char *>(input_str);
@@ -606,10 +529,10 @@ vector<char> zut_encode(const char *input_str, const size_t input_size, const st
  * @param cd iconv descriptor (caller manages opening, flushing, and closing)
  * @param diag diagnostic structure to store error information
  */
-string zut_encode(const string &input_str, iconv_t cd, ZDIAG &diag)
+std::string zut_encode(const std::string &input_str, iconv_t cd, ZDIAG &diag)
 {
-  vector<char> result = zut_encode(input_str.data(), input_str.size(), cd, diag);
-  return string(result.begin(), result.end());
+  std::vector<char> result = zut_encode(input_str.data(), input_str.size(), cd, diag);
+  return std::string(result.begin(), result.end());
 }
 
 /**
@@ -619,10 +542,10 @@ string zut_encode(const string &input_str, iconv_t cd, ZDIAG &diag)
  * @param cd iconv descriptor (caller manages opening, flushing, and closing)
  * @param diag diagnostic structure to store error information
  */
-vector<char> zut_encode(const char *input_str, const size_t input_size, iconv_t cd, ZDIAG &diag)
+std::vector<char> zut_encode(const char *input_str, const size_t input_size, iconv_t cd, ZDIAG &diag)
 {
   const size_t max_output_size = input_size * 4;
-  vector<char> output_buffer(max_output_size, 0);
+  std::vector<char> output_buffer(max_output_size, 0);
 
   char *input = const_cast<char *>(input_str);
   char *output_iter = &output_buffer[0];
@@ -654,9 +577,9 @@ std::string &zut_trim(std::string &s, const char *t)
   return zut_ltrim(zut_rtrim(s, t), t);
 }
 
-string zut_format_as_csv(std::vector<string> &fields)
+std::string zut_format_as_csv(std::vector<std::string> &fields)
 {
-  string formatted;
+  std::string formatted;
   for (int i = 0; i < fields.size(); i++)
   {
     formatted += zut_trim(fields.at(i));
@@ -669,43 +592,14 @@ string zut_format_as_csv(std::vector<string> &fields)
   return formatted;
 }
 
-// Helper template for integer to string conversion
-template <typename T>
-static inline string int_to_string_impl(T value, bool is_hex, const char *dec_fmt, const char *hex_fmt)
-{
-  char buffer[32];
-  sprintf(buffer, is_hex ? hex_fmt : dec_fmt, value);
-  return string(buffer);
-}
-
-string zut_int_to_string(int value, bool is_hex)
-{
-  return int_to_string_impl(value, is_hex, "%d", "%X");
-}
-
-string zut_int_to_string(unsigned int value, bool is_hex)
-{
-  return int_to_string_impl(value, is_hex, "%u", "%X");
-}
-
-string zut_int_to_string(long value, bool is_hex)
-{
-  return int_to_string_impl(value, is_hex, "%ld", "%lX");
-}
-
-string zut_int_to_string(long long value, bool is_hex)
-{
-  return int_to_string_impl(value, is_hex, "%lld", "%llX");
-}
-
 int zut_alloc_debug()
 {
   int rc = 0;
   unsigned int code = 0;
-  string response;
-  string zowexdbg = "/tmp/zowex_debug.txt";
+  std::string response;
+  std::string zowexdbg = "/tmp/zowex_debug_" + std::to_string(getpid()) + ".txt";
 
-  string alloc = "alloc fi(zowexdbg) path('" + zowexdbg + "') pathopts(owronly,ocreat) pathmode(sirusr,siwusr,sirgrp) filedata(text) msg(2)";
+  std::string alloc = "alloc fi(zowexdbg) path('" + zowexdbg + "') pathopts(owronly,ocreat) pathmode(sirusr,siwusr,sirgrp) filedata(text) msg(2)";
   rc = zut_bpxwdyn(alloc, &code, response);
 
   return rc;
@@ -721,22 +615,22 @@ bool zut_string_compare_c(const std::string &a, const std::string &b)
   return strcmp(a.c_str(), b.c_str()) < 0;
 }
 
-int zut_loop_dynalloc(ZDIAG &diag, vector<string> &list)
+int zut_loop_dynalloc(ZDIAG &diag, const std::vector<std::string> &list)
 {
   int rc = 0;
   unsigned int code = 0;
-  string response;
+  std::string response;
 
-  for (vector<string>::iterator it = list.begin(); it != list.end(); it++)
+  for (const auto &alloc : list)
   {
-    rc = zut_bpxwdyn(*it, &code, response);
+    rc = zut_bpxwdyn(alloc, &code, response);
 
     if (0 != rc)
     {
       diag.detail_rc = ZUT_RTNCD_SERVICE_FAILURE;
       diag.service_rc = rc;
       strcpy(diag.service_name, "bpxwdyn");
-      diag.e_msg_len = sprintf(diag.e_msg, "bpxwdyn failed with '%s' rc: '%d', emsg: '%s'", diag.service_name, rc, (*it).c_str());
+      diag.e_msg_len = sprintf(diag.e_msg, "bpxwdyn failed with '%s' rc: '%d', emsg: '%s'", diag.service_name, rc, alloc.c_str());
       return RTNCD_FAILURE;
     }
   }
@@ -744,24 +638,24 @@ int zut_loop_dynalloc(ZDIAG &diag, vector<string> &list)
   return rc;
 }
 
-int zut_free_dynalloc_dds(ZDIAG &diag, vector<string> &list)
+int zut_free_dynalloc_dds(ZDIAG &diag, const std::vector<std::string> &list)
 {
-  vector<string> free_dds;
+  std::vector<std::string> free_dds;
   free_dds.reserve(list.size());
 
-  for (vector<string>::iterator it = list.begin(); it != list.end(); it++)
+  for (const auto &entry : list)
   {
-    string alloc_dd = *it;
+    std::string alloc_dd = entry;
     const auto dd_start = alloc_dd.find("dd(");
-    if (dd_start == string::npos)
+    if (dd_start == std::string::npos)
     {
-      diag.e_msg_len = sprintf(diag.e_msg, "Invalid format in DD alloc string: %s", it->c_str());
+      diag.e_msg_len = sprintf(diag.e_msg, "Invalid format in DD alloc string: %s", entry.c_str());
       return RTNCD_FAILURE;
     }
     const auto paren_end = alloc_dd.find(")", dd_start + 3);
-    if (paren_end == string::npos)
+    if (paren_end == std::string::npos)
     {
-      diag.e_msg_len = sprintf(diag.e_msg, "Invalid format in DD alloc string: %s", it->c_str());
+      diag.e_msg_len = sprintf(diag.e_msg, "Invalid format in DD alloc string: %s", entry.c_str());
       return RTNCD_FAILURE;
     }
     free_dds.push_back("free " + alloc_dd.substr(dd_start, paren_end - dd_start + 1));
@@ -811,20 +705,20 @@ FileGuard::operator bool() const
   return fp != nullptr;
 }
 
-string zut_read_input(istream &input_stream)
+std::string zut_read_input(std::istream &input_stream)
 {
-  string data;
+  std::string data;
   if (!isatty(fileno(stdin)))
   {
-    istreambuf_iterator<char> begin(input_stream);
-    istreambuf_iterator<char> end;
+    std::istreambuf_iterator<char> begin(input_stream);
+    std::istreambuf_iterator<char> end;
     data.assign(begin, end);
   }
   else
   {
-    string line;
+    std::string line;
     bool first_line = true;
-    while (getline(input_stream, line))
+    while (std::getline(input_stream, line))
     {
       if (!first_line)
       {

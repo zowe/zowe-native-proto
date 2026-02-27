@@ -5,11 +5,11 @@ build-%:
 	@echo "Running target: $*"
 	@./gen_chdsect.sh "$*"
 
-# Default target
-all:
-	@echo "Available targets:"
-	@echo "  make build-<target_name>  - Runs ./gen_chdsect.sh <target_name>"
-	@echo "  make help              - Shows this help"
+SRCS := $(wildcard *.s)
+
+# Build all .s files
+all: $(SRCS:%=build-%)
+	@echo "All chdsect headers generated."
 
 # Help target
 help:

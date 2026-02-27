@@ -1,4 +1,8 @@
+#ifdef __open_xl__
+#pragma pack(1)
+#else
 #pragma pack(packed)
+#endif
  
 #ifndef __iezjscb__
 #define __iezjscb__
@@ -168,4 +172,8 @@ struct iezjscb {
  
 #endif
  
+#ifdef __open_xl__
+#pragma pack()
+#else
 #pragma pack(reset)
+#endif

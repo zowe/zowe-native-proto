@@ -37,19 +37,26 @@
 
 #endif
 
-#if defined(__cplusplus) && (defined(__IBMCPP__) || defined(__IBMC__))
-// nothng
+#if defined(__cplusplus) && defined(__MVS__)
+// nothing
 #else
 
 #endif
 
-#if (defined(__IBMCPP__) || defined(__IBMC__))
-#if defined(__clang__)
-#pragma pack(1)
+#if defined(__MVS__)
+#ifdef __open_xl__
+#define ZNP_PACK_ON _Pragma("pack(1)")
+#define ZNP_PACK_OFF _Pragma("pack()")
 #else
-#pragma pack(packed)
+#define ZNP_PACK_ON _Pragma("pack(packed)")
+#define ZNP_PACK_OFF _Pragma("pack(reset)")
 #endif
+#else
+#define ZNP_PACK_ON
+#define ZNP_PACK_OFF
 #endif
+
+ZNP_PACK_ON
 
 // NOTE(Kelosky): struct is padded to nearest double word boundary; ensure proper alignment for fields
 typedef struct
@@ -78,9 +85,7 @@ typedef struct
 
 } ZDIAG;
 
-#if (defined(__IBMCPP__) || defined(__IBMC__))
-#pragma pack(reset)
-#endif
+ZNP_PACK_OFF
 
 enum DataType
 {

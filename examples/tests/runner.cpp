@@ -14,7 +14,6 @@
 #include "more.hpp"
 #include "evenmore.hpp"
 
-using namespace std;
 using namespace ztst;
 
 int main(int argc, char *argv[])

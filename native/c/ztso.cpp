@@ -13,7 +13,7 @@
 #define _XOPEN_SOURCE
 #endif
 
-#include <stdio.h>
+#include <cstdio>
 #include <cstring>
 #include <fstream>
 #include <iostream>
@@ -21,25 +21,22 @@
 #include <iomanip>
 #include <algorithm>
 #include <iconv.h>
-#include <stdlib.h>
-#include <stdio.h>
+#include <cstdlib>
 #include <string>
 #include <sstream>
 #include "ztype.h"
 #include "zut.hpp"
-
-using namespace std;
 
 // NOTE(Kelosky): alternatives we'll likely use / consider in the future
 // - CEA, probably needed to achieve z/OSMF parity (allows starting, stopping TSO address spaces)
 // - IKJEFT01, requires authorized caller
 // - IKJEFTSR, limited TSO dynamic environment
 // - Load TMP directly, untested, but potentially useful if we read/write SYSTSIN/SYSTSPRT
-int ztso_issue(string command, string &response)
+int ztso_issue(const std::string &command, std::string &response)
 {
   // NOTE(Kelosky): for now we combined stderr and stdout as `popen` doesnt
   // appear to allow access to stderr and tsocmd always writes the input parameters
   // to stderr
-  string tso_cmd = "tsocmd " + command + " 2>&1"; // combine stderr
+  std::string tso_cmd = "tsocmd " + command + " 2>&1"; // combine stderr
   return zut_run_shell_command(tso_cmd, response);
 }

@@ -11,17 +11,15 @@
 
 .INCLUDE: ../../c/toolchain.mk
 
-CXX=$(CXXLANG)
-
 OUT_DIR=build-out
 TARGET=$(OUT_DIR)/zowed_test_runner
 
 INCLUDES=-I../../c/test -I../../c -I..
-CXXFLAGS=-W "c,lp64,xplink" -c $(INCLUDES) -std=c++14
-LDFLAGS=$(CPP_BND_BASE_FLAGS)
+CXXFLAGS=-c $(INCLUDES) -std=gnu++17
+BND_FLAGS=$(CPP_BND_BASE_FLAGS)
 
 .IF $(BuildType) == DEBUG
-LDFLAGS=$(CPP_BND_DEBUG_FLAGS)
+BND_FLAGS=$(CPP_BND_DEBUG_FLAGS)
 .END
 
 TEST_OBJECTS=$(OUT_DIR)/zowed_test_runner.o \
@@ -41,7 +39,7 @@ $(OUT_DIR)/%.o: %.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 $(TARGET): $(TEST_OBJECTS)
-	$(CXX) $(LDFLAGS) -o $@ $^ > $(OUT_DIR)/zowed_test_runner.bind.lst
+	$(CXX) $(BND_FLAGS) -o $@ $^
 
 test: all
 	_CEE_RUNOPTS="TRAP(ON,NOSPIE)" ./$(TARGET)
