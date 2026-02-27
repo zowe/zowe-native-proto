@@ -87,7 +87,7 @@ export interface CopyUssRequest extends common.CommandRequest<"copyUss"> {
     followSymlinks?: boolean;
 
     /**
-     * Set to true if the copy action should **not** preserve permission bits and ownership in the output destination.
+     * Set to true if the copy action should preserve permission bits and ownership in the output destination.
      *   Note: the USS 'cp' utility by default does not preserve these permissions.
      *
      * Default: false
@@ -247,4 +247,18 @@ export interface WriteFileResponse extends common.CommandResponse {
      * Length of file contents in bytes (only used for streaming)
      */
     contentLen?: number;
+}
+
+export interface IssueUssCmdRequest extends common.CommandRequest<"unixCommand"> {
+    /**
+     * UNIX command to execute
+     */
+    commandText: string;
+}
+
+export interface IssueUssCmdResponse extends common.CommandResponse {
+    /**
+     * Data returned from the UNIX command
+     */
+    data: string;
 }

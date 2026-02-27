@@ -37,14 +37,14 @@ void zusf_tests()
              ListOptions short_list_opts = {false, false, 1};
              ListOptions long_list_opts = {false, true, 1};
              ListOptions all_long_list_opts = {true, true, 1};
-             CopyOptions copts_preserve = {false, false, true, false};
-             CopyOptions copts_recurse_symlink_preserve = {true, true, true, false};
-             CopyOptions copts_all_off = { false, false, false, false };
-             CopyOptions copts_recurse_preserve = { true, false, true, false };
-             CopyOptions copts_force = { false, false, false, true };
-             CopyOptions copts_recursive = { true, false, false, false };
-             CopyOptions copts_recursive_force = { true, false, false, true };
-             const std::string tmp_base = "/tmp/zusf_chown_tests_" + get_random_string(10);
+             const CopyOptions copts_preserve(false, false, true, false);
+             const CopyOptions copts_recurse_symlink_preserve(true, true, true, false);
+             const CopyOptions copts_all_off(false, false, false, false);
+             const CopyOptions copts_recurse_preserve(true, false, true, false);
+             const CopyOptions copts_force(false, false, false, true);
+             const CopyOptions copts_recursive(true, false, false, false);
+             const CopyOptions copts_recursive_force(true, false, false, true);
+             const std::string tmp_base = "/tmp/zusf_copy_tests_" + get_random_string(10);
              string file_a;
              string file_b;
              string dir_a;
@@ -59,6 +59,12 @@ void zusf_tests()
                           file_b = tmp_base + "/test_file_b";
                           dir_a = tmp_base + "/test_dir_a";
                           dir_b = tmp_base + "/test_dir_b"; });
+
+             afterAll([&]() -> void
+                {
+                  std::string discard;
+                  execute_command_with_output("rm -rf " + tmp_base, discard);
+                });
 
              it("file->file tests", [&]() -> void
                 {
@@ -107,7 +113,7 @@ void zusf_tests()
                   const std::string source_file = file_a;
                   const std::string dest_dir = dir_b;
                   std::string list_response;
-                  const std::string dest_copied_file = dest_dir + "/" + get_basename(file_a);
+                  const std::string dest_copied_file = dest_dir + "/" + get_basename(source_file);
                   zusf_create_uss_file_or_dir(&zusf, source_file, 0664, false);
                   zusf_create_uss_file_or_dir(&zusf, dest_dir, 0775, true);
                   int rc;

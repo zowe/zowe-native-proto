@@ -34,18 +34,19 @@ int handle_uss_copy(InvocationContext &context)
   bool preserve_attributes = context.get<bool>("preserve-attributes", false);
   bool force = context.get<bool>("force", false);
 
-  CopyOptions options;
-  options.recursive = recursive;
-  options.follow_symlinks = follow_symlinks;
-  options.preserve_attributes = preserve_attributes;
-  options.force = force;
+  const CopyOptions options(
+    /* .recursive = */ recursive,
+    /* .follow_symlinks = */follow_symlinks,
+    /* .preserve_attributes = */ preserve_attributes,
+    /* .force = */ force
+  );
 
   ZUSF zusf = {};
   int rc = zusf_copy_file_or_dir(&zusf, source_path, destination_path, options);
 
   if (0 != rc) {
     context.error_stream() << "Error occurred while trying to copy \"" << source_path << "\" to \"" << destination_path << "\"" << endl;
-    context.error_stream() << "  Details:" << zusf.diag.e_msg << endl;
+    context.error_stream() << "  Details: " << zusf.diag.e_msg << endl;
   }
 
   return rc;

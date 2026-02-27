@@ -4,6 +4,9 @@ All notable changes to the native code for "zowe-native-proto" are documented in
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## Recent Changes
+- `c`: Implemented `zowex uss copy` command to copy USS files and directories. [#379](https://github.com/zowe/zowe-native-proto/issues/379)
+
 ## `0.2.4`
 
 - `c`: Fixed an issue where errors during `zowex` initialization and command execution were unhandled, causing abends as a result. Now, if a fatal error is encountered, the error is caught and its details are displayed before the process exits. [#784](https://github.com/zowe/zowe-native-proto/issues/784)

@@ -857,7 +857,7 @@ string zusf_build_mode_string(mode_t mode)
 /**
  * Copies a USS file or directory.
  */
-int zusf_copy_file_or_dir(ZUSF *zusf, const string &source_path, const string &destination_path, CopyOptions options) {
+int zusf_copy_file_or_dir(ZUSF *zusf, const string &source_path, const string &destination_path, const CopyOptions& options) {
 
   if (options.follow_symlinks && !options.recursive)
   {

@@ -8,6 +8,10 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 - Added the functionality to copy USS files and directories. [#379](https://github.com/zowe/zowe-native-proto/pull/379).
 
+## `0.3.0`
+
+- Used new SDK groupings that align with zowex. [#807](https://github.com/zowe/zowe-native-proto/pull/808)
+
 ## `0.2.4`
 
 - Added the functionality for the **Rename Member** option. [#765] (https://github.com/zowe/zowe-native-proto/pull/765).
