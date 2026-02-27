@@ -811,6 +811,26 @@ void zowex_ds_tests()
                              ExpectWithContext(rc, response).Not().ToBe(0);
                              Expect(response).ToContain("Error: could not list members: '" + ds + "'");
                            });
+                        it("should list members matching a specific pattern",
+                           [&]() -> void
+                           {
+                             string ds = get_random_ds();
+                             _ds.push_back(ds);
+                             _create_ds(ds, "--dsorg PO --dirblk 2");
+
+                             string response;
+                             execute_command_with_output(zowex_command + " data-set create-member '" + ds + "(ABC1)'", response);
+                             execute_command_with_output(zowex_command + " data-set create-member '" + ds + "(ABC2)'", response);
+                             execute_command_with_output(zowex_command + " data-set create-member '" + ds + "(XYZ1)'", response);
+
+                             string command = zowex_command + " data-set lm " + ds + " --pattern \"ABC*\"";
+                             int rc = execute_command_with_output(command, response);
+
+                             ExpectWithContext(rc, response).ToBe(0);
+                             Expect(response).ToContain("ABC1");
+                             Expect(response).ToContain("ABC2");
+                             Expect(response).Not().ToContain("XYZ1");
+                           });
                       });
              // TODO: https://github.com/zowe/zowe-native-proto/issues/380
              xdescribe("restore",

@@ -7,6 +7,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 ## `0.3.0`
 
 - Used new SDK groupings that align with zowex. [#807](https://github.com/zowe/zowe-native-proto/pull/808)
+- Added the `pattern` option to the `list data-set-members` command to filter the returned members. [#817](https://github.com/zowe/zowe-native-proto/pull/817)
 
 ## `0.2.4`
 

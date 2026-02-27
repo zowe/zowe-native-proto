@@ -523,6 +523,7 @@ int handle_data_set_list_members(InvocationContext &context)
   string dsn = context.get<string>("dsn", "");
   long long max_entries = context.get<long long>("max-entries", 0);
   bool warn = context.get<bool>("warn", true);
+  string pattern = context.get<string>("pattern", "");
 
   ZDS zds = {};
   if (max_entries > 0)
@@ -530,7 +531,7 @@ int handle_data_set_list_members(InvocationContext &context)
     zds.max_entries = max_entries;
   }
   vector<ZDSMem> members;
-  rc = zds_list_members(&zds, dsn, members);
+  rc = zds_list_members(&zds, dsn, members, pattern);
 
   if (RTNCD_SUCCESS == rc || RTNCD_WARNING == rc)
   {
@@ -1003,6 +1004,13 @@ void register_commands(parser::Command &root_command)
   ds_list_members_cmd->add_alias("lm");
   ds_list_members_cmd->add_positional_arg(DSN);
   ds_list_members_cmd->add_keyword_arg(MAX_ENTRIES);
+  ds_list_members_cmd->add_keyword_arg(
+      "pattern",
+      make_aliases("--pattern", "-p"),
+      "filters results by the given member pattern",
+      ArgType_Single,
+      false,
+      ArgValue());
   ds_list_members_cmd->add_keyword_arg(WARN);
   ds_list_members_cmd->set_handler(handle_data_set_list_members);
   data_set_cmd->add_command(ds_list_members_cmd);
