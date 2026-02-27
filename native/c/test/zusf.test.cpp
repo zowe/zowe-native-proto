@@ -596,7 +596,8 @@ void zusf_tests()
                   struct stat file_stats;
                   stat(test_file.c_str(), &file_stats);
 
-                  ListOptions options = {false, false, 1}; // not all files, not long format, no recursion
+                  ListOptions options{false, false, 1};
+                  ; // not all files, not long format, no recursion
                   std::string result = zusf_format_file_entry(&zusf, file_stats, test_file, "testfile.txt", options, false);
 
                   // Short format should just be filename + newline
@@ -616,7 +617,8 @@ void zusf_tests()
                   struct stat file_stats;
                   stat(test_file.c_str(), &file_stats);
 
-                  ListOptions options = {false, true, 1}; // not all files, long format, no recursion
+                  ListOptions options{false, true, 1};
+                  ; // not all files, long format, no recursion
                   std::string result = zusf_format_file_entry(&zusf, file_stats, test_file, "testfile.txt", options, false);
 
                   // Long format should contain permissions, size, time, filename
@@ -639,7 +641,8 @@ void zusf_tests()
                   struct stat file_stats;
                   stat(test_file.c_str(), &file_stats);
 
-                  ListOptions options = {false, true, 1}; // not all files, long format, no recursion
+                  ListOptions options{false, true, 1};
+                  ; // not all files, long format, no recursion
                   std::string result = zusf_format_file_entry(&zusf, file_stats, test_file, "testfile.txt", options, true);
 
                   // CSV format should have comma-separated values
@@ -669,7 +672,8 @@ void zusf_tests()
                   struct stat dir_stats;
                   stat(test_dir.c_str(), &dir_stats);
 
-                  ListOptions options = {false, true, 1}; // not all files, long format, no recursion
+                  ListOptions options{false, true, 1};
+                  ; // not all files, long format, no recursion
                   std::string result = zusf_format_file_entry(&zusf, dir_stats, test_dir, "testdir", options, false);
 
                   // Directory should start with 'd'
@@ -689,7 +693,8 @@ void zusf_tests()
                   struct stat file_stats;
                   stat(test_file.c_str(), &file_stats);
 
-                  ListOptions options = {false, true, 1}; // long format, no recursion
+                  ListOptions options{false, true, 1};
+                  ; // long format, no recursion
                   std::string result = zusf_format_file_entry(&zusf, file_stats, test_file, "testfile.txt", options, false);
 
                   // Should contain CCSID information (could be "untagged" or a specific CCSID)
@@ -713,7 +718,8 @@ void zusf_tests()
                 [&]() -> void
                 {
                   std::string response;
-                  ListOptions options = {false, false, 1}; // no recursion
+                  ListOptions options{false, false, 1};
+                  ; // no recursion
 
                   int result = zusf_list_uss_file_path(&zusf, nonexistent_path, response, options, false);
 
@@ -731,7 +737,8 @@ void zusf_tests()
                   file.close();
 
                   std::string response;
-                  ListOptions options = {false, false, 1}; // short format, no recursion
+                  ListOptions options{false, false, 1};
+                  ; // short format, no recursion
 
                   int result = zusf_list_uss_file_path(&zusf, test_file, response, options, false);
 
@@ -752,7 +759,8 @@ void zusf_tests()
                   file.close();
 
                   std::string response;
-                  ListOptions options = {false, true, 1}; // long format, no recursion
+                  ListOptions options{false, true, 1};
+                  ; // long format, no recursion
 
                   int result = zusf_list_uss_file_path(&zusf, test_file, response, options, false);
 
@@ -787,7 +795,8 @@ void zusf_tests()
                   mkdir(subdir.c_str(), 0755);
 
                   std::string response;
-                  ListOptions options = {false, false, 1}; // short format, no recursion
+                  ListOptions options{false, false, 1};
+                  ; // short format, no recursion
 
                   int result = zusf_list_uss_file_path(&zusf, test_dir, response, options, false);
 
@@ -822,7 +831,8 @@ void zusf_tests()
                   f1.close();
 
                   std::string response;
-                  ListOptions options = {false, true, 1}; // long format, no recursion
+                  ListOptions options{false, true, 1};
+                  ; // long format, no recursion
 
                   int result = zusf_list_uss_file_path(&zusf, test_dir, response, options, false);
 
@@ -856,7 +866,7 @@ void zusf_tests()
 
                   // Test without all_files option
                   std::string response1;
-                  ListOptions options1 = {false, false, 1}; // no all_files, no recursion
+                  ListOptions options1{false, false, 1}; // no all_files, no recursion
                   int result1 = zusf_list_uss_file_path(&zusf, test_dir, response1, options1, false);
 
                   Expect(result1).ToBe(RTNCD_SUCCESS);
@@ -865,7 +875,7 @@ void zusf_tests()
 
                   // Test with all_files option
                   std::string response2;
-                  ListOptions options2 = {true, false, 1}; // with all_files, no recursion
+                  ListOptions options2{true, false, 1}; // with all_files, no recursion
                   int result2 = zusf_list_uss_file_path(&zusf, test_dir, response2, options2, false);
 
                   Expect(result2).ToBe(RTNCD_SUCCESS);
@@ -888,7 +898,8 @@ void zusf_tests()
                   file.close();
 
                   std::string response;
-                  ListOptions options = {false, true, 1}; // long format, no recursion
+                  ListOptions options{false, true, 1};
+                  ; // long format, no recursion
 
                   int result = zusf_list_uss_file_path(&zusf, test_file, response, options, true); // CSV format
 
@@ -919,7 +930,8 @@ void zusf_tests()
                   mkdir(test_dir.c_str(), 0755);
 
                   std::string response;
-                  ListOptions options = {false, false, 1}; // no recursion
+                  ListOptions options{false, false, 1};
+                  ; // no recursion
 
                   int result = zusf_list_uss_file_path(&zusf, test_dir, response, options, false);
 
@@ -944,7 +956,8 @@ void zusf_tests()
                   f1.close();
 
                   std::string response;
-                  ListOptions options = {false, false, 1}; // no all_files, no recursion
+                  ListOptions options{false, false, 1};
+                  ; // no all_files, no recursion
 
                   int result = zusf_list_uss_file_path(&zusf, test_dir, response, options, false);
 
@@ -991,7 +1004,8 @@ void zusf_tests()
                   f2.close();
 
                   std::string response;
-                  ListOptions options = {false, false, 1}; // depth 1 = immediate children only
+                  ListOptions options{false, false, 1};
+                  ; // depth 1 = immediate children only
 
                   int result = zusf_list_uss_file_path(&zusf, test_dir, response, options, false);
 
@@ -1036,7 +1050,8 @@ void zusf_tests()
                   f2.close();
 
                   std::string response;
-                  ListOptions options = {false, false, 0}; // all_files=false, depth=0 = show directory itself
+                  ListOptions options{false, false, 0};
+                  ; // all_files=false, depth=0 = show directory itself
 
                   int result = zusf_list_uss_file_path(&zusf, test_dir, response, options, false);
 
@@ -1083,7 +1098,8 @@ void zusf_tests()
                   f2.close();
 
                   std::string response;
-                  ListOptions options = {false, false, 2}; // depth 2 = immediate children + 1 level of subdirs
+                  ListOptions options{false, false, 2};
+                  ; // depth 2 = immediate children + 1 level of subdirs
 
                   int result = zusf_list_uss_file_path(&zusf, test_dir, response, options, false);
 
@@ -1124,7 +1140,7 @@ void zusf_tests()
                   std::string response;
 
                   // Test with depth 0 and all_files = true (should behave like 'ls -d')
-                  ListOptions options_depth0 = {true, false, 0}; // all_files=true, depth=0
+                  ListOptions options_depth0{true, false, 0}; // all_files=true, depth=0
                   int result = zusf_list_uss_file_path(&zusf, test_dir, response, options_depth0, false);
 
                   Expect(result).ToBe(RTNCD_SUCCESS);
@@ -1136,7 +1152,7 @@ void zusf_tests()
 
                   // Test with depth 1 and all_files = true
                   response.clear();
-                  ListOptions options_depth1 = {true, false, 1}; // all_files=true, depth=1
+                  ListOptions options_depth1{true, false, 1}; // all_files=true, depth=1
                   result = zusf_list_uss_file_path(&zusf, test_dir, response, options_depth1, false);
 
                   Expect(result).ToBe(RTNCD_SUCCESS);
