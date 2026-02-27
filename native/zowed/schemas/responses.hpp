@@ -262,6 +262,11 @@ ZJSON_SCHEMA(ChtagFileResponse,
     FIELD_REQUIRED(success, BOOL)
 );
 
+struct CopyUssResponse {};
+ZJSON_SCHEMA(CopyUssResponse,
+    FIELD_REQUIRED(success, BOOL)
+);
+
 struct CreateFileResponse {};
 ZJSON_SCHEMA(CreateFileResponse,
     FIELD_REQUIRED(success, BOOL)

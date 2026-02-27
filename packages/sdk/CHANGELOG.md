@@ -7,6 +7,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 ## Recent Changes
 
 - Added support for invoking the tool search group.
+- Added support for copying USS files in the `RpcClientApi` class. [#379](https://github.com/zowe/zowe-native-proto/issues/379)
 
 ## `0.3.0`
 

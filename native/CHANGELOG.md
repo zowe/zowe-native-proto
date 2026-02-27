@@ -7,6 +7,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 ## Recent Changes
 
 - `c`: Added `toolSearch` in `zowed` for use by client SDK.
+- `c`: Implemented `zowex uss copy` command to copy USS files and directories. [#379](https://github.com/zowe/zowe-native-proto/issues/379)
 
 ## `0.2.4`
 

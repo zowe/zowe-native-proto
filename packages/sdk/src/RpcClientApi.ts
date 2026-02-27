@@ -60,6 +60,7 @@ export abstract class RpcClientApi implements IRpcClient {
     };
 
     public uss = {
+        copyUss: this.rpc<uss.CopyUssRequest, uss.CopyUssResponse>("copyUss"),
         chmodFile: this.rpc<uss.ChmodFileRequest, uss.ChmodFileResponse>("chmodFile"),
         chownFile: this.rpc<uss.ChownFileRequest, uss.ChownFileResponse>("chownFile"),
         chtagFile: this.rpc<uss.ChtagFileRequest, uss.ChtagFileResponse>("chtagFile"),
