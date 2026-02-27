@@ -446,10 +446,8 @@ void zds_tests()
                              ExpectWithContext(rc, zds.diag.e_msg).ToBe(0);
                              Expect(members.size()).ToBe(2);
 
-                             bool has_abc1 = members[0].name == "ABC1" || members[1].name == "ABC1";
-                             bool has_abc2 = members[0].name == "ABC2" || members[1].name == "ABC2";
-                             Expect(has_abc1).ToBe(true);
-                             Expect(has_abc2).ToBe(true);
+                             Expect(members[0].name == "ABC1" || members[1].name == "ABC1").ToBe(true);
+                             Expect(members[0].name == "ABC2" || members[1].name == "ABC2").ToBe(true);
                            });
                       });
 
