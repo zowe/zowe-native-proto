@@ -27,9 +27,7 @@
 #define ZCN_POST_TIMEOUT 1
 #define ZCN_POST_ABEND 2
 
-#if defined(__MVS__)
-#pragma pack(1)
-#endif
+ZNP_PACK_ON
 
 #define ZCN_EYE "ZCN"
 
@@ -62,8 +60,6 @@ typedef struct
 
 } ZCN;
 
-#if defined(__MVS__)
-#pragma pack()
-#endif
+ZNP_PACK_OFF
 
 #endif

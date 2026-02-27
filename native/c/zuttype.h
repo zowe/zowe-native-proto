@@ -21,9 +21,7 @@
 #define ZUT_RTNCD_SERVICE_FAILURE -2
 #define ZUT_RTNCD_LOAD_FAILURE -3
 
-#if defined(__MVS__)
-#pragma pack(1)
-#endif
+ZNP_PACK_ON
 
 // NOTE(Kelosky): struct is padded to nearest double word boundary; ensure proper alignment for fields
 typedef struct
@@ -36,8 +34,6 @@ typedef struct
 
 } ZUT;
 
-#if defined(__MVS__)
-#pragma pack()
-#endif
+ZNP_PACK_OFF
 
 #endif

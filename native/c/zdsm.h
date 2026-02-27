@@ -53,9 +53,7 @@ extern "C"
 #define OBTAIN(params, rc)
 #endif
 
-#if defined(__MVS__)
-#pragma pack(1)
-#endif
+ZNP_PACK_ON
 
 typedef struct CamlstSearchParams
 {
@@ -73,9 +71,7 @@ typedef struct ObtainParams
   CamlstSearchParams listname_addrx;
 } ObtainParams;
 
-#if defined(__MVS__)
-#pragma pack()
-#endif
+ZNP_PACK_OFF
 
 /**
  * @brief Use the OBTAIN routine through CAMLST to access the VTOC and Data Set Control Blocks (DCSBs)

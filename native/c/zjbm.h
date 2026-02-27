@@ -16,9 +16,7 @@
 #include "zssitype.h"
 #include "zjbtype.h"
 
-#if defined(__MVS__)
-#pragma pack(1)
-#endif
+ZNP_PACK_ON
 typedef struct
 {
   STATJQTR statjqtr;
@@ -26,9 +24,7 @@ typedef struct
   char subsystem[4 + 1];
 } ZJB_JOB_INFO;
 
-#if defined(__MVS__)
-#pragma pack()
-#endif
+ZNP_PACK_OFF
 
 #if defined(__cplusplus) && defined(__MVS__)
 extern "OS"

@@ -36,9 +36,7 @@
 
 #define ZJB_UNKNOWN_RC ""
 
-#if defined(__MVS__)
-#pragma pack(1)
-#endif
+ZNP_PACK_ON
 
 // NOTE(Kelosky): struct is padded to nearest double word boundary; ensure proper alignment for fields
 typedef struct
@@ -68,8 +66,6 @@ typedef struct
 
 } ZJB;
 
-#if defined(__MVS__)
-#pragma pack()
-#endif
+ZNP_PACK_OFF
 
 #endif

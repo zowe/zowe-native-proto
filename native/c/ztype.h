@@ -44,8 +44,19 @@
 #endif
 
 #if defined(__MVS__)
-#pragma pack(1)
+#ifdef __open_xl__
+#define ZNP_PACK_ON _Pragma("pack(1)")
+#define ZNP_PACK_OFF _Pragma("pack()")
+#else
+#define ZNP_PACK_ON _Pragma("pack(packed)")
+#define ZNP_PACK_OFF _Pragma("pack(reset)")
 #endif
+#else
+#define ZNP_PACK_ON
+#define ZNP_PACK_OFF
+#endif
+
+ZNP_PACK_ON
 
 // NOTE(Kelosky): struct is padded to nearest double word boundary; ensure proper alignment for fields
 typedef struct
@@ -74,9 +85,7 @@ typedef struct
 
 } ZDIAG;
 
-#if defined(__MVS__)
-#pragma pack()
-#endif
+ZNP_PACK_OFF
 
 enum DataType
 {

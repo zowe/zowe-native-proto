@@ -87,9 +87,7 @@
 #define ZDS_DEVTYPE_3390 0x0F
 #define ZDS_DEVTYPE_9345 0x04
 
-#if defined(__MVS__)
-#pragma pack(1)
-#endif
+ZNP_PACK_ON
 
 // NOTE(Kelosky): struct is padded to nearest double word boundary; ensure proper alignment for fields
 typedef struct
@@ -114,13 +112,9 @@ typedef struct
 
 } ZDS;
 
-#if defined(__MVS__)
-#pragma pack()
-#endif
+ZNP_PACK_OFF
 
-#if defined(__MVS__)
-#pragma pack(1)
-#endif
+ZNP_PACK_ON
 
 // https://www.ibm.com/docs/en/SSLTBW_2.2.0/pdf/dgt3s310.pdf, page 26
 typedef struct DSCBFormat1
@@ -161,8 +155,6 @@ typedef struct IndexableDSCBFormat1
   DSCBFormat1 dscb1; // Contents of DSCB-1
 } IndexableDSCBFormat1;
 
-#if defined(__MVS__)
-#pragma pack()
-#endif
+ZNP_PACK_OFF
 
 #endif

@@ -1910,7 +1910,7 @@ int zds_list_members(ZDS *zds, std::string dsn, std::vector<ZDSMem> &members)
   return 0;
 }
 
-#pragma pack(1)
+ZNP_PACK_ON
 
 // https://www.ibm.com/docs/en/zos/3.1.0?topic=format-work-area-table
 // https://www.ibm.com/docs/en/zos/3.1.0?topic=format-work-area-picture
@@ -1991,7 +1991,7 @@ typedef struct
   ZDS_CSI_ENTRY entry;
 } ZDS_CSI_WORK_AREA;
 
-#pragma pack() // restore default packing
+ZNP_PACK_OFF
 
 #define DS1DSGPS_MASK 0x4000 // PS: Bit 2 is set
 #define DS1DSGDA_MASK 0x2000 // DA: Bit 3 is set
