@@ -17,5 +17,4 @@
 #include <string>
 
 int ztso_issue(const std::string &, std::string &);
-
 #endif

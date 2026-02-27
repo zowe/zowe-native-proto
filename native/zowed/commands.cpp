@@ -34,6 +34,11 @@ static CommandBuilder create_uss_builder(CommandBuilder::CommandHandler handler)
   return CommandBuilder(handler).rename_arg("fspath", "file-path");
 }
 
+static CommandBuilder copy_uss_builder(CommandBuilder::CommandHandler handler) 
+{
+    return CommandBuilder(handler).rename_arg("srcFsPath", "source-path").rename_arg("dstFsPath", "destination-path");
+}
+
 void register_ds_commands(CommandDispatcher &dispatcher)
 {
   dispatcher.register_command("createDataset",
@@ -138,6 +143,7 @@ void register_uss_commands(CommandDispatcher &dispatcher)
   dispatcher.register_command("chtagFile",
                               create_uss_builder(uss::handle_uss_chtag)
                                   .validate<ChtagFileRequest, ChtagFileResponse>());
+  dispatcher.register_command("copyUss", copy_uss_builder(uss::handle_uss_copy).validate<CopyUssRequest, CopyUssResponse>());
   const auto handle_uss_create = [](plugin::InvocationContext &context) -> int
   {
     auto handler = context.get<bool>("is-dir", false) ?

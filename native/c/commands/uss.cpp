@@ -22,6 +22,35 @@ using namespace commands::common;
 namespace uss
 {
 
+int handle_uss_copy(InvocationContext &context)
+{
+  std::string source_path = context.get<std::string>("source-path");
+  std::string destination_path = context.get<std::string>("destination-path");
+
+  bool recursive = context.get<bool>("recursive", false);
+  bool follow_symlinks = context.get<bool>("follow-symlinks", false);
+  bool preserve_attributes = context.get<bool>("preserve-attributes", false);
+  bool force = context.get<bool>("force", false);
+
+  const CopyOptions options(
+    /* .recursive = */ recursive,
+    /* .follow_symlinks = */ follow_symlinks,
+    /* .preserve_attributes = */ preserve_attributes,
+    /* .force = */ force
+  );
+
+  ZUSF zusf = {};
+  int rc = zusf_copy_file_or_dir(&zusf, source_path, destination_path, options);
+
+  if (0 != rc)
+  {
+    context.error_stream() << "Error occurred while trying to copy \"" << source_path << "\" to \"" << destination_path << "\"" << std::endl;
+    context.error_stream() << "  Details: " << zusf.diag.e_msg << std::endl;
+  }
+
+  return rc;
+}
+
 int handle_uss_create_file(InvocationContext &context)
 {
   int rc = 0;
@@ -481,6 +510,17 @@ void register_commands(parser::Command &root_command)
 {
   // USS command group
   auto uss_group = command_ptr(new Command("uss", "z/OS USS operations"));
+
+  // Copy subcommand
+  auto uss_copy_cmd = command_ptr(new Command("copy", "copy a USS file or directory"));
+  uss_copy_cmd->add_positional_arg(FILE_PATH_SOURCE);
+  uss_copy_cmd->add_positional_arg(FILE_PATH_DEST);
+  uss_copy_cmd->add_keyword_arg("follow-symlinks", make_aliases("--follow-symlinks", "-L"), "follows symlinks within a directory tree. requires \"--recursive\"", ArgType_Flag, false);
+  uss_copy_cmd->add_keyword_arg("recursive", make_aliases("--recursive", "-r"), "recursively copies if the source is a directory", ArgType_Flag, false);
+  uss_copy_cmd->add_keyword_arg("preserve-attributes", make_aliases("--preserve-attributes", "-p"), "preserve permission bits and ownership on copy to destination", ArgType_Flag, false);
+  uss_copy_cmd->add_keyword_arg("force", make_aliases("--force", "-f"),  "attempts to remove and replace a UNIX destination file that cannot be opened", ArgType_Flag, false);
+  uss_copy_cmd->set_handler(handle_uss_copy);
+  uss_group->add_command(uss_copy_cmd);
 
   // Create-file subcommand
   auto uss_create_file_cmd = command_ptr(new Command("create-file", "create a USS file"));

@@ -25,6 +25,7 @@
 #include <string>
 #include <sstream>
 #include "ztype.h"
+#include "zut.hpp"
 
 // NOTE(Kelosky): alternatives we'll likely use / consider in the future
 // - CEA, probably needed to achieve z/OSMF parity (allows starting, stopping TSO address spaces)
@@ -33,45 +34,9 @@
 // - Load TMP directly, untested, but potentially useful if we read/write SYSTSIN/SYSTSPRT
 int ztso_issue(const std::string &command, std::string &response)
 {
-  int rc = 0;
-
   // NOTE(Kelosky): for now we combined stderr and stdout as `popen` doesnt
   // appear to allow access to stderr and tsocmd always writes the input parameters
   // to stderr
-  std::string data = "tsocmd " + command + " 2>&1"; // combine stderr
-  std::string response_raw;
-
-  FILE *tso = popen(data.c_str(), "r");
-  if (nullptr == tso)
-  {
-    return RTNCD_FAILURE;
-  }
-
-  char buffer[256] = {0};
-  while (fgets(buffer, sizeof(buffer), tso) != nullptr)
-  {
-    response_raw += std::string(buffer);
-  }
-
-  std::stringstream response_ss(response_raw);
-
-  std::string line;
-  auto index = 0;
-
-  while (std::getline(response_ss, line))
-  {
-    index++;
-    if (index > 1)
-    {
-      response += line + '\n';
-    }
-  }
-
-  rc = pclose(tso);
-  if (0 != rc)
-  {
-    return WEXITSTATUS(rc);
-  }
-
-  return rc;
+  std::string tso_cmd = "tsocmd " + command + " 2>&1"; // combine stderr
+  return zut_run_shell_command(tso_cmd, response);
 }

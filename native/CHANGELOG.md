@@ -6,6 +6,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Recent Changes
 
+- `c`: Implemented `zowex uss copy` command to copy USS files and directories. [#379](https://github.com/zowe/zowe-native-proto/issues/379)
 - `c`: Updated `gen_chdsect.sh` to generate appropriate pragma syntax expected by `ibm-clang`. When the headers are included in Open XL-compiled code, the new pragma syntax is used. Otherwise, the legacy `pack(packed)` and `pack(reset)` macro syntax is used. [#368](https://github.com/zowe/zowe-native-proto/issues/368)
 - `native`: Migrated compiler from xlclang/xlclang++ to ibm-clang/ibm-clang++ (Open XL C/C++, v2.1, supports C++17). The `xlclang-extenders` makefile target has been removed in favor of the `all` target. [#653](https://github.com/zowe/zowe-native-proto/issues/653)
 - `c`: Modernized C++ code to align with C++17 best practices and adopted new standard library implementations (`unordered_map`, `to_string`, `if constexpr`, brace initialization, etc.). [#812](https://github.com/zowe/zowe-native-proto/pull/812)
