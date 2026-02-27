@@ -22,8 +22,24 @@
 int main()
 {
   unsigned long long tod = 0;
+
+  TIME_STRUCT time_struct = {0};
+  int rc = 0;
+
+  // get stck
+  zut_dump_storage_wto("tod before STCK", &tod, sizeof(tod));
   __asm(" STCK %0" : "=m"(tod));
-  zut_dump_storage_wto("tod", &tod, sizeof(tod));
+  zut_dump_storage_wto("tod after STCK", &tod, sizeof(tod));
+
+  // convert to YYYYDDD
+  rc = stckconv(&tod, &time_struct);
+  zwto_debug("stckconv returned %d", rc);
+  zut_dump_storage_wto("time_struct", &time_struct, sizeof(time_struct));
+
+  // convert back to stck
+  rc = convtod(&time_struct, &tod);
+  zwto_debug("convdod returned %d", rc);
+  zut_dump_storage_wto("tod after CONVTOD", &tod, sizeof(tod));
 
   // demo_setjmp();
   return 0;

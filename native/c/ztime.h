@@ -55,7 +55,7 @@
 STCKCONV_MODEL(stckconv_model);
 
 #if defined(__IBM_METAL__)
-#define STCKCONV(output, tod, plist, rc)                      \
+#define STCKCONV(output, tod, plist, rc, format)              \
   __asm(                                                      \
       "*                                                  \n" \
       " LGHI  2,0       Clear                             \n" \
@@ -70,7 +70,7 @@ STCKCONV_MODEL(stckconv_model);
       " STCKCONV STCKVAL=%2,"                                 \
       "CONVVAL=%0,"                                           \
       "TIMETYPE=DEC,"                                         \
-      "DATETYPE=MMDDYYYY,"                                    \
+      "DATETYPE=" #format ","                                 \
       "MF=(E,%3)                                          \n" \
       "*                                                  \n" \
       " ST    15,%1     Save RC                           \n" \
@@ -87,15 +87,15 @@ STCKCONV_MODEL(stckconv_model);
         "m"(plist)                                            \
       : "r0", "r1", "r2", "r14", "r15");
 #else
-#define STCKCONV(output, tod, plist, rc)
+#define STCKCONV(output, tod, plist, rc, format)
 #endif
 
 #if defined(__IBM_METAL__)
-#define CONVTOD_MODEL(convtodm)        \
-  __asm(                               \
-      "*                           \n" \
-      " CONVTOD MF=L              \n"  \
-      "*                           \n" \
+#define CONVTOD_MODEL(convtodm)       \
+  __asm(                              \
+      "*                          \n" \
+      " CONVTOD MF=L              \n" \
+      "*                          \n" \
       : "DS"(convtodm));
 #else
 #define CONVTOD_MODEL(convtodm)
@@ -104,7 +104,7 @@ STCKCONV_MODEL(stckconv_model);
 CONVTOD_MODEL(convtod_model);
 
 #if defined(__IBM_METAL__)
-#define CONVTOD(tod, input, plist, rc)                        \
+#define CONVTOD(tod, input, plist, rc, format)                \
   __asm(                                                      \
       "*                                                  \n" \
       " LGHI  2,0       Clear                             \n" \
@@ -119,7 +119,7 @@ CONVTOD_MODEL(convtod_model);
       " CONVTOD TODVAL=%0,"                                   \
       "CONVVAL=%2,"                                           \
       "TIMETYPE=DEC,"                                         \
-      "DATETYPE=YYDDD,"                                       \
+      "DATETYPE=" #format ","                                 \
       "MF=(E,%3)                                          \n" \
       "*                                                  \n" \
       " ST    15,%1     Save RC                           \n" \
@@ -128,7 +128,7 @@ CONVTOD_MODEL(convtod_model);
       " JNO   *+4+2     No, skip restore                  \n" \
       " SAM64 ,         Set AMODE64                       \n" \
       "*                                                  \n" \
-      " SYSSTATE POP    Restore SYSSTATE                  \n"
+      " SYSSTATE POP    Restore SYSSTATE                  \n" \
       "*                                                    " \
       : "=m"(tod),                                            \
         "=m"(rc)                                              \
@@ -136,70 +136,71 @@ CONVTOD_MODEL(convtod_model);
         "m"(plist)                                            \
       : "r0", "r1", "r2", "r14", "r15");
 #else
-#define CONVTOD(tod, input, plist, rc)
+#define CONVTOD(tod, input, plist, rc, format)
 #endif
 
-      static void time(unsigned long long *tod)
-      {
-        TIME(*tod);
-      }
+static void time(unsigned long long *tod)
+{
+  TIME(*tod);
+}
 
-      typedef union
-      {
-        unsigned int timei;
-        struct
-        {
-          unsigned char HH;
-          unsigned char MM;
-          unsigned char SS;
-          unsigned char unused;
-        } times;
-      } TIME_UNION;
+typedef union
+{
+  unsigned int timei;
+  struct
+  {
+    unsigned char HH;
+    unsigned char MM;
+    unsigned char SS;
+    unsigned char unused;
+  } times;
+} TIME_UNION;
 
-      // TODO(Kelosky): this must be AMODE 31
-      static void time_local(unsigned int *time, unsigned int *date)
-      {
-        TIME_LOCAL(*time, *date);
-      }
+// TODO(Kelosky): this must be AMODE 31
+static void time_local(unsigned int *time, unsigned int *date)
+{
+  TIME_LOCAL(*time, *date);
+}
 
-      typedef struct
-      {
-        unsigned char time[8];
-        unsigned char month;   // MMDDYYYY
-        unsigned char day;     // MMDDYYYY
-        unsigned char year[2]; // MMDDYYYY
-        unsigned char unused[4];
-      } TIME_STRUCT;
+typedef struct
+{
+  unsigned char month;
+  unsigned char day;
+  unsigned char year[2];
+} DATE_MMDDYYYY;
 
-      typedef struct
-      {
-        unsigned char time[8];
-        unsigned char date[4];
-        unsigned char unused[4];
-      } TIME_INPUT_STRUCT;
+typedef struct
+{
+  unsigned char time[8];
+  union
+  {
+    DATE_MMDDYYYY mmddyyyy;
+  } date;
+  unsigned char unused[4];
+} TIME_STRUCT;
 
-      static int stckconv(unsigned long long *tod, TIME_STRUCT *time_struct)
-      {
-        int rc = 0;
+static int stckconv(unsigned long long *tod, TIME_STRUCT *time_struct)
+{
+  int rc = 0;
 
-        STCKCONV_MODEL(dsa_stckconv_model);
-        dsa_stckconv_model = stckconv_model;
+  STCKCONV_MODEL(dsa_stckconv_model);
+  dsa_stckconv_model = stckconv_model;
 
-        STCKCONV(*time_struct, *tod, dsa_stckconv_model, rc);
+  STCKCONV(*time_struct, *tod, dsa_stckconv_model, rc, MMDDYYYY);
 
-        return rc;
-      }
+  return rc;
+}
 
-      static int convtod(TIME_INPUT_STRUCT *time_input_struct, unsigned long long *tod)
-      {
-        int rc = 0;
+static int convtod(TIME_STRUCT *time_struct, unsigned long long *tod)
+{
+  int rc = 0;
 
-        CONVTOD_MODEL(dsa_convtod_model);
-        dsa_convtod_model = convtod_model;
+  CONVTOD_MODEL(dsa_convtod_model);
+  dsa_convtod_model = convtod_model;
 
-        CONVTOD(*tod, *time_input_struct, dsa_convtod_model, rc);
+  CONVTOD(*tod, *time_struct, dsa_convtod_model, rc, YYYYDDD);
 
-        return rc;
-      }
+  return rc;
+}
 
 #endif
