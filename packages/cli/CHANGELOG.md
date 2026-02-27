@@ -4,6 +4,10 @@ All notable changes to the Client code for "zowe-native-proto-cli" are documente
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## Recent Changes
+
+- Added the `zssh uss copy` command to the CLI. [#379](https://github.com/zowe/zowe-native-proto/pull/379).
+
 ## `0.2.4`
 
 - Added the `zssh rename data-set-member` command to the CLI. [#765] (https://github.com/zowe/zowe-native-proto/pull/765).
