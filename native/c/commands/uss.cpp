@@ -45,7 +45,7 @@ int handle_uss_copy(InvocationContext &context)
 
   if (0 != rc) {
     context.error_stream() << "Error occurred while trying to copy \"" << source_path << "\" to \"" << destination_path << "\"" << endl;
-    context.error_stream() << "  Details:" << zusf.diag.e_msg << endl;
+    context.error_stream() << "  Details: " << zusf.diag.e_msg << endl;
   }
 
   return rc;
