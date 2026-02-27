@@ -41,7 +41,7 @@ void zowex_job_tests()
                for (const auto &jobid : _jobs)
                {
                  std::string response;
-                 execute_command_with_output(zowex_command + " job delete " + jobid, response);
+                 execute_command_with_output(zowex_command + " job delete \"" + jobid + "\"", response);
                }
                _jobs.clear();
              };

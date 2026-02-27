@@ -28,6 +28,7 @@ void zowex_job_manage_tests(std::vector<std::string> &_jobs, std::vector<std::st
            [&]() -> void
            {
              std::string _jobid;
+             TEST_OPTIONS hook_opts{false, 30};
              beforeEach([&]()
                         {
                  // Submit and wait for output to ensure job completes
@@ -38,7 +39,8 @@ void zowex_job_manage_tests(std::vector<std::string> &_jobs, std::vector<std::st
                  Expect(rc).ToBe(0);
                  _jobid = TrimChars(stdout_output);
                  Expect(_jobid).Not().ToBe("");
-                 _jobs.push_back(_jobid); });
+                 _jobs.push_back(_jobid); },
+                        hook_opts);
 
              it("should view job status",
                 [&]()
@@ -161,6 +163,7 @@ void zowex_job_manage_tests(std::vector<std::string> &_jobs, std::vector<std::st
            [&]() -> void
            {
              std::string _jobid;
+             TEST_OPTIONS hook_opts{false, 30};
              beforeEach([&]()
                         {
                  // Submit and wait for output to ensure spool files exist
@@ -171,7 +174,8 @@ void zowex_job_manage_tests(std::vector<std::string> &_jobs, std::vector<std::st
                  Expect(rc).ToBe(0);
                  _jobid = TrimChars(stdout_output);
                  Expect(_jobid).Not().ToBe("");
-                 _jobs.push_back(_jobid); });
+                 _jobs.push_back(_jobid); },
+                        hook_opts);
 
              it("should list job files",
                 [&]()
@@ -993,6 +997,7 @@ void zowex_job_manage_tests(std::vector<std::string> &_jobs, std::vector<std::st
            {
              std::string _jobid;
              std::string _correlator;
+             TEST_OPTIONS hook_opts{false, 30};
 
              beforeEach([&]()
                         {
@@ -1019,7 +1024,8 @@ void zowex_job_manage_tests(std::vector<std::string> &_jobs, std::vector<std::st
                  }
                  if (_correlator.empty()) {
                      TestLog("Could not get correlator for job " + _jobid);
-                 } });
+                 } },
+                        hook_opts);
 
              it("should view status by correlator",
                 [&]()
