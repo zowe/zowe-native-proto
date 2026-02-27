@@ -20,6 +20,7 @@ const std::string zoweax_command = "./../build-out/zoweax";
 
 int execute_command_with_input(const std::string &command, const std::string &input, bool suppress_output = true);
 int execute_command_with_output(const std::string &command, std::string &output);
+int execute_su_command_with_output(const std::string &command, std::string &output);
 std::string get_random_string(const int length = 7, const bool allNumbers = true);
 std::string get_random_uss(const std::string base_dir);
 std::string get_random_ds(const int qualifier_count = 4, const std::string hlq = "");
