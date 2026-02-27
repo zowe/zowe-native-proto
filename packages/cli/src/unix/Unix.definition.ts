@@ -15,6 +15,7 @@ import { Constants } from "../Constants";
 import { ChmodDefinition } from "./chmod/Chmod.definition";
 import { ChownDefinition } from "./chown/Chown.definition";
 import { ChtagDefinition } from "./chtag/Chtag.definition";
+import { CopyDefinition } from "./copy/Copy.definition";
 
 const UnixDefinition: ICommandDefinition = {
     name: "unix",
@@ -22,7 +23,7 @@ const UnixDefinition: ICommandDefinition = {
     summary: "UNIX-specific features",
     description: "UNIX-specific features",
     type: "group",
-    children: [ChmodDefinition, ChownDefinition, ChtagDefinition],
+    children: [ChmodDefinition, ChownDefinition, ChtagDefinition, CopyDefinition],
     passOn: [
         {
             property: "options",
