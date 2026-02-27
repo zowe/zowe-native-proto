@@ -964,13 +964,11 @@ int zusf_move_uss_file_or_dir(ZUSF *zusf, const string &source, const string &ta
   // TODO(zFernand0): Use std::filesystem::absolute instead of realpath when C++17 is available
   // resolve source path
   char resolved_source[PATH_MAX];
-  auto absolute_source = realpath(source.c_str(), resolved_source);
-  if (absolute_source == nullptr)
+  if (realpath(source.c_str(), resolved_source) == nullptr)
   {
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to resolve source path '%s'", truncated_source.c_str());
     return RTNCD_FAILURE;
   }
-  free(absolute_source);
 
   // target related variables
   char resolved_target[PATH_MAX];
@@ -989,13 +987,11 @@ int zusf_move_uss_file_or_dir(ZUSF *zusf, const string &source, const string &ta
 
     // TODO(zFernand0): Use std::filesystem::absolute instead of realpath when C++17 is available
     // resolve target path, save it to resolved_target
-    auto absolute_target = realpath(target.c_str(), resolved_target);
-    if (absolute_target == nullptr)
+    if (realpath(target.c_str(), resolved_target) == nullptr)
     {
       zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to resolve target path '%s'", truncated_target.c_str());
       return RTNCD_FAILURE;
     }
-    free(absolute_target);
 
     // check if paths are identical
     if (strcmp(resolved_source, resolved_target) == 0)
@@ -1018,13 +1014,6 @@ int zusf_move_uss_file_or_dir(ZUSF *zusf, const string &source, const string &ta
       zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Cannot move pipe '%s'. Target '%s' is not a pipe", truncated_source.c_str(), truncated_target.c_str());
       return RTNCD_FAILURE;
     }
-  }
-
-  // handle target being a folder, which means we have to "move" contents around
-  string new_target = target;
-  if (target_is_dir)
-  {
-    new_target = zusf_join_path(resolved_target, source.substr(source.find_last_of("/") + 1));
   }
 
   // TODO(zFernand0): Use std::filesystem::rename instead of rename when C++17 is available
