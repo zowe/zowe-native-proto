@@ -21,27 +21,27 @@ export const CopyDefinition: ICommandDefinition = {
     examples: [
         {
             description: "Copy a file",
-            options: '"/path/to/src.txt /path/to/dst.txt"',
+            options: '"/path/to/src.txt" "/path/to/dst.txt"',
         },
         {
             description: "Copy a directory",
-            options: '"/path/name /other_path --recursive"',
+            options: '"/path/name" "/other_path" --recursive',
         },
         {
             description: "Copy a file to a directory",
-            options: '"/path/to/src.txt /other_path"',
+            options: '"/path/to/src.txt" "/other_path"',
         },
         {
             description: "Copy a directory and follow symlinks",
-            options: '"/path/name /other_path --recursive --follow-symlinks"',
+            options: '"/path/name" "/other_path" --recursive --follow-symlinks',
         },
         {
             description: "Copy a file and preserve file attributes",
-            options: '"/path/to/src.txt /path/to/dst.txt --preserve-attributes',
+            options: '"/path/to/src.txt" "/path/to/dst.txt" --preserve-attributes',
         },
         {
             description: "Copy a file, and remove/replace target files without prompts.",
-            options: '"/path/to/src.txt /path/to/dst.txt --force',
+            options: '"/path/to/src.txt" "/path/to/dst.txt" --force',
         },
     ],
     positionals: [
