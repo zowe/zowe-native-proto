@@ -12,9 +12,38 @@
 #include "zwto.h"
 #include "zmetal.h"
 #include "zsetjmp.h"
+#include "ztime.h"
+#include "zwto.h"
+#include "zdbg.h"
 
 #pragma prolog(main, " ZWEPROLG NEWDSA=(YES,128) ")
 #pragma epilog(main, " ZWEEPILG ")
+
+int main()
+{
+  unsigned long long tod = 0;
+
+  TIME_STRUCT time_struct = {0};
+  int rc = 0;
+
+  // get stck
+  zut_dump_storage_wto("tod before STCK", &tod, sizeof(tod));
+  __asm(" STCK %0" : "=m"(tod));
+  zut_dump_storage_wto("tod after STCK", &tod, sizeof(tod));
+
+  // convert to YYYYDDD
+  rc = stckconv(&tod, &time_struct);
+  zwto_debug("stckconv returned %d", rc);
+  zut_dump_storage_wto("time_struct", &time_struct, sizeof(time_struct));
+
+  // convert back to stck
+  rc = convtod(&time_struct, &tod);
+  zwto_debug("convdod returned %d", rc);
+  zut_dump_storage_wto("tod after CONVTOD", &tod, sizeof(tod));
+
+  // demo_setjmp();
+  return 0;
+}
 
 void test(ZSETJMP_ENV *zenv)
 {
@@ -22,7 +51,15 @@ void test(ZSETJMP_ENV *zenv)
   zlongjmp(zenv);
 }
 
-int main()
+int demo_time()
+{
+  unsigned long long tod = 0;
+  time(&tod);
+  zwto_debug("time: %llx", tod);
+  return 0;
+}
+
+int demo_setjmp()
 {
   PSW psw = {0};
   get_psw(&psw);
@@ -35,12 +72,12 @@ int main()
   {
     zwto_debug("zsetjmp returned 0");
     test(&zenv);
-    // ZLONGJMP(&zenv);
+    ZLONGJMP(&zenv);
   }
   else
   {
     zwto_debug("zsetjmp returned %d", rc);
   }
 
-  return 0;
+  return rc;
 }
