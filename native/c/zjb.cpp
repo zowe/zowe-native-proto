@@ -124,11 +124,11 @@ int zjb_read_job_jcl(ZJB *zjb, string jobid, string &response)
 
 #define NUM_TEXT_UNITS 5
 
-int zjb_read_job_content_by_dsn(ZJB *zjb, string jobdsn, string &response)
+static int zjb_read_job_dynamic_allocation(ZJB *zjb, string jobdsn, string &ddname)
 {
   int rc = 0;
+
   unsigned char *p = nullptr;
-  ZDS zds = {0};
 
   // calculate total size needed, obtain, & clear
   int total_size_needed = sizeof(IAZBTOKP) + (sizeof(S99TUNIT_X) * NUM_TEXT_UNITS) + (sizeof(S99TUPL) * NUM_TEXT_UNITS) + sizeof(__S99parms) + sizeof(__S99rbx_t);
@@ -261,34 +261,61 @@ int zjb_read_job_content_by_dsn(ZJB *zjb, string jobdsn, string &response)
 
   char cddname[8 + 1] = {0};
   memcpy(cddname, &s99tunit_x[4].s99tunit.s99tupar, ddnamelen);
-  string ddname = string(cddname);
-
-  zds.encoding_opts.data_type = zjb->encoding_opts.data_type;
-  memcpy((void *)&zds.encoding_opts.codepage, (const void *)&zjb->encoding_opts.codepage, sizeof(zjb->encoding_opts.codepage));
-
-  rc = zds_read_from_dd(&zds, ddname, response);
+  ddname = string(cddname);
 
   free(parms);
 
-  if (0 != rc)
-  {
-    memcpy(&zjb->diag, &zds.diag, sizeof(ZDIAG));
-    return rc;
-  }
+  return rc;
+}
+
+static int zjb_free_job_dynamic_allocation(ZJB *zjb, string ddname)
+{
+  int rc = 0;
 
   // free DD
   __dyn_t ip;
   dyninit(&ip);
-  ip.__ddname = cddname; // e.g. SYS00001
+  ip.__ddname = (char *)ddname.c_str(); // e.g. SYS00001
   rc = dynfree(&ip);
 
-  if (0 != rc)
+  if (0 != zjb->diag.e_msg_len) // only set error if no error message was already set
   {
     strcpy(zjb->diag.service_name, "dynfree");
     zjb->diag.service_rc = rc;
     zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "dynfree failed with %d", rc);
     zjb->diag.detail_rc = ZJB_RTNCD_SERVICE_FAILURE;
     return RTNCD_FAILURE;
+  }
+
+  return rc;
+}
+
+int zjb_read_job_content_by_dsn(ZJB *zjb, string jobdsn, string &response)
+{
+  int rc = 0;
+  string ddname;
+  ZDS zds = {};
+
+  rc = zjb_read_job_dynamic_allocation(zjb, jobdsn, ddname);
+  if (0 != rc)
+  {
+    return rc;
+  }
+
+  zds.encoding_opts.data_type = zjb->encoding_opts.data_type;
+  memcpy((void *)&zds.encoding_opts.codepage, (const void *)&zjb->encoding_opts.codepage, sizeof(zjb->encoding_opts.codepage));
+
+  rc = zds_read_from_dd(&zds, ddname, response);
+
+  if (0 != rc)
+  {
+    memcpy(&zjb->diag, &zds.diag, sizeof(ZDIAG));
+  }
+
+  int newrc = zjb_free_job_dynamic_allocation(zjb, ddname);
+  if (0 != newrc && 0 == rc)
+  {
+    return newrc;
   }
 
   return rc;
