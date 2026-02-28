@@ -96,20 +96,40 @@ DCB_READ_MODEL(open_read_model);
 #endif
 
 #if defined(__IBM_METAL__)
-#define OPEN_ACB(acb, rc)                                     \
+#define OPEN_IO_ACB(acb, plist, rc)                           \
   __asm(                                                      \
       "*                                                  \n" \
       " OPEN (%0),"                                           \
-      "MODE=31                                            \n" \
+      "MODE=31,"                                              \
+      "MF=(E,%2)                                          \n" \
       "*                                                  \n" \
       " ST    15,%1     Save RC                           \n" \
       "*                                                    " \
-      : "+r"(acb),                                            \
+      : "+m"(acb),                                            \
         "=m"(rc)                                              \
-      :                                                       \
+      : "m"(plist)                                            \
+      : "r0", "r1", "r2", "r14", "r15");
+#else
+#define OPEN_IO_ACB(acb, plist, rc)
+#endif
+
+#if defined(__IBM_METAL__)
+#define CLOSE_ACB(acb, plist, rc)                             \
+  __asm(                                                      \
+      "*                                                  \n" \
+      "*                                                  \n" \
+      " CLOSE (%0),"                                          \
+      "MODE=31,"                                              \
+      "MF=(E,%2)                                          \n" \
+      "*                                                  \n" \
+      " ST    15,%1     Save RC                           \n" \
+      "*                                                    " \
+      : "+m"(acb),                                            \
+        "=m"(rc)                                              \
+      : "m"(plist)                                            \
       : "r0", "r1", "r14", "r15");
 #else
-#define OPEN_ACB(acb, rc)
+#define CLOSE_ACB(acb, plist, rc)
 #endif
 
 #if defined(__IBM_METAL__)
@@ -349,6 +369,7 @@ int open_output(IHADCB *) ATTRIBUTE(amode31);
 int open_update(IHADCB *) ATTRIBUTE(amode31);
 int open_input(IHADCB *) ATTRIBUTE(amode31);
 int open_vsam(IFGACB *) ATTRIBUTE(amode31);
+int close_vsam(IFGACB *) ATTRIBUTE(amode31);
 
 #if defined(__IBM_METAL__)
 #pragma map(close_dcb, "CLOSEDCB")

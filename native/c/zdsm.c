@@ -181,6 +181,7 @@ int ZDSOACB(ZDS *zds, IO_CTRL **ioc, const char *ddname)
 
   if (0 != rc)
   {
+
     ZDS zds_close = {0};
     close_acb(&zds_close.diag, ioc31);
     *ioc = NULL;
@@ -197,7 +198,7 @@ int ZDSCACB(ZDS *zds, IO_CTRL *ioc)
   ZDS zds31 = {0};
   memcpy(&zds31, zds, sizeof(ZDS));
   zwto_debug("@TEST called to close acb for ddname: %.8s", ioc->ddname);
-  rc = close_output_bpam(&zds31.diag, ioc);
+  rc = close_acb(&zds31.diag, ioc);
   memcpy(zds, &zds31, sizeof(ZDS));
   return rc;
 }

@@ -125,6 +125,7 @@ int handle_system_view_syslog(InvocationContext &context)
   if (0 != rc)
   {
     context.error_stream() << "Error: could not view syslog, rc: '" << rc << "'" << endl;
+    context.error_stream() << "  Details: " << zjb.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
   return RTNCD_SUCCESS;

@@ -21,6 +21,7 @@
 #include "zutm31.h"
 #include "ztime.h"
 #include "zwto.h"
+#include "zdbg.h"
 
 // NOTE(Kelosky): must be assembled in AMODE31 code
 #if defined(__IBM_METAL__)
@@ -250,6 +251,7 @@ int open_acb(ZDIAG *PTR32 diag, IO_CTRL *PTR32 *PTR32 ioc, const char *PTR32 ddn
   int rc = 0;
   IO_CTRL *PTR32 ioc31 = NULL;
 
+  zwto_debug("@TEST open acb zam.c");
   //
   // Obtain IO_CTRL for the data set
   //
@@ -260,6 +262,7 @@ int open_acb(ZDIAG *PTR32 diag, IO_CTRL *PTR32 *PTR32 ioc, const char *PTR32 ddn
   rc = open_vsam(&new_ioc->ifgacb);
   if (0 != rc)
   {
+    zwto_debug("@TEST open acb zam.c failed: %d", rc);
     diag->detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
     strcpy(diag->service_name, "OPEN");
     diag->e_msg_len = sprintf(diag->e_msg, "Failed to open acb rc was: %d", rc);
@@ -267,7 +270,7 @@ int open_acb(ZDIAG *PTR32 diag, IO_CTRL *PTR32 *PTR32 ioc, const char *PTR32 ddn
     return RTNCD_FAILURE;
   }
 
-  zwto_debug("@TEST open acb zam.c");
+  zwto_debug("@TEST open acb zam.c success");
 
   return rc;
 }
@@ -276,6 +279,18 @@ int close_acb(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
 {
   int rc = 0;
   zwto_debug("@TEST close acb zam.c");
+  rc = close_vsam(&ioc->ifgacb);
+  if (0 != rc)
+  {
+    diag->detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
+    strcpy(diag->service_name, "CLOSE");
+    diag->e_msg_len = sprintf(diag->e_msg, "Failed to close acb rc was: %d", rc);
+    diag->service_rc = rc;
+    return RTNCD_FAILURE;
+  }
+
+  zwto_debug("@TEST close acb zam.c success");
+
   return rc;
 }
 
@@ -1095,7 +1110,26 @@ int open_vsam(IFGACB *acb)
 {
   int rc = 0;
   zwto_debug("@TEST open vsam zam.c address: %p", acb);
-  OPEN_ACB(*acb, rc);
+  zwto_debug("@TEST ddname: %.8s", acb->acbddnm);
+  OPEN_PL opl = {0};
+  opl.option = OPTION_BYTE;
+
+  zut_dump_storage_wto("acb", acb, sizeof(IFGACB));
+  OPEN_IO_ACB(*acb, opl, rc);
+  zwto_debug("@TEST open finished");
+  zut_dump_storage_wto("acb", acb, sizeof(IFGACB));
+
+  return rc;
+}
+
+int close_vsam(IFGACB *acb)
+{
+  int rc = 0;
+  zwto_debug("@TEST close vsam zam.c address: %p", acb);
+  CLOSE_PL cpl = {0};
+  cpl.option = OPTION_BYTE;
+
+  CLOSE_ACB(*acb, cpl, rc);
   return rc;
 }
 

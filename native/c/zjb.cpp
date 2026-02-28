@@ -278,7 +278,7 @@ static int zjb_free_job_dynamic_allocation(ZJB *zjb, string ddname)
   ip.__ddname = (char *)ddname.c_str(); // e.g. SYS00001
   rc = dynfree(&ip);
 
-  if (0 != zjb->diag.e_msg_len) // only set error if no error message was already set
+  if (0 != rc && 0 != zjb->diag.e_msg_len) // only set error if no error message was already set
   {
     strcpy(zjb->diag.service_name, "dynfree");
     zjb->diag.service_rc = rc;
