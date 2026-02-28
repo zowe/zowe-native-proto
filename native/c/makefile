@@ -67,6 +67,7 @@ COMMAND_OBJS = $(OUT_DIR)/commands/console.o \
 	$(OUT_DIR)/commands/core.o \
 	$(OUT_DIR)/commands/ds.o \
 	$(OUT_DIR)/commands/job.o \
+	$(OUT_DIR)/commands/system.o \
 	$(OUT_DIR)/commands/tso.o \
 	$(OUT_DIR)/commands/uss.o \
 	$(OUT_DIR)/commands/tool.o
