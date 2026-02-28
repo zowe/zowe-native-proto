@@ -277,6 +277,7 @@ int handle_job_view_file(InvocationContext &context)
   int rc = 0;
   ZJB zjb = {};
   string dsn = context.get<std::string>("dsn", "");
+  transform(dsn.begin(), dsn.end(), dsn.begin(), ::toupper);
 
   if (context.has("encoding"))
   {
