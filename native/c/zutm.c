@@ -19,6 +19,7 @@
 #include "zutm31.h"
 #include "zam.h"
 #include "zuttype.h"
+#include "zssi.h"
 
 #define ZUT_BPXWDYN_SERVICE_FAILURE -2
 
@@ -378,4 +379,30 @@ void ZUTDBGMG(const char *msg)
 
   write_sync(sysprintIoc, writeBuf);
   close_assert(sysprintIoc);
+}
+
+#pragma prolog(ZUTSSIQ, " ZWEPROLG NEWDSA=(YES,4) ")
+#pragma epilog(ZUTSSIQ, " ZWEEPILG ")
+int ZUTSSIQ(ZDIAG *diag, JQRY_HEADER **area, const char *filter)
+{
+  int rc = 0;
+  JQRY_HEADER *PTR32 area31 = NULL;
+  int rsn = 0;
+  rc = iefssi_query(&area31, &rsn, filter);
+  if (0 != rc)
+  {
+    diag->e_msg_len = sprintf(diag->e_msg, "IEFSSI_QUERY rc was: '%d', RSN was: '%d'", rc, rsn);
+    diag->detail_rc = ZUT_RTNCD_SERVICE_FAILURE;
+    return RTNCD_FAILURE;
+  }
+  *area = area31;
+  return rc;
+}
+
+#pragma prolog(ZUTMFR31, " ZWEPROLG NEWDSA=(YES,4) ")
+#pragma epilog(ZUTMFR31, " ZWEEPILG ")
+int ZUTMFR31(int *size, void *data)
+{
+  storage_release(*size, data);
+  return 0;
 }

@@ -52,5 +52,14 @@ void zowex_system_tests()
                     Expect(lines.size()).ToBeGreaterThan(0);
                   }
                 });
+
+             it("should use 'lp' alias for list-proclib command",
+                []()
+                {
+                  int rc = 0;
+                  string response;
+                  rc = execute_command_with_output(zowex_command + " system lp", response);
+                  ExpectWithContext(rc, response).ToBeGreaterThanOrEqualTo(0);
+                });
            });
 }

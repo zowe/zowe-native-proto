@@ -12,7 +12,7 @@
 #ifndef _XOPEN_SOURCE
 #define _XOPEN_SOURCE
 #endif
- 
+
 #define _OPEN_SYS_EXT
 #include <sys/ps.h>
 #include <stdio.h>
@@ -32,6 +32,7 @@
 #include "zdyn.h"
 #include "zuttype.h"
 #include <_Nascii.h>
+#include "iefjsqry.h"
 
 using namespace std;
 
@@ -241,6 +242,33 @@ int zut_hello(string name)
   // #endif
 
   return 0;
+}
+
+int zut_list_subsystems(ZDIAG &diag, std::vector<std::string> &subsystems, std::string filter)
+{
+  int rc = 0;
+  JQRY_HEADER *area = NULL;
+  int rsn = 0;
+  rc = ZUTSSIQ(&diag, &area, filter.c_str());
+
+  if (0 != rc)
+  {
+    return rc;
+  }
+
+  JQRY_SUBSYS_ENTRY *subsys_entry = NULL;
+  subsys_entry = (JQRY_SUBSYS_ENTRY *)((unsigned char *)area + sizeof(JQRY_HEADER));
+  int next_entry = sizeof(JQRY_HEADER) + sizeof(JQRY_VT_ENTRY) * 2; // NOTE(Kelosky): 2 is the number of vector tables
+
+  for (int i = 0; i < area->jqry___num___subsys; i++)
+  {
+    subsystems.push_back(string(reinterpret_cast<const char *>(subsys_entry->jqry___subsys___name), sizeof(subsys_entry->jqry___subsys___name)));
+    subsys_entry = (JQRY_SUBSYS_ENTRY *)((unsigned char *)subsys_entry + next_entry);
+  }
+
+  ZUTMFR31(&area->jqrylen, area);
+
+  return rc;
 }
 
 int zut_list_parmlib(ZDIAG &diag, std::vector<std::string> &parmlibs)

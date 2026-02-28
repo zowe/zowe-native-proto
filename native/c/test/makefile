@@ -104,8 +104,6 @@ build-out/zam.o \
 build-out/zjb.test.o \
 build-out/zjb.o \
 build-out/zjbm.o \
-build-out/zjbm31.o \
-build-out/zssi31.o \
 build-out/zcn.test.o \
 build-out/zcn.o \
 build-out/zcnm.o \
@@ -157,12 +155,6 @@ build-out/zjb.o:
 
 build-out/zjbm.o:
 	ln -sf ../../build-out/zjbm.o build-out/zjbm.o
-
-build-out/zjbm31.o:
-	ln -sf ../../build-out/zjbm31.o build-out/zjbm31.o
-
-build-out/zssi31.o:
-	ln -sf ../../build-out/zssi31.o build-out/zssi31.o
 
 build-out/zcn.o:
 	ln -sf ../../build-out/xlclang/zcn.o build-out/zcn.o

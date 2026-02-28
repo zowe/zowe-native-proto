@@ -70,12 +70,38 @@ int handle_system_list_proclib(InvocationContext &context)
   rc = zjb_list_proclib(&zjb, proclib);
   if (0 != rc)
   {
-    context.error_stream() << "Error: could not list proclib for rc: '" << rc << "'" << endl;
+    context.error_stream() << "Error: could not list proclib, rc: '" << rc << "'" << endl;
     context.error_stream() << "  Details: " << zjb.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
 
   for (vector<string>::iterator it = proclib.begin(); it != proclib.end(); it++)
+  {
+    context.output_stream() << *it << endl;
+  }
+
+  return RTNCD_SUCCESS;
+}
+
+int handle_system_list_subsystems(InvocationContext &context)
+{
+  int rc = 0;
+  ZJB zjb = {};
+
+  string filter = context.get<std::string>("filter", "*");
+  transform(filter.begin(), filter.end(), filter.begin(), ::toupper);
+
+  vector<string> subsystems;
+  ZDIAG diag = {};
+  rc = zut_list_subsystems(diag, subsystems, filter);
+  if (0 != rc)
+  {
+    context.error_stream() << "Error: could not list subsystems, rc: '" << rc << "'" << endl;
+    context.error_stream() << "  Details: " << diag.e_msg << endl;
+    return RTNCD_FAILURE;
+  }
+
+  for (vector<string>::iterator it = subsystems.begin(); it != subsystems.end(); it++)
   {
     context.output_stream() << *it << endl;
   }
@@ -102,6 +128,12 @@ void register_commands(parser::Command &root_command)
   auto system_list_proclib_cmd = command_ptr(new Command("list-proclib", "list proclib"));
   system_list_proclib_cmd->set_handler(handle_system_list_proclib); // TODO(Kelosky): move these
   system_cmd->add_command(system_list_proclib_cmd);
+
+  // List-subsystems subcommand
+  auto system_list_subsystems_cmd = command_ptr(new Command("list-subsystems", "list subsystems"));
+  system_list_subsystems_cmd->set_handler(handle_system_list_subsystems); // TODO(Kelosky): move these
+  system_list_subsystems_cmd->add_keyword_arg("filter", make_aliases("--filter", "-f"), "filter subsystems", ArgType_Single, false);
+  system_cmd->add_command(system_list_subsystems_cmd);
 
   root_command.add_command(system_cmd);
 }

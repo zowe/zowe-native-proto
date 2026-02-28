@@ -14,6 +14,7 @@
 
 #include "ztype.h"
 #include "zprmtype.h"
+#include "iefjsqry.h"
 
 #if defined(__cplusplus) && (defined(__IBMCPP__) || defined(__IBMC__))
 extern "OS"
@@ -34,6 +35,10 @@ extern "C"
 #define LAST_PARAMETER_INDEX MSG_INDEX // NOTE(Kelosky): this must be set to the last parameter index
 
 #define INPUT_PARAMETERS LAST_PARAMETER_INDEX + 1
+
+  typedef struct jqry___header JQRY_HEADER;
+  typedef struct jqry___subsys___entry JQRY_SUBSYS_ENTRY;
+  typedef struct jqry___vt___entry JQRY_VT_ENTRY;
 
   typedef struct
   {
@@ -62,6 +67,7 @@ extern "C"
   } SYMBOL_DATA;
 
   int ZUTMFR64(void *PTR64);
+  int ZUTMFR31(int *size, void *PTR64);
   int ZUTMGT64(void **PTR64, int *PTR64);
   int ZUTMGUSR(char[8]);
   int ZUTWDYN(BPXWDYN_PARM *, BPXWDYN_RESPONSE *);
@@ -72,6 +78,7 @@ extern "C"
   void ZUTDBGMG(const char *);
   unsigned char ZUTMGKEY();
   int ZUTMLPLB(ZDIAG *, int *, PARMLIB_DSNS *);
+  int ZUTSSIQ(ZDIAG *, JQRY_HEADER **, const char *filter);
 
 #if defined(__cplusplus)
 }

@@ -319,6 +319,14 @@ int zut_free_dynalloc_dds(ZDIAG &diag, std::vector<std::string> &list);
 int zut_list_parmlib(ZDIAG &diag, std::vector<std::string> &parmlibs);
 
 /**
+ * @brief List subsystems using IEFSSI_QUERY
+ * @param diag Reference to diagnostic information structure
+ * @param subsystems Reference to vector of subsystem names
+ * @return Return code (0 for success, non-zero for error)
+ */
+int zut_list_subsystems(ZDIAG &diag, std::vector<std::string> &subsystems, std::string filter = "*");
+
+/**
  * @brief Read input data from a stream, handling both TTY and piped input
  *
  * When stdin is not a TTY (piped input), reads raw bytes using istreambuf_iterator.
