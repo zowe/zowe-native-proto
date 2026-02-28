@@ -245,7 +245,7 @@ static int note_member(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc, NOTE_RESPONSE *PTR
   return rc;
 }
 
-int open_input_acb(ZDIAG *PTR32 diag, IO_CTRL *PTR32 *PTR32 ioc, const char *PTR32 ddname)
+int open_acb(ZDIAG *PTR32 diag, IO_CTRL *PTR32 *PTR32 ioc, const char *PTR32 ddname)
 {
   int rc = 0;
   IO_CTRL *PTR32 ioc31 = NULL;
@@ -256,12 +256,23 @@ int open_input_acb(ZDIAG *PTR32 diag, IO_CTRL *PTR32 *PTR32 ioc, const char *PTR
   IO_CTRL *PTR32 new_ioc = new_io_ctrl();
   *ioc = new_ioc;
 
+  memcpy(new_ioc->ifgacb.acbddnm, ddname, sizeof(new_ioc->ifgacb.acbddnm));
+  rc = open_vsam(&new_ioc->ifgacb);
+  if (0 != rc)
+  {
+    diag->detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
+    strcpy(diag->service_name, "OPEN");
+    diag->e_msg_len = sprintf(diag->e_msg, "Failed to open acb rc was: %d", rc);
+    diag->service_rc = rc;
+    return RTNCD_FAILURE;
+  }
+
   zwto_debug("@TEST open acb zam.c");
 
   return rc;
 }
 
-int close_input_acb(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
+int close_acb(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
 {
   int rc = 0;
   zwto_debug("@TEST close acb zam.c");
@@ -1077,6 +1088,14 @@ int open_input(IHADCB *dcb)
   opl.option = OPTION_BYTE;
 
   OPEN(*dcb, opl, rc, INPUT);
+  return rc;
+}
+
+int open_vsam(IFGACB *acb)
+{
+  int rc = 0;
+  zwto_debug("@TEST open vsam zam.c address: %p", acb);
+  OPEN_ACB(*acb, rc);
   return rc;
 }
 

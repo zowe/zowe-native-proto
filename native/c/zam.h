@@ -96,6 +96,23 @@ DCB_READ_MODEL(open_read_model);
 #endif
 
 #if defined(__IBM_METAL__)
+#define OPEN_ACB(acb, rc)                                     \
+  __asm(                                                      \
+      "*                                                  \n" \
+      " OPEN (%0),"                                           \
+      "MODE=31                                            \n" \
+      "*                                                  \n" \
+      " ST    15,%1     Save RC                           \n" \
+      "*                                                    " \
+      : "+r"(acb),                                            \
+        "=m"(rc)                                              \
+      :                                                       \
+      : "r0", "r1", "r14", "r15");
+#else
+#define OPEN_ACB(acb, rc)
+#endif
+
+#if defined(__IBM_METAL__)
 #define SYNADRLS()                                            \
   __asm(                                                      \
       "*                                                  \n" \
@@ -331,6 +348,7 @@ int read_sync(IO_CTRL *, char *) ATTRIBUTE(amode31);
 int open_output(IHADCB *) ATTRIBUTE(amode31);
 int open_update(IHADCB *) ATTRIBUTE(amode31);
 int open_input(IHADCB *) ATTRIBUTE(amode31);
+int open_vsam(IFGACB *) ATTRIBUTE(amode31);
 
 #if defined(__IBM_METAL__)
 #pragma map(close_dcb, "CLOSEDCB")
@@ -351,8 +369,12 @@ int open_output_bpam(ZDIAG *PTR32, IO_CTRL *PTR32 *PTR32, const char *PTR32) ATT
 int write_output_bpam(ZDIAG *PTR32, IO_CTRL *PTR32, const char *PTR32, int length) ATTRIBUTE(amode31);
 int close_output_bpam(ZDIAG *PTR32, IO_CTRL *PTR32) ATTRIBUTE(amode31);
 
-int open_input_acb(ZDIAG *PTR32, IO_CTRL *PTR32 *PTR32, const char *PTR32) ATTRIBUTE(amode31);
-int close_input_acb(ZDIAG *PTR32, IO_CTRL *PTR32) ATTRIBUTE(amode31);
+#if defined(__IBM_METAL__)
+#pragma map(open_acb, "OPNACB")
+#pragma map(close_acb, "CLOSACB")
+#endif
+int open_acb(ZDIAG *PTR32, IO_CTRL *PTR32 *PTR32, const char *PTR32) ATTRIBUTE(amode31);
+int close_acb(ZDIAG *PTR32, IO_CTRL *PTR32) ATTRIBUTE(amode31);
 
 #if defined(__IBM_METAL__)
 #pragma map(read_input_jfcb, "RIJFCB")
