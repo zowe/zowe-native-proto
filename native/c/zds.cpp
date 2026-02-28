@@ -2107,6 +2107,11 @@ void load_recfm_from_dscb(const DSCBFormat1 *dscb, string *recfm)
 
 void load_date_from_dscb(const char *date_in, string *date_out, bool is_expiration_date = false)
 {
+  if (date_in == nullptr)
+  {
+    *date_out = "";
+    return;
+  }
   // Date is in 'YDD' format (3 bytes): Year offset and day of year
   // If all zeros, date is not maintained
   unsigned char year_offset = static_cast<unsigned char>(date_in[0]);
@@ -2656,8 +2661,26 @@ void load_storage_attr_from_catalog(const unsigned char *&data, const int field_
   csi_offset += field_len;
 }
 
+// Format-1 and Format-8 DSCB identifier bytes (OBTAIN returns one of these)
+#define DS1FMTID_FMT1 '1'
+#define DS1FMTID_FMT8 '8'
+
 void zds_get_attrs_from_dscb(ZDS *zds, ZDSEntry &entry)
 {
+  // Avoid calling ZDSDSCB1 with empty name or volser (can fault or return bad data)
+  if (entry.name.empty() || entry.volser.empty())
+  {
+    entry.alloc = -1;
+    entry.allocx = -1;
+    entry.blksize = -1;
+    entry.lrecl = -1;
+    entry.primary = -1;
+    entry.secondary = -1;
+    entry.usedp = -1;
+    entry.usedx = -1;
+    return;
+  }
+
   auto *dscb = (DSCBFormat1 *)__malloc31(sizeof(DSCBFormat1));
   if (dscb == nullptr)
   {
@@ -2669,11 +2692,26 @@ void zds_get_attrs_from_dscb(ZDS *zds, ZDSEntry &entry)
 
   if (rc == RTNCD_SUCCESS)
   {
-    // Load attributes in logical order
-    load_general_attrs_from_dscb(dscb, entry);
-    load_alloc_attrs_from_dscb(dscb, entry);
-    load_used_attrs_from_dscb(dscb, entry);
-    load_date_attrs_from_dscb(dscb, entry);
+    // Validate format identifier before parsing (avoid 0C4 from corrupt or wrong-format DSCB)
+    const char fmtid = dscb->ds1fmtid;
+    if (fmtid == DS1FMTID_FMT1 || fmtid == DS1FMTID_FMT8)
+    {
+      load_general_attrs_from_dscb(dscb, entry);
+      load_alloc_attrs_from_dscb(dscb, entry);
+      load_used_attrs_from_dscb(dscb, entry);
+      load_date_attrs_from_dscb(dscb, entry);
+    }
+    else
+    {
+      entry.alloc = -1;
+      entry.allocx = -1;
+      entry.blksize = -1;
+      entry.lrecl = -1;
+      entry.primary = -1;
+      entry.secondary = -1;
+      entry.usedp = -1;
+      entry.usedx = -1;
+    }
   }
   else
   {

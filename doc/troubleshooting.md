@@ -17,6 +17,17 @@
 
 If you see this CEEDUMP on an older build, upgrade to a version that includes these bounds checks.
 
+## CEEDUMP / 0C4 in zds_get_attrs_from_dscb (libzowed, list data sets with attributes)
+
+**Symptom:** CEEDUMP with CEE3204S (0C4) in `libzowed.so` with the **failing frame** in `zds_get_attrs_from_dscb(ZDS*, ZDSEntry&)` (not in `load_storage_attrs_from_catalog`). Call chain: `zds_list_data_sets` → `zds_get_attrs_from_dscb` → `handle_data_set_list`.
+
+**Cause:** Same list-data-sets-with-attributes path, but the fault occurs when reading DSCB (format-1) and loading attributes (e.g. `load_general_attrs_from_dscb`, `load_recfm_from_dscb`, or other load_*_from_dscb). A bad or truncated DSCB buffer or invalid pointer/length can cause a 0C4 when building strings from DSCB fields.
+
+**Fix (in `native/c/zds.cpp`):**
+
+1. **zds_get_attrs_from_dscb:** If `entry.name` or `entry.volser` is empty, skip the DSCB lookup and set allocation/usage fields to -1 (avoids calling ZDSDSCB1 with empty strings). After a successful ZDSDSCB1, validate `dscb->ds1fmtid` is `'1'` (format-1) or `'8'` (format-8) before calling any `load_*_from_dscb`; if not, treat as failure and set -1 defaults (avoids parsing a corrupt or wrong-format DSCB).
+2. **load_date_from_dscb:** If `date_in` is null, set `*date_out = ""` and return (avoids 0C4 when building the date string).
+
 ## go: FSUM7351 not found
 
 Ensure go is part of PATH
