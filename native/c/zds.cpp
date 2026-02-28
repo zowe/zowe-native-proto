@@ -578,6 +578,27 @@ int zds_read_from_dd(ZDS *zds, string ddname, string &response)
   return 0;
 }
 
+int zds_read_from_dd_acb(ZDS *zds, string ddname, string &response)
+{
+  int rc = 0;
+
+  IO_CTRL *ioc = new IO_CTRL();
+
+  rc = ZDSOACB(zds, &ioc, ddname.c_str());
+  if (rc != RTNCD_SUCCESS)
+  {
+    return rc;
+  }
+
+  rc = ZDSCACB(zds, ioc);
+  if (rc != RTNCD_SUCCESS)
+  {
+    return rc;
+  }
+
+  return RTNCD_SUCCESS;
+}
+
 /**
  * Helper function to get data set attributes (RECFM, LRECL) from DSCB.
  * Returns a DscbAttributes struct with recfm, lrecl, and is_asa flag.

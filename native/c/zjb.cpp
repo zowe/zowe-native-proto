@@ -305,7 +305,14 @@ int zjb_read_job_content_by_dsn(ZJB *zjb, string jobdsn, string &response)
   zds.encoding_opts.data_type = zjb->encoding_opts.data_type;
   memcpy((void *)&zds.encoding_opts.codepage, (const void *)&zjb->encoding_opts.codepage, sizeof(zjb->encoding_opts.codepage));
 
-  rc = zds_read_from_dd(&zds, ddname, response);
+  if (zjb->flags & ACB_RBL_PROCESS)
+  {
+    rc = zds_read_from_dd_acb(&zds, ddname, response);
+  }
+  else
+  {
+    rc = zds_read_from_dd(&zds, ddname, response);
+  }
 
   if (0 != rc)
   {

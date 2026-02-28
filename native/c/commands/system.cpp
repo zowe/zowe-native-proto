@@ -13,6 +13,7 @@
 #include "common_args.hpp"
 #include "../zut.hpp"
 #include "../zjb.hpp"
+#include "../zjb.hpp"
 #include <unistd.h>
 
 using namespace parser;
@@ -109,6 +110,26 @@ int handle_system_list_subsystems(InvocationContext &context)
   return RTNCD_SUCCESS;
 }
 
+int handle_system_view_syslog(InvocationContext &context)
+{
+  int rc = 0;
+  string sysname = context.get<std::string>("sysname", "");
+  transform(sysname.begin(), sysname.end(), sysname.begin(), ::toupper);
+
+  string dsn = sysname + ".SYSLOG" + ".SYSTEM";
+  string response;
+  ZJB zjb = {};
+  zjb.flags = ACB_RBL_PROCESS;
+
+  rc = zjb_read_job_content_by_dsn(&zjb, dsn, response);
+  if (0 != rc)
+  {
+    context.error_stream() << "Error: could not view syslog, rc: '" << rc << "'" << endl;
+    return RTNCD_FAILURE;
+  }
+  return RTNCD_SUCCESS;
+}
+
 void register_commands(parser::Command &root_command)
 {
   auto system_cmd = command_ptr(new Command("system", "system operations"));
@@ -134,6 +155,12 @@ void register_commands(parser::Command &root_command)
   system_list_subsystems_cmd->set_handler(handle_system_list_subsystems); // TODO(Kelosky): move these
   system_list_subsystems_cmd->add_keyword_arg("filter", make_aliases("--filter", "-f"), "filter subsystems", ArgType_Single, false);
   system_cmd->add_command(system_list_subsystems_cmd);
+
+  // View-syslog subcommand
+  auto system_view_syslog_cmd = command_ptr(new Command("view-syslog", "view syslog"));
+  system_view_syslog_cmd->set_handler(handle_system_view_syslog); // TODO(Kelosky): move these
+  system_view_syslog_cmd->add_positional_arg("sysname", "system name", ArgType_Single, true);
+  system_cmd->add_command(system_view_syslog_cmd);
 
   root_command.add_command(system_cmd);
 }

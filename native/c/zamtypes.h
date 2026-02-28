@@ -14,6 +14,7 @@
 
 #include "dcbd.h"
 #include "ihadcbe.h"
+#include "ifgacb.h"
 #include "jfcb.h"
 #include "ihaexlst.h"
 #include "ztype.h"
@@ -21,6 +22,7 @@
 
 typedef struct ihadcb IHADCB;
 typedef struct dcbe DCBE;
+typedef struct ifgacb IFGACB;
 
 #define OPTION_BYTE 0X80
 
@@ -164,6 +166,7 @@ typedef struct
 typedef struct
 {
   IHADCB dcb;
+  IFGACB ifgacb;
   DECB decb;
   JFCB jfcb;
   EXLIST exlst[NUM_EXLIST_ENTRIES];

@@ -110,7 +110,8 @@ struct ZDSCopyOptions
   bool target_created; // Set to true if target data set was created
   bool member_created; // Set to true if target member was created
 
-  ZDSCopyOptions() : replace(false), delete_target_members(false), target_created(false), member_created(false)
+  ZDSCopyOptions()
+      : replace(false), delete_target_members(false), target_created(false), member_created(false)
   {
   }
 };
@@ -248,6 +249,16 @@ int zds_list_data_sets(ZDS *zds, std::string dsn, std::vector<ZDSEntry> &dataset
  * @return int 0 for success; non zero otherwise
  */
 int zds_read_from_dd(ZDS *zds, std::string ddname, std::string &response);
+
+/**
+ * @brief Read data from a DDNAME using ACB/RPL mode
+ *
+ * @param zds data set returned attributes and error information
+ * @param ddname ddname from which to read
+ * @param response data read
+ * @return int 0 for success; non zero otherwise
+ */
+int zds_read_from_dd_acb(ZDS *zds, std::string ddname, std::string &response);
 
 /**
  * @brief Write data to a DDNAME

@@ -20,6 +20,7 @@
 #include "ieftiot1.h"
 #include "zutm31.h"
 #include "ztime.h"
+#include "zwto.h"
 
 // NOTE(Kelosky): must be assembled in AMODE31 code
 #if defined(__IBM_METAL__)
@@ -241,6 +242,29 @@ static int note_member(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc, NOTE_RESPONSE *PTR
     }
   }
 
+  return rc;
+}
+
+int open_input_acb(ZDIAG *PTR32 diag, IO_CTRL *PTR32 *PTR32 ioc, const char *PTR32 ddname)
+{
+  int rc = 0;
+  IO_CTRL *PTR32 ioc31 = NULL;
+
+  //
+  // Obtain IO_CTRL for the data set
+  //
+  IO_CTRL *PTR32 new_ioc = new_io_ctrl();
+  *ioc = new_ioc;
+
+  zwto_debug("@TEST open acb zam.c");
+
+  return rc;
+}
+
+int close_input_acb(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
+{
+  int rc = 0;
+  zwto_debug("@TEST close acb zam.c");
   return rc;
 }
 

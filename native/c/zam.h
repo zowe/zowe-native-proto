@@ -351,6 +351,9 @@ int open_output_bpam(ZDIAG *PTR32, IO_CTRL *PTR32 *PTR32, const char *PTR32) ATT
 int write_output_bpam(ZDIAG *PTR32, IO_CTRL *PTR32, const char *PTR32, int length) ATTRIBUTE(amode31);
 int close_output_bpam(ZDIAG *PTR32, IO_CTRL *PTR32) ATTRIBUTE(amode31);
 
+int open_input_acb(ZDIAG *PTR32, IO_CTRL *PTR32 *PTR32, const char *PTR32) ATTRIBUTE(amode31);
+int close_input_acb(ZDIAG *PTR32, IO_CTRL *PTR32) ATTRIBUTE(amode31);
+
 #if defined(__IBM_METAL__)
 #pragma map(read_input_jfcb, "RIJFCB")
 #pragma map(read_output_jfcb, "ROJFCB")
