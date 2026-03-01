@@ -235,6 +235,12 @@ ZJSON_SCHEMA(SubmitUssResponse,
     FIELD_REQUIRED(jobName, STRING)
 );
 
+struct ToolSearchResponse {};
+ZJSON_SCHEMA(ToolSearchResponse,
+    FIELD_REQUIRED(success, BOOL),
+    FIELD_REQUIRED(data, STRING)
+);
+
 struct IssueTsoCmdResponse {};
 ZJSON_SCHEMA(IssueTsoCmdResponse,
     FIELD_REQUIRED(success, BOOL),

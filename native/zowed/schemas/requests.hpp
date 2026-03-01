@@ -184,6 +184,13 @@ ZJSON_SCHEMA(SubmitUssRequest,
     FIELD_REQUIRED(fspath, STRING)
 );
 
+struct ToolSearchRequest {};
+ZJSON_SCHEMA(ToolSearchRequest,
+    FIELD_REQUIRED(dsname, STRING),
+    FIELD_REQUIRED(string, STRING),
+    FIELD_OPTIONAL(parms, STRING)
+);
+
 struct IssueTsoCmdRequest {};
 ZJSON_SCHEMA(IssueTsoCmdRequest,
     FIELD_REQUIRED(commandText, STRING)

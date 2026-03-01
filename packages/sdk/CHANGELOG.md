@@ -5,6 +5,8 @@ All notable changes to the Client code for "zowe-native-proto-sdk" are documente
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
 ## Recent Changes
+
+- Added support for invoking the tool search group.
 - Added support for copying USS files in the `RpcClientApi` class. [#379](https://github.com/zowe/zowe-native-proto/issues/379)
 
 ## `0.3.0`
@@ -13,7 +15,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## `0.2.4`
 
-- Added support for renaming data set members in the `RpcClientApi` class. [#765] (https://github.com/zowe/zowe-native-proto/pull/765)
+- Added support for renaming data set members in the `RpcClientApi` class. [#765](https://github.com/zowe/zowe-native-proto/pull/765)
 - Made the `recursive` property optional for USS request types. [#648](https://github.com/zowe/zowe-native-proto/issues/648)
 - Fixed an issue where deploying to the `/tmp` directory would result in an error. [#781](https://github.com/zowe/zowe-native-proto/pull/781)
 - Added `multivolume` property to the `Dataset` type for listing data sets with attributes. [#782](https://github.com/zowe/zowe-native-proto/pull/782)
@@ -23,7 +25,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## `0.2.3`
 
-- Added support for renaming data sets in the `RpcClientApi` class. [#376] (https://github.com/zowe/zowe-native-proto/issues/376)
+- Added support for renaming data sets in the `RpcClientApi` class. [#376](https://github.com/zowe/zowe-native-proto/issues/376)
 - Fixed an issue where connecting to the host with an expired password resulted in an ambiguous error. [#732](https://github.com/zowe/zowe-native-proto/issues/732)
 - The `submitJcl` and `submitJob` functions in the `SshJesApi` class now return the job name as a property (`jobname`) within the response object. [#733](https://github.com/zowe/zowe-native-proto/issues/733)
 - Enhanced the `Job` type to include more properties such as `subsystem`, `owner`, `type`, and `class` when listing jobs. [#749](https://github.com/zowe/zowe-native-proto/pull/749)

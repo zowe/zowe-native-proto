@@ -9,10 +9,11 @@
  *
  */
 
-export * from "./common";
-export * as console from "./console";
-export * as ds from "./ds";
-export * as jobs from "./jobs";
-export * as tool from "./tool";
-export * as tso from "./tso";
-export * as uss from "./uss";
+import { parseSearchOutput } from "./utils/tools/SearchParser";
+
+// biome-ignore lint/complexity/noStaticOnlyClass: Utilities class has static methods
+export class UtilsApi {
+    public static tools = {
+        parseSearchOutput: parseSearchOutput,
+    };
+}
