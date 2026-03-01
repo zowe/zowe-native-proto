@@ -12,8 +12,10 @@
 
 #ifndef _OPEN_SYS_ITOA_EXT
 #define _OPEN_SYS_ITOA_EXT
+#include "zamtypes.h"
 #include "ztype.h"
 #include <cctype>
+#include <cstddef>
 #endif
 #ifndef _POSIX_SOURCE
 #define _POSIX_SOURCE
@@ -2017,39 +2019,38 @@ int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &members, bool show_at
         ZDSMem mem = {0};
         mem.name = string(name);
         int user_data_len = info * 2;
-        const unsigned char *stats = data + sizeof(entry);
 
-        if (show_attributes)
+        if (show_attributes && user_data_len >= sizeof(ISPF_STATS))
         {
-          if (user_data_len >= 28)
-          {
-            // user
-            char user[9] = {0};
-            memcpy(user, stats + 20, 8);
-            mem.user = string(user);
+          const ISPF_STATS *stats = reinterpret_cast<const ISPF_STATS *>(data + sizeof(entry));
+          mem.vers = stats->version;
+          mem.mod = stats->level;
 
-            // Version and Mod
-            mem.vers = stats[0];
-            mem.mod = stats[1];
+          mem.sclm = (stats->flags & 0x80) != 0;
 
-            unsigned char flags = stats[2];
-            mem.sclm = (flags & 0x80) != 0;
+          parse_century_julian_date(
+              reinterpret_cast<const unsigned char *>(&stats->created_date_century),
+              &mem.c4date);
 
-            parse_century_julian_date(stats + 4, &mem.c4date);
-            parse_century_julian_date(stats + 8, &mem.m4date);
+          parse_century_julian_date(
+              reinterpret_cast<const unsigned char *>(&stats->modified_date_century),
+              &mem.m4date);
 
-            parse_packed_time(
-                stats[12], // hours
-                stats[13], // minutes
-                stats[3],  // seconds
-                &mem.mtime);
+          parse_packed_time(
+              stats->modified_time_hours,
+              stats->modified_time_minutes,
+              stats->modified_time_seconds,
+              &mem.mtime);
 
-            // Line counts
-            mem.cnorc = (stats[14] << 8) | stats[15];
-            mem.inorc = (stats[16] << 8) | stats[17];
-            mem.mnorc = (stats[18] << 8) | stats[19];
-          }
+          mem.cnorc = stats->current_number_of_lines;
+          mem.inorc = stats->initial_number_of_lines;
+          mem.mnorc = stats->modified_number_of_lines;
+
+          char user[9] = {0};
+          memcpy(user, stats->userid, 8);
+          mem.user = string(user);
         }
+
         members.push_back(mem);
 
         data += sizeof(entry) + info * 2;
