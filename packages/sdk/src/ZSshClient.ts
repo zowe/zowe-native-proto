@@ -73,6 +73,9 @@ export class ZSshClient extends RpcClientApi implements Disposable {
                 if (opts.requestTimeout != null) {
                     zowedArgs.push("--request-timeout", `${opts.requestTimeout}`);
                 }
+                if (opts.verbose) {
+                    zowedArgs.push("--verbose");
+                }
                 client.execAsync(zowedBin, ...zowedArgs).then(resolve, reject);
             });
             client.mSshClient.on("close", () => {
@@ -149,7 +152,7 @@ export class ZSshClient extends RpcClientApi implements Disposable {
                             stream.stdout.removeListener("data", onData);
                         };
                         try {
-                            this.mServerInfo = this.getServerStatus(stream, data.toString());
+                            this.mServerInfo = this.getServerStatus(stream, data.toString(), args.join(" "));
                             if (this.mServerInfo) {
                                 removeListeners();
                                 resolve(stream);
@@ -166,13 +169,13 @@ export class ZSshClient extends RpcClientApi implements Disposable {
         });
     }
 
-    private getServerStatus(stream: ClientChannel, data: string): StatusMessage["data"] | undefined {
+    private getServerStatus(stream: ClientChannel, data: string, command: string): StatusMessage["data"] | undefined {
         Logger.getAppLogger().debug(`Received SSH data: ${data}`);
         let response: StatusMessage;
         try {
             response = JSON.parse(data);
         } catch {
-            const errMsg = Logger.getAppLogger().error("Error starting Zowe server: %s", data);
+            const errMsg = Logger.getAppLogger().error("Error starting Zowe server: %s\n%s", command, data);
             if (data.includes("FSUM7351")) {
                 throw new ImperativeError({
                     msg: "Server not found",
@@ -185,7 +188,7 @@ export class ZSshClient extends RpcClientApi implements Disposable {
                 this.mErrHandler(new Error(errMsg));
                 return;
             }
-            throw new Error(errMsg);
+            throw new ImperativeError({ msg: `Error starting Zowe server: ${command}`, additionalDetails: data });
         }
         if (response?.status === "ready") {
             stream.stderr.on("data", this.onErrData.bind(this));

@@ -59,7 +59,6 @@
 #include <iomanip>
 #include <sstream>
 #include <errno.h>
-
 using namespace std;
 
 /**
@@ -853,6 +852,58 @@ string zusf_build_mode_string(mode_t mode)
   mode_str += (mode & S_IWOTH ? "w" : "-");
   mode_str += (mode & S_IXOTH ? "x" : "-");
   return mode_str;
+}
+
+/**
+ * Copies a USS file or directory.
+ */
+int zusf_copy_file_or_dir(ZUSF *zusf, const string &source_path, const string &destination_path, const CopyOptions& options) {
+
+  if (options.follow_symlinks && !options.recursive)
+  {
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Error: follow symlinks option requires setting the recursive flag");
+    return RTNCD_FAILURE;
+  }
+  struct stat buf;
+  if (0 == stat(source_path.c_str(), &buf)) {
+    if (S_ISFIFO(buf.st_mode)) {
+      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Error: we do not support copying from named pipes");
+      return RTNCD_FAILURE;
+    }
+  }
+
+  if (0 == stat(destination_path.c_str(), &buf)) {
+    if (S_ISFIFO(buf.st_mode)) {
+      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Error: we do not support copying to named pipes");
+      return RTNCD_FAILURE;
+    }
+  }
+
+  string command_flags = "";
+  if (options.recursive)
+  {
+    command_flags += "-R ";
+  }
+  if (options.follow_symlinks)
+  {
+    command_flags += "-L ";
+  }
+  if (options.preserve_attributes)
+  {
+    command_flags += "-p ";
+  }
+  if (options.force)
+  {
+    command_flags += "-f ";
+  }
+  string cp_command = "cp " + command_flags + " \"" + source_path + "\" \"" + destination_path + "\" 2>&1";
+  string response;
+  int rc = zut_run_shell_command(cp_command, response);
+  if (rc > 0) {
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Error: %s\n\t return code: %d", response.c_str(), rc);
+    return RTNCD_FAILURE;
+  }
+  return rc;
 }
 
 /**

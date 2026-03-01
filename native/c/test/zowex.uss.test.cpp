@@ -33,12 +33,18 @@ void zowex_uss_tests()
 {
   int rc;
   string response;
+  bool can_get_superuser = false;
   describe("uss",
            [&]() -> void
            {
              // Start by creating a /tmp/zowex-uss test directory
-             beforeAll([&response]() -> void
-                       { execute_command_with_output(zowex_command + " uss create-dir " + ussTestDir + " --mode 777", response); });
+             beforeAll([&response, &rc, &can_get_superuser]() -> void
+                       { execute_command_with_output(zowex_command + " uss create-dir " + ussTestDir + " --mode 777", response); 
+
+                       rc = execute_command_with_output("echo 'id -u' | su", response);
+                       if (0 == rc && 0 == response.rfind("0", 0)) {
+                         can_get_superuser = true;
+                       }});
 
              // Reset the RC to zero before each test
              beforeEach([&rc]() -> void
@@ -65,6 +71,218 @@ void zowex_uss_tests()
                ExpectWithContext(rc, response).ToBe(0);
                Expect(response).ToContain("USS directory '" + uss_dir + "' created");
              };
+
+
+
+             describe("copy uss tests", 
+              [&]() -> void 
+              {
+
+                // Helper functions
+                auto copy_cmd = [&](const string &source, const string &dest, const string &options = "") -> std::pair<string, int>
+                {  
+                    int lrc; 
+                    string lresponse;
+                    string command = zowex_command + " uss copy \"" + source + "\" \"" + dest + "\" " + options;
+                    lrc = execute_command_with_output(command, lresponse);
+                    return {lresponse, lrc};
+                };
+
+                auto delete_cmd = [&](const string &file_path, const string &options = "") -> std::pair<string, int>
+                {
+                    int lrc; 
+                    string lresponse;
+                    string command = zowex_command + " uss delete \"" + file_path + "\" " + options;
+                    lrc = execute_command_with_output(command, lresponse);
+                    return {lresponse, lrc};
+                };
+
+                auto list_cmd = [&](const string &file_path, const string &options = "") -> std::pair<string, int>
+                {
+                    int lrc; 
+                    string lresponse;
+                    string command = zowex_command + " uss list \"" + file_path + "\" " + options;
+                    lrc = execute_command_with_output(command, lresponse);
+                    return {lresponse, lrc};
+                };
+
+                auto chmod_cmd = [&](const string &file_path, const string &permissions, const string &options = "") -> std::pair<string, int> 
+                {
+                  int lrc;
+                  string lresponse;
+                  string command = zowex_command + " uss chmod " + permissions + " \"" + file_path + "\"";
+                  lrc = execute_command_with_output(command, lresponse);
+                  return {lresponse, lrc};
+                };
+
+
+                string uss_path;
+                string file_a;
+                string file_b;
+                string dir_a; 
+                string dir_b; 
+
+                beforeEach([&]() {
+                  uss_path = get_random_uss(ussTestDir);
+                  file_a = uss_path + "/test_file_a";
+                  file_b = uss_path + "/test_file_b";
+                  dir_a = uss_path + "/test_dir_a";
+                  dir_b = uss_path + "/test_dir_b";
+                  create_test_dir_cmd(uss_path);
+                });
+
+                it("copy file->file smoke", [&](){
+                  string source_file = file_a;
+                  string target_file = file_b;
+                  create_test_file_cmd(file_a);
+                  std::pair<string, int> copy_result, list_file_result;
+
+                  // normal copy
+                  copy_result = copy_cmd(source_file, target_file);
+                  ExpectWithContext(copy_result.second, copy_result.first).ToBe(0);
+                  list_file_result = list_cmd(target_file);
+                  ExpectWithContext(list_file_result.second, list_file_result.first).ToBe(0);
+
+                  // copy when target already exists: replaces it
+                  copy_result = copy_cmd(source_file, target_file);
+                  ExpectWithContext(copy_result.second, copy_result.first).ToBe(0);
+                  list_file_result = list_cmd(target_file);
+                  ExpectWithContext(list_file_result.second, list_file_result.first).ToBe(0);
+                  ExpectWithContext(copy_result.second, copy_result.first).ToBe(0);
+                  list_file_result = list_cmd(target_file, "-al");
+                  ExpectWithContext(list_file_result.second, list_file_result.first).ToBe(0);
+                  Expect(list_file_result.first).ToContain("-rw-r--r--");
+
+                  // copy with --preserve-attributes
+                  string output;
+                  delete_cmd(target_file);
+                  zut_run_shell_command("chmod 777 " + source_file, output);
+                  copy_result = copy_cmd(source_file, target_file, "--preserve-attributes");
+                  ExpectWithContext(copy_result.second, copy_result.first).ToBe(0);
+                  list_file_result = list_cmd(target_file, "-al");
+                  ExpectWithContext(list_file_result.second, list_file_result.first).ToBe(0);
+                  Expect(list_file_result.first).ToContain("-rwxrwxrwx");
+
+                });
+
+                it("copy dir->dir smoke", [&]() {
+                  string source_dir = dir_a;
+                  string target_dir = dir_b;
+                  create_test_dir_cmd(source_dir);
+                  std::pair<string, int> copy_result, list_file_result;
+
+                  copy_result = copy_cmd(source_dir, target_dir, "--recursive --follow-symlinks --force --preserve-attributes");
+                  ExpectWithContext(copy_result.second, copy_result.first).ToBe(0);
+                  list_file_result = list_cmd(target_dir); // dir created
+                  ExpectWithContext(list_file_result.second, list_file_result.first).ToBe(0); 
+
+                });
+
+                it("copy dir->file smoke", [&](){
+                  string source_dir = dir_a;
+                  string target_file = file_b;
+                  create_test_dir_cmd(source_dir);
+                  create_test_file_cmd(target_file);
+                  std::pair<string, int> copy_result, list_file_result;
+
+                  copy_result = copy_cmd(source_dir, target_file);
+                  ExpectWithContext(copy_result.second, copy_result.first).ToBe(255);
+                  list_file_result = list_cmd(target_file); // file still exists
+                  ExpectWithContext(list_file_result.second, list_file_result.first).ToBe(0); 
+
+                });
+
+                it("copy file->dir smoke", [&](){
+                  const std::string source_file = file_a;
+                  const std::string target_dir = dir_a;
+                  string output_file = target_dir + "/" + get_basename(source_file);
+                  create_test_dir_cmd(source_file);
+                  create_test_file_cmd(target_dir);
+                  std::pair<string, int> copy_result, list_file_result;
+
+                  copy_result = copy_cmd(source_file, target_dir);
+                  ExpectWithContext(copy_result.second, copy_result.first).ToBe(255);
+                  list_file_result = list_cmd(output_file);
+                  ExpectWithContext(list_file_result.second, list_file_result.first).ToBe(255);
+
+                });
+
+                it("special characters", [&]() {
+                  const std::vector<string> test_cases = {
+                    "abc*",
+                    "abc\\*",
+                    "abc\\\\*",
+                    "def?ghi",
+                    "\"with*quotes\"",
+                    "tes[a-z]+",
+                    "'lit*'",
+                    "\u3053\u3093\u306b\u3061\u306f", // こんにちは
+                  };
+
+                  const string test_file = file_a;
+                  const string test_dir = dir_a;
+                  create_test_file_cmd(test_file);
+                  create_test_dir_cmd(test_dir);
+
+                  for (int i = 0; i < test_cases.size(); i++) {
+                    std::pair<string, int> result;
+                    string cmd_output, list_output;
+                    const string test_basename = test_cases.at(i);
+                    const string test = uss_path + "/" + test_basename;
+
+                    // copy static file -> new file w/ special chars
+                    result = copy_cmd(test_file, test);
+                    ExpectWithContext(result.second, result.first).ToBe(0);
+                    
+                    result = list_cmd(test, "-al");
+                    ExpectWithContext(result.second, result.first).ToBe(0);
+                    Expect(result.first).ToContain("-rw-r--r--");
+                    
+                    std::pair<string, int> del_res = delete_cmd(test, "-r");
+                    ExpectWithContext(del_res.second, del_res.first).ToBe(0);
+
+                    // copy static dir -> new dir w/ special chars
+                    result = copy_cmd(test_dir, test, "-r");
+                    ExpectWithContext(result.second, result.first).ToBe(0);
+                    
+                    result = list_cmd(test, "-al");
+                    ExpectWithContext(result.second, result.first).ToBe(0);
+                    Expect(result.first).ToContain("drwxr-xr-x");
+
+                  }
+
+                });
+
+                it("illegal syntax tests", [&](){
+                  std::pair<string, int> copy_result;
+                  
+                  copy_result = copy_cmd("", "some-destination");
+                  ExpectWithContext(copy_result.second, copy_result.first).ToBe(255);
+                  copy_result = copy_cmd("/some/source", "");
+                  ExpectWithContext(copy_result.second, copy_result.first).ToBe(255);
+                  copy_result = copy_cmd("", "");
+                  ExpectWithContext(copy_result.second, copy_result.first).ToBe(255);
+                  copy_result = copy_cmd("/some/source", "/some/dest", "--illegal-parameter");
+                  ExpectWithContext(copy_result.second, copy_result.first).ToBe(1);
+                });
+
+                it("illegal parameter combinations", [&](){
+                  std::pair<string, int> copy_result;
+                  string source_dir = dir_a;
+                  string target_dir = dir_b;
+
+                  create_test_dir_cmd(source_dir);
+
+                  // requires --recursive
+                  copy_result = copy_cmd(source_dir, target_dir, "--follow-symlinks");
+                  ExpectWithContext(copy_result.second, copy_result.first).ToBe(255);
+                
+                  // still requires --recursive
+                  copy_result = copy_cmd(source_dir, target_dir, "--follow-symlinks --preserve-attributes --force");
+                  ExpectWithContext(copy_result.second, copy_result.first).ToBe(255);
+                });
+
+              });
 
              describe("chmod",
                       [&]() -> void
@@ -142,6 +360,7 @@ void zowex_uss_tests()
                         string uss_path;
                         static int testUid;
                         static int testGid;
+                        bool can_run_chown_super = false;
 
                         beforeAll([&]() -> void
                                   {
@@ -168,7 +387,15 @@ void zowex_uss_tests()
                            break;
                          testUid++;
                          if (testUid > 65530) throw runtime_error("Could not find a free UID for testing");
-                       } });
+                       } 
+                       const std::string test_file = ussTestDir + "/test.txt";
+                       rc = execute_command_with_output("echo 'test' > " + test_file + " && chown :" + to_string(testGid) + " " + test_file, resp);
+                       if (0 == rc) {
+                        can_run_chown_super = true;
+                       }
+                       execute_command_with_output("rm " + test_file, resp);
+
+                      });
 
                         describe("on a file",
                                  [&]() -> void
@@ -178,28 +405,35 @@ void zowex_uss_tests()
                                    uss_path = get_random_uss(ussTestDir);
                                    create_test_file_cmd(uss_path); });
 
-                                   it("should properly change the group on a file using numeric GID",
+                                   itif("should properly change the group on a file using numeric GID",
                                       [&]() -> void
                                       {
                                         string newGroupChownCommand = zowex_command + " uss chown :" + to_string(testGid) + " " + uss_path;
                                         string listUser = "ls -n " + uss_path;
-
-                                        rc = execute_command_with_output(newGroupChownCommand, response);
+                                        if (can_run_chown_super) { 
+                                          rc = execute_command_with_output(newGroupChownCommand, response);
+                                        } else {
+                                          rc = execute_su_command_with_output(newGroupChownCommand, response);
+                                        }
                                         ExpectWithContext(rc, response).ToBe(0);
                                         Expect(response).ToContain("USS path '" + uss_path + "' owner changed to ':" + to_string(testGid) + "'");
 
                                         rc = execute_command_with_output(listUser, response);
                                         ExpectWithContext(rc, response).ToBe(0);
                                         Expect(response).ToContain(to_string(testGid));
-                                      });
+                                      }, can_get_superuser || can_run_chown_super);
 
-                                   it("should properly change the group and user on a file using numeric IDs",
+                                   itif("should properly change the group and user on a file using numeric IDs",
                                       [&]() -> void
                                       {
                                         string newUserNewGroupChownCommand = zowex_command + " uss chown " + to_string(testUid) + ":" + to_string(testGid) + " " + uss_path;
                                         string listUser = "ls -n " + uss_path;
 
-                                        rc = execute_command_with_output(newUserNewGroupChownCommand, response);
+                                        if (can_run_chown_super) { 
+                                          rc = execute_command_with_output(newUserNewGroupChownCommand, response);
+                                        } else {
+                                          rc = execute_su_command_with_output(newUserNewGroupChownCommand, response);
+                                        }
                                         ExpectWithContext(rc, response).ToBe(0);
                                         Expect(response).ToContain("USS path '" + uss_path + "' owner changed to '" + to_string(testUid) + ":" + to_string(testGid) + "'");
 
@@ -207,7 +441,7 @@ void zowex_uss_tests()
                                         ExpectWithContext(rc, response).ToBe(0);
                                         Expect(response).ToContain(to_string(testUid));
                                         Expect(response).ToContain(to_string(testGid));
-                                      });
+                                      }, can_get_superuser || can_run_chown_super);
                                  });
 
                         describe("on a directory",
@@ -218,7 +452,7 @@ void zowex_uss_tests()
                                    uss_path = get_random_uss(ussTestDir) + "_dir";
                                    create_test_dir_cmd(uss_path); });
 
-                                   it("should properly change the group and user on a directory using numeric IDs",
+                                   itif("should properly change the group and user on a directory using numeric IDs",
                                       [&]() -> void
                                       {
                                         string newUserNewGroupChownCommand = zowex_command + " uss chown " + to_string(testUid) + ":" + to_string(testGid) + " " + uss_path + " -r";
@@ -226,7 +460,11 @@ void zowex_uss_tests()
                                         // Use -nd to list directory details numerically without entering it
                                         string listUser = "ls -nd " + uss_path;
 
-                                        rc = execute_command_with_output(newUserNewGroupChownCommand, response);
+                                        if (can_run_chown_super) { 
+                                          rc = execute_command_with_output(newUserNewGroupChownCommand, response);
+                                        } else {
+                                          rc = execute_su_command_with_output(newUserNewGroupChownCommand, response);
+                                        }
                                         ExpectWithContext(rc, response).ToBe(0);
                                         Expect(response).ToContain("USS path '" + uss_path + "' owner changed to '" + to_string(testUid) + ":" + to_string(testGid) + "'");
 
@@ -234,7 +472,7 @@ void zowex_uss_tests()
                                         ExpectWithContext(rc, response).ToBe(0);
                                         Expect(response).ToContain(to_string(testUid));
                                         Expect(response).ToContain(to_string(testGid));
-                                      });
+                                      }, can_get_superuser || can_run_chown_super);
                                  });
                       });
              describe("chtag",

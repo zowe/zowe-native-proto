@@ -34,6 +34,11 @@ static CommandBuilder create_uss_builder(CommandBuilder::CommandHandler handler)
   return CommandBuilder(handler).rename_arg("fspath", "file-path");
 }
 
+static CommandBuilder copy_uss_builder(CommandBuilder::CommandHandler handler) 
+{
+    return CommandBuilder(handler).rename_arg("srcFsPath", "source-path").rename_arg("dstFsPath", "destination-path");
+}
+
 void register_ds_commands(CommandDispatcher &dispatcher)
 {
   dispatcher.register_command("createDataset",
@@ -138,6 +143,7 @@ void register_uss_commands(CommandDispatcher &dispatcher)
   dispatcher.register_command("chtagFile",
                               create_uss_builder(uss::handle_uss_chtag)
                                   .validate<ChtagFileRequest, ChtagFileResponse>());
+  dispatcher.register_command("copyUss", copy_uss_builder(uss::handle_uss_copy).validate<CopyUssRequest, CopyUssResponse>());
   const auto handle_uss_create = [](plugin::InvocationContext &context) -> int
   {
     auto handler = context.get<bool>("is-dir", false) ?
@@ -169,13 +175,11 @@ void register_uss_commands(CommandDispatcher &dispatcher)
                                   .handle_fifo("stream", "pipe-path", FifoMode::PUT));
 }
 
-void register_cmd_commands(CommandDispatcher &dispatcher)
+void register_tso_commands(CommandDispatcher &dispatcher)
 {
-  // TODO Support APF authorized commands with zoweax
-  // dispatcher.register_command("consoleCommand", CommandBuilder(console::handle_console_issue));
   dispatcher.register_command("tsoCommand",
                               CommandBuilder(tso::handle_tso_issue)
-                                  .validate<IssueTsoRequest, IssueTsoResponse>()
+                                  .validate<IssueTsoCmdRequest, IssueTsoCmdResponse>()
                                   .rename_arg("commandText", "command")
                                   .read_stdout("data", false));
 }
@@ -185,5 +189,5 @@ void register_all_commands(CommandDispatcher &dispatcher)
   register_ds_commands(dispatcher);
   register_job_commands(dispatcher);
   register_uss_commands(dispatcher);
-  register_cmd_commands(dispatcher);
+  register_tso_commands(dispatcher);
 }

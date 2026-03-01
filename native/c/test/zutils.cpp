@@ -69,6 +69,12 @@ int execute_command_with_output(const std::string &command, std::string &output)
   return WEXITSTATUS(exit_status);
 }
 
+int execute_su_command_with_output(const std::string &command, std::string &output) 
+{
+  std::string su_command = "echo '" + command + "' | su";
+  return execute_command_with_output(su_command, output);
+}
+
 string get_random_string(const int length, const bool allNumbers)
 {
   static bool seeded = false;
@@ -93,6 +99,15 @@ string get_random_string(const int length, const bool allNumbers)
   }
   return ret;
 }
+
+std::string get_basename(const std::string& fspath)
+{
+  if (fspath.empty()) return "";
+
+  auto lastSlash = fspath.find_last_of("/\\");
+
+  return (lastSlash == std::string::npos) ? std::string(fspath) : fspath.substr(lastSlash + 1);
+} 
 
 string get_random_uss(const string base_dir)
 {

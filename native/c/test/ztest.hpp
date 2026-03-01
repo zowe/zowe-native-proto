@@ -1202,6 +1202,31 @@ void it(const std::string &description, Callable test, TEST_OPTIONS &opts)
   Globals::get_instance().run_test(description, test, opts);
 }
 
+template <typename Callable,
+          typename = typename std::enable_if<
+              std::is_same<void, decltype(std::declval<Callable>()())>::value>::type>
+void itif(const std::string &description, Callable test, bool should_run)
+{
+  TEST_OPTIONS opts = {false, 0};
+  if (should_run) {
+    it(description, test, opts);
+  } else {
+    xit(description, test);
+  }
+}
+
+template <typename Callable,
+          typename = typename std::enable_if<
+              std::is_same<void, decltype(std::declval<Callable>()())>::value>::type>
+void itif(const std::string &description, Callable test, TEST_OPTIONS &opts, bool should_run)
+{
+  if (should_run) {
+    it(description, test, opts);
+  } else {
+    xit(description, test);
+  }
+}
+
 template <typename T>
 RESULT_CHECK<T> expect(T val, EXPECT_CONTEXT ctx = {0})
 {
