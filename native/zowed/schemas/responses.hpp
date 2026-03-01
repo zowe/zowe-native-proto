@@ -57,7 +57,7 @@ ZJSON_SCHEMA(DsMember,
     FIELD_OPTIONAL(cnorc, NUMBER),
     FIELD_OPTIONAL(inorc, NUMBER),
     FIELD_OPTIONAL(mnorc, NUMBER),
-    FIELD_OPTIONAL(sclm, BOOL)
+    FIELD_OPTIONAL(sclm, STRING)
 );
 
 struct Job {};

@@ -236,7 +236,7 @@ const ast::Node build_member_object(const ZDSMem &member, bool attributes)
   if (!member.user.empty())
     obj_member->set("user", str(member.user));
 
-  obj_member->set("sclm", boolean(member.sclm));
+  obj_member->set("sclm", str(member.sclm ? "Y" : "N"));
 
   return obj_member;
 }

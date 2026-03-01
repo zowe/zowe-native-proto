@@ -36,7 +36,7 @@ export const ListDataSetMembersDefinition: ICommandDefinition = {
         {
             name: "attributes",
             aliases: ["a"],
-            description: "Fetch attributes of the data sets being listed.",
+            description: "Fetch attributes of the members being listed.",
             type: "boolean",
         },
     ],

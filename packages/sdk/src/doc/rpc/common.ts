@@ -240,7 +240,7 @@ export interface DsMember {
     cnorc?: number;
     inorc?: number;
     mnorc?: number;
-    sclm?: boolean;
+    sclm?: string;
 }
 
 // USS-related types

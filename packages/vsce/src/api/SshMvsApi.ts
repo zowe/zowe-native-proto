@@ -60,47 +60,9 @@ class SshAttributesProvider implements IAttributesProvider {
         return [{ title: this.extensionName, keys }];
     }
 }
-class SshMemberAttributesProvider implements IAttributesProvider {
-    private readonly extensionName = require("../../package.json").displayName;
-
-    public constructor(public cachedAttrs?: DsMember) {}
-
-    public fetchAttributes(context: DsInfo): AttributeInfo {
-        if (context.profile.type !== "ssh") {
-            return [];
-        }
-
-        const keys = new Map<string, AttributeEntryInfo>();
-
-        const add = (label: string, value?: unknown) => {
-            if (value != null) {
-                keys.set(label, {
-                    value: typeof value === "boolean" ? (value ? "YES" : "NO") : value.toString(),
-                });
-            }
-        };
-
-        add("Version", this.cachedAttrs?.vers);
-        add("Modification", this.cachedAttrs?.mod);
-        add("Created", this.cachedAttrs?.c4date);
-        add("Modified", this.cachedAttrs?.m4date);
-        add("Modified Time", this.cachedAttrs?.mtime);
-        add("Current Lines", this.cachedAttrs?.cnorc);
-        add("Initial Lines", this.cachedAttrs?.inorc);
-        add("Modified Lines", this.cachedAttrs?.mnorc);
-        add("User", this.cachedAttrs?.user);
-        add("SCLM", this.cachedAttrs?.sclm);
-
-        this.cachedAttrs = undefined;
-
-        return [{ title: this.extensionName, keys }];
-    }
-}
 
 export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs {
     private attrProvider = new SshAttributesProvider();
-
-    private attrMemberProvider = new SshMemberAttributesProvider();
 
     public constructor(
         dsAttrProvider?: DataSetAttributesProvider,
@@ -150,7 +112,7 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
             attributes: options?.attributes,
         });
 
-        this.attrMemberProvider.cachedAttrs = undefined;
+        this.attrProvider.cachedAttrs = undefined;
 
         return this.buildZosFilesResponse({
             items: response.items.map((item) => {
