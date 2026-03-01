@@ -5,6 +5,8 @@ All notable changes to the Client code for "zowe-native-proto-sdk" are documente
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
 ## Recent Changes
+
+- Added support for listing member attributes to `DsMember` type [#630](https://github.com/zowe/zowe-native-proto/issues/630)
 - Added support for copying USS files in the `RpcClientApi` class. [#379](https://github.com/zowe/zowe-native-proto/issues/379)
 
 ## `0.3.0`

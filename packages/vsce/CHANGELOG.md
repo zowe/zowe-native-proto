@@ -4,6 +4,10 @@ All notable changes to the "zowe-native-proto-vsce" extension will be documented
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## Recent Changes
+
+- Updated **Show Attributes** to display member ISPF statistics [#630](https://github.com/zowe/zowe-native-proto/issues/630)
+
 ## `0.3.0`
 
 - Used new SDK groupings that align with zowex. [#807](https://github.com/zowe/zowe-native-proto/pull/808)

@@ -227,9 +227,6 @@ export interface DatasetAttributes {
 }
 
 export interface DsMember {
-    /**
-     * Dataset member name
-     */
     name: string;
     user?: string;
     vers?: number;

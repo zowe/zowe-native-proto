@@ -5,6 +5,8 @@ All notable changes to the native code for "zowe-native-proto" are documented in
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
 ## Recent Changes
+
+- `c`: Added support for displaying member statistics. [#630](https://github.com/zowe/zowe-native-proto/issues/630)
 - `c`: Implemented `zowex uss copy` command to copy USS files and directories. [#379](https://github.com/zowe/zowe-native-proto/issues/379)
 
 ## `0.2.4`
