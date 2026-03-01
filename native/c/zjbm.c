@@ -16,7 +16,7 @@
 #include "iazjproc.h"
 #include "zssitype.h"
 #include "zjbm.h"
-#include "zssi31.h"
+#include "zssi.h"
 #include "zjbm31.h"
 #include "zstorage.h"
 #include "zjsytype.h"
@@ -347,7 +347,7 @@ int ZJBMLIST(ZJB *zjb, ZJB_JOB_INFO **PTR64 job_info, int *entries)
   return ZJBMTCOM(zjb, &stat, job_info, entries);
 }
 
-int ZJBMGJQ(ZJB *zjb, SSOB *ssobp, STAT *statp, STATJQ * PTR32 * PTR32 statjqp)
+int ZJBMGJQ(ZJB *zjb, SSOB *ssobp, STAT *statp, STATJQ *PTR32 *PTR32 statjqp)
 {
   int rc = 0;
 

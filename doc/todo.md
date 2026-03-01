@@ -1,9 +1,0 @@
-- job, look up phase: https://www.ibm.com/docs/en/zos/3.1.0?topic=80-text-lookup-service-iaztlkup
-- data set attributes
-- data set archive and restore
-- list system log
-- list system information i.e. system name
-- tso: start, send, get, stop
-- subsytem information, IEFJSRC + iefjsqry mapping needed, latter for request=query mapping for iefssi
-- logical parmlib
-- logstream

@@ -413,35 +413,6 @@ void zowex_job_list_tests(vector<string> &_jobs, vector<string> &_ds, vector<str
                 });
            });
 
-  describe("list-proclib",
-           [&]() -> void
-           {
-             it("should list proclib",
-                []()
-                {
-                  int rc = 0;
-                  string response;
-                  rc = execute_command_with_output(zowex_command + " job list-proclib", response);
-                  ExpectWithContext(rc, response).ToBeGreaterThanOrEqualTo(0);
-                });
-
-             it("should list proclib and validate content",
-                []()
-                {
-                  int rc = 0;
-                  string response;
-                  rc = execute_command_with_output(zowex_command + " job list-proclib", response);
-                  ExpectWithContext(rc, response).ToBeGreaterThanOrEqualTo(0);
-                  if (rc == 0)
-                  {
-                    Expect(response.length()).ToBeGreaterThan(0);
-                    // Basic validation that we got some output
-                    vector<string> lines = parse_rfc_response(response, "\n");
-                    Expect(lines.size()).ToBeGreaterThan(0);
-                  }
-                });
-           });
-
   describe("aliases",
            [&]() -> void
            {
@@ -468,15 +439,6 @@ void zowex_job_list_tests(vector<string> &_jobs, vector<string> &_ds, vector<str
                   rc = execute_command_with_output(zowex_command + " job lf " + jobid, response);
                   ExpectWithContext(rc, response).ToBe(0);
                   Expect(response).ToContain("JESMSGLG");
-                });
-
-             it("should use 'lp' alias for list-proclib command",
-                []()
-                {
-                  int rc = 0;
-                  string response;
-                  rc = execute_command_with_output(zowex_command + " job lp", response);
-                  ExpectWithContext(rc, response).ToBeGreaterThanOrEqualTo(0);
                 });
 
              it("should use 'vs' alias for view-status command",
