@@ -43,7 +43,7 @@ jobs:
 
       - run: npm run package
 
-      - run: npm pack zowe-native-proto-sdk --pack-destination=dist
+      - run: npm pack ./packages/sdk --pack-destination=dist
         if: ${{ matrix.os == 'ubuntu' }}
 
       - uses: actions/upload-artifact@v4
