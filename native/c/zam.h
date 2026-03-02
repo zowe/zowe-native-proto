@@ -59,7 +59,7 @@
 #define DCB_WRITE_MODEL(dcbwm)
 #endif
 
-DCB_WRITE_MODEL(open_write_model);
+DCB_WRITE_MODEL(dcb_write_model);
 
 #if defined(__IBM_METAL__)
 #define DCB_READ_MODEL(dcbrm)                                 \
@@ -75,7 +75,20 @@ DCB_WRITE_MODEL(open_write_model);
 #define DCB_READ_MODEL(dcbrm)
 #endif
 
-DCB_READ_MODEL(open_read_model);
+DCB_READ_MODEL(dcb_read_model);
+
+#if defined(__IBM_METAL__)
+#define OPEN_MODEL(openm)                                     \
+  __asm(                                                      \
+      "*                                                  \n" \
+      " OPEN (,),MODE=31,MF=L                             \n" \
+      "*                                                    " \
+      : "DS"(openm));
+#else
+#define OPEN_MODEL(openm)
+#endif
+
+OPEN_MODEL(open_model);
 
 #if defined(__IBM_METAL__)
 #define OPEN(dcb, plist, rc, mode)                            \
@@ -96,7 +109,7 @@ DCB_READ_MODEL(open_read_model);
 #endif
 
 #if defined(__IBM_METAL__)
-#define OPEN_IO_ACB(acb, plist, rc)                           \
+#define OPEN_ACB(acb, plist, rc)                              \
   __asm(                                                      \
       "*                                                  \n" \
       " OPEN (%0),"                                           \
@@ -108,9 +121,9 @@ DCB_READ_MODEL(open_read_model);
       : "+m"(acb),                                            \
         "=m"(rc)                                              \
       : "m"(plist)                                            \
-      : "r0", "r1", "r2", "r14", "r15");
+      : "r0", "r1", "r14", "r15");
 #else
-#define OPEN_IO_ACB(acb, plist, rc)
+#define OPEN_ACB(acb, plist, rc)
 #endif
 
 #if defined(__IBM_METAL__)
@@ -484,7 +497,7 @@ static IO_CTRL *PTR32 new_write_io_ctrl(char *PTR32 ddname, int lrecl, int blkSi
 {
   IO_CTRL *PTR32 ioc = new_io_ctrl();
   IHADCB *dcb = &ioc->dcb;
-  memcpy(dcb, &open_write_model, sizeof(IHADCB));
+  memcpy(dcb, &dcb_write_model, sizeof(IHADCB));
   set_dcb_info(dcb, ddname, lrecl, blkSize, recfm);
   return ioc;
 }
@@ -493,7 +506,7 @@ static IO_CTRL *PTR32 new_read_io_ctrl(char *PTR32 ddname, int lrecl, int blkSiz
 {
   IO_CTRL *ioc = new_io_ctrl();
   IHADCB *dcb = &ioc->dcb;
-  memcpy(dcb, &open_read_model, sizeof(IHADCB));
+  memcpy(dcb, &dcb_read_model, sizeof(IHADCB));
   set_dcb_info(dcb, ddname, lrecl, blkSize, recfm);
   return ioc;
 }

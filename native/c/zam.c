@@ -304,7 +304,7 @@ int open_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 *PTR32 ioc, const char *P
   //
   IO_CTRL *PTR32 new_ioc = new_io_ctrl();
   *ioc = new_ioc;
-  memcpy(&new_ioc->dcb, &open_write_model, sizeof(IHADCB));
+  memcpy(&new_ioc->dcb, &dcb_write_model, sizeof(IHADCB));
   memcpy(new_ioc->dcb.dcbddnam, ddname, sizeof(new_ioc->dcb.dcbddnam));
   memcpy(new_ioc->ddname, ddname, sizeof(new_ioc->ddname));
 
@@ -1111,11 +1111,13 @@ int open_vsam(IFGACB *acb)
   int rc = 0;
   zwto_debug("@TEST open vsam zam.c address: %p", acb);
   zwto_debug("@TEST ddname: %.8s", acb->acbddnm);
-  OPEN_PL opl = {0};
-  opl.option = OPTION_BYTE;
+  OPEN_MODEL(dsa_open_model);  // stack var
+  dsa_open_model = open_model; // copy model
+  // memcpy(&opl, &open_model, sizeof(OPEN_PL));
+  // opl.option = OPTION_BYTE;
 
   zut_dump_storage_wto("acb", acb, sizeof(IFGACB));
-  OPEN_IO_ACB(*acb, opl, rc);
+  OPEN_ACB(*acb, dsa_open_model, rc);
   zwto_debug("@TEST open finished");
   zut_dump_storage_wto("acb", acb, sizeof(IFGACB));
 
