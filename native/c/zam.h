@@ -104,6 +104,19 @@ OPEN_MODEL(open_model);
 ACB_MODEL(acb_model);
 
 #if defined(__IBM_METAL__)
+#define RPL_MODEL(rplm)                                       \
+  __asm(                                                      \
+      "*                                                  \n" \
+      " RPL AM=VSAM                                       \n" \
+      "*                                                    " \
+      : "DS"(rplm));
+#else
+#define RPL_MODEL(rplm)
+#endif
+
+RPL_MODEL(rpl_model);
+
+#if defined(__IBM_METAL__)
 #define OPEN(dcb, plist, rc, mode)                            \
   __asm(                                                      \
       "*                                                  \n" \
