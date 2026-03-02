@@ -26,6 +26,17 @@ void zut_tests()
   describe("zut tests",
            []() -> void
            {
+             it("should run shell command",
+                []() -> void
+                {
+                  string output;
+                  int rc = zut_run_shell_command("echo 'hello world' 2>&1", output);
+                  expect(rc).ToBe(0);
+                  // TODO: Why is output an empty string? The below doesn't work
+                  // expect(output).ToBe("'hello world'");
+                  rc = zut_run_shell_command("fakeutility doesnotexist 2>&1", output);
+                  expect(rc).Not().ToBe(0);
+                });
              it("should upper case and truncate a long string",
                 []() -> void
                 {

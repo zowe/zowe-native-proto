@@ -64,6 +64,47 @@ export interface ChtagFileRequest extends common.CommandRequest<"chtagFile"> {
 
 export type ChtagFileResponse = common.CommandResponse;
 
+export interface CopyUssRequest extends common.CommandRequest<"copyUss"> {
+    /**
+     * The source file or directory to copy.
+     */
+    srcFsPath: string;
+    /**
+     * The destination file or directory to copy into.
+     */
+    dstFsPath: string;
+    /**
+     * Should the copy action recursively traverse through sub-directories and files.
+     *
+     * Default: false
+     */
+    recursive?: boolean;
+    /**
+     * Should the copy action follow symlinks when encountered. Note: This can only be set in combination with recursive.
+     *
+     * Default: false
+     */
+    followSymlinks?: boolean;
+
+    /**
+     * Set to true if the copy action should preserve permission bits and ownership in the output destination.
+     *   Note: the USS 'cp' utility by default does not preserve these permissions.
+     *
+     * Default: false
+     */
+    preserveAttributes?: boolean;
+
+    /**
+     * Set to true if the copy action should try and replace any files it cannot open in the output destination.
+     *  Equivalent to 'cp -f'
+     *
+     * Default: false
+     */
+    force?: boolean;
+}
+
+export type CopyUssResponse = common.CommandResponse;
+
 export interface CreateFileRequest extends common.CommandRequest<"createFile"> {
     /**
      * Permissions for the new path
