@@ -19,6 +19,7 @@ import {
     type SshPublicKey,
     SshTransport,
 } from "russh";
+import type { Subscription } from "rxjs";
 import type { ConnectConfig } from "ssh2";
 import { ClientChannel } from "./ClientChannel";
 
@@ -27,6 +28,7 @@ const noop: DebugFn = () => {};
 
 export class Client extends EventEmitter {
     private sshClient: AuthenticatedSSHClient | null = null;
+    private disconnectSub: Subscription | null = null;
     private closed = false;
     private debug: DebugFn = noop;
 
@@ -52,12 +54,18 @@ export class Client extends EventEmitter {
 
     public end(): void {
         this.debug("russh: end() called, disconnecting");
+        this.cleanup();
+        this.emitClose();
+    }
+
+    private cleanup(): void {
+        this.disconnectSub?.unsubscribe();
+        this.disconnectSub = null;
         const client = this.sshClient;
         this.sshClient = null;
         if (client) {
             client.disconnect().catch(() => {});
         }
-        this.emitClose();
     }
 
     private emitClose(): void {
@@ -88,14 +96,23 @@ export class Client extends EventEmitter {
         );
         this.debug("russh: SSH handshake complete");
 
-        sshClient.disconnect$.subscribe(() => {
+        this.disconnectSub = sshClient.disconnect$.subscribe(() => {
             this.debug("russh: disconnect event received from server");
-            this.sshClient = null;
+            this.cleanup();
             this.emitClose();
         });
 
-        const username = config.username ?? "root";
-        const authed = await this.authenticate(sshClient, username, config);
+        let authed: AuthenticatedSSHClient;
+        try {
+            const username = config.username ?? "root";
+            authed = await this.authenticate(sshClient, username, config);
+        } catch (err) {
+            this.debug("russh: post-handshake error, tearing down connection");
+            this.disconnectSub.unsubscribe();
+            this.disconnectSub = null;
+            sshClient.disconnect().catch(() => {});
+            throw err;
+        }
 
         this.sshClient = authed;
         this.debug("russh: emitting ready");
