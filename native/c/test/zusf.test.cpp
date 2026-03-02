@@ -33,9 +33,9 @@ void zusf_tests()
            [&]() -> void
            {
              ZUSF zusf;
-             ListOptions short_list_opts = {false, false, 1};
-             ListOptions long_list_opts = {false, true, 1};
-             ListOptions all_long_list_opts = {true, true, 1};
+             ListOptions short_list_opts{false, false, 1};
+             ListOptions long_list_opts{false, true, 1};
+             ListOptions all_long_list_opts{true, true, 1};
              const CopyOptions copts_preserve(false, false, true, false);
              const CopyOptions copts_recurse_symlink_preserve(true, true, true, false);
              const CopyOptions copts_all_off(false, false, false, false);
@@ -44,10 +44,10 @@ void zusf_tests()
              const CopyOptions copts_recursive(true, false, false, false);
              const CopyOptions copts_recursive_force(true, false, false, true);
              const std::string tmp_base = "/tmp/zusf_copy_tests_" + get_random_string(10);
-             string file_a;
-             string file_b;
-             string dir_a;
-             string dir_b;
+             std::string file_a;
+             std::string file_b;
+             std::string dir_a;
+             std::string dir_b;
 
              beforeEach([&]() -> void
                         { memset(&zusf, 0, sizeof(zusf));
@@ -60,10 +60,9 @@ void zusf_tests()
                           dir_b = tmp_base + "/test_dir_b"; });
 
              afterAll([&]() -> void
-                {
+                      {
                   std::string discard;
-                  execute_command_with_output("rm -rf " + tmp_base, discard);
-                });
+                  execute_command_with_output("rm -rf " + tmp_base, discard); });
 
              it("file->file tests", [&]() -> void
                 {
@@ -269,8 +268,7 @@ void zusf_tests()
                   std::string dispose;
                   execute_command_with_output("mkfifo -m 0666 " + pipe, dispose);
                   ExpectWithContext(zusf_copy_file_or_dir(&zusf, pipe, non_pipe, copts_all_off), zusf.diag.e_msg).ToBe(-1);
-                  ExpectWithContext(zusf_copy_file_or_dir(&zusf, non_pipe, pipe, copts_all_off), zusf.diag.e_msg).ToBe(-1); 
-                });
+                  ExpectWithContext(zusf_copy_file_or_dir(&zusf, non_pipe, pipe, copts_all_off), zusf.diag.e_msg).ToBe(-1); });
 
              it("force copy tests", [&]() -> void
                 {
@@ -289,8 +287,7 @@ void zusf_tests()
                   // can't overwrite 0400 target without force
                   zusf_chmod_uss_file_or_dir(&zusf, target_file, 0400, false);
                   ExpectWithContext(zusf_copy_file_or_dir(&zusf, source_file, target_file, copts_all_off), zusf.diag.e_msg).ToBe(-1);
-                  ExpectWithContext(zusf_copy_file_or_dir(&zusf, source_file, target_file, copts_force), zusf.diag.e_msg).ToBe(0); 
-                });
+                  ExpectWithContext(zusf_copy_file_or_dir(&zusf, source_file, target_file, copts_force), zusf.diag.e_msg).ToBe(0); });
 
              it("insufficient permissions tests", [&]() -> void
                 {
@@ -307,8 +304,7 @@ void zusf_tests()
 
                   zusf_chmod_uss_file_or_dir(&zusf, dest_dir, 0775, true);
                   rc = zusf_copy_file_or_dir(&zusf, source_file, dest_dir, copts_preserve);
-                  Expect(rc).ToBe(0); 
-                });
+                  Expect(rc).ToBe(0); });
            }
 
   );
