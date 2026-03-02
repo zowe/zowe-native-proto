@@ -91,6 +91,19 @@ DCB_READ_MODEL(dcb_read_model);
 OPEN_MODEL(open_model);
 
 #if defined(__IBM_METAL__)
+#define ACB_MODEL(acbm)                                       \
+  __asm(                                                      \
+      "*                                                  \n" \
+      " ACB AM=VSAM                                       \n" \
+      "*                                                    " \
+      : "DS"(acbm));
+#else
+#define ACB_MODEL(acbm)
+#endif
+
+ACB_MODEL(acb_model);
+
+#if defined(__IBM_METAL__)
 #define OPEN(dcb, plist, rc, mode)                            \
   __asm(                                                      \
       "*                                                  \n" \

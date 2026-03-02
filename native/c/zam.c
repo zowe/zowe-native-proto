@@ -257,7 +257,10 @@ int open_acb(ZDIAG *PTR32 diag, IO_CTRL *PTR32 *PTR32 ioc, const char *PTR32 ddn
   //
   IO_CTRL *PTR32 new_ioc = new_io_ctrl();
   *ioc = new_ioc;
-
+  ACB_MODEL(dsa_acb_model); // stack var
+  memcpy(&dsa_acb_model, &acb_model, sizeof(IFGACB));
+  zut_dump_storage_wto("dsa_acb_model", &dsa_acb_model, sizeof(IFGACB));
+  memcpy(&new_ioc->ifgacb, &dsa_acb_model, sizeof(IFGACB));
   memcpy(new_ioc->ifgacb.acbddnm, ddname, sizeof(new_ioc->ifgacb.acbddnm));
   rc = open_vsam(&new_ioc->ifgacb);
   if (0 != rc)
@@ -1106,6 +1109,9 @@ int open_input(IHADCB *dcb)
   return rc;
 }
 
+// https://www.ibm.com/docs/en/zos/3.2.0?topic=sets-using-vsam-macros-in-programs
+// https://www.ibm.com/docs/en/zos/3.2.0?topic=sets-vsam-macro-instructions
+// https://www.ibm.com/docs/en/zos/2.2.0?topic=interface-special-processing-logical-syslog-data-sets
 int open_vsam(IFGACB *acb)
 {
   int rc = 0;
@@ -1113,13 +1119,18 @@ int open_vsam(IFGACB *acb)
   zwto_debug("@TEST ddname: %.8s", acb->acbddnm);
   OPEN_MODEL(dsa_open_model);  // stack var
   dsa_open_model = open_model; // copy model
-  // memcpy(&opl, &open_model, sizeof(OPEN_PL));
-  // opl.option = OPTION_BYTE;
 
   zut_dump_storage_wto("acb", acb, sizeof(IFGACB));
   OPEN_ACB(*acb, dsa_open_model, rc);
+  unsigned char buffer[1024] = {0};
+  unsigned char plist[1024] = {0};
+  void *PTR32 bufferp = &buffer[0];
+  void *PTR32 plistp = &plist[0];
+  __asm(" SHOWCB ACB=(%0),AREA=(%1),LENGTH=1024,FIELDS=ERROR,MF=(G,%2)" : "=r"(bufferp) : "r"(acb), "m"(plistp) : "r0", "r1", "r14", "r15");
+  zwto_debug("@TEST buffer: %s", buffer);
   zwto_debug("@TEST open finished");
   zut_dump_storage_wto("acb", acb, sizeof(IFGACB));
+  // zut_dump_storage_wto("buffer", buffer, sizeof(buffer));
 
   return rc;
 }
