@@ -37,13 +37,15 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
 
-      - run: |
-          [ -z "$RUN_ID" ] || gh run watch $RUN_ID
+      - name: Watch z/OS build
         if: ${{ matrix.os == 'ubuntu' }}
+        run: |
+          [ -z "$RUN_ID" ] || gh run watch $RUN_ID
         env:
           GH_TOKEN: ${{ github.token }}
 
       - name: Download server PAX into SDK bin
+        if: ${{ matrix.os == 'ubuntu' }}
         run: gh run download $RUN_ID --dir packages/sdk/bin --name zowe-server-bin
         env:
           GH_TOKEN: ${{ github.token }}
