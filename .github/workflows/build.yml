@@ -31,6 +31,7 @@ jobs:
       - run: npm run test
 
       - name: Get z/OS build run ID
+        if: ${{ matrix.os == 'ubuntu' }}
         run: |
           RUN_ID=$(gh run list --commit=${{ github.event.pull_request.head.sha || github.sha }} --workflow=zos-build.yml --limit=1 --json=databaseId --jq='.[0].databaseId')
           echo "RUN_ID=$RUN_ID" >> $GITHUB_ENV
@@ -45,7 +46,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
 
       - name: Download server PAX into SDK bin
-        if: ${{ matrix.os == 'ubuntu' }}
         run: gh run download $RUN_ID --dir packages/sdk/bin --name zowe-server-bin
         env:
           GH_TOKEN: ${{ github.token }}
