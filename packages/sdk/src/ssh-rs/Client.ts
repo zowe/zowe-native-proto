@@ -11,13 +11,13 @@
 
 import { EventEmitter } from "node:events";
 import {
-    SSHClient,
-    SshTransport,
-    KeyPair,
     type AgentConnectionSpec,
     type AuthenticatedSSHClient,
     type AuthFailure,
+    KeyPair,
+    SSHClient,
     type SshPublicKey,
+    SshTransport,
 } from "russh";
 import type { ConnectConfig } from "ssh2";
 import { ClientChannel } from "./ClientChannel";
@@ -42,12 +42,12 @@ export class Client extends EventEmitter {
 
     public exec(command: string, callback: (err: Error | undefined, channel: ClientChannel) => void): void {
         if (!this.sshClient) {
-            callback(new Error("Not connected"), undefined as any);
+            callback(new Error("Not connected"), undefined!);
             return;
         }
         this.execAsync(command)
             .then((ch) => callback(undefined, ch))
-            .catch((err) => callback(err, undefined as any));
+            .catch((err) => callback(err, undefined!));
     }
 
     public end(): void {
@@ -72,9 +72,7 @@ export class Client extends EventEmitter {
         this.debug(`russh: opening TCP connection to ${address}`);
         const transport = await SshTransport.newSocket(address);
 
-        const keepaliveSec = config.keepaliveInterval != null
-            ? config.keepaliveInterval / 1000
-            : undefined;
+        const keepaliveSec = config.keepaliveInterval != null ? config.keepaliveInterval / 1000 : undefined;
 
         this.debug("russh: starting SSH handshake");
         const sshClient = await SSHClient.connect(
@@ -84,9 +82,7 @@ export class Client extends EventEmitter {
                 return true;
             },
             {
-                connectionTimeoutSeconds: config.readyTimeout != null
-                    ? config.readyTimeout / 1000
-                    : undefined,
+                connectionTimeoutSeconds: config.readyTimeout != null ? config.readyTimeout / 1000 : undefined,
                 keepaliveIntervalSeconds: keepaliveSec,
             },
         );
@@ -113,9 +109,10 @@ export class Client extends EventEmitter {
     ): Promise<AuthenticatedSSHClient> {
         if (config.privateKey) {
             this.debug(`russh: authenticating with public key for ${username}`);
-            const keyData = typeof config.privateKey === "string"
-                ? config.privateKey
-                : Buffer.from(config.privateKey as any).toString("utf-8");
+            const keyData =
+                typeof config.privateKey === "string"
+                    ? config.privateKey
+                    : Buffer.from(config.privateKey as Uint8Array).toString("utf-8");
             const passphrase = typeof config.passphrase === "string" ? config.passphrase : undefined;
             const keyPair = await KeyPair.parse(keyData, passphrase);
 
@@ -139,10 +136,7 @@ export class Client extends EventEmitter {
         throw new Error("No authentication method available: provide privateKey, password, or agent");
     }
 
-    private assertAuthSuccess(
-        result: AuthenticatedSSHClient | AuthFailure,
-        method: string,
-    ): AuthenticatedSSHClient {
+    private assertAuthSuccess(result: AuthenticatedSSHClient | AuthFailure, method: string): AuthenticatedSSHClient {
         if ("remainingMethods" in result) {
             const remaining = (result as AuthFailure).remainingMethods.join(", ");
             throw new Error(`${method} authentication failed. Remaining methods: ${remaining}`);

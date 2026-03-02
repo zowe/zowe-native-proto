@@ -13,7 +13,6 @@ import { posix } from "node:path";
 import { Stream } from "node:stream";
 import { ImperativeError, Logger } from "@zowe/imperative";
 import type { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
-import { createClient, type Client, type ClientChannel } from "./ssh-rs";
 import type {
     ClientOptions,
     CommandRequest,
@@ -26,6 +25,7 @@ import type {
 } from "./doc";
 import { RpcClientApi } from "./RpcClientApi";
 import { RpcStreamManager } from "./RpcStreamManager";
+import { type Client, type ClientChannel, createClient } from "./ssh-rs";
 import { ZSshUtils } from "./ZSshUtils";
 
 export class ZSshClient extends RpcClientApi implements Disposable {

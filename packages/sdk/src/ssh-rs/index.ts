@@ -12,7 +12,7 @@
 import type { EventEmitter } from "node:events";
 import type { Readable, Writable } from "node:stream";
 
-export type { ConnectConfig, ClientCallback } from "ssh2";
+export type { ClientCallback, ConnectConfig } from "ssh2";
 
 export interface ClientChannel extends EventEmitter {
     stdin: Writable;
