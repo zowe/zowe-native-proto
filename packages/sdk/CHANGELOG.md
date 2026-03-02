@@ -5,11 +5,13 @@ All notable changes to the Client code for "zowe-native-proto-sdk" are documente
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
 ## Recent Changes
+
 - Added support for copying USS files in the `RpcClientApi` class. [#379](https://github.com/zowe/zowe-native-proto/issues/379)
+- Added experimental native client for improved performance. To enable it, pass the `useNativeSsh` option to the `ZSshClient.create` method. [#833](https://github.com/zowe/zowe-native-proto/pull/833)
 
 ## `0.3.0`
 
-- Changed SDK groupings to align with zowex. [#807](https://github.com/zowe/zowe-native-proto/pull/808)
+- Changed SDK groupings to align with zowex. [#807](https://github.com/zowe/zowe-native-proto/issues/807)
 
 ## `0.2.4`
 

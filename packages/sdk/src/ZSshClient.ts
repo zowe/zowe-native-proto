@@ -13,7 +13,7 @@ import { posix } from "node:path";
 import { Stream } from "node:stream";
 import { ImperativeError, Logger } from "@zowe/imperative";
 import type { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
-import { Client, type ClientChannel } from "ssh2";
+import { createClient, type Client, type ClientChannel } from "./ssh-rs";
 import type {
     ClientOptions,
     CommandRequest,
@@ -58,7 +58,7 @@ export class ZSshClient extends RpcClientApi implements Disposable {
         const client = new ZSshClient();
         client.mErrHandler = opts.onError ?? ZSshClient.defaultErrHandler;
         client.mResponseTimeout = opts.responseTimeout ? opts.responseTimeout * 1000 : 60e3;
-        client.mSshClient = new Client();
+        client.mSshClient = createClient(opts.useNativeSsh);
         client.mSshStream = await new Promise((resolve, reject) => {
             client.mSshClient.on("error", (err) => {
                 Logger.getAppLogger().error(`Error connecting to SSH: ${err}`);

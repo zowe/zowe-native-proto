@@ -28,6 +28,7 @@ try {
     fs.unlinkSync(path.join(tempDir, sdkDir));
     fs.cpSync(fs.realpathSync(sdkDir), path.join(tempDir, sdkDir), { recursive: true });
     fs.rmSync(path.join(tempDir, "node_modules", "cpu-features"), { recursive: true, force: true });
+    fs.rmSync(path.join(tempDir, "node_modules", "russh"), { recursive: true, force: true });
     execSync(`npm pack --pack-destination=${outDir}`, execOptions);
 } finally {
     fs.rmSync(tempDir, { recursive: true, force: true });
