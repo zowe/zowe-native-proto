@@ -27,16 +27,12 @@ export interface Client extends EventEmitter {
     end(): void;
 }
 
-interface ClientConstructor {
-    new (): Client;
-}
-
-const ssh2Client: ClientConstructor = require("ssh2").Client;
-
 export function createClient(useNative?: boolean): Client {
     if (useNative) {
         const { Client: NativeClient } = require("./Client");
         return new NativeClient();
+    } else {
+        const { Client: Ssh2Client } = require("ssh2");
+        return new Ssh2Client();
     }
-    return new ssh2Client();
 }
