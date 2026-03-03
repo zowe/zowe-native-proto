@@ -12,10 +12,8 @@
 
 #ifndef _OPEN_SYS_ITOA_EXT
 #define _OPEN_SYS_ITOA_EXT
-#include "zamtypes.h"
 #include "ztype.h"
 #include <cctype>
-#include <cstddef>
 #endif
 #ifndef _POSIX_SOURCE
 #define _POSIX_SOURCE
@@ -41,9 +39,7 @@
 #include <stdlib.h>
 #include "zbase64.h"
 #include "zdsm.h"
-#include <string>
-#include <cstdio>
-#include "zutm.h"
+#include "zamtypes.h"
 
 const size_t MAX_DS_LENGTH = 44u;
 const size_t MAX_VOLSER_LENGTH = 6u;
@@ -2104,13 +2100,8 @@ int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &members, bool show_at
           // Convert Modified Date
           rc = zut_convert_date(&stats->modified_date_century, mem.m4date);
 
-          // if (!mem.m4date.empty())
-          // {
-          //   printf("M4DATE: %s\n", mem.m4date.c_str());
-          // }
-
-          // printf("M4DATE: %s\n", mem.m4date.c_str());
-          // printf("C4DATE: %s\n", mem.c4date.c_str());
+          // std::cout << "C4DATE: rc=" << rc << ", " << mem.c4date << std::endl;
+          // std::cout << "M4DATE: rc=" << rc << ", " << mem.m4date << std::endl;
 
           parse_packed_time(
               stats->modified_time_hours,
