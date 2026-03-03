@@ -329,6 +329,8 @@ int zut_list_parmlib(ZDIAG &diag, std::vector<std::string> &parmlibs);
  */
 std::string zut_read_input(std::istream &input_stream);
 
+int zut_convert_date(const unsigned char *date_ptr, std::string &out_str);
+
 /**
  * @brief RAII class to manage auto-conversion state
  *

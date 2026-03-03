@@ -12,7 +12,7 @@
 #ifndef _XOPEN_SOURCE
 #define _XOPEN_SOURCE
 #endif
- 
+
 #define _OPEN_SYS_EXT
 #include <sys/ps.h>
 #include <stdio.h>
@@ -835,4 +835,23 @@ string zut_read_input(istream &input_stream)
     }
   }
   return data;
+}
+
+int zut_convert_date(const unsigned char *date_ptr, std::string &out_str)
+{
+  char buffer[12] = {0};
+
+  int rc = ZUTCVTD(reinterpret_cast<const char *>(date_ptr), buffer);
+
+  if (rc == 0)
+  {
+    out_str = buffer;
+  }
+  else
+  {
+    out_str = "";
+  }
+
+  // printf("rc %d", rc);
+  return rc;
 }

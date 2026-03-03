@@ -41,6 +41,9 @@
 #include <stdlib.h>
 #include "zbase64.h"
 #include "zdsm.h"
+#include <string>
+#include <cstdio>
+#include "zutm.h"
 
 const size_t MAX_DS_LENGTH = 44u;
 const size_t MAX_VOLSER_LENGTH = 6u;
@@ -1840,63 +1843,131 @@ int zds_rename_members(ZDS *zds, const string &dsname, const string &member_befo
   return 0;
 }
 
-void parse_century_julian_date(
-    const unsigned char *date_bytes, // 4 bytes: [century, YY, DD, DF]
-    std::string *date_out            // Output: "YYYY/MM/DD" or ""
-)
-{
-  // Check if date is all zeros (not set)
-  if (date_bytes[0] == 0 && date_bytes[1] == 0 &&
-      date_bytes[2] == 0 && date_bytes[3] == 0)
-  {
-    *date_out = "";
-    return;
-  }
+// void parse_century_julian_date(
+//     const unsigned char *date_bytes, // 4 bytes: [century, YY, DD, DF]
+//     std::string *date_out            // Output: "YYYY/MM/DD" or ""
+// )
+// {
+//   // Check if date is all zeros (not set)
+//   if (date_bytes[0] == 0 && date_bytes[1] == 0 &&
+//       date_bytes[2] == 0 && date_bytes[3] == 0)
+//   {
+//     *date_out = "";
+//     return;
+//   }
 
-  // Extract century (byte 0)
-  int base_century = (date_bytes[0] == 0x00) ? 1900 : 2000;
+//   // Extract century (byte 0)
+//   int base_century = (date_bytes[0] == 0x00) ? 1900 : 2000;
 
-  // Unpack year from byte 1 (packed decimal YY)
-  int year_tens = (date_bytes[1] >> 4) & 0x0F;
-  int year_ones = date_bytes[1] & 0x0F;
-  int year = base_century + (year_tens * 10) + year_ones;
+//   // Unpack year from byte 1 (packed decimal YY)
+//   int year_tens = (date_bytes[1] >> 4) & 0x0F;
+//   int year_ones = date_bytes[1] & 0x0F;
+//   int year = base_century + (year_tens * 10) + year_ones;
 
-  // Unpack day of year from bytes 2-3 (packed decimal DDDF)
-  int day_hundreds = (date_bytes[2] >> 4) & 0x0F;
-  int day_tens = date_bytes[2] & 0x0F;
-  int day_ones = (date_bytes[3] >> 4) & 0x0F;
-  // Ignore sign nibble in low nibble of byte 3
-  int day_of_year = (day_hundreds * 100) + (day_tens * 10) + day_ones;
+//   // Unpack day of year from bytes 2-3 (packed decimal DDDF)
+//   int day_hundreds = (date_bytes[2] >> 4) & 0x0F;
+//   int day_tens = date_bytes[2] & 0x0F;
+//   int day_ones = (date_bytes[3] >> 4) & 0x0F;
+//   // Ignore sign nibble in low nibble of byte 3
+//   int day_of_year = (day_hundreds * 100) + (day_tens * 10) + day_ones;
 
-  // Validate day of year
-  if (day_of_year < 1 || day_of_year > 366)
-  {
-    *date_out = "";
-    return;
-  }
+//   // Validate day of year
+//   if (day_of_year < 1 || day_of_year > 366)
+//   {
+//     *date_out = "";
+//     return;
+//   }
 
-  // Convert Julian day to calendar date
-  static const int days_in_month[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
-  bool is_leap = (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
+//   // Convert Julian day to calendar date
+//   static const int days_in_month[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+//   bool is_leap = (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
 
-  int month = 1;
-  int day = day_of_year;
+//   int month = 1;
+//   int day = day_of_year;
 
-  for (int i = 0; i < 12 && day > days_in_month[i]; i++)
-  {
-    int days_this_month = days_in_month[i];
-    if (i == 1 && is_leap)
-      days_this_month = 29;
+//   for (int i = 0; i < 12 && day > days_in_month[i]; i++)
+//   {
+//     int days_this_month = days_in_month[i];
+//     if (i == 1 && is_leap)
+//       days_this_month = 29;
 
-    day -= days_this_month;
-    month++;
-  }
+//     day -= days_this_month;
+//     month++;
+//   }
 
-  // Format as "YYYY/MM/DD"
-  char buffer[11];
-  sprintf(buffer, "%04d/%02d/%02d", year, month, day);
-  *date_out = buffer;
-}
+//   // Format as "YYYY/MM/DD"
+//   char buffer[11];
+//   sprintf(buffer, "%04d/%02d/%02d", year, month, day);
+//   *date_out = buffer;
+// }
+
+// void parse_century_julian_date(
+//     const unsigned char *date_bytes, // 4 bytes: [century, YY, DDD packed]
+//     std::string *date_out)
+// {
+//   // Check for all-zero date
+//   if (date_bytes[0] == 0 && date_bytes[1] == 0 &&
+//       date_bytes[2] == 0 && date_bytes[3] == 0)
+//   {
+//     *date_out = "";
+//     return;
+//   }
+
+//   // Convert century + YY + DDD into integer year and day-of-year
+//   int base_century = (date_bytes[0] == 0x00) ? 1900 : 2000;
+//   int year = base_century + ((date_bytes[1] >> 4) & 0x0F) * 10 + (date_bytes[1] & 0x0F);
+//   int day_of_year = ((date_bytes[2] >> 4) & 0x0F) * 100 +
+//                     (date_bytes[2] & 0x0F) * 10 +
+//                     ((date_bytes[3] >> 4) & 0x0F);
+
+//   // Sanity check
+//   if (day_of_year < 1 || day_of_year > 366)
+//   {
+//     *date_out = "";
+//     return;
+//   }
+
+//   // Prepare a TIME_STRUCT for TOD conversion
+//   TIME_STRUCT ts_in = {0};
+
+//   unsigned char packed_date[4];
+//   packed_date[0] = date_bytes[0]; // Century (00 or 01)
+//   packed_date[1] = date_bytes[1]; // YY
+//   packed_date[2] = date_bytes[2]; // DD
+//   packed_date[3] = (date_bytes[3] & 0xF0) | 0x0F;
+
+//   unsigned long long tod = 0;
+//   int rc = convtod((TIME_STRUCT *)packed_date, &tod); // Ensure CONVTOD macro is using the right offset
+
+//   if (rc != 0)
+//   {
+//     *date_out = "ERR-CONV";
+//     return;
+//   }
+
+//   TIME_STRUCT ts_out = {0};
+//   rc = stckconv(&tod, &ts_out);
+
+//   if (rc == 0)
+//   {
+//     char buffer[11];
+//     int full_year = (ts_out.date.mmddyyyy.year[0] * 100) + ts_out.date.mmddyyyy.year[1];
+//     sprintf(buffer, "%04d/%02d/%02d", full_year, ts_out.date.mmddyyyy.month, ts_out.date.mmddyyyy.day);
+//     *date_out = buffer;
+//   }
+//   else
+//   {
+//     *date_out = "ERR-STCK";
+//   }
+
+//   char buffer[11];
+//   sprintf(buffer, "%04d/%02d/%02d",
+//           ts_out.date.mmddyyyy.year[0] * 100 + ts_out.date.mmddyyyy.year[1],
+//           ts_out.date.mmddyyyy.month,
+//           ts_out.date.mmddyyyy.day);
+
+//   *date_out = buffer;
+// }
 
 void parse_packed_time(
     const unsigned char hours_byte,   // Byte 13: HH
@@ -2028,13 +2099,18 @@ int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &members, bool show_at
 
           mem.sclm = (stats->flags & 0x80) != 0;
 
-          parse_century_julian_date(
-              reinterpret_cast<const unsigned char *>(&stats->created_date_century),
-              &mem.c4date);
+          int rc = zut_convert_date(&stats->created_date_century, mem.c4date);
 
-          parse_century_julian_date(
-              reinterpret_cast<const unsigned char *>(&stats->modified_date_century),
-              &mem.m4date);
+          // Convert Modified Date
+          rc = zut_convert_date(&stats->modified_date_century, mem.m4date);
+
+          // if (!mem.m4date.empty())
+          // {
+          //   printf("M4DATE: %s\n", mem.m4date.c_str());
+          // }
+
+          // printf("M4DATE: %s\n", mem.m4date.c_str());
+          // printf("C4DATE: %s\n", mem.c4date.c_str());
 
           parse_packed_time(
               stats->modified_time_hours,

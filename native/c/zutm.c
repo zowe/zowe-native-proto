@@ -16,9 +16,11 @@
 #include "asasymbp.h"
 #include "zstorage.h"
 #include "zutm.h"
+#include "ztime.h"
 #include "zutm31.h"
 #include "zam.h"
 #include "zuttype.h"
+#include "zwto.h"
 
 #define ZUT_BPXWDYN_SERVICE_FAILURE -2
 
@@ -378,4 +380,31 @@ void ZUTDBGMG(const char *msg)
 
   write_sync(sysprintIoc, writeBuf);
   close_assert(sysprintIoc);
+}
+
+#pragma prolog(ZUTCVTD, " ZWEPROLG NEWDSA=(YES,4) ")
+#pragma epilog(ZUTCVTD, " ZWEEPILG ")
+int ZUTCVTD(const char *ptr, char *time)
+{
+  zwto_debug("BEGINNING");
+  TIME_STRUCT time_in = {0};
+  memcpy(&time_in, ptr, 4);
+  unsigned long long tod = 0;
+  int rc = convtod(&time_in, &tod);
+  zwto_debug("here %d", rc);
+  if (0 != rc)
+    return rc;
+
+  TIME_STRUCT time_out = {0};
+  rc = stckconv(&tod, &time_out);
+  zwto_debug("here2 %d", rc);
+  if (0 == rc)
+  {
+    sprintf(time, "%02d/%02d/%02d%02d",
+            time_out.date.mmddyyyy.month,
+            time_out.date.mmddyyyy.day,
+            time_out.date.mmddyyyy.year[0],
+            time_out.date.mmddyyyy.year[1]);
+  }
+  return rc;
 }

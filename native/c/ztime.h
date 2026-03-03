@@ -55,24 +55,88 @@
 STCKCONV_MODEL(stckconv_model);
 
 #if defined(__IBM_METAL__)
-#define STCKCOV(output, tod, plist, rc)                       \
+#define STCKCONV(output, tod, plist, rc, format)              \
   __asm(                                                      \
+      "*                                                  \n" \
+      " LGHI  2,0       Clear                             \n" \
+      " TAM   ,         AMODE64??                         \n" \
+      " JM    *+4+4+2   No, skip switching                \n" \
+      " OILH  2,X'8000' Set AMODE31 flag                  \n" \
+      " SAM31 ,         Set AMODE31                       \n" \
+      "*                                                  \n" \
+      " SYSSTATE PUSH       Save SYSSTATE                 \n" \
+      " SYSSTATE AMODE64=NO                               \n" \
       "*                                                  \n" \
       " STCKCONV STCKVAL=%2,"                                 \
       "CONVVAL=%0,"                                           \
       "TIMETYPE=DEC,"                                         \
-      "DATETYPE=MMDDYYYY,"                                    \
+      "DATETYPE=" #format ","                                 \
       "MF=(E,%3)                                          \n" \
       "*                                                  \n" \
       " ST    15,%1     Save RC                           \n" \
+      "*                                                  \n" \
+      " TMLH  2,X'8000' Did we switch AMODE??             \n" \
+      " JNO   *+4+2     No, skip restore                  \n" \
+      " SAM64 ,         Set AMODE64                       \n" \
+      "*                                                  \n" \
+      " SYSSTATE POP    Restore SYSSTATE                  \n" \
       "*                                                    " \
       : "=m"(output),                                         \
         "=m"(rc)                                              \
       : "m"(tod),                                             \
         "m"(plist)                                            \
-      : "r0", "r1", "r14", "r15");
+      : "r0", "r1", "r2", "r14", "r15");
 #else
-#define STCKCOV(output, tod, plist, rc)
+#define STCKCONV(output, tod, plist, rc, format)
+#endif
+
+#if defined(__IBM_METAL__)
+#define CONVTOD_MODEL(convtodm)       \
+  __asm(                              \
+      "*                          \n" \
+      " CONVTOD MF=L              \n" \
+      "*                          \n" \
+      : "DS"(convtodm));
+#else
+#define CONVTOD_MODEL(convtodm)
+#endif
+
+CONVTOD_MODEL(convtod_model);
+
+#if defined(__IBM_METAL__)
+#define CONVTOD(tod, input, plist, rc, format)                \
+  __asm(                                                      \
+      "*                                                  \n" \
+      " LGHI  2,0       Clear                             \n" \
+      " TAM   ,         AMODE64??                         \n" \
+      " JM    *+4+4+2   No, skip switching                \n" \
+      " OILH  2,X'8000' Set AMODE31 flag                  \n" \
+      " SAM31 ,         Set AMODE31                       \n" \
+      "*                                                  \n" \
+      " SYSSTATE PUSH       Save SYSSTATE                 \n" \
+      " SYSSTATE AMODE64=NO                               \n" \
+      "*                                                  \n" \
+      " CONVTOD TODVAL=%0,"                                   \
+      "CONVVAL=%2,"                                           \
+      "TIMETYPE=DEC,"                                         \
+      "DATETYPE=" #format ","                                 \
+      "MF=(E,%3)                                          \n" \
+      "*                                                  \n" \
+      " ST    15,%1     Save RC                           \n" \
+      "*                                                  \n" \
+      " TMLH  2,X'8000' Did we switch AMODE??             \n" \
+      " JNO   *+4+2     No, skip restore                  \n" \
+      " SAM64 ,         Set AMODE64                       \n" \
+      "*                                                  \n" \
+      " SYSSTATE POP    Restore SYSSTATE                  \n" \
+      "*                                                    " \
+      : "=m"(tod),                                            \
+        "=m"(rc)                                              \
+      : "m"(input),                                           \
+        "m"(plist)                                            \
+      : "r0", "r1", "r2", "r14", "r15");
+#else
+#define CONVTOD(tod, input, plist, rc, format)
 #endif
 
 static void time(unsigned long long *tod)
@@ -100,10 +164,18 @@ static void time_local(unsigned int *time, unsigned int *date)
 
 typedef struct
 {
+  unsigned char month;
+  unsigned char day;
+  unsigned char year[2];
+} DATE_MMDDYYYY;
+
+typedef struct
+{
   unsigned char time[8];
-  unsigned char month;   // MMDDYYYY
-  unsigned char day;     // MMDDYYYY
-  unsigned char year[2]; // MMDDYYYY
+  union
+  {
+    DATE_MMDDYYYY mmddyyyy;
+  } date;
   unsigned char unused[4];
 } TIME_STRUCT;
 
@@ -114,7 +186,19 @@ static int stckconv(unsigned long long *tod, TIME_STRUCT *time_struct)
   STCKCONV_MODEL(dsa_stckconv_model);
   dsa_stckconv_model = stckconv_model;
 
-  STCKCOV(*time_struct, *tod, dsa_stckconv_model, rc);
+  STCKCONV(*time_struct, *tod, dsa_stckconv_model, rc, MMDDYYYY);
+
+  return rc;
+}
+
+static int convtod(TIME_STRUCT *time_struct, unsigned long long *tod)
+{
+  int rc = 0;
+
+  CONVTOD_MODEL(dsa_convtod_model);
+  dsa_convtod_model = convtod_model;
+
+  CONVTOD(*tod, *time_struct, dsa_convtod_model, rc, YYYYDDD);
 
   return rc;
 }
