@@ -5,7 +5,6 @@
 # Allowlist what we need
 !bin/*
 !out/*
-!prebuilds/*
 
 !CHANGELOG.md
 !LICENSE

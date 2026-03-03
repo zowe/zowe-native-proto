@@ -17,8 +17,6 @@ const path = require('path');
 const rspack = require('@rspack/core');
 const { TsCheckerRspackPlugin } = require('ts-checker-rspack-plugin');
 
-const russhDir = path.dirname(require.resolve('russh/package.json'));
-
 module.exports = (_env, argv) => {
   const isProd = argv.mode === 'production';
 
@@ -75,7 +73,6 @@ module.exports = (_env, argv) => {
       new rspack.CopyRspackPlugin({
         patterns: [
           { from: '../sdk/bin', to: '../bin', noErrorOnMissing: !isProd, force: true },
-          { from: path.join(russhDir, '*.node'), to: '../prebuilds/[name][ext]', noErrorOnMissing: true },
         ],
       }),
     ],
