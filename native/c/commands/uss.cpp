@@ -33,13 +33,12 @@ int handle_uss_copy(InvocationContext &context)
   bool force = context.get<bool>("force", false);
 
   const CopyOptions options(
-    /* .recursive = */ recursive,
-    /* .follow_symlinks = */ follow_symlinks,
-    /* .preserve_attributes = */ preserve_attributes,
-    /* .force = */ force
-  );
+      /* .recursive = */ recursive,
+      /* .follow_symlinks = */ follow_symlinks,
+      /* .preserve_attributes = */ preserve_attributes,
+      /* .force = */ force);
 
-  ZUSF zusf = {};
+  ZUSF zusf{};
   int rc = zusf_copy_file_or_dir(&zusf, source_path, destination_path, options);
 
   if (0 != rc)
@@ -78,7 +77,7 @@ int handle_uss_create_file(InvocationContext &context)
     multiplier *= 8;
   }
 
-  ZUSF zusf = {};
+  ZUSF zusf{};
   rc = zusf_create_uss_file_or_dir(&zusf, file_path, cf_mode, false);
   if (0 != rc)
   {
@@ -120,7 +119,7 @@ int handle_uss_create_dir(InvocationContext &context)
     multiplier *= 8;
   }
 
-  ZUSF zusf = {};
+  ZUSF zusf{};
   rc = zusf_create_uss_file_or_dir(&zusf, file_path, cf_mode, true);
   if (0 != rc)
   {
@@ -147,7 +146,7 @@ int handle_uss_list(InvocationContext &context)
 
   const auto use_csv_format = context.get<bool>("response-format-csv", false);
 
-  ZUSF zusf = {};
+  ZUSF zusf{};
   std::string response;
   rc = zusf_list_uss_file_path(&zusf, uss_file, response, list_options, use_csv_format);
   if (0 != rc)
@@ -224,7 +223,7 @@ int handle_uss_view(InvocationContext &context)
   int rc = 0;
   std::string uss_file = context.get<std::string>("file-path", "");
 
-  ZUSF zusf = {};
+  ZUSF zusf{};
   if (context.has("encoding"))
   {
     zut_prepare_encoding(context.get<std::string>("encoding", ""), &zusf.encoding_opts);
@@ -324,7 +323,7 @@ int handle_uss_write(InvocationContext &context)
 {
   int rc = 0;
   std::string file = context.get<std::string>("file-path", "");
-  ZUSF zusf = {};
+  ZUSF zusf{};
 
   if (context.has("encoding"))
   {
@@ -395,7 +394,7 @@ int handle_uss_delete(InvocationContext &context)
   std::string file_path = context.get<std::string>("file-path", "");
   bool recursive = context.get<bool>("recursive", false);
 
-  ZUSF zusf = {};
+  ZUSF zusf{};
   const auto rc = zusf_delete_uss_item(&zusf, file_path, recursive);
 
   if (0 != rc)
@@ -436,7 +435,7 @@ int handle_uss_chmod(InvocationContext &context)
     multiplier *= 8;
   }
 
-  ZUSF zusf = {};
+  ZUSF zusf{};
   rc = zusf_chmod_uss_file_or_dir(&zusf, file_path, chmod_mode, recursive);
   if (0 != rc)
   {
@@ -457,7 +456,7 @@ int handle_uss_chown(InvocationContext &context)
   std::string owner = context.get<std::string>("owner", "");
   bool recursive = context.get<bool>("recursive", false);
 
-  ZUSF zusf = {};
+  ZUSF zusf{};
 
   const auto rc = zusf_chown_uss_file_or_dir(&zusf, path, owner, recursive);
   if (0 != rc)
@@ -490,7 +489,7 @@ int handle_uss_chtag(InvocationContext &context)
 
   bool recursive = context.get<bool>("recursive", false);
 
-  ZUSF zusf = {};
+  ZUSF zusf{};
   const auto rc = zusf_chtag_uss_file_or_dir(&zusf, path, tag, recursive);
 
   if (0 != rc)
@@ -518,7 +517,7 @@ void register_commands(parser::Command &root_command)
   uss_copy_cmd->add_keyword_arg("follow-symlinks", make_aliases("--follow-symlinks", "-L"), "follows symlinks within a directory tree. requires \"--recursive\"", ArgType_Flag, false);
   uss_copy_cmd->add_keyword_arg("recursive", make_aliases("--recursive", "-r"), "recursively copies if the source is a directory", ArgType_Flag, false);
   uss_copy_cmd->add_keyword_arg("preserve-attributes", make_aliases("--preserve-attributes", "-p"), "preserve permission bits and ownership on copy to destination", ArgType_Flag, false);
-  uss_copy_cmd->add_keyword_arg("force", make_aliases("--force", "-f"),  "attempts to remove and replace a UNIX destination file that cannot be opened", ArgType_Flag, false);
+  uss_copy_cmd->add_keyword_arg("force", make_aliases("--force", "-f"), "attempts to remove and replace a UNIX destination file that cannot be opened", ArgType_Flag, false);
   uss_copy_cmd->set_handler(handle_uss_copy);
   uss_group->add_command(uss_copy_cmd);
 

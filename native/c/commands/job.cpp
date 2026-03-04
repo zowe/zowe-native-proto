@@ -51,7 +51,7 @@ bool parse_regex_pattern(const std::string &input, std::string &pattern)
 int handle_job_list(InvocationContext &context)
 {
   int rc = 0;
-  ZJB zjb = {};
+  ZJB zjb{};
   std::string owner_name = context.get<std::string>("owner", "");
   std::string prefix_name = context.get<std::string>("prefix", "*");
   std::string status_name = context.get<std::string>("status", "*");
@@ -136,7 +136,7 @@ int handle_job_list(InvocationContext &context)
 int handle_job_list_files(InvocationContext &context)
 {
   int rc = 0;
-  ZJB zjb = {};
+  ZJB zjb{};
   std::string jobid = context.get<std::string>("jobid", "");
   long long max_entries = context.get<long long>("max-entries", 0);
   bool warn = context.get<bool>("warn", true);
@@ -210,7 +210,7 @@ int handle_job_list_files(InvocationContext &context)
 int handle_job_list_proclib(InvocationContext &context)
 {
   int rc = 0;
-  ZJB zjb = {};
+  ZJB zjb{};
 
   std::vector<std::string> proclib;
   rc = zjb_list_proclib(&zjb, proclib);
@@ -232,8 +232,8 @@ int handle_job_list_proclib(InvocationContext &context)
 int handle_job_view_status(InvocationContext &context)
 {
   int rc = 0;
-  ZJB zjb = {};
-  ZJob job = {};
+  ZJB zjb{};
+  ZJob job{};
   std::string jobid = context.get<std::string>("jobid", "");
 
   bool emit_csv = context.get<bool>("response-format-csv", false);
@@ -296,7 +296,7 @@ int handle_job_view_file(InvocationContext &context)
 {
   // Note: Middleware doesn't use this command - it lists jobs by ID instead of DSN
   int rc = 0;
-  ZJB zjb = {};
+  ZJB zjb{};
   std::string dsn = context.get<std::string>("dsn", "");
 
   if (context.has("encoding"))
@@ -340,7 +340,7 @@ int handle_job_view_file(InvocationContext &context)
 int handle_job_view_file_by_id(InvocationContext &context)
 {
   int rc = 0;
-  ZJB zjb = {};
+  ZJB zjb{};
   std::string jobid = context.get<std::string>("jobid", "");
   long long key = context.get<long long>("key", 0);
 
@@ -385,7 +385,7 @@ int handle_job_view_file_by_id(InvocationContext &context)
 int handle_job_view_jcl(InvocationContext &context)
 {
   int rc = 0;
-  ZJB zjb = {};
+  ZJB zjb{};
   std::string jobid = context.get<std::string>("jobid", "");
 
   std::string resp;
@@ -409,7 +409,7 @@ int handle_job_submit(InvocationContext &context)
   std::string dsn = context.get<std::string>("dsn", "");
   std::string jobid;
 
-  ZDS zds = {};
+  ZDS zds{};
   std::string contents;
   rc = zds_read_from_dsn(&zds, dsn, contents);
   if (0 != rc)
@@ -427,7 +427,7 @@ int handle_job_submit_uss(InvocationContext &context)
   int rc = 0;
   std::string file = context.get<std::string>("file-path", "");
 
-  ZUSF zusf = {};
+  ZUSF zusf{};
   std::string response;
   rc = zusf_read_from_uss_file(&zusf, file, response);
   if (0 != rc)
@@ -446,11 +446,11 @@ int handle_job_submit_uss(InvocationContext &context)
 
 int handle_job_submit_jcl(InvocationContext &context)
 {
-  ZJB zjb = {};
+  ZJB zjb{};
   std::string jobid;
   std::string data = zut_read_input(context.input_stream());
 
-  ZEncode encoding_opts = {};
+  ZEncode encoding_opts{};
   bool encoding_prepared = context.has("encoding") && zut_prepare_encoding(context.get<std::string>("encoding", ""), &encoding_opts);
 
   if (context.has("local-encoding"))
@@ -474,7 +474,7 @@ int handle_job_submit_jcl(InvocationContext &context)
 int handle_job_delete(InvocationContext &context)
 {
   int rc = 0;
-  ZJB zjb = {};
+  ZJB zjb{};
   std::string jobid = context.get<std::string>("jobid", "");
 
   rc = zjb_delete(&zjb, jobid);
@@ -499,7 +499,7 @@ bool case_insensitive_match(const char a, const char b)
 int handle_job_watch(InvocationContext &context)
 {
   int rc = 0;
-  ZJB zjb = {};
+  ZJB zjb{};
   std::string job_dsn = context.get<std::string>("job-dsn", "");
   std::string until_match = context.get<std::string>("pattern", "");
   long long max_sleep_seconds = context.get<long long>("max-wait-seconds");
@@ -653,7 +653,7 @@ int handle_job_watch(InvocationContext &context)
 int handle_job_cancel(InvocationContext &context)
 {
   int rc = 0;
-  ZJB zjb = {};
+  ZJB zjb{};
   std::string jobid = context.get<std::string>("jobid", "");
 
   // Note: Cancel options (dump, force, purge, restart) are currently not used by the backend
@@ -680,7 +680,7 @@ int handle_job_cancel(InvocationContext &context)
 int handle_job_hold(InvocationContext &context)
 {
   int rc = 0;
-  ZJB zjb = {};
+  ZJB zjb{};
   std::string jobid = context.get<std::string>("jobid", "");
 
   rc = zjb_hold(&zjb, jobid);
@@ -700,7 +700,7 @@ int handle_job_hold(InvocationContext &context)
 int handle_job_release(InvocationContext &context)
 {
   int rc = 0;
-  ZJB zjb = {};
+  ZJB zjb{};
   std::string jobid = context.get<std::string>("jobid", "");
 
   rc = zjb_release(&zjb, jobid);
@@ -720,7 +720,7 @@ int handle_job_release(InvocationContext &context)
 int job_submit_common(InvocationContext &context, const std::string &jcl, std::string &jobid, const std::string &identifier)
 {
   int rc = 0;
-  ZJB zjb = {};
+  ZJB zjb{};
   rc = zjb_submit(&zjb, jcl, jobid);
 
   if (0 != rc)
@@ -730,7 +730,7 @@ int job_submit_common(InvocationContext &context, const std::string &jcl, std::s
     return RTNCD_FAILURE;
   }
 
-  ZJob job = {};
+  ZJob job{};
   rc = zjb_view(&zjb, std::string(zjb.correlator, sizeof(zjb.correlator)), job);
   if (0 != rc)
   {

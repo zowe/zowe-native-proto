@@ -65,8 +65,8 @@ int create_with_attributes(InvocationContext &context)
 {
   int rc = 0;
   std::string dsn = context.get<std::string>("dsn", "");
-  ZDS zds = {};
-  DS_ATTRIBUTES attributes = {};
+  ZDS zds{};
+  DS_ATTRIBUTES attributes{};
 
   // Extract all the optional creation attributes
   if (context.has("alcunit"))
@@ -207,7 +207,7 @@ int handle_data_set_create_fb(InvocationContext &context)
 {
   int rc = 0;
   std::string dsn = context.get<std::string>("dsn", "");
-  ZDS zds = {};
+  ZDS zds{};
   std::string response;
   rc = zds_create_dsn_fb(&zds, dsn, response);
   return process_data_set_create_result(context, &zds, rc, dsn, response);
@@ -217,7 +217,7 @@ int handle_data_set_create_vb(InvocationContext &context)
 {
   int rc = 0;
   std::string dsn = context.get<std::string>("dsn", "");
-  ZDS zds = {};
+  ZDS zds{};
   std::string response;
   rc = zds_create_dsn_vb(&zds, dsn, response);
   return process_data_set_create_result(context, &zds, rc, dsn, response);
@@ -227,7 +227,7 @@ int handle_data_set_create_adata(InvocationContext &context)
 {
   int rc = 0;
   std::string dsn = context.get<std::string>("dsn", "");
-  ZDS zds = {};
+  ZDS zds{};
   std::string response;
   rc = zds_create_dsn_adata(&zds, dsn, response);
   return process_data_set_create_result(context, &zds, rc, dsn, response);
@@ -237,7 +237,7 @@ int handle_data_set_create_loadlib(InvocationContext &context)
 {
   int rc = 0;
   std::string dsn = context.get<std::string>("dsn", "");
-  ZDS zds = {};
+  ZDS zds{};
   std::string response;
   rc = zds_create_dsn_loadlib(&zds, dsn, response);
   return process_data_set_create_result(context, &zds, rc, dsn, response);
@@ -247,7 +247,7 @@ int handle_data_set_create_member(InvocationContext &context)
 {
   int rc = 0;
   std::string dsn = context.get<std::string>("dsn", "");
-  ZDS zds = {};
+  ZDS zds{};
   std::string response;
   std::vector<ZDSEntry> entries;
 
@@ -291,7 +291,7 @@ int handle_data_set_view(InvocationContext &context)
 {
   int rc = 0;
   std::string dsn = context.get<std::string>("dsn", "");
-  ZDS zds = {};
+  ZDS zds{};
   std::vector<std::string> dds;
 
   if (context.has("encoding"))
@@ -312,7 +312,7 @@ int handle_data_set_view(InvocationContext &context)
     if (!volser_value.empty())
     {
       dds.push_back("alloc dd(input) da('" + dsn + "') shr vol(" + volser_value + ")");
-      ZDIAG diag = {};
+      ZDIAG diag{};
       rc = zut_loop_dynalloc(diag, dds);
       if (0 != rc)
       {
@@ -394,7 +394,7 @@ int handle_data_set_view(InvocationContext &context)
 
   if (dds.size() > 0)
   {
-    ZDIAG diag = {};
+    ZDIAG diag{};
     rc = zut_free_dynalloc_dds(diag, dds);
     if (0 != rc)
     {
@@ -426,7 +426,7 @@ int handle_data_set_list(InvocationContext &context)
   bool warn = context.get<bool>("warn", true);
   bool attributes = context.get<bool>("attributes", false);
 
-  ZDS zds = {};
+  ZDS zds{};
   if (max_entries > 0)
   {
     zds.max_entries = max_entries;
@@ -528,7 +528,7 @@ int handle_data_set_list_members(InvocationContext &context)
   long long max_entries = context.get<long long>("max-entries", 0);
   bool warn = context.get<bool>("warn", true);
 
-  ZDS zds = {};
+  ZDS zds{};
   if (max_entries > 0)
   {
     zds.max_entries = max_entries;
@@ -576,7 +576,7 @@ int handle_data_set_write(InvocationContext &context)
 {
   int rc = 0;
   std::string dsn = context.get<std::string>("dsn", "");
-  ZDS zds = {};
+  ZDS zds{};
   std::vector<std::string> dds;
 
   if (context.has("encoding"))
@@ -620,7 +620,7 @@ int handle_data_set_write(InvocationContext &context)
     if (!volser_value.empty())
     {
       dds.push_back("alloc dd(output) da('" + dsn + "') shr vol(" + volser_value + ")");
-      ZDIAG diag = {};
+      ZDIAG diag{};
       rc = zut_loop_dynalloc(diag, dds);
       if (0 != rc)
       {
@@ -649,7 +649,7 @@ int handle_data_set_write(InvocationContext &context)
 
   if (dds.size() > 0)
   {
-    ZDIAG diag = {};
+    ZDIAG diag{};
     int free_rc = zut_free_dynalloc_dds(diag, dds);
     if (0 != free_rc)
     {
@@ -693,7 +693,7 @@ int handle_data_set_delete(InvocationContext &context)
 {
   int rc = 0;
   std::string dsn = context.get<std::string>("dsn", "");
-  ZDS zds = {};
+  ZDS zds{};
   rc = zds_delete_dsn(&zds, dsn);
 
   if (0 != rc)
@@ -712,7 +712,7 @@ int handle_data_set_rename(InvocationContext &context)
   int rc = 0;
   std::string dsn_before = context.get<std::string>("dsname-before", "");
   std::string dsn_after = context.get<std::string>("dsname-after", "");
-  ZDS zds = {};
+  ZDS zds{};
 
   rc = zds_rename_dsn(&zds, dsn_before, dsn_after);
 
@@ -733,7 +733,7 @@ int handle_rename_member(InvocationContext &context)
   std::string dsname = context.get<std::string>("dsn", "");
   std::string member_before = context.get<std::string>("member-before", "");
   std::string member_after = context.get<std::string>("member-after", "");
-  ZDS zds = {};
+  ZDS zds{};
 
   rc = zds_rename_members(&zds, dsname, member_before, member_after);
   std::string source_member = dsname + "(" + member_before + ")";
@@ -759,7 +759,7 @@ int handle_data_set_restore(InvocationContext &context)
   dds.push_back("alloc da('" + dsn + "') shr");
   dds.push_back("free da('" + dsn + "')");
 
-  ZDIAG diag = {};
+  ZDIAG diag{};
   rc = zut_loop_dynalloc(diag, dds);
   if (0 != rc)
   {
@@ -812,7 +812,7 @@ int handle_data_set_compress(InvocationContext &context)
   dds.push_back("alloc dd(sysprint) lrecl(80) recfm(f,b) blksize(80)");
   dds.push_back("alloc dd(sysin) lrecl(80) recfm(f,b) blksize(80)");
 
-  ZDIAG diag = {};
+  ZDIAG diag{};
   rc = zut_loop_dynalloc(diag, dds);
   if (0 != rc)
   {
@@ -822,7 +822,7 @@ int handle_data_set_compress(InvocationContext &context)
   }
 
   // write control statements
-  ZDS zds = {};
+  ZDS zds{};
   rc = zds_write_to_dd(&zds, "sysin", "        COPY OUTDD=B,INDD=A");
   if (0 != rc)
   {
@@ -871,7 +871,7 @@ int handle_data_set_copy(InvocationContext &context)
   const std::string source = context.get<std::string>("source", "");
   const std::string target = context.get<std::string>("target", "");
 
-  ZDS zds = {};
+  ZDS zds{};
   ZDSCopyOptions options;
   options.replace = context.get<bool>("replace", false);
   options.delete_target_members = context.get<bool>("delete-target-members", false);

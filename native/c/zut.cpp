@@ -12,7 +12,7 @@
 #ifndef _XOPEN_SOURCE
 #define _XOPEN_SOURCE
 #endif
- 
+
 #define _OPEN_SYS_EXT
 #include <sys/ps.h>
 #include <cstdio>
@@ -84,7 +84,7 @@ int zut_run(ZDIAG &diag, const std::string &program, const std::string &parms)
 
 int zut_run(const std::string &program)
 {
-  ZDIAG diag = {};
+  ZDIAG diag{};
   return ZUTRUN(&diag, program.c_str(), nullptr);
 }
 

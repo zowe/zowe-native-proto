@@ -132,7 +132,7 @@ static std::vector<std::string> get_member_names(const std::string &pds_dsn)
 {
   std::vector<std::string> names;
   std::vector<ZDSMem> members;
-  ZDS temp_zds = {};
+  ZDS temp_zds{};
   zds_list_members(&temp_zds, pds_dsn, members);
   for (const auto &mem : members)
   {
@@ -306,8 +306,8 @@ int zds_copy_dsn(ZDS *zds, const std::string &dsn1, const std::string &dsn2, ZDS
   ZDSCopyOptions *opts = options ? options : &default_options;
   opts->target_created = false;
   opts->member_created = false;
-  ZDSTypeInfo info1 = {};
-  ZDSTypeInfo info2 = {};
+  ZDSTypeInfo info1{};
+  ZDSTypeInfo info2{};
 
   zds_get_type_info(dsn1, info1);
   zds_get_type_info(dsn2, info2);
@@ -361,9 +361,9 @@ int zds_copy_dsn(ZDS *zds, const std::string &dsn1, const std::string &dsn2, ZDS
   if (!target_base_exists)
   {
     // Create the target data set
-    ZDS create_zds = {};
+    ZDS create_zds{};
     std::string create_resp;
-    DS_ATTRIBUTES attrs = {};
+    DS_ATTRIBUTES attrs{};
 
     // Common attributes for all data set types
     attrs.recfm = info1.entry.recfm.c_str();
@@ -1328,7 +1328,7 @@ static bool zds_write_recfm_unsupported(const std::string &recfm, const bool inc
 
 int zds_validate_etag(ZDS *zds, const std::string &dsn, bool has_encoding)
 {
-  ZDS read_ds = {};
+  ZDS read_ds{};
   std::string current_contents = "";
   if (has_encoding)
   {
@@ -1646,7 +1646,7 @@ int zds_create_dsn(ZDS *, const std::string &dsn, DS_ATTRIBUTES attributes, std:
 
 int zds_create_dsn_fb(ZDS *zds, const std::string &dsn, std::string &response)
 {
-  DS_ATTRIBUTES attributes = {};
+  DS_ATTRIBUTES attributes{};
   attributes.dsorg = "PO";
   attributes.primary = 5;
   attributes.secondary = 5;
@@ -1660,7 +1660,7 @@ int zds_create_dsn_fb(ZDS *zds, const std::string &dsn, std::string &response)
 
 int zds_create_dsn_vb(ZDS *zds, const std::string &dsn, std::string &response)
 {
-  DS_ATTRIBUTES attributes = {};
+  DS_ATTRIBUTES attributes{};
   attributes.dsorg = "PO";
   attributes.primary = 5;
   attributes.secondary = 5;
@@ -1674,7 +1674,7 @@ int zds_create_dsn_vb(ZDS *zds, const std::string &dsn, std::string &response)
 
 int zds_create_dsn_adata(ZDS *zds, const std::string &dsn, std::string &response)
 {
-  DS_ATTRIBUTES attributes = {};
+  DS_ATTRIBUTES attributes{};
   attributes.dsorg = "PO";
   attributes.primary = 5;
   attributes.secondary = 5;
@@ -1689,7 +1689,7 @@ int zds_create_dsn_adata(ZDS *zds, const std::string &dsn, std::string &response
 
 int zds_create_dsn_loadlib(ZDS *zds, const std::string &dsn, std::string &response)
 {
-  DS_ATTRIBUTES attributes = {};
+  DS_ATTRIBUTES attributes{};
   attributes.dsorg = "PO";
   attributes.primary = 5;
   attributes.secondary = 5;
@@ -1831,7 +1831,7 @@ int zds_list_members(ZDS *zds, std::string dsn, std::vector<ZDSMem> &members)
 
   members.reserve(zds->max_entries);
 
-  RECORD rec = {};
+  RECORD rec{};
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=pds-reading-directory-sequentially
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=pdse-reading-directory - long alias names omitted, use DESERV for those
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=pds-directory
@@ -1852,7 +1852,7 @@ int zds_list_members(ZDS *zds, std::string dsn, std::vector<ZDSMem> &members)
     int len = sizeof(RECORD_ENTRY);
     for (int i = 0; i < rec.count; i = i + len)
     {
-      RECORD_ENTRY entry = {};
+      RECORD_ENTRY entry{};
       memcpy(&entry, data, sizeof(entry));
       long long int end = 0xFFFFFFFFFFFFFFFF; // indicates end of entries
       if (memcmp(entry.name, &end, sizeof(end)) == 0)
@@ -1892,7 +1892,7 @@ int zds_list_members(ZDS *zds, std::string dsn, std::vector<ZDSMem> &members)
           }
         }
 
-        ZDSMem mem = {};
+        ZDSMem mem{};
         mem.name = std::string(name);
         members.push_back(mem);
 
@@ -2811,7 +2811,7 @@ int zds_list_data_sets(ZDS *zds, std::string dsn, std::vector<ZDSEntry> &dataset
 
     while (work_area_total > 0)
     {
-      ZDSEntry entry = {};
+      ZDSEntry entry{};
       f = (ZDS_CSI_ENTRY *)p;
 
       if (ERROR == f->flag)

@@ -51,7 +51,7 @@ int handle_tool_convert_dsect(InvocationContext &context)
   dds.push_back("alloc fi(sysadata) da('" + adata_dsn + "') shr msg(2)");
   dds.push_back("alloc fi(edcdsect) da('" + chdr_dsn + "') shr msg(2)");
 
-  ZDIAG diag = {};
+  ZDIAG diag{};
   rc = zut_loop_dynalloc(diag, dds);
   if (0 != rc)
   {
@@ -120,7 +120,7 @@ int handle_tool_display_symbol(InvocationContext &context)
 int handle_tool_list_parmlib(InvocationContext &context)
 {
   int rc = 0;
-  ZDIAG diag = {};
+  ZDIAG diag{};
   std::vector<std::string> parmlibs;
   rc = zut_list_parmlib(diag, parmlibs);
   if (0 != rc)
@@ -153,7 +153,7 @@ int handle_tool_search(InvocationContext &context)
   dds.push_back("alloc dd(outdd)");
   dds.push_back("alloc dd(sysin)");
 
-  ZDIAG diag = {};
+  ZDIAG diag{};
   rc = zut_loop_dynalloc(diag, dds);
   if (0 != rc)
   {
@@ -166,7 +166,7 @@ int handle_tool_search(InvocationContext &context)
   std::string data = " SRCHFOR '" + pattern + "'\n";
 
   // Write control statements
-  ZDS zds = {0};
+  ZDS zds{};
   zds_write_to_dd(&zds, "sysin", data);
   if (0 != rc)
   {
@@ -221,7 +221,7 @@ int handle_tool_amblist(InvocationContext &context)
   dds.push_back("alloc dd(sysprint) lrecl(80) recfm(f,b) blksize(80)");
   dds.push_back("alloc dd(sysin) lrecl(80) recfm(f,b) blksize(80)");
 
-  ZDIAG diag = {};
+  ZDIAG diag{};
   rc = zut_loop_dynalloc(diag, dds);
   if (0 != rc)
   {
@@ -233,7 +233,7 @@ int handle_tool_amblist(InvocationContext &context)
   std::transform(statements.begin(), statements.end(), statements.begin(), ::toupper);
 
   // Write control statements
-  ZDS zds = {0};
+  ZDS zds{};
   zds_write_to_dd(&zds, "sysin", statements);
   if (0 != rc)
   {
@@ -330,7 +330,7 @@ int handle_tool_run(InvocationContext &context)
     dds.push_back("alloc dd(" + kv.first + ") " + kv.second.get_string_value());
   }
 
-  ZDIAG diag = {};
+  ZDIAG diag{};
   rc = zut_loop_dynalloc(diag, dds);
   if (0 != rc)
   {

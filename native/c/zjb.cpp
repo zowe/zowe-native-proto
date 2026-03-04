@@ -295,7 +295,7 @@ int zjb_read_job_content_by_dsn(ZJB *zjb, const std::string &jobdsn, std::string
 int zjb_wait(ZJB *zjb, const std::string &status)
 {
   int rc = 0;
-  ZJob job = {};
+  ZJob job{};
   std::string jobid(zjb->jobid, sizeof(zjb->jobid));
   const auto waiting_for_active = status == "ACTIVE";
 
@@ -487,14 +487,14 @@ int zjb_list_dds(ZJB *zjb, const std::string &jobid, std::vector<ZJobDD> &jobDDs
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=allocation-specifying-data-set-name-daldsnam
   if (0 == entries)
   {
-    ZJob job = {};
+    ZJob job{};
     int view_rc = zjb_view(zjb, jobid, job);
     if (RTNCD_SUCCESS == view_rc)
     {
       zut_rtrim(job.owner);
       zut_rtrim(job.jobname);
 
-      ZJobDD jesmsglg = {};
+      ZJobDD jesmsglg{};
       jesmsglg.jobid = job.jobid;
       jesmsglg.ddn = "JESMSGLG";
       jesmsglg.dsn = job.owner + '.' + job.jobname + '.' + job.jobid + '.' + jesmsglg.ddn;
@@ -504,7 +504,7 @@ int zjb_list_dds(ZJB *zjb, const std::string &jobid, std::vector<ZJobDD> &jobDDs
 #define JESMSGLG_KEY 2
       jesmsglg.key = JESMSGLG_KEY;
       jobDDs.push_back(jesmsglg);
-      ZJobDD jesjcl = {};
+      ZJobDD jesjcl{};
       jesjcl.jobid = job.jobid;
       jesjcl.ddn = "JESJCL";
       jesjcl.dsn = job.owner + '.' + job.jobname + '.' + job.jobid + '.' + jesjcl.ddn;
@@ -530,7 +530,7 @@ int zjb_list_dds(ZJB *zjb, const std::string &jobid, std::vector<ZJobDD> &jobDDs
     std::string procstep((char *)sysoutInfoNext[i].stvsprcd, sizeof(sysoutInfo->stvsprcd));
     std::string dsn((char *)sysoutInfoNext[i].stvsdsn, sizeof(sysoutInfo->stvsdsn));
 
-    ZJobDD zjobdd = {};
+    ZJobDD zjobdd{};
 
     zjobdd.ddn = ddn;
     zjobdd.stepname = stepname;
@@ -665,7 +665,7 @@ void zjb_build_job_response(ZJB_JOB_INFO *PTR64 job_info, int entries, std::vect
     std::string jobclass((char *)job_info_next[i].statjqtr.sttrclas, sizeof(job_info->statjqtr.sttrclas));
     std::string correlator((char *)job_info_next[i].statjqtr.sttrjcor, sizeof(job_info->statjqtr.sttrjcor));
 
-    ZJob zjob = {};
+    ZJob zjob{};
 
     union cc
     {
