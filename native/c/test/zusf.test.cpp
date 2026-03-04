@@ -32,7 +32,7 @@ void zusf_tests()
   describe("zusf_copy_uss_file_or_dir tests",
            [&]() -> void
            {
-             ZUSF zusf;
+             ZUSF zusf{};
              ListOptions short_list_opts{false, false, 1};
              ListOptions long_list_opts{false, true, 1};
              ListOptions all_long_list_opts{true, true, 1};
@@ -50,7 +50,8 @@ void zusf_tests()
              std::string dir_b;
 
              beforeEach([&]() -> void
-                        { memset(&zusf, 0, sizeof(zusf));
+                        { 
+                          zusf = {};
                           std::string discard;
                           execute_command_with_output("rm -rf " + tmp_base, discard);
                           mkdir(tmp_base.c_str(), 0755);

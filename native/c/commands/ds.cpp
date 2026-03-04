@@ -527,7 +527,7 @@ int handle_data_set_list_members(InvocationContext &context)
   std::string dsn = context.get<std::string>("dsn", "");
   long long max_entries = context.get<long long>("max-entries", 0);
   bool warn = context.get<bool>("warn", true);
-  string pattern = context.get<string>("pattern", "");
+  std::string pattern = context.get<std::string>("pattern", "");
 
   ZDS zds{};
   if (max_entries > 0)

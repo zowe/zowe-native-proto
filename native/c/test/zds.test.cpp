@@ -52,9 +52,9 @@ struct DataSetTestContextBase
 
 struct ListMembersTestContext : DataSetTestContextBase
 {
-  string pds_dsn;
+  std::string pds_dsn;
 
-  explicit ListMembersTestContext(vector<string> &list)
+  explicit ListMembersTestContext(std::vector<std::string> &list)
       : DataSetTestContextBase(list)
   {
     pds_dsn = get_random_ds(3);
@@ -283,7 +283,7 @@ void zds_tests()
                              tc.setup_pds();
 
                              ZDS zds = {0};
-                             vector<ZDSMem> members;
+                             std::vector<ZDSMem> members;
                              int rc = zds_list_members(&zds, tc.pds_dsn, members, "");
                              ExpectWithContext(rc, zds.diag.e_msg).ToBe(0);
                              Expect(members.size()).ToBe(4); // ABC1, ABC2, XYZ1, TEST
@@ -296,7 +296,7 @@ void zds_tests()
                              tc.setup_pds();
 
                              ZDS zds = {0};
-                             vector<ZDSMem> members;
+                             std::vector<ZDSMem> members;
                              int rc = zds_list_members(&zds, tc.pds_dsn, members, "XYZ1");
                              ExpectWithContext(rc, zds.diag.e_msg).ToBe(0);
                              Expect(members.size()).ToBe(1);
@@ -310,7 +310,7 @@ void zds_tests()
                              tc.setup_pds();
 
                              ZDS zds = {0};
-                             vector<ZDSMem> members;
+                             std::vector<ZDSMem> members;
                              int rc = zds_list_members(&zds, tc.pds_dsn, members, "ABC*");
                              ExpectWithContext(rc, zds.diag.e_msg).ToBe(0);
                              Expect(members.size()).ToBe(2); // ABC1, ABC2
@@ -328,7 +328,7 @@ void zds_tests()
                              tc.setup_pds();
 
                              ZDS zds = {0};
-                             vector<ZDSMem> members;
+                             std::vector<ZDSMem> members;
                              // Match exactly 4 characters starting with ABC
                              int rc = zds_list_members(&zds, tc.pds_dsn, members, "ABC?");
                              ExpectWithContext(rc, zds.diag.e_msg).ToBe(0);
@@ -342,7 +342,7 @@ void zds_tests()
                              tc.setup_pds();
 
                              ZDS zds = {0};
-                             vector<ZDSMem> members;
+                             std::vector<ZDSMem> members;
                              int rc = zds_list_members(&zds, tc.pds_dsn, members, "NOMATCH*");
                              ExpectWithContext(rc, zds.diag.e_msg).ToBe(0);
                              Expect(members.size()).ToBe(0);
@@ -354,7 +354,7 @@ void zds_tests()
                              tc.setup_pds(); // Creates ABC1, ABC2, XYZ1, TEST
 
                              ZDS zds = {0};
-                             vector<ZDSMem> members;
+                             std::vector<ZDSMem> members;
                              int rc = zds_list_members(&zds, tc.pds_dsn, members, "*1");
                              ExpectWithContext(rc, zds.diag.e_msg).ToBe(0);
                              Expect(members.size()).ToBe(2); // ABC1, XYZ1
@@ -372,7 +372,7 @@ void zds_tests()
                              tc.setup_pds();
 
                              ZDS zds = {0};
-                             vector<ZDSMem> members;
+                             std::vector<ZDSMem> members;
                              int rc = zds_list_members(&zds, tc.pds_dsn, members, "A*2");
                              ExpectWithContext(rc, zds.diag.e_msg).ToBe(0);
                              Expect(members.size()).ToBe(1); // ABC2
@@ -386,7 +386,7 @@ void zds_tests()
                              tc.setup_pds();
 
                              ZDS zds = {0};
-                             vector<ZDSMem> members;
+                             std::vector<ZDSMem> members;
                              // Starts with any char, followed by B, then any trailing chars
                              int rc = zds_list_members(&zds, tc.pds_dsn, members, "?B*");
                              ExpectWithContext(rc, zds.diag.e_msg).ToBe(0);
@@ -405,7 +405,7 @@ void zds_tests()
                              tc.setup_pds();
 
                              ZDS zds = {0};
-                             vector<ZDSMem> members;
+                             std::vector<ZDSMem> members;
                              // Matches exactly 4 characters
                              int rc = zds_list_members(&zds, tc.pds_dsn, members, "????");
                              ExpectWithContext(rc, zds.diag.e_msg).ToBe(0);
@@ -419,7 +419,7 @@ void zds_tests()
                              tc.setup_pds();
 
                              ZDS zds = {0};
-                             vector<ZDSMem> members;
+                             std::vector<ZDSMem> members;
                              // 'X?Z*' matches XYZ1
                              int rc = zds_list_members(&zds, tc.pds_dsn, members, "X?Z*");
                              ExpectWithContext(rc, zds.diag.e_msg).ToBe(0);
@@ -433,7 +433,7 @@ void zds_tests()
                              tc.setup_pds();
 
                              ZDS zds = {0};
-                             vector<ZDSMem> members;
+                             std::vector<ZDSMem> members;
 
                              int rc = zds_list_members(&zds, tc.pds_dsn, members, "xyz1");
                              ExpectWithContext(rc, zds.diag.e_msg).ToBe(0);
