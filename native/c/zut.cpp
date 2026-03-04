@@ -852,6 +852,5 @@ int zut_convert_date(const unsigned char *date_ptr, std::string &out_str)
     out_str = "";
   }
 
-  // printf("rc %d", rc);
   return rc;
 }
