@@ -387,7 +387,7 @@ void ZUTDBGMG(const char *msg)
 int ZUTCVTD(const char *ptr, char *time)
 {
   TIME_STRUCT time_in = {0};
-  memcpy(&time_in, ptr, 4);
+  memcpy(&time_in.date, ptr, 4);
   unsigned long long tod = 0;
   int rc = convtod(&time_in, &tod);
 
