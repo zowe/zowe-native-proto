@@ -37,12 +37,6 @@
 
 #endif
 
-#if defined(__cplusplus) && defined(__MVS__)
-// nothing
-#else
-
-#endif
-
 #if defined(__MVS__)
 #ifdef __open_xl__
 #define ZNP_PACK_ON _Pragma("pack(1)")
