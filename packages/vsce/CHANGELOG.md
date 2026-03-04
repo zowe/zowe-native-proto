@@ -7,6 +7,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 ## Recent Changes
 
 - Added support for passing member patterns when filtering data sets. [#817](https://github.com/zowe/zowe-native-proto/pull/817)
+- Added the functionality to copy USS files and directories. [#379](https://github.com/zowe/zowe-native-proto/pull/379).
 - Added experimental native client for improved performance which can be enabled via a VS Code setting. [#833](https://github.com/zowe/zowe-native-proto/pull/833)
 
 ## `0.3.0`
