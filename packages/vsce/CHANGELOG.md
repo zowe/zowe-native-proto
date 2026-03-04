@@ -7,10 +7,12 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 ## Recent Changes
 
 - Updated **Show Attributes** to display member ISPF statistics [#630](https://github.com/zowe/zowe-native-proto/issues/630)
+- Added the functionality to copy USS files and directories. [#379](https://github.com/zowe/zowe-native-proto/pull/379).
 
 ## `0.3.0`
 
 - Used new SDK groupings that align with zowex. [#807](https://github.com/zowe/zowe-native-proto/pull/808)
+- Added support for passing member patterns when filtering data sets. [#817](https://github.com/zowe/zowe-native-proto/pull/817)
 
 ## `0.2.4`
 

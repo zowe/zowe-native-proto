@@ -386,18 +386,17 @@ void ZUTDBGMG(const char *msg)
 #pragma epilog(ZUTCVTD, " ZWEEPILG ")
 int ZUTCVTD(const char *ptr, char *time)
 {
-  zwto_debug("BEGINNING");
   TIME_STRUCT time_in = {0};
-  memcpy(&time_in.date, ptr, 4);
+  memcpy(&time_in, ptr, 4);
   unsigned long long tod = 0;
   int rc = convtod(&time_in, &tod);
-  zwto_debug("here %d", rc);
+
   if (0 != rc)
     return rc;
 
   TIME_STRUCT time_out = {0};
   rc = stckconv(&tod, &time_out);
-  zwto_debug("here2 %d", rc);
+
   if (0 == rc)
   {
     sprintf(time, "%02x/%02x/%02x%02x",

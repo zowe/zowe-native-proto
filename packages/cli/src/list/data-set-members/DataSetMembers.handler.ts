@@ -18,6 +18,7 @@ export default class ListDataSetMembersHandler extends SshBaseHandler {
         const response = await client.ds.listDsMembers({
             dsname: params.arguments.dsname,
             attributes: params.arguments.attributes,
+            pattern: params.arguments.pattern,
         });
         params.response.data.setMessage(
             "Successfully listed %d members in data sets %s",

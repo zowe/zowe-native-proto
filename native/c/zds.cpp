@@ -1839,132 +1839,6 @@ int zds_rename_members(ZDS *zds, const string &dsname, const string &member_befo
   return 0;
 }
 
-// void parse_century_julian_date(
-//     const unsigned char *date_bytes, // 4 bytes: [century, YY, DD, DF]
-//     std::string *date_out            // Output: "YYYY/MM/DD" or ""
-// )
-// {
-//   // Check if date is all zeros (not set)
-//   if (date_bytes[0] == 0 && date_bytes[1] == 0 &&
-//       date_bytes[2] == 0 && date_bytes[3] == 0)
-//   {
-//     *date_out = "";
-//     return;
-//   }
-
-//   // Extract century (byte 0)
-//   int base_century = (date_bytes[0] == 0x00) ? 1900 : 2000;
-
-//   // Unpack year from byte 1 (packed decimal YY)
-//   int year_tens = (date_bytes[1] >> 4) & 0x0F;
-//   int year_ones = date_bytes[1] & 0x0F;
-//   int year = base_century + (year_tens * 10) + year_ones;
-
-//   // Unpack day of year from bytes 2-3 (packed decimal DDDF)
-//   int day_hundreds = (date_bytes[2] >> 4) & 0x0F;
-//   int day_tens = date_bytes[2] & 0x0F;
-//   int day_ones = (date_bytes[3] >> 4) & 0x0F;
-//   // Ignore sign nibble in low nibble of byte 3
-//   int day_of_year = (day_hundreds * 100) + (day_tens * 10) + day_ones;
-
-//   // Validate day of year
-//   if (day_of_year < 1 || day_of_year > 366)
-//   {
-//     *date_out = "";
-//     return;
-//   }
-
-//   // Convert Julian day to calendar date
-//   static const int days_in_month[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
-//   bool is_leap = (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
-
-//   int month = 1;
-//   int day = day_of_year;
-
-//   for (int i = 0; i < 12 && day > days_in_month[i]; i++)
-//   {
-//     int days_this_month = days_in_month[i];
-//     if (i == 1 && is_leap)
-//       days_this_month = 29;
-
-//     day -= days_this_month;
-//     month++;
-//   }
-
-//   // Format as "YYYY/MM/DD"
-//   char buffer[11];
-//   sprintf(buffer, "%04d/%02d/%02d", year, month, day);
-//   *date_out = buffer;
-// }
-
-// void parse_century_julian_date(
-//     const unsigned char *date_bytes, // 4 bytes: [century, YY, DDD packed]
-//     std::string *date_out)
-// {
-//   // Check for all-zero date
-//   if (date_bytes[0] == 0 && date_bytes[1] == 0 &&
-//       date_bytes[2] == 0 && date_bytes[3] == 0)
-//   {
-//     *date_out = "";
-//     return;
-//   }
-
-//   // Convert century + YY + DDD into integer year and day-of-year
-//   int base_century = (date_bytes[0] == 0x00) ? 1900 : 2000;
-//   int year = base_century + ((date_bytes[1] >> 4) & 0x0F) * 10 + (date_bytes[1] & 0x0F);
-//   int day_of_year = ((date_bytes[2] >> 4) & 0x0F) * 100 +
-//                     (date_bytes[2] & 0x0F) * 10 +
-//                     ((date_bytes[3] >> 4) & 0x0F);
-
-//   // Sanity check
-//   if (day_of_year < 1 || day_of_year > 366)
-//   {
-//     *date_out = "";
-//     return;
-//   }
-
-//   // Prepare a TIME_STRUCT for TOD conversion
-//   TIME_STRUCT ts_in = {0};
-
-//   unsigned char packed_date[4];
-//   packed_date[0] = date_bytes[0]; // Century (00 or 01)
-//   packed_date[1] = date_bytes[1]; // YY
-//   packed_date[2] = date_bytes[2]; // DD
-//   packed_date[3] = (date_bytes[3] & 0xF0) | 0x0F;
-
-//   unsigned long long tod = 0;
-//   int rc = convtod((TIME_STRUCT *)packed_date, &tod); // Ensure CONVTOD macro is using the right offset
-
-//   if (rc != 0)
-//   {
-//     *date_out = "ERR-CONV";
-//     return;
-//   }
-
-//   TIME_STRUCT ts_out = {0};
-//   rc = stckconv(&tod, &ts_out);
-
-//   if (rc == 0)
-//   {
-//     char buffer[11];
-//     int full_year = (ts_out.date.mmddyyyy.year[0] * 100) + ts_out.date.mmddyyyy.year[1];
-//     sprintf(buffer, "%04d/%02d/%02d", full_year, ts_out.date.mmddyyyy.month, ts_out.date.mmddyyyy.day);
-//     *date_out = buffer;
-//   }
-//   else
-//   {
-//     *date_out = "ERR-STCK";
-//   }
-
-//   char buffer[11];
-//   sprintf(buffer, "%04d/%02d/%02d",
-//           ts_out.date.mmddyyyy.year[0] * 100 + ts_out.date.mmddyyyy.year[1],
-//           ts_out.date.mmddyyyy.month,
-//           ts_out.date.mmddyyyy.day);
-
-//   *date_out = buffer;
-// }
-
 void parse_packed_time(
     const unsigned char hours_byte,   // Byte 13: HH
     const unsigned char minutes_byte, // Byte 14: MM
@@ -2007,7 +1881,51 @@ void parse_packed_time(
   *time_out = buffer;
 }
 
-int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &members, bool show_attributes)
+bool is_match(const char *s, const char *p)
+{
+  const char *star_p = nullptr; // Tracks the last '*' seen in the pattern
+  const char *star_s = nullptr; // Tracks where we were in the string when we saw the '*'
+
+  while (*s != '\0')
+  {
+    // Exact match or '?' wildcard: advance both pointers
+    if (*p == '?' || *p == *s)
+    {
+      s++;
+      p++;
+    }
+    // '*' wildcard found: record positions and advance the pattern
+    else if (*p == '*')
+    {
+      star_p = p;
+      star_s = s;
+      p++;
+    }
+    // Mismatch, but we previously saw a '*': backtrack to the star
+    else if (star_p != nullptr)
+    {
+      p = star_p + 1; // Reset pattern pointer to right after the star
+      star_s++;       // Force the star to consume one more character of the string
+      s = star_s;     // Reset string pointer to this new position
+    }
+    // Mismatch and no '*' to save us: immediate failure
+    else
+    {
+      return false;
+    }
+  }
+
+  // Consume any trailing '*' at the end of the pattern
+  while (*p == '*')
+  {
+    p++;
+  }
+
+  // If we've reached the end of the pattern, it's a full match
+  return *p == '\0';
+}
+
+int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &members, const string &pattern, bool show_attributes)
 {
   // PO
   // PO-E (PDS)
@@ -2019,6 +1937,9 @@ int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &members, bool show_at
     zds->max_entries = ZDS_DEFAULT_MAX_MEMBER_ENTRIES;
 
   members.reserve(zds->max_entries);
+
+  string upper_pattern = pattern;
+  transform(upper_pattern.begin(), upper_pattern.end(), upper_pattern.begin(), ::toupper);
 
   RECORD rec = {0};
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=pds-reading-directory-sequentially
@@ -2052,27 +1973,19 @@ int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &members, bool show_at
       }
       else
       {
-        total_entries++;
-
-        if (total_entries > zds->max_entries)
-        {
-          zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Reached maximum returned members requested %d", zds->max_entries);
-          zds->diag.detail_rc = ZDS_RSNCD_MAXED_ENTRIES_REACHED;
-          fclose(fp);
-          return RTNCD_WARNING;
-        }
-
         unsigned char info = entry.info;
         unsigned char pointer_count = entry.info;
-        char name[9] = {0};
+
         if (info & 0x80) // bit 0 indicates alias
         {
           // TODO(Kelosky): // member name is an alias
         }
+
         pointer_count &= 0x60; // bits 1-2 contain number of user data TTRNs
         pointer_count >>= 5;   // adjust to byte boundary
         info &= 0x1F;          // bits 3-7 contain the number of half words of user data
 
+        char name[9] = {0};
         memcpy(name, entry.name, sizeof(entry.name));
 
         for (int j = 8; j >= 0; j--)
@@ -2083,42 +1996,52 @@ int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &members, bool show_at
           }
         }
 
-        ZDSMem mem = {0};
-        mem.name = string(name);
-        int user_data_len = info * 2;
-
-        if (show_attributes && user_data_len >= sizeof(ISPF_STATS))
+        // Compare the member name against the uppercased pattern
+        if (pattern.empty() || is_match(name, upper_pattern.c_str()))
         {
-          const ISPF_STATS *stats = reinterpret_cast<const ISPF_STATS *>(data + sizeof(entry));
-          mem.vers = stats->version;
-          mem.mod = stats->level;
+          total_entries++;
 
-          mem.sclm = (stats->flags & 0x80) != 0;
+          if (total_entries > zds->max_entries)
+          {
+            zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Reached maximum returned members requested %d", zds->max_entries);
+            zds->diag.detail_rc = ZDS_RSNCD_MAXED_ENTRIES_REACHED;
+            fclose(fp);
+            return RTNCD_WARNING;
+          }
 
-          int rc = zut_convert_date(&stats->created_date_century, mem.c4date);
+          ZDSMem mem = {0};
+          mem.name = string(name);
+          int user_data_len = info * 2;
 
-          // Convert Modified Date
-          rc = zut_convert_date(&stats->modified_date_century, mem.m4date);
+          if (show_attributes && user_data_len >= sizeof(ISPF_STATS))
+          {
+            const ISPF_STATS *stats = reinterpret_cast<const ISPF_STATS *>(data + sizeof(entry));
+            mem.vers = stats->version;
+            mem.mod = stats->level;
 
-          // std::cout << "C4DATE: rc=" << rc << ", " << mem.c4date << std::endl;
-          // std::cout << "M4DATE: rc=" << rc << ", " << mem.m4date << std::endl;
+            mem.sclm = (stats->flags & 0x80) != 0;
 
-          parse_packed_time(
-              stats->modified_time_hours,
-              stats->modified_time_minutes,
-              stats->modified_time_seconds,
-              &mem.mtime);
+            int rc = zut_convert_date(&stats->created_date_century, mem.c4date);
 
-          mem.cnorc = stats->current_number_of_lines;
-          mem.inorc = stats->initial_number_of_lines;
-          mem.mnorc = stats->modified_number_of_lines;
+            // Convert Modified Date
+            rc = zut_convert_date(&stats->modified_date_century, mem.m4date);
 
-          char user[9] = {0};
-          memcpy(user, stats->userid, 8);
-          mem.user = string(user);
+            parse_packed_time(
+                stats->modified_time_hours,
+                stats->modified_time_minutes,
+                stats->modified_time_seconds,
+                &mem.mtime);
+
+            mem.cnorc = stats->current_number_of_lines;
+            mem.inorc = stats->initial_number_of_lines;
+            mem.mnorc = stats->modified_number_of_lines;
+
+            char user[9] = {0};
+            memcpy(user, stats->userid, 8);
+            mem.user = string(user);
+          }
+          members.push_back(mem);
         }
-
-        members.push_back(mem);
 
         data += sizeof(entry) + info * 2;
         len = sizeof(entry) + info * 2;

@@ -39,6 +39,12 @@ export const ListDataSetMembersDefinition: ICommandDefinition = {
             description: "Fetch attributes of the members being listed.",
             type: "boolean",
         },
+        {
+            name: "attributes",
+            aliases: ["a"],
+            description: "Fetch attributes of the members being listed.",
+            type: "boolean",
+        },
     ],
     profile: { optional: ["ssh"] },
     outputFormatOptions: true,
