@@ -198,7 +198,7 @@ static int convtod(TIME_STRUCT *time_struct, unsigned long long *tod)
   CONVTOD_MODEL(dsa_convtod_model);
   dsa_convtod_model = convtod_model;
 
-  CONVTOD(*tod, *time_struct, dsa_convtod_model, rc, YYYYDDD);
+  CONVTOD(*tod, *time_struct, dsa_convtod_model, rc, YYDDD);
 
   return rc;
 }

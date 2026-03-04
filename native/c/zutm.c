@@ -388,7 +388,7 @@ int ZUTCVTD(const char *ptr, char *time)
 {
   zwto_debug("BEGINNING");
   TIME_STRUCT time_in = {0};
-  memcpy(&time_in, ptr, 4);
+  memcpy(&time_in.date, ptr, 4);
   unsigned long long tod = 0;
   int rc = convtod(&time_in, &tod);
   zwto_debug("here %d", rc);
@@ -400,7 +400,7 @@ int ZUTCVTD(const char *ptr, char *time)
   zwto_debug("here2 %d", rc);
   if (0 == rc)
   {
-    sprintf(time, "%02d/%02d/%02d%02d",
+    sprintf(time, "%02x/%02x/%02x%02x",
             time_out.date.mmddyyyy.month,
             time_out.date.mmddyyyy.day,
             time_out.date.mmddyyyy.year[0],
