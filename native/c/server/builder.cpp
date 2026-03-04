@@ -13,7 +13,7 @@
 #include "logger.hpp"
 #include "rpcio.hpp"
 #include "server.hpp"
-#include "../c/zbase64.h"
+#include "../zbase64.h"
 #include <cerrno>
 #include <cstdlib>
 #include <iostream>

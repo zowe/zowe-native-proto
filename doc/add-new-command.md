@@ -250,14 +250,14 @@ Then run the type generation script to convert your TypeScript types to C++ sche
 npm run build:types:zowed
 ```
 
-This generates `native/zowed/schemas/requests.hpp` and `responses.hpp` with schema definitions for all RPC types.
+This generates `native/c/server/schemas/requests.hpp` and `responses.hpp` with schema definitions for all RPC types.
 
 ### Step 3.3: Register the Command in zowed
 
-Edit `native/zowed/commands.cpp` to register your command with the dispatcher:
+Edit `native/c/server/rpc_commands.cpp` to register your command with the dispatcher:
 
 ```cpp
-#include "commands.hpp"
+#include "rpc_commands.hpp"
 #include "dispatcher.hpp"
 #include "schemas/requests.hpp"
 #include "schemas/responses.hpp"
@@ -317,7 +317,7 @@ Build the zowed C++ binary:
 npm run z:build:zowed
 ```
 
-**Note:** This command is equivalent to running `cd native/zowed && make` on z/OS.
+**Note:** This command is equivalent to running `cd native/c/server && make` on z/OS.
 
 ### Step 4.2: Add SDK Method
 
@@ -452,7 +452,7 @@ You've successfully added a new command to the Zowe Native Protocol stack! Here'
 2. **Tested it locally** on z/OS using the zowex CLI
 3. **Defined RPC types** in `packages/sdk/src/doc/rpc/` as TypeScript interfaces
 4. **Generated C++ schemas** using `npm run build:types:zowed`
-5. **Registered it with zowed** using the `CommandBuilder` API in `native/zowed/commands.cpp`
+5. **Registered it with zowed** using the `CommandBuilder` API in `native/c/server/rpc_commands.cpp`
 6. **Added SDK methods** in TypeScript for easy client-side access
 7. **Tested end-to-end** with a sample script
 
@@ -469,7 +469,7 @@ You've successfully added a new command to the Zowe Native Protocol stack! Here'
 For a complete working example that includes all layers (C++ native, SDK, CLI, and VS Code extension), check out the [`examples/add-new-command`](../examples/add-new-command) directory. This includes:
 
 - **C++ command** (`native/c/`) - Example command implementation for zowex
-- **C++ middleware** (`native/zowed/`) - Command registration with the dispatcher
+- **C++ middleware** (`native/c/server/`) - Command registration with the dispatcher
 - **SDK** (`packages/sdk/`) - TypeScript types and client methods
 - **CLI** (`packages/cli/`) - CLI command definition and handler
 - **VS Code Extension** (`packages/vsce/`) - VS Code integration with CommandApi

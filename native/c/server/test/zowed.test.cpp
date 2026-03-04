@@ -16,8 +16,8 @@
 #include <sys/stat.h>
 #include <fstream>
 #include <fcntl.h>
-#include "../../c/test/ztest.hpp"
-#include "../../c/ztype.h"
+#include "../../test/ztest.hpp"
+#include "../../ztype.h"
 #include "zowed.test.hpp"
 
 using namespace ztst;
@@ -135,7 +135,7 @@ void stop_daemon(DaemonHandle &handle)
   waitpid(handle.pid, nullptr, 0);
 }
 
-const std::string zowed_dir = "./../../zowed/build-out";
+const std::string zowed_dir = "./../build-out";
 const std::string zowed_command = zowed_dir + "/zowed";
 
 void zowed_tests()

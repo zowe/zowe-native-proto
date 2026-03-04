@@ -9,14 +9,14 @@
  *
  */
 
-#include "commands.hpp"
+#include "rpc_commands.hpp"
 #include "dispatcher.hpp"
 #include "schemas/requests.hpp"
 #include "schemas/responses.hpp"
-#include "../c/commands/ds.hpp"
-#include "../c/commands/job.hpp"
-#include "../c/commands/uss.hpp"
-#include "../c/commands/sample.hpp"
+#include "../commands/ds.hpp"
+#include "../commands/job.hpp"
+#include "../commands/uss.hpp"
+#include "../commands/sample.hpp"
 
 // ... existing registration functions ...
 

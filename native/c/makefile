@@ -69,7 +69,7 @@ SWIG_EXTENDER_OBJS = $(OUT_DIR_SWIG)/zut.o $(OUT_DIR_SWIG)/zds.o $(OUT_DIR_SWIG)
 all: libzut.so libzut.a libzds.so libzds.a libzusf.so libzusf.a libzcn.so libzcn.a libzjb.so libzjb.a zowex zoweax
 swig-extenders: $(OUT_DIR_SWIG) $(SWIG_EXTENDER_OBJS)
 zowed-tests:
-	 $(MAKE) -c ../zowed/test
+	 $(MAKE) -c server/test
 tests: zowed-tests
 	 $(MAKE) -c test
 

@@ -12,7 +12,7 @@
 #ifndef BUILDER_HPP
 #define BUILDER_HPP
 
-#include "../c/extend/plugin.hpp"
+#include "../extend/plugin.hpp"
 #include "validator.hpp"
 #include <string>
 #include <vector>

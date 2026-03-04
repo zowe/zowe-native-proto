@@ -9,14 +9,14 @@
  *
  */
 
-#include "commands.hpp"
+#include "rpc_commands.hpp"
 #include "dispatcher.hpp"
 #include "schemas/requests.hpp"
 #include "schemas/responses.hpp"
-#include "../c/commands/ds.hpp"
-#include "../c/commands/job.hpp"
-#include "../c/commands/tso.hpp"
-#include "../c/commands/uss.hpp"
+#include "../commands/ds.hpp"
+#include "../commands/job.hpp"
+#include "../commands/tso.hpp"
+#include "../commands/uss.hpp"
 
 // Helper functions to create builders with common argument mappings
 static CommandBuilder create_ds_builder(CommandBuilder::CommandHandler handler)

@@ -332,11 +332,11 @@ class WatchUtils {
             return parts[0] === "c" && parts[1] !== "test";
         });
         const zowedSourceChanged = paths.some((filePath) => {
-            const parts = toPosixPath(filePath).split("/");
-            return parts[0] === "zowed" && parts[1] !== "test";
+            const posix = toPosixPath(filePath);
+            return posix.startsWith("c/server/") && !posix.startsWith("c/server/test/");
         });
         const cTestChanged = paths.some((filePath) => toPosixPath(filePath).startsWith("c/test/"));
-        const zowedTestChanged = paths.some((filePath) => toPosixPath(filePath).startsWith("zowed/test/"));
+        const zowedTestChanged = paths.some((filePath) => toPosixPath(filePath).startsWith("c/server/test/"));
 
         // Determine which source build tasks need to run
         const tasksToRun = [
@@ -1118,7 +1118,7 @@ function getDirs(next = "") {
 }
 
 async function artifacts(connection: Client, packageAll: boolean) {
-    const artifactPaths = ["zowed/build-out/libzowed.so", "zowed/build-out/zowed"];
+    const artifactPaths = ["c/server/build-out/libzowed.so", "c/server/build-out/zowed"];
     if (packageAll) {
         artifactPaths.push("c/build-out/zoweax", "c/build-out/zowex");
     }
@@ -1296,7 +1296,7 @@ async function build(connection: Client) {
     response = await runCommandInShell(
         connection,
         `cd ${deployDirs.zowedDir} && make ${DEBUG_MODE() ? "-DBuildType=DEBUG" : ""}\n`,
-        { stepName: "Building native/zowed" },
+        { stepName: "Building native/c/server" },
     );
     DEBUG_MODE() && console.log(response);
     console.log("Build complete!");
@@ -1323,7 +1323,7 @@ async function test(connection: Client) {
         stepName: "Running tests",
     });
     console.log("\nTesting complete!");
-    await retrieve(connection, [`c/test/test-results.xml`, `zowed/test/test-results.xml`], "native", false, true);
+    await retrieve(connection, [`c/test/test-results.xml`, `c/server/test/test-results.xml`], "native", false, true);
 }
 
 async function testSingle(connection: Client, scope: "zowex" | "zowed") {
@@ -1336,7 +1336,7 @@ async function testSingle(connection: Client, scope: "zowex" | "zowed") {
         stepName: `Running ${scope} tests`,
     });
     console.log("\nTesting complete!");
-    const xmlPath = scope === "zowex" ? "c/test/test-results.xml" : "zowed/test/test-results.xml";
+    const xmlPath = scope === "zowex" ? "c/test/test-results.xml" : "c/server/test/test-results.xml";
     await retrieve(connection, [xmlPath], "native", false, true);
 }
 
@@ -1571,8 +1571,8 @@ async function main() {
         cTestDir: `${config.deployDir}/c/test`,
         pythonDir: `${config.deployDir}/python/bindings`,
         pythonTestDir: `${config.deployDir}/python/bindings/test`,
-        zowedDir: `${config.deployDir}/zowed`,
-        zowedTestDir: `${config.deployDir}/zowed/test`,
+        zowedDir: `${config.deployDir}/c/server`,
+        zowedTestDir: `${config.deployDir}/c/server/test`,
     };
     const sshClient = await buildSshClient(config.sshProfile as IProfile);
     await testConnection(sshClient);

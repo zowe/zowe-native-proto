@@ -14,8 +14,8 @@
 
 #include <string>
 #include <mutex>
-#include "../c/extend/plugin.hpp"
-#include "../c/singleton.hpp"
+#include "../extend/plugin.hpp"
+#include "../singleton.hpp"
 
 // Forward declarations
 namespace zjson

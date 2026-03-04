@@ -10,7 +10,7 @@
  */
 
 #include "worker.test.hpp"
-#include "../../c/test/ztest.hpp"
+#include "../../test/ztest.hpp"
 #include "../worker.hpp"
 #include "../logger.hpp"
 
