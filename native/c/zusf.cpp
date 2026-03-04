@@ -1008,7 +1008,7 @@ int zusf_move_uss_file_or_dir(ZUSF *zusf, const string &source, const string &ta
 
   // check if source exists
   struct stat source_stats;
-  if (stat(source.c_str(), &source_stats) == -1)
+  if (lstat(source.c_str(), &source_stats) == -1)
   {
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Source path '%s' does not exist", truncated_source.c_str());
     return RTNCD_FAILURE;
@@ -1024,7 +1024,7 @@ int zusf_move_uss_file_or_dir(ZUSF *zusf, const string &source, const string &ta
   // TODO(zFernand0): Use std::filesystem::absolute instead of realpath when C++17 is available
   // resolve source path
   char resolved_source[PATH_MAX];
-  if (realpath(source.c_str(), resolved_source) == nullptr)
+  if (stat(source.c_str(), &source_stats) == 0 && realpath(source.c_str(), resolved_source) == nullptr)
   {
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to resolve source path '%s'; errno: %d", truncated_source.c_str(), errno);
     return RTNCD_FAILURE;
@@ -1036,7 +1036,7 @@ int zusf_move_uss_file_or_dir(ZUSF *zusf, const string &source, const string &ta
 
   // check if target exists
   struct stat target_stats;
-  if (stat(target.c_str(), &target_stats) == 0)
+  if (lstat(target.c_str(), &target_stats) == 0)
   {
     // if target exists and force is not set, return failure
     if (!force)
@@ -1047,7 +1047,7 @@ int zusf_move_uss_file_or_dir(ZUSF *zusf, const string &source, const string &ta
 
     // TODO(zFernand0): Use std::filesystem::absolute instead of realpath when C++17 is available
     // resolve target path, save it to resolved_target
-    if (realpath(target.c_str(), resolved_target) == nullptr)
+    if (stat(target.c_str(), &target_stats) == 0 && realpath(target.c_str(), resolved_target) == nullptr)
     {
       zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to resolve target path '%s'; errno: %d", truncated_target.c_str(), errno);
       return RTNCD_FAILURE;
