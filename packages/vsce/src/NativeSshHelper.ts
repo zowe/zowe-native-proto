@@ -15,6 +15,9 @@ import { imperative } from "@zowe/zowe-explorer-api";
 import * as vscode from "vscode";
 import { getVsceConfig } from "./Utilities";
 
+const sdkPackageJson = require("../../sdk/package.json");
+const RUSSH_VERSION: string = sdkPackageJson.optionalDependencies?.russh ?? "latest";
+
 const NATIVE_TRIPLES: Record<string, Record<string, string>> = {
     win32: {
         x64: "win32-x64-msvc",
@@ -49,10 +52,19 @@ async function ensureNativeBinary(context: vscode.ExtensionContext): Promise<voi
     await vscode.window.withProgress(
         {
             location: vscode.ProgressLocation.Notification,
-            title: `Downloading native SSH binary (${filename})`,
+            title: `Downloading native SSH binary: ${filename}`,
         },
         async () => {
-            const response = await fetch(`https://unpkg.com/russh@latest/${filename}`);
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 60e3);
+            let response: Response;
+            try {
+                response = await fetch(`https://unpkg.com/russh@${RUSSH_VERSION}/${filename}`, {
+                    signal: controller.signal,
+                });
+            } finally {
+                clearTimeout(timeoutId);
+            }
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}`);
             }

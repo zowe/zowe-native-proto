@@ -73,7 +73,7 @@ export class ClientChannel extends EventEmitter {
      */
     public close(): void {
         this.debug("russh: channel close requested");
-        this.endStreams();
+        this.cleanup();
         this.inner.close().catch(() => {});
     }
 
@@ -83,13 +83,12 @@ export class ClientChannel extends EventEmitter {
                 this.stdoutBytes += data.length;
                 this.stdout.push(Buffer.from(data));
             },
-            complete: () => this.endStreams(),
+            complete: () => this.cleanup(),
             error: (err) => {
                 this.debug(`russh: stdout stream error: ${err.message}`);
                 this.stdout.destroy(err);
             },
         });
-        this.subscriptions.push(dataSub);
 
         const extSub = this.inner.extendedData$.subscribe({
             next: ([type, data]) => {
@@ -98,29 +97,28 @@ export class ClientChannel extends EventEmitter {
                     this.stderr.push(Buffer.from(data));
                 }
             },
-            complete: () => this.endStreams(),
+            complete: () => this.cleanup(),
             error: (err) => {
                 this.debug(`russh: stderr stream error: ${err.message}`);
                 this.stderr.destroy(err);
             },
         });
-        this.subscriptions.push(extSub);
 
         const eofSub = this.inner.eof$.subscribe(() => {
             this.debug(`russh: remote EOF (stdout ${this.stdoutBytes} bytes, stderr ${this.stderrBytes} bytes)`);
-            this.endStreams();
+            this.cleanup();
         });
-        this.subscriptions.push(eofSub);
 
         const closeSub = this.inner.closed$.subscribe(() => {
             this.debug("russh: channel closed by remote");
-            this.endStreams();
+            this.cleanup();
             this.emit("close");
         });
-        this.subscriptions.push(closeSub);
+
+        this.subscriptions.push(dataSub, extSub, eofSub, closeSub);
     }
 
-    private endStreams(): void {
+    private cleanup(): void {
         if (this.ended) return;
         this.ended = true;
 

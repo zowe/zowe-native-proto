@@ -11,7 +11,6 @@
 
 import { EventEmitter } from "node:events";
 import {
-    type AgentConnectionSpec,
     type AuthenticatedSSHClient,
     type AuthFailure,
     KeyPair,
@@ -80,10 +79,8 @@ export class Client extends EventEmitter {
         this.debug(`russh: opening TCP connection to ${address}`);
         const transport = await SshTransport.newSocket(address);
 
-        const keepaliveSec = config.keepaliveInterval != null ? config.keepaliveInterval / 1000 : undefined;
-
         this.debug("russh: starting SSH handshake");
-        const sshClient = await SSHClient.connect(
+        const unauthClient = await SSHClient.connect(
             transport,
             async (key: SshPublicKey) => {
                 this.debug(`russh: server key ${key.algorithm()} fingerprint=${key.fingerprint()}`);
@@ -91,36 +88,37 @@ export class Client extends EventEmitter {
             },
             {
                 connectionTimeoutSeconds: config.readyTimeout != null ? config.readyTimeout / 1000 : undefined,
-                keepaliveIntervalSeconds: keepaliveSec,
+                keepaliveIntervalSeconds:
+                    config.keepaliveInterval != null ? config.keepaliveInterval / 1000 : undefined,
             },
         );
         this.debug("russh: SSH handshake complete");
 
-        this.disconnectSub = sshClient.disconnect$.subscribe(() => {
+        this.disconnectSub = unauthClient.disconnect$.subscribe(() => {
             this.debug("russh: disconnect event received from server");
             this.cleanup();
             this.emitClose();
         });
 
-        let authed: AuthenticatedSSHClient;
+        let authClient: AuthenticatedSSHClient;
         try {
             const username = config.username ?? "root";
-            authed = await this.authenticate(sshClient, username, config);
+            authClient = await this.authenticate(unauthClient, username, config);
         } catch (err) {
             this.debug("russh: post-handshake error, tearing down connection");
             this.disconnectSub.unsubscribe();
             this.disconnectSub = null;
-            sshClient.disconnect().catch(() => {});
+            unauthClient.disconnect().catch(() => {});
             throw err;
         }
 
-        this.sshClient = authed;
+        this.sshClient = authClient;
         this.debug("russh: emitting ready");
         this.emit("ready");
     }
 
     private async authenticate(
-        sshClient: SSHClient,
+        unauthClient: SSHClient,
         username: string,
         config: ConnectConfig,
     ): Promise<AuthenticatedSSHClient> {
@@ -129,28 +127,21 @@ export class Client extends EventEmitter {
             const keyData =
                 typeof config.privateKey === "string"
                     ? config.privateKey
-                    : Buffer.from(config.privateKey as Uint8Array).toString("utf-8");
+                    : Buffer.from(config.privateKey).toString("utf-8");
             const passphrase = typeof config.passphrase === "string" ? config.passphrase : undefined;
             const keyPair = await KeyPair.parse(keyData, passphrase);
 
-            const result = await sshClient.authenticateWithKeyPair(username, keyPair, null);
+            const result = await unauthClient.authenticateWithKeyPair(username, keyPair, null);
             return this.assertAuthSuccess(result, "Public key");
         }
 
         if (config.password) {
             this.debug(`russh: authenticating with password for ${username}`);
-            const result = await sshClient.authenticateWithPassword(username, config.password);
+            const result = await unauthClient.authenticateWithPassword(username, config.password);
             return this.assertAuthSuccess(result, "Password");
         }
 
-        if (typeof config.agent === "string") {
-            this.debug(`russh: authenticating with SSH agent for ${username}`);
-            const agentSpec = this.resolveAgentSpec(config.agent);
-            const result = await sshClient.authenticateWithAgent(username, agentSpec);
-            return this.assertAuthSuccess(result, "Agent");
-        }
-
-        throw new Error("No authentication method available: provide privateKey, password, or agent");
+        throw new Error("No authentication method available: provide privateKey or password");
     }
 
     private assertAuthSuccess(result: AuthenticatedSSHClient | AuthFailure, method: string): AuthenticatedSSHClient {
@@ -160,16 +151,6 @@ export class Client extends EventEmitter {
         }
         this.debug(`russh: ${method.toLowerCase()} authentication succeeded`);
         return result as AuthenticatedSSHClient;
-    }
-
-    private resolveAgentSpec(agent: string): AgentConnectionSpec {
-        if (process.platform === "win32" && agent === "\\\\.\\pipe\\openssh-ssh-agent") {
-            return { kind: "named-pipe", path: agent };
-        }
-        if (process.platform === "win32") {
-            return { kind: "pageant" };
-        }
-        return { kind: "unix-socket", path: agent };
     }
 
     private async execAsync(command: string): Promise<ClientChannel> {

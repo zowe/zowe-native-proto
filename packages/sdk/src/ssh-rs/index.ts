@@ -11,8 +11,7 @@
 
 import type { EventEmitter } from "node:events";
 import type { Readable, Writable } from "node:stream";
-
-export type { ClientCallback, ConnectConfig } from "ssh2";
+import type { ClientCallback, ConnectConfig } from "ssh2";
 
 export interface ClientChannel extends EventEmitter {
     stdin: Writable;
@@ -22,8 +21,8 @@ export interface ClientChannel extends EventEmitter {
 }
 
 export interface Client extends EventEmitter {
-    connect(config: import("ssh2").ConnectConfig): void;
-    exec(command: string, callback: import("ssh2").ClientCallback): void;
+    connect(config: ConnectConfig): void;
+    exec(command: string, callback: ClientCallback): void;
     end(): void;
 }
 
