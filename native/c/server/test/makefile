@@ -9,12 +9,12 @@
 #  Copyright Contributors to the Zowe Project.
 #
 
-.INCLUDE: ../../c/toolchain.mk
+.INCLUDE: ../../toolchain.mk
 
 OUT_DIR=build-out
 TARGET=$(OUT_DIR)/zowed_test_runner
 
-INCLUDES=-I../../c/test -I../../c -I..
+INCLUDES=-I../../test -I../../ -I..
 CXXFLAGS=-c $(INCLUDES) -std=gnu++17
 BND_FLAGS=$(CPP_BND_BASE_FLAGS)
 

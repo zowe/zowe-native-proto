@@ -7,15 +7,15 @@
 #
 # Copyright Contributors to the Zowe Project.
 
-.INCLUDE: ../c/toolchain.mk
+.INCLUDE: ../toolchain.mk
 
-CXXFLAGS_LIB = -std=gnu++17 -Wall -Werror -MMD -MP -O2 -I../c -I../c/chdsect -fvisibility=default -fno-aligned-allocation -D_EXT -D_OPEN_SYS_FILE_EXT=1
-CXXFLAGS_MAIN = -std=gnu++17 -O2 -I../c -I../c/chdsect
+CXXFLAGS_LIB = -std=gnu++17 -Wall -Werror -MMD -MP -O2 -I.. -I../chdsect -fvisibility=default -fno-aligned-allocation -D_EXT -D_OPEN_SYS_FILE_EXT=1
+CXXFLAGS_MAIN = -std=gnu++17 -O2 -I.. -I../chdsect
 CPP_BND_FLAGS = $(CPP_BND_DEBUG_FLAGS)
 DLL_BND_FLAGS = $(DLL_BND_DEBUG_FLAGS)
 
-MACLIBS= -I../asmmac $(MACLIBS_BASE)
-MTL_HEADERS=$(MTL_HEADERS_BASE) -I../c -I../c/chdsect
+MACLIBS= -I../../asmmac $(MACLIBS_BASE)
+MTL_HEADERS=$(MTL_HEADERS_BASE) -I.. -I../chdsect
 
 # Target executable and library
 OUT_DIR = build-out
@@ -23,15 +23,15 @@ TARGET = zowed
 LIBRARY = libzowed.so
 
 # Object files
-LIB_OBJECTS = $(OUT_DIR)/builder.o $(OUT_DIR)/commands.o $(OUT_DIR)/dispatcher.o \
+LIB_OBJECTS = $(OUT_DIR)/builder.o $(OUT_DIR)/rpc_commands.o $(OUT_DIR)/dispatcher.o \
 	$(OUT_DIR)/rpcio.o $(OUT_DIR)/server.o $(OUT_DIR)/validator.o $(OUT_DIR)/worker.o \
-	$(OUT_DIR)/zowed.o
+	$(OUT_DIR)/server_main.o
 CMDS_OBJECTS = $(OUT_DIR)/commands/ds.o $(OUT_DIR)/commands/job.o $(OUT_DIR)/commands/tso.o \
 	$(OUT_DIR)/commands/uss.o
-CPP_OBJECTS = ../c/build-out/zds.o ../c/build-out/zjb.o \
-	../c/build-out/ztso.o ../c/build-out/zusf.o ../c/build-out/zut.o
-METAL_OBJECTS = ../c/build-out/zam.o ../c/build-out/zdsm.o ../c/build-out/zjbm.o \
-	../c/build-out/zjbm31.o ../c/build-out/zssi31.o ../c/build-out/zutm.o ../c/build-out/zutm31.o
+CPP_OBJECTS = ../build-out/zds.o ../build-out/zjb.o \
+	../build-out/ztso.o ../build-out/zusf.o ../build-out/zut.o
+METAL_OBJECTS = ../build-out/zam.o ../build-out/zdsm.o ../build-out/zjbm.o \
+	../build-out/zjbm31.o ../build-out/zssi31.o ../build-out/zutm.o ../build-out/zutm31.o
 
 # Default target - build both shared library and executable
 all: $(OUT_DIR)/$(LIBRARY) $(OUT_DIR)/$(TARGET)
@@ -47,7 +47,7 @@ $(OUT_DIR)/$(LIBRARY): $(OUT_DIR) $(LIB_OBJECTS) $(CMDS_OBJECTS) $(CPP_OBJECTS) 
 
 # Build C++ dependencies from parent makefile
 cpp-deps:
-	$(MAKE) -c ../c all
+	$(MAKE) -c .. all
 
 $(CPP_OBJECTS): cpp-deps
 
@@ -59,7 +59,7 @@ $(OUT_DIR)/%.o: %.cpp
 	mkdir -p $(@D)
 	$(CXX) $(CXXFLAGS_LIB) -c $< -o $@
 
-$(OUT_DIR)/commands/%.o: ../c/commands/%.cpp
+$(OUT_DIR)/commands/%.o: ../commands/%.cpp
 	mkdir -p $(@D)
 	$(CXX) $(CXXFLAGS_LIB) -c $< -o $@
 
@@ -68,7 +68,7 @@ $(OUT_DIR)/main.o: main.cpp
 	$(CXX) $(CXXFLAGS_MAIN) -c $< -o $@
 
 # Compile zjsonm Metal C source to assembly
-$(OUT_DIR)/zjsonm.s: ../c/zjsonm.c
+$(OUT_DIR)/zjsonm.s: ../zjsonm.c
 	@mkdir -p $(@D)
 	$(CC) $(MTL_FLAGS64) -qlist=$(OUT_DIR)/zjsonm.mtl.lst $(MTL_HEADERS) -o $@ $<
 

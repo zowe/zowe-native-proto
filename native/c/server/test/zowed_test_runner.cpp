@@ -9,7 +9,7 @@
  *
  */
 
-#include "../../c/test/ztest.hpp"
+#include "../../test/ztest.hpp"
 #include "worker.test.hpp"
 #include "zowed.test.hpp"
 

@@ -9,8 +9,8 @@
  *
  */
 
-#ifndef ZOWED_HPP
-#define ZOWED_HPP
+#ifndef SERVER_MAIN_HPP
+#define SERVER_MAIN_HPP
 
 /**
  * @brief Options structure for configuring the zowed server

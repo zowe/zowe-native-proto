@@ -56,7 +56,7 @@ Run `npm run z:rebuild` to rebuild server code after editing files in the `nativ
 
 Run `npm run build` to rebuild client code after editing files in the `packages` folder.
 
-To test server changes without having to download artifacts and re-deploy them each time, you can define `serverPath` property in your SSH profile in `zowe.config.json`. It should point to the `<deployDir>/zowed/build-out` folder that contains the `zowed` binary. See example below.
+To test server changes without having to download artifacts and re-deploy them each time, you can define `serverPath` property in your SSH profile in `zowe.config.json`. It should point to the `<deployDir>/c/server/build-out` folder that contains the `zowed` binary. See example below.
 
 ```json
   "profiles": {
@@ -64,7 +64,7 @@ To test server changes without having to download artifacts and re-deploy them e
       "type": "ssh",
       "properties": {
         ...
-        "serverPath": "~/zowe-native-proto/zowed/build-out"
+        "serverPath": "~/zowe-native-proto/c/server/build-out"
       }
     }
   }

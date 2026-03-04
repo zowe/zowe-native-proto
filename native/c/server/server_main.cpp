@@ -18,14 +18,14 @@
 #include <string>
 #include <thread>
 #include <unistd.h>
-#include "../c/zjson.hpp"
-#include "../c/zusf.hpp"
-#include "commands.hpp"
+#include "../zjson.hpp"
+#include "../zusf.hpp"
+#include "rpc_commands.hpp"
 #include "dispatcher.hpp"
 #include "logger.hpp"
 #include "server.hpp"
 #include "worker.hpp"
-#include "zowed.hpp"
+#include "server_main.hpp"
 
 using std::string;
 

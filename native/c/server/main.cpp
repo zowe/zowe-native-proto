@@ -32,8 +32,8 @@
 #else
 #include <dlfcn.h>
 #endif
-#include "../c/parser.hpp"
-#include "zowed.hpp"
+#include "../parser.hpp"
+#include "server_main.hpp"
 
 ZowedOptions parse_options(int argc, char *argv[])
 {
