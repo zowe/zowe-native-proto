@@ -1714,15 +1714,15 @@ void zusf_tests()
                            {
                              int result = zusf_move_uss_file_or_dir(&zusf, "", "");
                              Expect(result).ToBe(RTNCD_FAILURE);
-                             Expect(string(zusf.diag.e_msg)).ToContain("Source or target is empty");
+                             Expect(string(zusf.diag.e_msg)).ToContain("Source or target path is empty or too long");
 
                              result = zusf_move_uss_file_or_dir(&zusf, "test_file.txt", "");
                              Expect(result).ToBe(RTNCD_FAILURE);
-                             Expect(string(zusf.diag.e_msg)).ToContain("Source or target is empty");
+                             Expect(string(zusf.diag.e_msg)).ToContain("Source or target path is empty or too long");
 
                              result = zusf_move_uss_file_or_dir(&zusf, "", "test_file.txt");
                              Expect(result).ToBe(RTNCD_FAILURE);
-                             Expect(string(zusf.diag.e_msg)).ToContain("Source or target is empty");
+                             Expect(string(zusf.diag.e_msg)).ToContain("Source or target path is empty or too long");
                            });
 
                         it("should fail when source or target path is too long",
@@ -1735,15 +1735,15 @@ void zusf_tests()
 
                              int rc = zusf_move_uss_file_or_dir(&zusf, source, zusf_test_dir);
                              Expect(rc).ToBe(RTNCD_FAILURE);
-                             Expect(string(zusf.diag.e_msg)).ToContain("Source or target path is too long");
+                             Expect(string(zusf.diag.e_msg)).ToContain("Source or target path is empty or too long");
 
                              rc = zusf_move_uss_file_or_dir(&zusf, zusf_test_dir, target);
                              Expect(rc).ToBe(RTNCD_FAILURE);
-                             Expect(string(zusf.diag.e_msg)).ToContain("Source or target path is too long");
+                             Expect(string(zusf.diag.e_msg)).ToContain("Source or target path is empty or too long");
 
                              rc = zusf_move_uss_file_or_dir(&zusf, source, target);
                              Expect(rc).ToBe(RTNCD_FAILURE);
-                             Expect(string(zusf.diag.e_msg)).ToContain("Source or target path is too long");
+                             Expect(string(zusf.diag.e_msg)).ToContain("Source or target path is empty or too long");
                            });
 
                         it("should fail when source does not exist",

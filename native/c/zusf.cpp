@@ -76,6 +76,11 @@ string zusf_join_path(const string &dir_path, const string &name)
   return dir_path[dir_path.length() - 1] == '/' ? dir_path + name : dir_path + "/" + name;
 }
 
+bool zusf_is_valid_path(const string &path)
+{
+  return !path.empty() && path.length() <= PATH_MAX;
+}
+
 /**
  * Formats a file timestamp.
  *
@@ -862,6 +867,11 @@ string zusf_build_mode_string(mode_t mode)
  */
 int zusf_copy_file_or_dir(ZUSF *zusf, const string &source_path, const string &destination_path, const CopyOptions &options)
 {
+  if (!zusf_is_valid_path(source_path) || !zusf_is_valid_path(destination_path))
+  {
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Source or destination path is empty or too long");
+    return RTNCD_FAILURE;
+  }
 
   if (options.follow_symlinks && !options.recursive)
   {
@@ -986,16 +996,9 @@ int zusf_create_uss_file_or_dir(ZUSF *zusf, const string &file, mode_t mode, boo
 
 int zusf_move_uss_file_or_dir(ZUSF *zusf, const string &source, const string &target, bool force)
 {
-  // check if source or target is empty
-  if (source.empty() || target.empty())
+  if (!zusf_is_valid_path(source) || !zusf_is_valid_path(target))
   {
-    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Source or target is empty");
-    return RTNCD_FAILURE;
-  }
-
-  if (source.size() > PATH_MAX || target.size() > PATH_MAX)
-  {
-    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Source or target path is too long");
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Source or target path is empty or too long");
     return RTNCD_FAILURE;
   }
 
@@ -1230,6 +1233,11 @@ static int zusf_collect_directory_entries_recursive(ZUSF *zusf, const string &di
  */
 int zusf_list_uss_file_path(ZUSF *zusf, string file, string &response, ListOptions options, bool use_csv_format)
 {
+  if (!zusf_is_valid_path(file))
+  {
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "File path is empty or too long");
+    return RTNCD_FAILURE;
+  }
   // TODO(zFernand0): Handle `*` and other bash-expansion rules
   struct stat file_stats;
   if (stat(file.c_str(), &file_stats) == -1)
@@ -1239,7 +1247,6 @@ int zusf_list_uss_file_path(ZUSF *zusf, string file, string &response, ListOptio
   }
 
   // TODO(zFernand0): Add option to list full file paths
-
   if (S_ISREG(file_stats.st_mode))
   {
     const auto file_name = file.substr(file.find_last_of("/") + 1);
