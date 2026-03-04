@@ -61,10 +61,9 @@ void zusf_tests()
                           dir_b = tmp_base + "/test_dir_b"; });
 
              afterAll([&]() -> void
-                {
+                      {
                   std::string discard;
-                  execute_command_with_output("rm -rf " + tmp_base, discard);
-                });
+                  execute_command_with_output("rm -rf " + tmp_base, discard); });
 
              it("file->file tests", [&]() -> void
                 {
@@ -270,8 +269,7 @@ void zusf_tests()
                   std::string dispose;
                   execute_command_with_output("mkfifo -m 0666 " + pipe, dispose);
                   ExpectWithContext(zusf_copy_file_or_dir(&zusf, pipe, non_pipe, copts_all_off), zusf.diag.e_msg).ToBe(-1);
-                  ExpectWithContext(zusf_copy_file_or_dir(&zusf, non_pipe, pipe, copts_all_off), zusf.diag.e_msg).ToBe(-1); 
-                });
+                  ExpectWithContext(zusf_copy_file_or_dir(&zusf, non_pipe, pipe, copts_all_off), zusf.diag.e_msg).ToBe(-1); });
 
              it("force copy tests", [&]() -> void
                 {
@@ -290,8 +288,7 @@ void zusf_tests()
                   // can't overwrite 0400 target without force
                   zusf_chmod_uss_file_or_dir(&zusf, target_file, 0400, false);
                   ExpectWithContext(zusf_copy_file_or_dir(&zusf, source_file, target_file, copts_all_off), zusf.diag.e_msg).ToBe(-1);
-                  ExpectWithContext(zusf_copy_file_or_dir(&zusf, source_file, target_file, copts_force), zusf.diag.e_msg).ToBe(0); 
-                });
+                  ExpectWithContext(zusf_copy_file_or_dir(&zusf, source_file, target_file, copts_force), zusf.diag.e_msg).ToBe(0); });
 
              it("insufficient permissions tests", [&]() -> void
                 {
@@ -308,8 +305,7 @@ void zusf_tests()
 
                   zusf_chmod_uss_file_or_dir(&zusf, dest_dir, 0775, true);
                   rc = zusf_copy_file_or_dir(&zusf, source_file, dest_dir, copts_preserve);
-                  Expect(rc).ToBe(0); 
-                });
+                  Expect(rc).ToBe(0); });
            }
 
   );
@@ -1849,6 +1845,25 @@ void zusf_tests()
                              file.reset(target.c_str());
                              Expect(result).ToBe(RTNCD_SUCCESS);
                              Expect(string(zusf.diag.e_msg)).ToBe("");
+
+                             struct stat file_stats;
+                             Expect(stat(target.c_str(), &file_stats)).ToBe(0);
+                             Expect(S_ISREG(file_stats.st_mode)).ToBe(true);
+                           });
+
+                        it("should move a file to a new location with special characters in the path",
+                           [&]() -> void
+                           {
+                             string source = get_random_uss(zusf_test_dir);
+                             string target = get_random_uss(zusf_test_dir);
+                             source = source.append(" (&$");
+                             target = target.append(" (&$");
+                             TestFileGuard file(source.c_str());
+
+                             int result = zusf_move_uss_file_or_dir(&zusf, source, target);
+                             file.reset(target.c_str());
+                             Expect(string(zusf.diag.e_msg)).ToBe("");
+                             Expect(result).ToBe(RTNCD_SUCCESS);
 
                              struct stat file_stats;
                              Expect(stat(target.c_str(), &file_stats)).ToBe(0);
