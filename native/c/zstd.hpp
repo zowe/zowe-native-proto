@@ -322,7 +322,6 @@ private:
     return reinterpret_cast<E *>(m_storage);
   }
 
-private:
   bool m_has_value;
   char m_storage[sizeof(T) > sizeof(E) ? sizeof(T) : sizeof(E)]
       __attribute__((aligned(__alignof__(T) > __alignof__(E) ? __alignof__(T) : __alignof__(E))));
