@@ -182,7 +182,7 @@ static int zds_get_type_info(const std::string &dsn, ZDSTypeInfo &info)
     return RTNCD_SUCCESS;
   }
 
-  ZDS zds = {};
+  ZDS zds{};
   std::vector<ZDSEntry> entries;
   int rc = zds_list_data_sets(&zds, info.base_dsn, entries, true);
   if (rc == RTNCD_SUCCESS && entries.size() == 1)
