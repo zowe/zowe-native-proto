@@ -66,9 +66,29 @@ extern "C"
     int reserve_1;
   } SYMBOL_DATA;
 
+  /**
+   * @brief Storage Free 64 bit areas
+   * @param PTR64 The data to free
+   * @return The return code from the service (always 0)
+   */
   int ZUTMFR64(void *PTR64);
-  int ZUTMFR31(int *size, void *PTR64);
+
+  /**
+   * @brief Storage Release 24 or 31 bit areas
+   * @param size The size of the data to release
+   * @param data The data to release
+   * @return The return code from the service
+   */
+  int ZUTMSREL(int *size, void *PTR64);
+
+  /**
+   * @brief Storage Get 64 bit areas
+   * @param PTR64 The new storage area address
+   * @param size The size of the data to get
+   * @return The return code from the service (always 0)
+   */
   int ZUTMGT64(void **PTR64, int *PTR64);
+
   int ZUTMGUSR(char[8]);
   int ZUTWDYN(BPXWDYN_PARM *, BPXWDYN_RESPONSE *);
   int ZUTEDSCT();

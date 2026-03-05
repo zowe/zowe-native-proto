@@ -266,7 +266,7 @@ int zut_list_subsystems(ZDIAG &diag, std::vector<std::string> &subsystems, std::
     subsys_entry = (JQRY_SUBSYS_ENTRY *)((unsigned char *)subsys_entry + next_entry);
   }
 
-  ZUTMFR31(&area->jqrylen, area);
+  ZUTMSREL(&area->jqrylen, area);
 
   return rc;
 }
