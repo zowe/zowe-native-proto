@@ -52,6 +52,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
 
       - run: npm run package
+        if: ${{ matrix.os == 'ubuntu' }}
 
       - run: npm pack ./packages/sdk --pack-destination=dist
         if: ${{ matrix.os == 'ubuntu' }}
