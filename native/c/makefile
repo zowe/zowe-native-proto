@@ -60,9 +60,19 @@ COMMAND_OBJS = $(OUT_DIR)/commands/console.o \
 	$(OUT_DIR)/commands/core.o \
 	$(OUT_DIR)/commands/ds.o \
 	$(OUT_DIR)/commands/job.o \
+	$(OUT_DIR)/commands/server.o \
 	$(OUT_DIR)/commands/tso.o \
 	$(OUT_DIR)/commands/uss.o \
 	$(OUT_DIR)/commands/tool.o
+
+SERVER_OBJS = $(OUT_DIR)/server/builder.o \
+	$(OUT_DIR)/server/rpc_commands.o \
+	$(OUT_DIR)/server/dispatcher.o \
+	$(OUT_DIR)/server/rpcio.o \
+	$(OUT_DIR)/server/server.o \
+	$(OUT_DIR)/server/validator.o \
+	$(OUT_DIR)/server/worker.o \
+	$(OUT_DIR)/server/server_main.o
 
 SWIG_EXTENDER_OBJS = $(OUT_DIR_SWIG)/zut.o $(OUT_DIR_SWIG)/zds.o $(OUT_DIR_SWIG)/zjb.o $(OUT_DIR_SWIG)/zcn.o $(OUT_DIR_SWIG)/zusf.o $(OUT_DIR_SWIG)/ztso.o
 
@@ -313,6 +323,25 @@ $(OUT_DIR)/commands/%.o: commands/%.cpp
 	$(CXX) $(CPP_FLAGS) -c $< -o $@
 
 #
+# Server
+#
+$(OUT_DIR)/server/%.o: server/%.cpp
+	@echo 'Building $@'
+	@mkdir -p $(@D)
+	$(CXX) $(CPP_FLAGS) -c $< -o $@
+
+#
+# JSON Metal C (used by server)
+#
+$(OUT_DIR)/zjsonm.s: zjsonm.c
+	@echo 'Building $(OUT_DIR)/zjsonm.s'
+	$(CC) $(MTL_FLAGS64) -qlist=$*.mtl.lst $(MTL_HEADERS) -o $@ $^
+
+$(OUT_DIR)/zjsonm.o: $(OUT_DIR)/zjsonm.s
+	@echo 'Building $(OUT_DIR)/zjsonm.o'
+	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
+
+#
 # Extensibility
 #
 $(OUT_DIR)/extend/plugin.o: extend/plugin.cpp
@@ -323,13 +352,13 @@ $(OUT_DIR)/extend/plugin.o: extend/plugin.cpp
 #
 # Test CLI
 #
-$(OUT_DIR)/zowex: $(OUT_DIR)/zowex.o $(OUT_DIR)/extend/plugin.o $(COMMAND_OBJS) $(OUT_DIR)/libzcn.a $(OUT_DIR)/libzut.a $(OUT_DIR)/libzjb.a $(OUT_DIR)/libzds.a $(OUT_DIR)/libzusf.a $(OUT_DIR)/libztso.a
+$(OUT_DIR)/zowex: $(OUT_DIR)/zowex.o $(OUT_DIR)/extend/plugin.o $(COMMAND_OBJS) $(SERVER_OBJS) $(OUT_DIR)/zjsonm.o $(OUT_DIR)/libzcn.a $(OUT_DIR)/libzut.a $(OUT_DIR)/libzjb.a $(OUT_DIR)/libzds.a $(OUT_DIR)/libzusf.a $(OUT_DIR)/libztso.a
 	@echo 'Building zowex'
 	$(CXX) $(CPP_BND_FLAGS) -o $@ $^
 
 zowex: $(OUT_DIR) $(OUT_DIR)/zowex
 
-$(OUT_DIR)/zoweax: $(OUT_DIR)/zowex.o $(OUT_DIR)/extend/plugin.o $(COMMAND_OBJS) $(OUT_DIR)/libzcn.a $(OUT_DIR)/libzut.a $(OUT_DIR)/libzjb.a $(OUT_DIR)/libzds.a $(OUT_DIR)/libzusf.a $(OUT_DIR)/libztso.a
+$(OUT_DIR)/zoweax: $(OUT_DIR)/zowex.o $(OUT_DIR)/extend/plugin.o $(COMMAND_OBJS) $(SERVER_OBJS) $(OUT_DIR)/zjsonm.o $(OUT_DIR)/libzcn.a $(OUT_DIR)/libzut.a $(OUT_DIR)/libzjb.a $(OUT_DIR)/libzds.a $(OUT_DIR)/libzusf.a $(OUT_DIR)/libztso.a
 	@echo 'Building zoweax'
 	$(CXX) $(CPP_BND_FLAGS_AUTH) -o $@ $^
 	extattr +ap $@
