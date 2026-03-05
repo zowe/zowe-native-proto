@@ -163,7 +163,7 @@ const ast::Node build_ds_object(const ZDSEntry &entry, bool attributes)
   if (!entry.dataclass.empty())
     obj_entry->set("dataclass", str(entry.dataclass));
   if (entry.devtype != 0)
-    obj_entry->set("devtype", str(zut_int_to_string(entry.devtype, true)));
+    obj_entry->set("devtype", str(zut_hex_to_string(entry.devtype)));
   if (!entry.dsntype.empty())
     obj_entry->set("dsntype", str(entry.dsntype));
   if (!entry.dsorg.empty())
@@ -450,7 +450,7 @@ int handle_data_set_list(InvocationContext &context)
         if (attributes)
         {
           fields.push_back(entry.multivolume ? (entry.volser + "+") : entry.volser);
-          fields.push_back(entry.devtype != 0 ? zut_int_to_string(entry.devtype, true) : "");
+          fields.push_back(entry.devtype != 0 ? zut_hex_to_string(entry.devtype) : "");
           fields.push_back(entry.dsorg);
           fields.push_back(entry.recfm);
           fields.push_back(entry.lrecl == -1 ? "" : std::to_string(entry.lrecl));
@@ -470,7 +470,7 @@ int handle_data_set_list(InvocationContext &context)
           context.output_stream() << std::left
                                   << std::setw(44) << entry.name << " "
                                   << std::setw(7) << (entry.multivolume ? (entry.volser + "+") : entry.volser) << " "
-                                  << std::setw(7) << (entry.devtype != 0 ? zut_int_to_string(entry.devtype, true) : "") << " "
+                                  << std::setw(7) << (entry.devtype != 0 ? zut_hex_to_string(entry.devtype) : "") << " "
                                   << std::setw(4) << entry.dsorg << " "
                                   << std::setw(6) << entry.recfm << " "
                                   << std::setw(6) << (entry.lrecl == -1 ? "" : std::to_string(entry.lrecl)) << " "

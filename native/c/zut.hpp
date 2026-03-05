@@ -232,16 +232,13 @@ std::vector<char> zut_encode(const char *input_str, const size_t input_size, ico
 std::string zut_format_as_csv(std::vector<std::string> &fields);
 
 /**
- * @brief Convert an integer to a string
+ * @brief Convert an integer to an uppercase hexadecimal string
  * @param value The integer value to convert
- * @param is_hex Set to true to format as uppercase hexadecimal
- * @return The string representation of the integer
+ * @return The uppercase hexadecimal string representation of the integer
  */
 template <typename T>
-inline std::string zut_int_to_string(T value, bool is_hex = false)
+inline std::string zut_hex_to_string(T value)
 {
-  if (!is_hex)
-    return std::to_string(value);
   std::ostringstream oss;
   oss << std::hex << std::uppercase << value;
   return oss.str();
