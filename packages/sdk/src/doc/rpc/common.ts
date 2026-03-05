@@ -67,7 +67,7 @@ export interface CommandResponse {
 }
 
 /**
- * StatusMessage represents the status of `zowed` and serves as a health check
+ * StatusMessage represents the status of the server and serves as a health check
  */
 export interface StatusMessage {
     status: string;

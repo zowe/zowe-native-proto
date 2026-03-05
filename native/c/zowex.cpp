@@ -13,21 +13,31 @@
 
 #define _UNIX03_SOURCE
 #include <dirent.h>
-#include <dlfcn.h>
 #include <iostream>
+#include <string>
 #include "commands/console.hpp"
 #include "commands/core.hpp"
 #include "commands/ds.hpp"
 #include "commands/job.hpp"
+#include "commands/server.hpp"
 #include "commands/tool.hpp"
 #include "commands/tso.hpp"
 #include "commands/uss.hpp"
 #include "extend/plugin.hpp"
 
-using namespace parser;
+static std::string get_executable_dir(const char *argv0)
+{
+  std::string full_path(argv0);
+  size_t last_slash = full_path.find_last_of('/');
+  if (last_slash != std::string::npos)
+    return full_path.substr(0, last_slash);
+  return ".";
+}
 
 int main(int argc, char *argv[])
 {
+  server::set_exec_dir(get_executable_dir(argv[0]));
+
   try
   {
     auto &root_cmd = core::setup_root_command(argv);
@@ -39,6 +49,7 @@ int main(int argc, char *argv[])
     console::register_commands(root_cmd);
     ds::register_commands(root_cmd);
     job::register_commands(root_cmd);
+    server::register_commands(root_cmd);
     tool::register_commands(root_cmd);
     tso::register_commands(root_cmd);
     uss::register_commands(root_cmd);

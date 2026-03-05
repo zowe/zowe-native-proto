@@ -40,8 +40,7 @@ ZJSON_DERIVE(StatusMessage, status, message, data);
 class ZowedServer
 {
 private:
-  ZowedOptions options;
-  string exec_dir;
+  server::Options options;
   std::unique_ptr<WorkerPool> worker_pool;
   std::atomic<bool> shutdown_requested{false};
   std::mutex shutdown_mutex;
@@ -54,7 +53,6 @@ private:
 
   void setup_signal_handlers()
   {
-    // Set up signal handling for graceful shutdown
     signal(SIGHUP, signal_handler);
     signal(SIGINT, signal_handler);
     signal(SIGQUIT, signal_handler);
@@ -83,13 +81,12 @@ private:
   {
     std::map<string, string> checksums;
     ZUSF zusf = {.encoding_opts = {.source_codepage = "IBM-1047", .data_type = eDataTypeText}};
-    string checksums_file = exec_dir + "/checksums.asc";
+    string checksums_file = options.exec_dir + "/checksums.asc";
     string checksums_content;
 
     int rc = zusf_read_from_uss_file(&zusf, checksums_file, checksums_content);
     if (rc != 0)
     {
-      // Checksums file does not exist for dev builds
       LOG_DEBUG("Failed to read checksums file: %s (expected for dev builds)", checksums_file.c_str());
       return checksums;
     }
@@ -122,7 +119,7 @@ private:
 
     StatusMessage status_msg{
         .status = "ready",
-        .message = "zowed is ready to accept input",
+        .message = "zowex server is ready to accept input",
         .data = std::optional<zjson::Value>(data),
     };
 
@@ -153,66 +150,51 @@ private:
 
 public:
   ZowedServer() = default;
-  void run(const ZowedOptions &opts, const string &exec_dir_param)
+  void run(const server::Options &opts)
   {
     options = opts;
-    this->exec_dir = exec_dir_param;
 
-    // Initialize logger with executable directory
-    zowed::Logger::init_logger(exec_dir.c_str(), options.verbose);
-    LOG_INFO("Starting zowed with %lld workers and %lld seconds until request timeout (verbose=%s)", options.num_workers, options.request_timeout, options.verbose ? "true" : "false");
+    zowed::Logger::init_logger(options.exec_dir.c_str(), options.verbose);
+    LOG_INFO("Starting zowex server with %lld workers and %lld seconds until request timeout (verbose=%s)", options.num_workers, options.request_timeout, options.verbose ? "true" : "false");
 
-    // Set up signal handling
     setup_signal_handlers();
 
-    // Initialize CommandDispatcher singleton
     CommandDispatcher &dispatcher = CommandDispatcher::get_instance();
 
-    // Register all command handlers
     LOG_DEBUG("Registering command handlers");
     register_all_commands(dispatcher);
 
-    // Create worker pool
     worker_pool.reset(new WorkerPool(options.num_workers, std::chrono::seconds(options.request_timeout)));
 
-    // Ensure worker pool teardown on normal exit
     std::atexit([]()
                 { get_instance().request_shutdown(); });
 
-    // Log available worker count if verbose
     log_worker_count();
-
-    // Print ready message
     print_ready_message();
 
-    // Main input processing loop
     LOG_DEBUG("Entering main input processing loop");
     string line;
     while (std::getline(std::cin, line) && !shutdown_requested)
     {
       if (!line.empty())
       {
-        // Distribute request to worker pool
         worker_pool->distribute_request(line);
       }
     }
 
-    // Graceful shutdown
     LOG_INFO("Input stream closed, shutting down");
     request_shutdown();
 
-    // Cleanup logger
     zowed::Logger::shutdown();
   }
 };
 
-// Library implementation functions
-extern "C" int run_zowed_server(const ZowedOptions &options, const char *exec_dir)
+int server::run(const server::Options &options)
 {
   try
   {
-    ZowedServer server;
-    server.run(options, string(exec_dir ? exec_dir : "."));
+    ZowedServer srv;
+    srv.run(options);
   }
   catch (const std::exception &e)
   {

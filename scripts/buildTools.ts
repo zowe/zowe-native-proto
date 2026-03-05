@@ -51,8 +51,6 @@ let deployDirs: {
     cTestDir: string;
     pythonDir: string;
     pythonTestDir: string;
-    zowedDir: string;
-    zowedTestDir: string;
 };
 
 const asciiToEbcdicMap =
@@ -131,12 +129,12 @@ class WatchUtils {
     private sftp: SFTPWrapper | null = null;
     private readonly ui: WatchUI = new WatchUI();
     private watcher: chokidar.FSWatcher;
-    private readonly testScope?: "zowex" | "zowed" | "all";
+    private readonly testScope?: "zowex" | "all";
 
     constructor(
         private readonly connection: Client,
         sshProfile: IProfile,
-        options?: { testScope?: "zowex" | "zowed" | "all" },
+        options?: { testScope?: "zowex" | "all" },
     ) {
         this.cacheFile = path.resolve(this.cacheDir, `${sshProfile.user}_${sshProfile.host}.json`);
         this.rootDir = path.resolve(__dirname, localDeployDir);
@@ -326,42 +324,25 @@ class WatchUtils {
     }
 
     private async executeBuild(...paths: string[]) {
-        // Distinguish between source and test file changes
         const cSourceChanged = paths.some((filePath) => {
             const parts = toPosixPath(filePath).split("/");
             return parts[0] === "c" && parts[1] !== "test";
         });
-        const zowedSourceChanged = paths.some((filePath) => {
-            const posix = toPosixPath(filePath);
-            return posix.startsWith("c/server/") && !posix.startsWith("c/server/test/");
-        });
         const cTestChanged = paths.some((filePath) => toPosixPath(filePath).startsWith("c/test/"));
-        const zowedTestChanged = paths.some((filePath) => toPosixPath(filePath).startsWith("c/server/test/"));
 
-        // Determine which source build tasks need to run
         const tasksToRun = [
             ...(cSourceChanged ? ["c"] : []),
-            ...(zowedSourceChanged || cSourceChanged ? ["zowed"] : []),
         ];
 
-        // Determine which test tasks need to run (if in test mode)
         const shouldRunZowexTests =
             this.testScope &&
             (this.testScope === "zowex" || this.testScope === "all") &&
             (cSourceChanged || cTestChanged);
-        const shouldRunZowedTests =
-            this.testScope &&
-            (this.testScope === "zowed" || this.testScope === "all") &&
-            (zowedSourceChanged || zowedTestChanged || cSourceChanged);
 
         if (shouldRunZowexTests) {
             tasksToRun.push("c:test:make", "c:test:run");
         }
-        if (shouldRunZowedTests) {
-            tasksToRun.push("zowed:test:make", "zowed:test:run");
-        }
 
-        // Add tasks to UI and start spinner
         for (const task of tasksToRun) {
             this.ui.addTask(task);
         }
@@ -369,26 +350,16 @@ class WatchUtils {
         this.ui.startSpinner();
 
         try {
-            let result: number | string; // number for failing exit code or string for successful output
+            let result: number | string;
             if (cSourceChanged) {
                 result = await this.makeTask("c");
             }
-            if (zowedSourceChanged || typeof result === "string" || result === 0) {
-                await this.makeTask("zowed", deployDirs.zowedDir);
-            }
 
-            // Run tests if enabled and builds succeeded (or only test files changed)
             const buildSucceeded = typeof result === "string" || result === 0 || result === undefined;
             if (buildSucceeded && shouldRunZowexTests) {
                 const testMakeResult = await this.makeTask("c:test:make", deployDirs.cTestDir);
                 if (typeof testMakeResult === "string" || testMakeResult === 0) {
                     await this.runTestTask("c:test:run", deployDirs.cTestDir, "ztest_runner");
-                }
-            }
-            if (buildSucceeded && shouldRunZowedTests) {
-                const testMakeResult = await this.makeTask("zowed:test:make", deployDirs.zowedTestDir);
-                if (typeof testMakeResult === "string" || testMakeResult === 0) {
-                    await this.runTestTask("zowed:test:run", deployDirs.zowedTestDir, "zowed_test_runner");
                 }
             }
         } finally {
@@ -1118,10 +1089,7 @@ function getDirs(next = "") {
 }
 
 async function artifacts(connection: Client, packageAll: boolean) {
-    const artifactPaths = ["c/server/build-out/libzowed.so", "c/server/build-out/zowed"];
-    if (packageAll) {
-        artifactPaths.push("c/build-out/zoweax", "c/build-out/zowex");
-    }
+    const artifactPaths = ["c/build-out/zoweax", "c/build-out/zowex"];
     const artifactNames = artifactPaths.map((file) => path.basename(file)).sort(localeCompare);
     const localDir = packageAll ? "dist" : "packages/sdk/bin";
     const localFiles = ["server.pax.Z", "checksums.asc"];
@@ -1287,16 +1255,10 @@ async function upload(connection: Client, sshProfile: IProfile) {
 }
 
 async function build(connection: Client) {
-    let response = await runCommandInShell(
+    const response = await runCommandInShell(
         connection,
         `cd ${deployDirs.cDir} && make ${DEBUG_MODE() ? "-DBuildType=DEBUG" : ""}\n`,
         { stepName: "Building native/c" },
-    );
-    DEBUG_MODE() && console.log(response);
-    response = await runCommandInShell(
-        connection,
-        `cd ${deployDirs.zowedDir} && make ${DEBUG_MODE() ? "-DBuildType=DEBUG" : ""}\n`,
-        { stepName: "Building native/c/server" },
     );
     DEBUG_MODE() && console.log(response);
     console.log("Build complete!");
@@ -1316,28 +1278,23 @@ async function make(connection: Client, inDir?: string) {
 async function test(connection: Client) {
     const testEnv = '_CEE_RUNOPTS="TRAP(ON,NOSPIE) TERMTHDACT(UADUMP)"';
     const cTestCmd = `cd ${deployDirs.cTestDir} && ${testEnv} ./build-out/ztest_runner ${args[1] ?? ""}`;
-    const zowedTestCmd = `cd ${path.posix.relative(deployDirs.cTestDir, deployDirs.zowedTestDir)} && ${testEnv} ./build-out/zowed_test_runner ${args[1] ?? ""}`;
-    const exitMaxRc = `[ "$rc1" -gt "$rc2" ] && exit "$rc1" || exit "$rc2"`;
-    await runCommandInShell(connection, `${cTestCmd}; rc1=$?; ${zowedTestCmd}; rc2=$?; ${exitMaxRc}\n`, {
+    await runCommandInShell(connection, `${cTestCmd}\n`, {
         streamOutput: true,
         stepName: "Running tests",
     });
     console.log("\nTesting complete!");
-    await retrieve(connection, [`c/test/test-results.xml`, `c/server/test/test-results.xml`], "native", false, true);
+    await retrieve(connection, [`c/test/test-results.xml`], "native", false, true);
 }
 
-async function testSingle(connection: Client, scope: "zowex" | "zowed") {
+async function testSingle(connection: Client) {
     const testEnv = '_CEE_RUNOPTS="TRAP(ON,NOSPIE) TERMTHDACT(UADUMP)"';
-    const testDir = scope === "zowex" ? deployDirs.cTestDir : deployDirs.zowedTestDir;
-    const runner = scope === "zowex" ? "ztest_runner" : "zowed_test_runner";
-    const testCmd = `cd ${testDir} && ${testEnv} ./build-out/${runner} ${args[1] ?? ""}`;
+    const testCmd = `cd ${deployDirs.cTestDir} && ${testEnv} ./build-out/ztest_runner ${args[1] ?? ""}`;
     await runCommandInShell(connection, `${testCmd}\n`, {
         streamOutput: true,
-        stepName: `Running ${scope} tests`,
+        stepName: "Running zowex tests",
     });
     console.log("\nTesting complete!");
-    const xmlPath = scope === "zowex" ? "c/test/test-results.xml" : "c/server/test/test-results.xml";
-    await retrieve(connection, [xmlPath], "native", false, true);
+    await retrieve(connection, ["c/test/test-results.xml"], "native", false, true);
 }
 
 async function buildChdsect(connection: Client, sftpcon: SFTPWrapper, target: string) {
@@ -1444,7 +1401,7 @@ async function watch(connection: Client, sshProfile: IProfile) {
 }
 
 async function watchTest(connection: Client, sshProfile: IProfile, scope?: string) {
-    const testScope = scope === "zowex" || scope === "zowed" ? scope : "all";
+    const testScope = scope === "zowex" ? scope : "all";
     await new WatchUtils(connection, sshProfile, { testScope }).start();
     return new Promise<void>((resolve) => connection.on("close", () => resolve()));
 }
@@ -1571,8 +1528,6 @@ async function main() {
         cTestDir: `${config.deployDir}/c/test`,
         pythonDir: `${config.deployDir}/python/bindings`,
         pythonTestDir: `${config.deployDir}/python/bindings/test`,
-        zowedDir: `${config.deployDir}/c/server`,
-        zowedTestDir: `${config.deployDir}/c/server/test`,
     };
     const sshClient = await buildSshClient(config.sshProfile as IProfile);
     await testConnection(sshClient);
@@ -1589,9 +1544,6 @@ async function main() {
                 break;
             case "build:python":
                 await make(sshClient, deployDirs.pythonDir);
-                break;
-            case "build:zowed":
-                await make(sshClient, deployDirs.zowedDir);
                 break;
             case "clean":
                 await clean(sshClient);
@@ -1613,10 +1565,7 @@ async function main() {
                 await test(sshClient);
                 break;
             case "test:zowex":
-                await testSingle(sshClient, "zowex");
-                break;
-            case "test:zowed":
-                await testSingle(sshClient, "zowed");
+                await testSingle(sshClient);
                 break;
             case "test:python":
                 await make(sshClient, deployDirs.pythonTestDir);

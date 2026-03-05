@@ -12,38 +12,27 @@
 #ifndef SERVER_MAIN_HPP
 #define SERVER_MAIN_HPP
 
-/**
- * @brief Options structure for configuring the zowed server
- */
-struct ZowedOptions
-{
-  long long num_workers;     ///< Number of worker threads
-  bool verbose;              ///< Enable verbose logging
-  long long request_timeout; ///< Request timeout (in seconds) for worker heartbeat
+#include <string>
 
-  /**
-   * @brief Constructor with default values
-   * @param num_workers Number of worker threads
-   * @param verbose Enable verbose logging
-   */
-  explicit ZowedOptions(const long long num_workers = 10, const bool verbose = false, const long long request_timeout_seconds = 60)
-      : num_workers(num_workers), verbose(verbose), request_timeout(request_timeout_seconds)
-  {
-    if (this->request_timeout <= 0)
-      this->request_timeout = 60LL;
-  }
+namespace server
+{
+
+struct Options
+{
+  long long num_workers = 10;
+  bool verbose = false;
+  long long request_timeout = 60;
+  std::string exec_dir = ".";
 };
 
 /**
- * @brief Alternative entry point with pre-parsed options
- *
- * This function runs the zowed server with pre-configured options,
- * bypassing command line argument parsing.
+ * @brief Run the JSON-RPC server with the given options.
  *
  * @param options Pre-configured server options
- * @param exec_dir Executable directory for logger initialization
  * @return int Exit code (0 for success, non-zero for error)
  */
-extern "C" int run_zowed_server(const ZowedOptions &options, const char *exec_dir = nullptr);
+int run(const Options &options);
+
+} // namespace server
 
 #endif
