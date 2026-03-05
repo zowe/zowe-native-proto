@@ -20,10 +20,13 @@
 #define _LARGE_TIME_API
 #endif
 
+#ifndef _XOPEN_SOURCE_EXTENDED
+#define _XOPEN_SOURCE_EXTENDED 1
+#endif
+
 #include <limits.h>
 #include <limits>
 #include <climits>
-
 #include <algorithm>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -71,6 +74,11 @@ using namespace std;
 string zusf_join_path(const string &dir_path, const string &name)
 {
   return dir_path[dir_path.length() - 1] == '/' ? dir_path + name : dir_path + "/" + name;
+}
+
+bool zusf_is_valid_path(const string &path)
+{
+  return !path.empty() && path.length() <= PATH_MAX;
 }
 
 /**
@@ -857,7 +865,13 @@ string zusf_build_mode_string(mode_t mode)
 /**
  * Copies a USS file or directory.
  */
-int zusf_copy_file_or_dir(ZUSF *zusf, const string &source_path, const string &destination_path, const CopyOptions& options) {
+int zusf_copy_file_or_dir(ZUSF *zusf, const string &source_path, const string &destination_path, const CopyOptions &options)
+{
+  if (!zusf_is_valid_path(source_path) || !zusf_is_valid_path(destination_path))
+  {
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Source or destination path is empty or too long");
+    return RTNCD_FAILURE;
+  }
 
   if (options.follow_symlinks && !options.recursive)
   {
@@ -865,15 +879,19 @@ int zusf_copy_file_or_dir(ZUSF *zusf, const string &source_path, const string &d
     return RTNCD_FAILURE;
   }
   struct stat buf;
-  if (0 == stat(source_path.c_str(), &buf)) {
-    if (S_ISFIFO(buf.st_mode)) {
+  if (0 == stat(source_path.c_str(), &buf))
+  {
+    if (S_ISFIFO(buf.st_mode))
+    {
       zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Error: we do not support copying from named pipes");
       return RTNCD_FAILURE;
     }
   }
 
-  if (0 == stat(destination_path.c_str(), &buf)) {
-    if (S_ISFIFO(buf.st_mode)) {
+  if (0 == stat(destination_path.c_str(), &buf))
+  {
+    if (S_ISFIFO(buf.st_mode))
+    {
       zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Error: we do not support copying to named pipes");
       return RTNCD_FAILURE;
     }
@@ -899,7 +917,8 @@ int zusf_copy_file_or_dir(ZUSF *zusf, const string &source_path, const string &d
   string cp_command = "cp " + command_flags + " \"" + source_path + "\" \"" + destination_path + "\" 2>&1";
   string response;
   int rc = zut_run_shell_command(cp_command, response);
-  if (rc > 0) {
+  if (rc > 0)
+  {
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Error: %s\n\t return code: %d", response.c_str(), rc);
     return RTNCD_FAILURE;
   }
@@ -973,6 +992,101 @@ int zusf_create_uss_file_or_dir(ZUSF *zusf, const string &file, mode_t mode, boo
 
   zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not create '%s'", file.c_str());
   return RTNCD_FAILURE;
+}
+
+int zusf_move_uss_file_or_dir(ZUSF *zusf, const string &source, const string &target, bool force)
+{
+  if (!zusf_is_valid_path(source) || !zusf_is_valid_path(target))
+  {
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Source or target path is empty or too long");
+    return RTNCD_FAILURE;
+  }
+
+  // truncate source and target paths to 100 characters for error messages
+  string truncated_source = source.size() > 100 ? "..." + source.substr(source.size() - 100) : source;
+  string truncated_target = target.size() > 100 ? "..." + target.substr(target.size() - 100) : target;
+
+  // check if source exists
+  struct stat source_stats;
+  if (lstat(source.c_str(), &source_stats) == -1)
+  {
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Source path '%s' does not exist", truncated_source.c_str());
+    return RTNCD_FAILURE;
+  }
+
+  // simple string compare for source and target
+  if (strcmp(source.c_str(), target.c_str()) == 0)
+  {
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Source '%s' and target '%s' are identical", truncated_source.c_str(), truncated_target.c_str());
+    return RTNCD_FAILURE;
+  }
+
+  // TODO(zFernand0): Use std::filesystem::absolute instead of realpath when C++17 is available
+  // resolve source path
+  char resolved_source[PATH_MAX];
+  if (stat(source.c_str(), &source_stats) == 0 && realpath(source.c_str(), resolved_source) == nullptr)
+  {
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to resolve source path '%s'; errno: %d", truncated_source.c_str(), errno);
+    return RTNCD_FAILURE;
+  }
+
+  // target related variables
+  char resolved_target[PATH_MAX];
+  bool target_is_dir = false;
+
+  // check if target exists
+  struct stat target_stats;
+  if (lstat(target.c_str(), &target_stats) == 0)
+  {
+    // if target exists and force is not set, return failure
+    if (!force)
+    {
+      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Target path '%s' already exists", truncated_target.c_str());
+      return RTNCD_FAILURE;
+    }
+
+    // TODO(zFernand0): Use std::filesystem::absolute instead of realpath when C++17 is available
+    // resolve target path, save it to resolved_target
+    if (stat(target.c_str(), &target_stats) == 0 && realpath(target.c_str(), resolved_target) == nullptr)
+    {
+      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to resolve target path '%s'; errno: %d", truncated_target.c_str(), errno);
+      return RTNCD_FAILURE;
+    }
+
+    // check if paths are identical
+    if (strcmp(resolved_source, resolved_target) == 0)
+    {
+      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Source '%s' and target '%s' are identical", truncated_source.c_str(), truncated_target.c_str());
+      return RTNCD_FAILURE;
+    }
+
+    target_is_dir = S_ISDIR(target_stats.st_mode);
+    // check if source is a directory and target is not
+    if (S_ISDIR(source_stats.st_mode) && !target_is_dir)
+    {
+      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Cannot move directory '%s'. Target '%s' is not a directory", truncated_source.c_str(), truncated_target.c_str());
+      return RTNCD_FAILURE;
+    }
+
+    // check if source is a pipe and target is not
+    if (S_ISFIFO(source_stats.st_mode) && !S_ISFIFO(target_stats.st_mode))
+    {
+      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Cannot move pipe '%s'. Target '%s' is not a pipe", truncated_source.c_str(), truncated_target.c_str());
+      return RTNCD_FAILURE;
+    }
+  }
+
+  // TODO(zFernand0): Use std::filesystem::rename instead of rename when C++17 is available
+  string mv_command = "mv \"" + source + "\" \"" + target + "\" 2>&1";
+  string response;
+  int rc = zut_run_shell_command(mv_command, response);
+  if (rc != 0)
+  {
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to move file or directory from '%s' to '%s', errno: %d", truncated_source.c_str(), truncated_target.c_str(), rc);
+    return RTNCD_FAILURE;
+  }
+
+  return RTNCD_SUCCESS;
 }
 
 /**
@@ -1119,6 +1233,11 @@ static int zusf_collect_directory_entries_recursive(ZUSF *zusf, const string &di
  */
 int zusf_list_uss_file_path(ZUSF *zusf, string file, string &response, ListOptions options, bool use_csv_format)
 {
+  if (!zusf_is_valid_path(file))
+  {
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "File path is empty or too long");
+    return RTNCD_FAILURE;
+  }
   // TODO(zFernand0): Handle `*` and other bash-expansion rules
   struct stat file_stats;
   if (stat(file.c_str(), &file_stats) == -1)
@@ -1128,7 +1247,6 @@ int zusf_list_uss_file_path(ZUSF *zusf, string file, string &response, ListOptio
   }
 
   // TODO(zFernand0): Add option to list full file paths
-
   if (S_ISREG(file_stats.st_mode))
   {
     const auto file_name = file.substr(file.find_last_of("/") + 1);
