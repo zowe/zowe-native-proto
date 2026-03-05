@@ -23,6 +23,10 @@
 #include "zusf.hpp"
 #include "zusftype.h"
 
+#ifndef PATH_MAX
+#define PATH_MAX 1024
+#endif
+
 typedef struct _CopyOptions
 {
   bool recursive;
@@ -30,9 +34,9 @@ typedef struct _CopyOptions
   bool preserve_attributes;
   bool force;
   _CopyOptions(bool recursive = false, bool follow_symlinks = false, bool preserve_attributes = false, bool force = false)
-    : recursive(recursive), follow_symlinks(follow_symlinks), preserve_attributes(preserve_attributes), force(force)
-    {
-    }
+      : recursive(recursive), follow_symlinks(follow_symlinks), preserve_attributes(preserve_attributes), force(force)
+  {
+  }
 } CopyOptions;
 
 typedef struct _ListOptions
@@ -46,8 +50,9 @@ typedef struct _ListOptions
   }
 } ListOptions;
 
-int zusf_copy_file_or_dir(ZUSF *zusf, const std::string &source_fs, const std::string &dest_fs, const CopyOptions& options);
+int zusf_copy_file_or_dir(ZUSF *zusf, const std::string &source_fs, const std::string &dest_fs, const CopyOptions &options);
 int zusf_create_uss_file_or_dir(ZUSF *zusf, const std::string &file, mode_t mode, bool createDir);
+int zusf_move_uss_file_or_dir(ZUSF *zusf, const std::string &source, const std::string &target, bool force = true);
 std::string zusf_format_file_entry(ZUSF *zusf, const struct stat &file_stats, const std::string &file_path, const std::string &display_name, ListOptions options, bool use_csv_format);
 int zusf_list_uss_file_path(ZUSF *zusf, std::string file, std::string &response, ListOptions options = ListOptions(), bool use_csv_format = false);
 int zusf_read_from_uss_file(ZUSF *zusf, const std::string &file, std::string &response);

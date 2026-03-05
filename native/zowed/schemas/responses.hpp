@@ -307,4 +307,9 @@ ZJSON_SCHEMA(IssueUssCmdResponse,
     FIELD_REQUIRED(data, STRING)
 );
 
+struct MoveFileResponse {};
+ZJSON_SCHEMA(MoveFileResponse,
+    FIELD_REQUIRED(success, BOOL)
+);
+
 #endif

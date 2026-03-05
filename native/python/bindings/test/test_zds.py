@@ -169,7 +169,7 @@ class TestDatasetFunctions:
         assert found_dataset.dsorg.strip() == 'PS'
         assert found_dataset.recfm.strip() == 'FB'
         assert hasattr(found_dataset, 'volser')
-        assert hasattr(found_dataset, 'migr')
+        assert hasattr(found_dataset, 'migrated')
 
     # CREATE MEMBER TESTS
     def test_create_member_success(self):

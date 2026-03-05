@@ -53,10 +53,7 @@ struct ZJobDD
  */
 int zjb_list_by_owner(ZJB *zjb, std::string owner_name, std::vector<ZJob> &jobs);
 
-#ifdef SWIG
-extern "C"
-{
-#endif
+#ifndef SWIG
 /**
  * @brief Return a list of jobs from an input or default owner
  *
@@ -68,7 +65,13 @@ extern "C"
  * @return int 0 for success; non zero otherwise
  */
 int zjb_list_by_owner(ZJB *zjb, std::string owner_name, std::string prefix_name, std::vector<ZJob> &jobs);
+#endif
 
+// Exclude status implementation for SWIG
+#ifdef SWIG
+extern "C"
+{
+#endif
 /**
  * @brief Return a list of jobs from an input or default owner
  *
