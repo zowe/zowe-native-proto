@@ -588,13 +588,15 @@ int zjb_view(ZJB *zjb, const std::string &jobid, ZJob &job)
 
 int zjb_list_by_owner(ZJB *zjb, const std::string &owner_name, std::vector<ZJob> &jobs)
 {
-  return zjb_list_by_owner(zjb, owner_name, "", jobs);
+  return zjb_list_by_owner(zjb, owner_name, "", "", jobs);
 }
 
+#ifndef SWIG
 int zjb_list_by_owner(ZJB *zjb, const std::string &owner_name, const std::string &prefix_name, std::vector<ZJob> &jobs)
 {
   return zjb_list_by_owner(zjb, owner_name, prefix_name, "", jobs);
 }
+#endif
 
 int zjb_list_by_owner(ZJB *zjb, const std::string &owner_name, const std::string &prefix_name, const std::string &status_name, std::vector<ZJob> &jobs)
 {
