@@ -1331,7 +1331,7 @@ int zusf_read_from_uss_file(ZUSF *zusf, const std::string &file, std::string &re
 
   if (zusf->encoding_opts.data_type == eDataTypeText)
   {
-    if (strlen(zusf->encoding_opts.codepage) > 0)
+    if (std::strlen(zusf->encoding_opts.codepage) > 0)
     {
       encoding_to_use = std::string(zusf->encoding_opts.codepage);
       has_encoding = true;
@@ -1351,7 +1351,7 @@ int zusf_read_from_uss_file(ZUSF *zusf, const std::string &file, std::string &re
   if (size > 0 && has_encoding)
   {
     std::string temp = response;
-    const auto source_encoding = strlen(zusf->encoding_opts.source_codepage) > 0 ? std::string(zusf->encoding_opts.source_codepage) : "UTF-8";
+    const auto source_encoding = std::strlen(zusf->encoding_opts.source_codepage) > 0 ? std::string(zusf->encoding_opts.source_codepage) : "UTF-8";
     try
     {
       const auto bytes_with_encoding = zut_encode(temp, encoding_to_use, source_encoding, zusf->diag);
@@ -1432,7 +1432,7 @@ int zusf_read_from_uss_file_streamed(ZUSF *zusf, const std::string &file, const 
 
   if (zusf->encoding_opts.data_type == eDataTypeText)
   {
-    if (strlen(zusf->encoding_opts.codepage) > 0)
+    if (std::strlen(zusf->encoding_opts.codepage) > 0)
     {
       encoding_to_use = std::string(zusf->encoding_opts.codepage);
       has_encoding = true;
@@ -1460,7 +1460,7 @@ int zusf_read_from_uss_file_streamed(ZUSF *zusf, const std::string &file, const 
   std::string source_encoding;
   if (has_encoding)
   {
-    source_encoding = strlen(zusf->encoding_opts.source_codepage) > 0 ? std::string(zusf->encoding_opts.source_codepage) : "UTF-8";
+    source_encoding = std::strlen(zusf->encoding_opts.source_codepage) > 0 ? std::string(zusf->encoding_opts.source_codepage) : "UTF-8";
     cd = iconv_open(source_encoding.c_str(), encoding_to_use.c_str());
     if (cd == (iconv_t)(-1))
     {
@@ -1552,7 +1552,7 @@ int zusf_write_to_uss_file(ZUSF *zusf, const std::string &file, std::string &dat
   struct stat file_stats;
 
   int stat_result = stat(file.c_str(), &file_stats);
-  if (strlen(zusf->etag) > 0 && stat_result != -1)
+  if (std::strlen(zusf->etag) > 0 && stat_result != -1)
   {
     const auto current_etag = zut_build_etag(file_stats.st_mtime, file_stats.st_size);
     if (current_etag != zusf->etag)
@@ -1571,7 +1571,7 @@ int zusf_write_to_uss_file(ZUSF *zusf, const std::string &file, std::string &dat
 
   if (zusf->encoding_opts.data_type == eDataTypeText)
   {
-    if (strlen(zusf->encoding_opts.codepage) > 0)
+    if (std::strlen(zusf->encoding_opts.codepage) > 0)
     {
       encoding_to_use = std::string(zusf->encoding_opts.codepage);
       has_encoding = true;
@@ -1591,7 +1591,7 @@ int zusf_write_to_uss_file(ZUSF *zusf, const std::string &file, std::string &dat
   std::string temp = data;
   if (has_encoding)
   {
-    const auto source_encoding = strlen(zusf->encoding_opts.source_codepage) > 0 ? std::string(zusf->encoding_opts.source_codepage) : "UTF-8";
+    const auto source_encoding = std::strlen(zusf->encoding_opts.source_codepage) > 0 ? std::string(zusf->encoding_opts.source_codepage) : "UTF-8";
     try
     {
       const auto bytes_with_encoding = zut_encode(temp, source_encoding, encoding_to_use, zusf->diag);
@@ -1673,7 +1673,7 @@ int zusf_write_to_uss_file_streamed(ZUSF *zusf, const std::string &file, const s
 
   if (zusf->encoding_opts.data_type == eDataTypeText)
   {
-    if (strlen(zusf->encoding_opts.codepage) > 0)
+    if (std::strlen(zusf->encoding_opts.codepage) > 0)
     {
       encoding_to_use = std::string(zusf->encoding_opts.codepage);
       has_encoding = true;
@@ -1691,7 +1691,7 @@ int zusf_write_to_uss_file_streamed(ZUSF *zusf, const std::string &file, const s
   }
 
   int stat_result = stat(file.c_str(), &file_stats);
-  if (strlen(zusf->etag) > 0 && stat_result != -1)
+  if (std::strlen(zusf->etag) > 0 && stat_result != -1)
   {
     const auto current_etag = zut_build_etag(file_stats.st_mtime, file_stats.st_size);
     if (current_etag != zusf->etag)
@@ -1738,7 +1738,7 @@ int zusf_write_to_uss_file_streamed(ZUSF *zusf, const std::string &file, const s
   std::string source_encoding;
   if (has_encoding)
   {
-    source_encoding = strlen(zusf->encoding_opts.source_codepage) > 0 ? std::string(zusf->encoding_opts.source_codepage) : "UTF-8";
+    source_encoding = std::strlen(zusf->encoding_opts.source_codepage) > 0 ? std::string(zusf->encoding_opts.source_codepage) : "UTF-8";
     cd = iconv_open(encoding_to_use.c_str(), source_encoding.c_str());
     if (cd == (iconv_t)(-1))
     {

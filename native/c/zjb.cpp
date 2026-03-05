@@ -175,7 +175,7 @@ int zjb_read_job_content_by_dsn(ZJB *zjb, const std::string &jobdsn, std::string
   i++;
   dynkey = daldsnam;
   numparms = 1;
-  plen = strlen(jobdsn.c_str());
+  plen = std::strlen(jobdsn.c_str());
   memcpy(s99tunit_x[i].s99tunit.s99tukey, &dynkey, sizeof(dynkey));
   memcpy(s99tunit_x[i].s99tunit.s99tunum, &numparms, sizeof(numparms));
   memcpy(s99tunit_x[i].s99tunit.s99tulng, &plen, sizeof(plen));

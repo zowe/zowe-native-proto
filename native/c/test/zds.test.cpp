@@ -465,8 +465,8 @@ void zds_tests()
                              // The actual encoding conversion should use UTF-8 as source when source_codepage is empty
                              // Since we can't easily test the actual file operations without a real data set,
                              // we'll verify the struct is properly initialized
-                             Expect(strlen(zds.encoding_opts.source_codepage)).ToBe(0);
-                             Expect(strlen(zds.encoding_opts.codepage)).ToBe(8); // "IBM-1047"
+                             Expect(std::strlen(zds.encoding_opts.source_codepage)).ToBe(0);
+                             Expect(std::strlen(zds.encoding_opts.codepage)).ToBe(8); // "IBM-1047"
                            });
 
                         it("should use specified source encoding when provided",
@@ -508,7 +508,7 @@ void zds_tests()
                              zds.encoding_opts.data_type = eDataTypeText;
 
                              // Should handle empty source encoding (will default to UTF-8 in actual conversion)
-                             Expect(strlen(zds.encoding_opts.source_codepage)).ToBe(0);
+                             Expect(std::strlen(zds.encoding_opts.source_codepage)).ToBe(0);
                              Expect(std::string(zds.encoding_opts.codepage)).ToBe("IBM-1047");
                            });
 

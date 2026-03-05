@@ -52,7 +52,7 @@ const char FF_CHAR = '\x0C';
  */
 static inline bool zds_use_codepage(const ZDS *zds)
 {
-  return zds->encoding_opts.data_type == eDataTypeText && strlen(zds->encoding_opts.codepage) > 0;
+  return zds->encoding_opts.data_type == eDataTypeText && std::strlen(zds->encoding_opts.codepage) > 0;
 }
 
 /**
@@ -552,10 +552,10 @@ int zds_read_from_dd(ZDS *zds, std::string ddname, std::string &response)
   in.close();
 
   const size_t size = response.size() + 1;
-  if (size > 0 && strlen(zds->encoding_opts.codepage) > 0)
+  if (size > 0 && std::strlen(zds->encoding_opts.codepage) > 0)
   {
     std::string temp = response;
-    const auto source_encoding = strlen(zds->encoding_opts.source_codepage) > 0 ? std::string(zds->encoding_opts.source_codepage) : "UTF-8";
+    const auto source_encoding = std::strlen(zds->encoding_opts.source_codepage) > 0 ? std::string(zds->encoding_opts.source_codepage) : "UTF-8";
     try
     {
       const auto bytes_with_encoding = zut_encode(temp, std::string(zds->encoding_opts.codepage), source_encoding, zds->diag);
@@ -676,7 +676,7 @@ static void scan_for_truncated_lines(const std::string &data, int max_len,
 int zds_read_from_dsn(ZDS *zds, const std::string &dsn, std::string &response)
 {
   std::string dsname = "//'" + dsn + "'";
-  if (strlen(zds->ddname) > 0)
+  if (std::strlen(zds->ddname) > 0)
   {
     dsname = "//DD:" + std::string(zds->ddname);
   }
@@ -762,7 +762,7 @@ int zds_read_from_dsn(ZDS *zds, const std::string &dsn, std::string &response)
   if (total_size > 0 && encoding_provided)
   {
     std::string temp = response;
-    const auto source_encoding = strlen(zds->encoding_opts.source_codepage) > 0 ? std::string(zds->encoding_opts.source_codepage) : "UTF-8";
+    const auto source_encoding = std::strlen(zds->encoding_opts.source_codepage) > 0 ? std::string(zds->encoding_opts.source_codepage) : "UTF-8";
     try
     {
       const auto bytes_with_encoding = zut_encode(temp, std::string(zds->encoding_opts.codepage), source_encoding, zds->diag);
@@ -989,10 +989,10 @@ static int zds_write_sequential(ZDS *zds, const std::string &dsn, std::string &d
   const bool isTextMode = zds->encoding_opts.data_type != eDataTypeBinary;
 
   // Determine source encoding for encoding conversion
-  const auto source_encoding = strlen(zds->encoding_opts.source_codepage) > 0 ? std::string(zds->encoding_opts.source_codepage) : "UTF-8";
+  const auto source_encoding = std::strlen(zds->encoding_opts.source_codepage) > 0 ? std::string(zds->encoding_opts.source_codepage) : "UTF-8";
 
   std::string dsname = "//'" + dsn + "'";
-  if (strlen(zds->ddname) > 0)
+  if (std::strlen(zds->ddname) > 0)
   {
     dsname = "//DD:" + std::string(zds->ddname);
   }
@@ -1099,7 +1099,7 @@ static int zds_write_member_bpam(ZDS *zds, const std::string &dsn, std::string &
   const bool is_asa = (ioc->dcb.dcbrecfm & dcbrecca) != 0;
 
   // Determine source encoding for line splitting
-  const auto source_encoding = strlen(zds->encoding_opts.source_codepage) > 0 ? std::string(zds->encoding_opts.source_codepage) : "UTF-8";
+  const auto source_encoding = std::strlen(zds->encoding_opts.source_codepage) > 0 ? std::string(zds->encoding_opts.source_codepage) : "UTF-8";
 
   // Track truncated lines
   TruncationTracker truncation;
@@ -1385,7 +1385,7 @@ int zds_write_to_dsn(ZDS *zds, const std::string &dsn, std::string &data)
 
   const auto has_encoding = zds_use_codepage(zds);
 
-  if (strlen(zds->etag) > 0 && 0 != zds_validate_etag(zds, dsn, has_encoding))
+  if (std::strlen(zds->etag) > 0 && 0 != zds_validate_etag(zds, dsn, has_encoding))
   {
     return RTNCD_FAILURE;
   }
@@ -3028,7 +3028,7 @@ int zds_read_from_dsn_streamed(ZDS *zds, const std::string &dsn, const std::stri
   }
 
   std::string dsname = "//'" + dsn + "'";
-  if (strlen(zds->ddname) > 0)
+  if (std::strlen(zds->ddname) > 0)
   {
     dsname = "//DD:" + std::string(zds->ddname);
   }
@@ -3075,7 +3075,7 @@ int zds_read_from_dsn_streamed(ZDS *zds, const std::string &dsn, const std::stri
   std::vector<char> left_over;
 
   // Open iconv descriptor once for all chunks (for stateful encodings like IBM-939)
-  const std::string source_encoding = has_encoding && strlen(zds->encoding_opts.source_codepage) > 0 ? std::string(zds->encoding_opts.source_codepage) : "UTF-8";
+  const std::string source_encoding = has_encoding && std::strlen(zds->encoding_opts.source_codepage) > 0 ? std::string(zds->encoding_opts.source_codepage) : "UTF-8";
   IconvGuard iconv_guard(has_encoding ? source_encoding.c_str() : nullptr, has_encoding ? codepage.c_str() : nullptr);
   if (has_encoding && !iconv_guard.is_valid())
   {
@@ -3237,7 +3237,7 @@ int zds_read_from_dsn_streamed(ZDS *zds, const std::string &dsn, const std::stri
 static int zds_write_sequential_streamed(ZDS *zds, const std::string &dsn, const std::string &pipe, size_t *content_len, const DscbAttributes &attrs)
 {
   std::string dsname = "//'" + dsn + "'";
-  if (strlen(zds->ddname) > 0)
+  if (std::strlen(zds->ddname) > 0)
   {
     dsname = "//DD:" + std::string(zds->ddname);
   }
@@ -3261,7 +3261,7 @@ static int zds_write_sequential_streamed(ZDS *zds, const std::string &dsn, const
   std::string line_buffer;
 
   // Determine source encoding for encoding conversion
-  const auto source_encoding = strlen(zds->encoding_opts.source_codepage) > 0 ? std::string(zds->encoding_opts.source_codepage) : "UTF-8";
+  const auto source_encoding = std::strlen(zds->encoding_opts.source_codepage) > 0 ? std::string(zds->encoding_opts.source_codepage) : "UTF-8";
 
   {
     FileGuard fout(dsname.c_str(), fopen_flags.c_str());
@@ -3474,7 +3474,7 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const std::string &dsn, cons
   const int max_len = get_effective_lrecl(ioc);
 
   // Determine source encoding for line splitting
-  const auto source_encoding = strlen(zds->encoding_opts.source_codepage) > 0 ? std::string(zds->encoding_opts.source_codepage) : "UTF-8";
+  const auto source_encoding = std::strlen(zds->encoding_opts.source_codepage) > 0 ? std::string(zds->encoding_opts.source_codepage) : "UTF-8";
 
   // ASA state tracking for streaming
   AsaStreamState asa_state;
@@ -3759,7 +3759,7 @@ int zds_write_to_dsn_streamed(ZDS *zds, const std::string &dsn, const std::strin
 
   const auto has_encoding = zds_use_codepage(zds);
 
-  if (strlen(zds->etag) > 0 && 0 != zds_validate_etag(zds, dsn, has_encoding))
+  if (std::strlen(zds->etag) > 0 && 0 != zds_validate_etag(zds, dsn, has_encoding))
   {
     return RTNCD_FAILURE;
   }

@@ -464,7 +464,7 @@ int handle_job_submit_jcl(InvocationContext &context)
 
   if (encoding_prepared && encoding_opts.data_type != eDataTypeBinary)
   {
-    const auto source_encoding = strlen(encoding_opts.source_codepage) > 0 ? std::string(encoding_opts.source_codepage) : "UTF-8";
+    const auto source_encoding = std::strlen(encoding_opts.source_codepage) > 0 ? std::string(encoding_opts.source_codepage) : "UTF-8";
     data = zut_encode(data, source_encoding, std::string(encoding_opts.codepage), zjb.diag);
   }
 

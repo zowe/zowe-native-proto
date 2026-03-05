@@ -109,7 +109,7 @@ int zut_substitute_symbol(const std::string &pattern, std::string &result)
   }
 
   strcpy(parms->input, pattern.c_str());
-  parms->length = strlen(pattern.c_str());
+  parms->length = std::strlen(pattern.c_str());
   int rc = ZUTSYMBP(parms);
   if (RTNCD_SUCCESS != rc)
   {

@@ -1462,8 +1462,8 @@ void zusf_tests()
                   // source_codepage should be empty/null
 
                   // The encoding conversion logic should use UTF-8 as source when source_codepage is empty
-                  Expect(strlen(zusf.encoding_opts.source_codepage)).ToBe(0);
-                  Expect(strlen(zusf.encoding_opts.codepage)).ToBe(8); // "IBM-1047"
+                  Expect(std::strlen(zusf.encoding_opts.source_codepage)).ToBe(0);
+                  Expect(std::strlen(zusf.encoding_opts.codepage)).ToBe(8); // "IBM-1047"
                 });
 
              it("should use specified source encoding when provided",
@@ -1502,7 +1502,7 @@ void zusf_tests()
                   zusf.encoding_opts.data_type = eDataTypeText;
 
                   // Should handle empty source encoding (will default to UTF-8 in actual conversion)
-                  Expect(strlen(zusf.encoding_opts.source_codepage)).ToBe(0);
+                  Expect(std::strlen(zusf.encoding_opts.source_codepage)).ToBe(0);
                   Expect(std::string(zusf.encoding_opts.codepage)).ToBe("IBM-1047");
                 });
 
@@ -1691,7 +1691,7 @@ void zusf_tests()
                   Expect(zusf.encoding_opts.data_type).ToBe(eDataTypeText);
 
                   // Verify error message was set but encoding preserved
-                  Expect(strlen(zusf.diag.e_msg)).ToBeGreaterThan(0);
+                  Expect(std::strlen(zusf.diag.e_msg)).ToBeGreaterThan(0);
                 });
            });
 
@@ -1702,7 +1702,7 @@ void zusf_tests()
              TestDirGuard test_dir(zusf_test_dir.c_str());
 
              ZUSF zusf{};
-             beforeEach([&zusf]() ->
+             beforeEach([&zusf]() -> void
                         { zusf = {}; });
 
              describe("error conditions", [&]() -> void
