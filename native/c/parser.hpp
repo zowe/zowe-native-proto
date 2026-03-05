@@ -337,9 +337,10 @@ public:
   Command &add_arg(std::string name, const std::vector<std::string> &aliases,
                    std::string help, ArgType type = ArgType_Flag,
                    bool positional = false, bool required = false,
-                   ArgValue default_value = ArgValue())
+                   ArgValue default_value = ArgValue(), bool hidden = false)
   {
     ArgumentDef arg(name, aliases, help, type, positional, required, default_value);
+    arg.hidden = hidden;
     register_argument(arg);
     return *this;
   }
