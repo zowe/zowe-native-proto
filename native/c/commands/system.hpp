@@ -12,11 +12,11 @@
 #include "../parser.hpp"
 #include "../extend/plugin.hpp"
 
-namespace zsystem
+namespace sys
 {
 using namespace plugin;
 int handle_system_display_symbol(InvocationContext &result);
 int handle_system_list_parmlib(InvocationContext &result);
 int handle_system_list_proclib(InvocationContext &result);
 void register_commands(parser::Command &root_command);
-} // namespace zsystem
+} // namespace sys

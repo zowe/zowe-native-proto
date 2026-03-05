@@ -19,7 +19,7 @@ using namespace parser;
 using namespace std;
 using namespace commands::common;
 
-namespace zsystem
+namespace sys
 {
 
 int handle_system_display_symbol(InvocationContext &context)
@@ -137,4 +137,4 @@ void register_commands(parser::Command &root_command)
 
   root_command.add_command(system_cmd);
 }
-} // namespace zsystem
+} // namespace sys
