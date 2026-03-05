@@ -8,6 +8,9 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 - `c`: Added the `pattern` option to the `data-set list-members` zowex command to filter the returned members. [#817](https://github.com/zowe/zowe-native-proto/pull/817)
 - `c`: Implemented `zowex uss copy` command to copy USS files and directories. [#379](https://github.com/zowe/zowe-native-proto/issues/379)
+- `c`: Implemented `zowex uss move` command to move files and directories in z/OS Unix. [#378](https://github.com/zowe/zowe-native-proto/issues/378)
+- `python`: Implemented basic move APIs and fixed build issues. [#789](https://github.com/zowe/zowe-native-proto/pull/789)
+
 
 ## `0.2.4`
 
