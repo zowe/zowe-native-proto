@@ -15,6 +15,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - `c`: Modernized C++ code to align with C++17 best practices and adopted new standard library implementations (`unordered_map`, `to_string`, `if constexpr`, brace initialization, etc.). [#812](https://github.com/zowe/zowe-native-proto/pull/812)
 - `c`: Removed all cases of `using namespace std` in native code to prevent namespace collisions and unintended effects on API consumers. All uses of `std` classes and utilities are now explicitly prefixed with `std::`. [#812](https://github.com/zowe/zowe-native-proto/pull/812)
 - `c`: Removed redundant standard library utilities from the `zstd.hpp` C++ header, in favor of the verified implementations included with ibm-clang and C++17. [#812](https://github.com/zowe/zowe-native-proto/pull/812)
+- `c`: Renamed `zut_int_to_string` to `zut_hex_to_string` to align with use cases for the function. [#812](https://github.com/zowe/zowe-native-proto/pull/812)
 
 ## `0.2.4`
 
