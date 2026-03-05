@@ -20,7 +20,7 @@ using namespace parser;
 using namespace std;
 using namespace commands::common;
 
-namespace zsystem
+namespace sys
 {
 
 int handle_system_display_symbol(InvocationContext &context)
@@ -138,17 +138,17 @@ void register_commands(parser::Command &root_command)
   // Display symbol subcommand
   auto system_display_symbol_cmd = command_ptr(new Command("display-symbol", "display system symbol"));
   system_display_symbol_cmd->add_positional_arg("symbol", "symbol to display", ArgType_Single, true);
-  system_display_symbol_cmd->set_handler(handle_system_display_symbol); // TODO(Kelosky): move these
+  system_display_symbol_cmd->set_handler(handle_system_display_symbol);
   system_cmd->add_command(system_display_symbol_cmd);
 
   // List-parmlib subcommand
   auto system_list_parmlib_cmd = command_ptr(new Command("list-parmlib", "list parmlib"));
-  system_list_parmlib_cmd->set_handler(handle_system_list_parmlib); // TODO(Kelosky): move these
+  system_list_parmlib_cmd->set_handler(handle_system_list_parmlib);
   system_cmd->add_command(system_list_parmlib_cmd);
 
   // List-proclib subcommand
   auto system_list_proclib_cmd = command_ptr(new Command("list-proclib", "list proclib"));
-  system_list_proclib_cmd->set_handler(handle_system_list_proclib); // TODO(Kelosky): move these
+  system_list_proclib_cmd->set_handler(handle_system_list_proclib);
   system_cmd->add_command(system_list_proclib_cmd);
 
   // List-subsystems subcommand
@@ -165,4 +165,4 @@ void register_commands(parser::Command &root_command)
 
   root_command.add_command(system_cmd);
 }
-} // namespace zsystem
+} // namespace sys

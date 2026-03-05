@@ -923,6 +923,8 @@ int close_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
       first_rc = rc;
   }
 
+  storage_release(sizeof(IO_CTRL), ioc);
+
   return first_rc;
 }
 

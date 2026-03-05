@@ -87,7 +87,8 @@ ZJSON_SCHEMA(ListDsMembersRequest,
     FIELD_OPTIONAL(responseTimeout, NUMBER),
     FIELD_OPTIONAL(start, STRING),
     FIELD_REQUIRED(dsname, STRING),
-    FIELD_OPTIONAL(attributes, BOOL)
+    FIELD_OPTIONAL(attributes, BOOL),
+    FIELD_OPTIONAL(pattern, STRING)
 );
 
 struct ReadDatasetRequest {};
@@ -272,6 +273,13 @@ ZJSON_SCHEMA(WriteFileRequest,
 struct IssueUssCmdRequest {};
 ZJSON_SCHEMA(IssueUssCmdRequest,
     FIELD_REQUIRED(commandText, STRING)
+);
+
+struct MoveFileRequest {};
+ZJSON_SCHEMA(MoveFileRequest,
+    FIELD_REQUIRED(source, STRING),
+    FIELD_REQUIRED(target, STRING),
+    FIELD_OPTIONAL(force, BOOL)
 );
 
 #endif

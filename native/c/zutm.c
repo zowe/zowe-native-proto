@@ -399,9 +399,9 @@ int ZUTSSIQ(ZDIAG *diag, JQRY_HEADER **area, const char *filter)
   return rc;
 }
 
-#pragma prolog(ZUTMFR31, " ZWEPROLG NEWDSA=(YES,4) ")
-#pragma epilog(ZUTMFR31, " ZWEEPILG ")
-int ZUTMFR31(int *size, void *data)
+#pragma prolog(ZUTMSREL, " ZWEPROLG NEWDSA=(YES,4) ")
+#pragma epilog(ZUTMSREL, " ZWEEPILG ")
+int ZUTMSREL(int *size, void *data)
 {
   storage_release(*size, data);
   return 0;
