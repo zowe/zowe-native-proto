@@ -145,13 +145,13 @@ int handle_tool_search(InvocationContext &context)
   string pattern = context.get<std::string>("string", "");
   string parms = context.get<std::string>("parms", "");
   string dsn = context.get<std::string>("dsn", "");
-  string attributes = context.get<std::string>("attributes", "space(50,100)");
+  string outdd_attributes = context.get<std::string>("outdd-attributes", "space(50,100)");
 
   // Perform dynalloc
   vector<string> dds;
   dds.reserve(3);
   dds.push_back("alloc dd(newdd) da('" + dsn + "') shr");
-  dds.push_back("alloc dd(outdd) " + attributes);
+  dds.push_back("alloc dd(outdd) " + outdd_attributes);
   dds.push_back("alloc dd(sysin)");
 
   ZDIAG diag = {};
@@ -471,11 +471,11 @@ void register_commands(parser::Command &root_command)
   tool_search_cmd->add_keyword_arg("parms",
                                    make_aliases("--parms", "--p"),
                                    "parms to pass to ISRSUPC", ArgType_Single, false);
-  tool_search_cmd->add_keyword_arg("attributes",
-                                   make_aliases("--attributes", "--a"),
-                                   "attributes for output dd", ArgType_Single, false);
+  tool_search_cmd->add_keyword_arg("outdd-attributes",
+                                   make_aliases("--outdd-attributes", "--oa"),
+                                   "attributes for output dd, e.g. 'space(50,100)'", ArgType_Single, false);
   tool_search_cmd->add_example("Search 'SYS1.MACLIB' for string 'world' with parms 'ANYC'", "zowex tool search sys1.maclib world --parms anyc");
-  tool_search_cmd->add_example("Search 'SYS1.MACLIB' for string 'world' with parms 'ANYC,LPSF'", "zowex tool search sys1.maclib world --parms anyc,lpsf --attributes \"cylinders space(50,5)\"");
+  tool_search_cmd->add_example("Search 'SYS1.MACLIB' for string 'world' with parms 'ANYC,LPSF'", "zowex tool search sys1.maclib world --parms anyc,lpsf --outdd-attributes \"cylinders space(50,5)\"");
   tool_search_cmd->set_handler(handle_tool_search);
   tool_cmd->add_command(tool_search_cmd);
 
