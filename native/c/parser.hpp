@@ -27,9 +27,6 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
-#if defined(__MVS__) && !defined(__clang__)
-#include <xtr1common>
-#endif
 
 namespace parser
 {
