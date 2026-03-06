@@ -18,6 +18,9 @@ import { ZSshClient } from "../src/ZSshClient";
 import { ZSshUtils } from "../src/ZSshUtils";
 
 vi.mock("ssh2");
+vi.mock("../src/ssh-rs", () => {
+    return { createClient: () => new Client() };
+});
 
 describe("ZSshClient", () => {
     const fakeSession: ISshSession = {
