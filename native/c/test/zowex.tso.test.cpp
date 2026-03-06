@@ -12,7 +12,6 @@
 #include "ztest.hpp"
 #include "zutils.hpp"
 
-using namespace std;
 using namespace ztst;
 
 void zowex_tso_tests()
@@ -21,8 +20,8 @@ void zowex_tso_tests()
            {
         it("should display help", []() -> void
         {
-            string response;
-            string command = zowex_command + " tso";
+            std::string response;
+            std::string command = zowex_command + " tso";
             int rc = execute_command_with_output(command, response);
 
             ExpectWithContext(rc, response).ToBe(0);
@@ -31,8 +30,28 @@ void zowex_tso_tests()
 
         it("should successfully issue a simple TSO command", []() -> void
         {
-            string response;
-            string command = zowex_command + " tso issue time";
+            std::string response;
+            std::string command = zowex_command + " tso issue time";
+            int rc = execute_command_with_output(command, response);
+
+            ExpectWithContext(rc, response).ToBe(0);
+            Expect(response).ToContain("TIME");
+        });
+
+        it("should successfully issue a TSO command with special characters in the command", []() -> void
+        {
+            std::string response;
+            std::string command = zowex_command + " tso issue \"time (&$\"";
+            int rc = execute_command_with_output(command, response);
+
+            ExpectWithContext(rc, response).ToBe(0);
+            Expect(response).ToContain("TIME");
+        });
+
+        it("should successfully issue a TSO command with special characters in the command", []() -> void
+        {
+            std::string response;
+            std::string command = zowex_command + " tso issue \"time (&$\"";
             int rc = execute_command_with_output(command, response);
 
             ExpectWithContext(rc, response).ToBe(0);
@@ -41,8 +60,8 @@ void zowex_tso_tests()
 
         it("should error when the TSO command itself is invalid", []() -> void
         {
-            string response;
-            string command = zowex_command + " tso issue \"invalidCommand\"";
+            std::string response;
+            std::string command = zowex_command + " tso issue \"invalidCommand\"";
 
             int rc = execute_command_with_output(command, response);
 

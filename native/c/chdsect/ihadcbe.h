@@ -1,4 +1,8 @@
+#ifdef __open_xl__
+#pragma pack(1)
+#else
 #pragma pack(packed)
+#endif
  
 #ifndef __dcbe__
 #define __dcbe__
@@ -76,4 +80,8 @@ struct dcbe {
  
 #endif
  
+#ifdef __open_xl__
+#pragma pack()
+#else
 #pragma pack(reset)
+#endif

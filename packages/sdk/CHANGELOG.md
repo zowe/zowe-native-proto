@@ -7,6 +7,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 ## Recent Changes
 
 - Added support for copying USS files in the `RpcClientApi` class. [#379](https://github.com/zowe/zowe-native-proto/issues/379)
+- Added support for USS Move operations. [#789](https://github.com/zowe/zowe-native-proto/pull/789)
 - Added experimental native client for improved performance. To enable it, pass the `useNativeSsh` option to the `ZSshClient.create` method. [#833](https://github.com/zowe/zowe-native-proto/pull/833)
 
 ## `0.3.0`
