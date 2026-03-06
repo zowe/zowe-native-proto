@@ -19,8 +19,8 @@
 #define _POSIX_SOURCE
 #include <iostream>
 #include <vector>
-#include <setjmp.h>
-#include <signal.h>
+#include <csetjmp>
+#include <csignal>
 #include <type_traits>
 #include <cxxabi.h>
 #include <typeinfo>
@@ -233,22 +233,22 @@ private:
     sa.sa_sigaction = signal_handler;
     sa.sa_flags = SA_SIGINFO;
 
-#if defined(__IBMCPP__) || defined(__IBMC__)
-    sigaction(SIGABND, &sa, NULL);
+#if defined(__MVS__)
+    sigaction(SIGABND, &sa, nullptr);
 #endif
-    sigaction(SIGABRT, &sa, NULL);
-    sigaction(SIGILL, &sa, NULL);
+    sigaction(SIGABRT, &sa, nullptr);
+    sigaction(SIGILL, &sa, nullptr);
   }
 
   static void reset_signal_handlers(struct sigaction &sa)
   {
     sa.sa_flags = 0;
     sa.sa_handler = SIG_DFL;
-#if defined(__IBMCPP__) || defined(__IBMC__)
-    sigaction(SIGABND, &sa, NULL);
+#if defined(__MVS__)
+    sigaction(SIGABND, &sa, nullptr);
 #endif
-    sigaction(SIGABRT, &sa, NULL);
-    sigaction(SIGILL, &sa, NULL);
+    sigaction(SIGABRT, &sa, nullptr);
+    sigaction(SIGILL, &sa, nullptr);
   }
 
   static void setup_timeout_handler(struct sigaction &sa, struct sigaction &old_sa)
@@ -861,7 +861,7 @@ public:
   {
     if (!inverse)
     {
-      if (NULL != result)
+      if (nullptr != result)
       {
         std::stringstream ss;
         ss << result;
@@ -872,7 +872,7 @@ public:
     }
     else
     {
-      if (NULL == result)
+      if (nullptr == result)
       {
         std::stringstream ss;
         ss << result;
@@ -1176,7 +1176,7 @@ void xdescribe(const std::string &description, Callable)
 {
   Globals &g = Globals::get_instance();
 
-  TEST_SUITE suite = {0};
+  TEST_SUITE suite{};
   suite.description = description;
   suite.nesting_level = g.get_nesting();
   suite.skipped = true;
@@ -1336,11 +1336,11 @@ inline void print_failed_tests()
   bool has_failures = false;
 
   // First pass: check if there are any failures
-  for (std::vector<TEST_SUITE>::iterator it = g.get_suites().begin(); it != g.get_suites().end(); it++)
+  for (const auto &suite : g.get_suites())
   {
-    for (std::vector<TEST_CASE>::iterator iit = it->tests.begin(); iit != it->tests.end(); iit++)
+    for (const auto &test : suite.tests)
     {
-      if (!iit->success)
+      if (!test.success)
       {
         has_failures = true;
         break;
@@ -1359,14 +1359,14 @@ inline void print_failed_tests()
   std::vector<std::string> suite_paths;
   std::vector<int> suite_nesting_levels;
 
-  for (std::vector<TEST_SUITE>::iterator it = g.get_suites().begin(); it != g.get_suites().end(); it++)
+  for (const auto &suite : g.get_suites())
   {
     bool suite_has_failures = false;
 
     // Check if this suite has any failures
-    for (std::vector<TEST_CASE>::iterator iit = it->tests.begin(); iit != it->tests.end(); iit++)
+    for (const auto &test : suite.tests)
     {
-      if (!iit->success && !iit->skipped)
+      if (!test.success && !test.skipped)
       {
         suite_has_failures = true;
         break;
@@ -1376,8 +1376,8 @@ inline void print_failed_tests()
     if (suite_has_failures)
     {
       // Build the complete path for this suite
-      std::string full_path = it->description;
-      int current_nesting = it->nesting_level;
+      std::string full_path = suite.description;
+      int current_nesting = suite.nesting_level;
 
       // Find the most recent parent suite by looking at nesting levels
       // We need to find the last suite that has a lower nesting level
@@ -1385,21 +1385,21 @@ inline void print_failed_tests()
       {
         if (suite_nesting_levels[i] < current_nesting)
         {
-          full_path = suite_paths[i] + " > " + it->description;
+          full_path = suite_paths[i] + " > " + suite.description;
           break;
         }
       }
 
       std::cout << colors.red << colors.cross << " FAIL " << full_path << colors.reset << std::endl;
 
-      for (std::vector<TEST_CASE>::iterator iit = it->tests.begin(); iit != it->tests.end(); iit++)
+      for (const auto &test : suite.tests)
       {
-        if (!iit->success && !iit->skipped)
+        if (!test.success && !test.skipped)
         {
-          std::cout << "  " << colors.red << colors.cross << " FAIL " << iit->description << colors.reset << std::endl;
-          if (!iit->fail_message.empty())
+          std::cout << "  " << colors.red << colors.cross << " FAIL " << test.description << colors.reset << std::endl;
+          if (!test.fail_message.empty())
           {
-            std::cout << "    " << colors.arrow << " " << iit->fail_message << std::endl;
+            std::cout << "    " << colors.arrow << " " << test.fail_message << std::endl;
           }
         }
       }
@@ -1412,15 +1412,15 @@ inline void print_failed_tests()
     {
       // Even if this suite doesn't have failures, we need to track it for path building
       // This is important for nested suites that don't have failures themselves
-      std::string full_path = it->description;
-      int current_nesting = it->nesting_level;
+      std::string full_path = suite.description;
+      int current_nesting = suite.nesting_level;
 
       // Find the most recent parent suite
       for (int i = suite_paths.size() - 1; i >= 0; i--)
       {
         if (suite_nesting_levels[i] < current_nesting)
         {
-          full_path = suite_paths[i] + " > " + it->description;
+          full_path = suite_paths[i] + " > " + suite.description;
           break;
         }
       }
@@ -1448,30 +1448,30 @@ inline int report()
 
   std::cout << "\n======== TESTS SUMMARY ========" << std::endl;
 
-  for (std::vector<TEST_SUITE>::iterator it = g.get_suites().begin(); it != g.get_suites().end(); it++)
+  for (const auto &suite : g.get_suites())
   {
     suite_total++;
 
-    if (it->skipped)
+    if (suite.skipped)
     {
       suite_skip++;
       continue;
     }
 
     bool suite_success = true;
-    for (std::vector<TEST_CASE>::iterator iit = it->tests.begin(); iit != it->tests.end(); iit++)
+    for (const auto &test : suite.tests)
     {
       tests_total++;
-      if (iit->skipped)
+      if (test.skipped)
       {
         tests_skip++;
       }
-      else if (!iit->success)
+      else if (!test.success)
       {
         suite_success = false;
         tests_fail++;
       }
-      total_duration += std::chrono::duration_cast<std::chrono::microseconds>(iit->end_time - iit->start_time);
+      total_duration += std::chrono::duration_cast<std::chrono::microseconds>(test.end_time - test.start_time);
     }
 
     if (!suite_success)
@@ -1743,7 +1743,7 @@ inline int execute_command(const std::string &command, std::string &stdout_outpu
     close(stderr_pipe[1]);
 
     // Execute command via shell
-    execl("/bin/sh", "sh", "-c", command.c_str(), (char *)NULL);
+    execl("/bin/sh", "sh", "-c", command.c_str(), nullptr);
     _exit(127); // If execl fails
   }
   else
@@ -1781,7 +1781,7 @@ inline int execute_command(const std::string &command, std::string &stdout_outpu
       }
 
       struct timeval timeout = {1, 0}; // 1 second timeout
-      int select_result = select(max_fd + 1, &read_fds, NULL, NULL, &timeout);
+      int select_result = select(max_fd + 1, &read_fds, nullptr, nullptr, &timeout);
 
       if (select_result > 0)
       {

@@ -23,9 +23,9 @@ public:
 class BasicCommandProvider : public Factory<plugin::CommandProviderImpl>
 {
 public:
-  plugin::CommandProviderImpl *create()
+  std::unique_ptr<plugin::CommandProviderImpl> create() override
   {
-    return new BasicCommandRegistry();
+    return std::make_unique<BasicCommandRegistry>();
   }
 };
 

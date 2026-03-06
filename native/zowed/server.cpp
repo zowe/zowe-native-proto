@@ -133,9 +133,9 @@ void RpcServer::process_request(const string &request_data)
     // Build success response
     RpcResponse response;
     response.jsonrpc = "2.0";
-    response.result = zstd::optional<zjson::Value>(result_json);
-    response.error = zstd::optional<ErrorDetails>();
-    response.id = zstd::optional<int>(request.id);
+    response.result = std::optional<zjson::Value>(result_json);
+    response.error = std::optional<ErrorDetails>();
+    response.id = std::optional<int>(request.id);
 
     print_response(response, &context);
   }
@@ -451,7 +451,7 @@ void RpcServer::send_timeout_error(const string &request_data, int64_t timeout_m
 
 void RpcServer::print_error(int request_id, int code, const string &message, const string *data)
 {
-  zstd::optional<zjson::Value> error_data;
+  std::optional<zjson::Value> error_data;
   if (data != nullptr)
   {
     error_data = zjson::Value(*data);
@@ -461,10 +461,10 @@ void RpcServer::print_error(int request_id, int code, const string &message, con
 
   RpcResponse response;
   response.jsonrpc = "2.0";
-  response.result = zstd::optional<zjson::Value>();
-  response.error = zstd::optional<ErrorDetails>(error);
+  response.result = std::optional<zjson::Value>();
+  response.error = std::optional<ErrorDetails>(error);
   // Use -1 as sentinel for null ID (per JSON-RPC spec for parse errors)
-  response.id = (request_id == -1) ? zstd::optional<int>() : zstd::optional<int>(request_id);
+  response.id = (request_id == -1) ? std::optional<int>() : std::optional<int>(request_id);
 
   print_response(response);
 }

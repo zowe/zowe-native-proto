@@ -9,7 +9,7 @@
  *
  */
 
-#include <stdlib.h>
+#include <cstdlib>
 #include <string>
 #include "ztest.hpp"
 #include "ztype.h"
@@ -21,7 +21,6 @@
 #include "zoweax.console.test.hpp"
 #include "zowex.tso.test.hpp"
 
-using namespace std;
 using namespace ztst;
 
 void zowex_tests()
@@ -34,7 +33,7 @@ void zowex_tests()
                 []() -> void
                 {
                   int rc = 0;
-                  string response;
+                  std::string response;
                   rc = execute_command_with_output(zowex_command + " --version", response);
                   ExpectWithContext(rc, response).ToBe(0);
                   Expect(response).ToContain("zowex");
@@ -43,9 +42,9 @@ void zowex_tests()
              it("should remain less than 10mb in size",
                 []() -> void
                 {
-                  string response;
+                  std::string response;
                   execute_command_with_output("cat ../build-out/zowex | wc -c", response);
-                  int file_size = stoi(response);
+                  int file_size = std::stoi(response);
                   ExpectWithContext(file_size, response).ToBeLessThan(10 * 1024 * 1024);
                 });
              zowex_ds_tests();

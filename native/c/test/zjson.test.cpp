@@ -19,7 +19,6 @@
 #include <cassert>
 #include "../zjson.hpp"
 
-using namespace std;
 using namespace ztst;
 
 // ============================================================================
@@ -39,8 +38,8 @@ struct UnregisteredType
 
 struct TestOptional
 {
-  zstd::optional<int> opt_int;
-  zstd::optional<std::string> opt_string;
+  std::optional<int> opt_int;
+  std::optional<std::string> opt_string;
 };
 
 // Test structs for flattening feature
@@ -114,7 +113,7 @@ void test_type_traits()
             Expect(unreg_deserializable).ToBe(false);
         });
 
-        it("should correctly handle vector traits", []() {
+        it("should correctly handle std::vector traits", []() {
             bool vec_int_serializable = zjson::Serializable<std::vector<int>>::value;
             bool vec_simple_serializable = zjson::Serializable<std::vector<SimpleStruct>>::value;
             bool vec_unreg_serializable = zjson::Serializable<std::vector<UnregisteredType>>::value;
@@ -124,9 +123,9 @@ void test_type_traits()
         });
 
         it("should correctly handle optional traits", []() {
-            bool opt_int_serializable = zjson::Serializable<zstd::optional<int>>::value;
-            bool opt_simple_serializable = zjson::Serializable<zstd::optional<SimpleStruct>>::value;
-            bool opt_unreg_serializable = zjson::Serializable<zstd::optional<UnregisteredType>>::value;
+            bool opt_int_serializable = zjson::Serializable<std::optional<int>>::value;
+            bool opt_simple_serializable = zjson::Serializable<std::optional<SimpleStruct>>::value;
+            bool opt_unreg_serializable = zjson::Serializable<std::optional<UnregisteredType>>::value;
             Expect(opt_int_serializable).ToBe(true);
             Expect(opt_simple_serializable).ToBe(true);
             Expect(opt_unreg_serializable).ToBe(false);
@@ -286,8 +285,8 @@ void test_value_types()
 struct OptionalBehaviorStruct
 {
   std::string name;
-  zstd::optional<std::string> include_null; // Default: include null when empty
-  zstd::optional<int> skip_if_none;         // Skip when empty
+  std::optional<std::string> include_null; // Default: include null when empty
+  std::optional<int> skip_if_none;         // Skip when empty
 };
 
 ZJSON_SERIALIZABLE(OptionalBehaviorStruct,
@@ -300,25 +299,25 @@ void test_optional_types()
   describe("ZJson Optional Field Tests", []()
            {
         it("should handle empty optionals", []() {
-            zstd::optional<int> empty_opt;
+            std::optional<int> empty_opt;
             Expect(empty_opt.has_value()).ToBe(false);
         });
 
         it("should handle optionals with values", []() {
-            zstd::optional<int> valued_opt(42);
+            std::optional<int> valued_opt(42);
             Expect(valued_opt.has_value()).ToBe(true);
             Expect(valued_opt.value()).ToBe(42);
         });
 
-        it("should handle string optionals", []() {
-            zstd::optional<std::string> string_opt("hello");
+        it("should handle std::string optionals", []() {
+            std::optional<std::string> string_opt("hello");
             Expect(string_opt.has_value()).ToBe(true);
             Expect(string_opt.value()).ToBe(std::string("hello"));
         });
 
         it("should support copying", []() {
-            zstd::optional<int> valued_opt(42);
-            zstd::optional<int> copied_opt = valued_opt;
+            std::optional<int> valued_opt(42);
+            std::optional<int> copied_opt = valued_opt;
             Expect(copied_opt.has_value()).ToBe(true);
             Expect(copied_opt.value()).ToBe(42);
         });
@@ -326,8 +325,8 @@ void test_optional_types()
         it("should include null for empty optionals by default", []() {
             OptionalBehaviorStruct obj{
                 "test",
-                zstd::optional<std::string>(), // empty - should include as null
-                zstd::optional<int>()          // empty - should skip due to attribute
+                std::optional<std::string>(), // empty - should include as null
+                std::optional<int>()          // empty - should skip due to attribute
             };
             
             auto json_result = zjson::to_string(obj);
@@ -347,8 +346,8 @@ void test_optional_types()
         it("should serialize present optional values normally", []() {
             OptionalBehaviorStruct obj{
                 "test",
-                zstd::optional<std::string>("present_value"),
-                zstd::optional<int>(42)
+                std::optional<std::string>("present_value"),
+                std::optional<int>(42)
             };
             
             auto json_result = zjson::to_string(obj);
@@ -386,7 +385,7 @@ void test_expected_types()
             Expect(error_result.error().kind() == zjson::Error::InvalidValue).ToBe(true);
         });
 
-        it("should handle string results", []() {
+        it("should handle std::string results", []() {
             zstd::expected<std::string, zjson::Error> string_result("hello world");
             Expect(string_result.has_value()).ToBe(true);
             Expect(string_result.value()).ToBe(std::string("hello world"));
@@ -648,8 +647,8 @@ void test_serialization_round_trips()
 
         it("should handle optional fields serialization", []() {
             TestOptional original{
-                zstd::optional<int>(42),
-                zstd::optional<std::string>("test_string")
+                std::optional<int>(42),
+                std::optional<std::string>("test_string")
             };
             
             auto json_result = zjson::to_string(original);
@@ -667,8 +666,8 @@ void test_serialization_round_trips()
 
         it("should handle empty optional fields", []() {
             TestOptional original{
-                zstd::optional<int>(),        // empty
-                zstd::optional<std::string>() // empty
+                std::optional<int>(),        // empty
+                std::optional<std::string>() // empty
             };
             
             auto json_result = zjson::to_string(original);

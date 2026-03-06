@@ -1,4 +1,4 @@
-#if defined(__clang__)
+#ifdef __open_xl__
 #pragma pack(1)
 #else
 #pragma pack(packed)
@@ -1823,4 +1823,8 @@ struct ssob
 
 #endif
 
+#ifdef __open_xl__
+#pragma pack()
+#else
 #pragma pack(reset)
+#endif

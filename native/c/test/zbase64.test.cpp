@@ -19,10 +19,9 @@
 #include "ztest.hpp"
 #include "../zbase64.h"
 
-using namespace std;
 using namespace ztst;
 
-// Helper function to convert EBCDIC string to ASCII
+// Helper function to convert EBCDIC std::string to ASCII
 std::string e2a_convert(const std::string &ebcdic_str)
 {
   std::string ascii_str = ebcdic_str;
@@ -36,7 +35,7 @@ void zbase64_tests()
   describe("zb64 encode tests",
            []() -> void
            {
-             it("should encode empty string",
+             it("should encode empty std::string",
                 []() -> void
                 {
                   std::string input = e2a_convert("");
@@ -135,7 +134,7 @@ void zbase64_tests()
                 []() -> void
                 {
                   std::string input(10000, 'A');
-                  // Convert the entire string to ASCII
+                  // Convert the entire std::string to ASCII
                   size_t converted_len = 0;
                   converted_len = __e2a_s(const_cast<char *>(input.c_str()));
 
@@ -148,7 +147,7 @@ void zbase64_tests()
   describe("zb64 decode tests",
            []() -> void
            {
-             it("should decode empty string",
+             it("should decode empty std::string",
                 []() -> void
                 {
                   std::string input = "";
@@ -286,7 +285,7 @@ void zbase64_tests()
                   Expect(decoded_str).ToBe(original);
                 });
 
-             it("should handle empty string round-trip",
+             it("should handle empty std::string round-trip",
                 []() -> void
                 {
                   std::string original = e2a_convert("");
@@ -346,7 +345,7 @@ void zbase64_tests()
                   original += e2a_convert("Hello World");
                   original += std::string(1000, 'Y');
 
-                  // Convert the entire string to ASCII
+                  // Convert the entire std::string to ASCII
                   size_t converted_len = 0;
                   converted_len = __e2a_s(const_cast<char *>(original.c_str()));
 
