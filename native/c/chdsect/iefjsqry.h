@@ -1,15 +1,11 @@
-#ifndef __jqry___header__
-#define __jqry___header__
-
-// TODO(Kelosky): this needs changed to match ibm-clang conversion
-#if (defined(__IBMCPP__) || defined(__IBMC__))
-#if defined(__clang__)
+#ifdef __open_xl__
 #pragma pack(1)
 #else
 #pragma pack(packed)
 #endif
-#endif
 
+#ifndef __jqry___header__
+#define __jqry___header__
 struct jqry___header
 {
   unsigned char jqryid[4]; /* Control block identifier (JQRYCID) */
@@ -86,6 +82,10 @@ struct jqry___vt___entry
 #define jqry___vt___active 0x80        /* This vector table is being used */
 #define jqry___vt___ssi___managed 0x40 /* Vector table is SSI-managed     */
 
-#pragma pack(reset)
+#endif
 
+#ifdef __open_xl__
+#pragma pack()
+#else
+#pragma pack(reset)
 #endif
