@@ -91,11 +91,6 @@ int zjb_list_by_owner(ZJB *zjb, const std::string &owner_name, const std::string
  */
 int zjb_list_by_owner(ZJB *zjb, const std::string &owner_name, const std::string &prefix_name, std::vector<ZJob> &jobs);
 #endif
-
-#ifdef SWIG
-extern "C"
-{
-#endif
 /**
  * @brief Return a list of proclib for a job
  *

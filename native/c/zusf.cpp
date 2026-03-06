@@ -851,11 +851,6 @@ std::string zusf_build_mode_string(mode_t mode)
  */
 int zusf_copy_file_or_dir(ZUSF *zusf, const std::string &source_path, const std::string &destination_path, const CopyOptions &options)
 {
-  if (!zusf_is_valid_path(source_path) || !zusf_is_valid_path(destination_path))
-  {
-    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Source or destination path is empty or too long");
-    return RTNCD_FAILURE;
-  }
 
   if (options.follow_symlinks && !options.recursive)
   {
@@ -1404,12 +1399,10 @@ int zusf_read_from_uss_file_streamed(ZUSF *zusf, const std::string &file, const 
     return RTNCD_FAILURE;
   }
 
-#if defined(__clang__)
   if (zusf->set_size_callback)
   {
     zusf->set_size_callback((uint64_t)st.st_size);
   }
-#endif
 
   int fifo_fd = open(pipe.c_str(), O_WRONLY);
   if (fifo_fd == -1)

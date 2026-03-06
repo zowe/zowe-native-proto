@@ -48,6 +48,16 @@ void zowex_tso_tests()
             Expect(response).ToContain("TIME");
         });
 
+        it("should successfully issue a TSO command with special characters in the command", []() -> void
+        {
+            std::string response;
+            std::string command = zowex_command + " tso issue \"time (&$\"";
+            int rc = execute_command_with_output(command, response);
+
+            ExpectWithContext(rc, response).ToBe(0);
+            Expect(response).ToContain("TIME");
+        });
+
         it("should error when the TSO command itself is invalid", []() -> void
         {
             std::string response;

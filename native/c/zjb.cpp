@@ -591,7 +591,7 @@ int zjb_list_by_owner(ZJB *zjb, const std::string &owner_name, std::vector<ZJob>
   return zjb_list_by_owner(zjb, owner_name, "", "", jobs);
 }
 
-#ifndef SWIG
+#ifndef SWIG // Exclude owner and prefix implementation for SWIG
 int zjb_list_by_owner(ZJB *zjb, const std::string &owner_name, const std::string &prefix_name, std::vector<ZJob> &jobs)
 {
   return zjb_list_by_owner(zjb, owner_name, prefix_name, "", jobs);
