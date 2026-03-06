@@ -16,13 +16,7 @@
 #include "zssitype.h"
 #include "zjbtype.h"
 
-#if (defined(__IBMCPP__) || defined(__IBMC__))
-#if defined(__clang__)
-#pragma pack(1)
-#else
-#pragma pack(packed)
-#endif
-#endif
+ZNP_PACK_ON
 typedef struct
 {
   STATJQTR statjqtr;
@@ -30,11 +24,9 @@ typedef struct
   char subsystem[4 + 1];
 } ZJB_JOB_INFO;
 
-#if (defined(__IBMCPP__) || defined(__IBMC__))
-#pragma pack(reset)
-#endif
+ZNP_PACK_OFF
 
-#if defined(__cplusplus) && (defined(__IBMCPP__) || defined(__IBMC__))
+#if defined(__cplusplus) && defined(__MVS__)
 extern "OS"
 {
 #elif defined(__cplusplus)

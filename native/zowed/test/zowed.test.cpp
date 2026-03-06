@@ -10,7 +10,7 @@
  */
 
 #include <stdexcept>
-#include <signal.h>
+#include <csignal>
 #include <unistd.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
@@ -20,7 +20,6 @@
 #include "../../c/ztype.h"
 #include "zowed.test.hpp"
 
-using namespace std;
 using namespace ztst;
 
 struct DaemonHandle
@@ -136,8 +135,8 @@ void stop_daemon(DaemonHandle &handle)
   waitpid(handle.pid, nullptr, 0);
 }
 
-const string zowed_dir = "./../../zowed/build-out";
-const string zowed_command = zowed_dir + "/zowed";
+const std::string zowed_dir = "./../../zowed/build-out";
+const std::string zowed_command = zowed_dir + "/zowed";
 
 void zowed_tests()
 {
@@ -149,7 +148,7 @@ void zowed_tests()
                 []() -> void
                 {
                   DaemonHandle daemon = start_daemon(zowed_command);
-                  string response = read_line_from_daemon(daemon);
+                  std::string response = read_line_from_daemon(daemon);
                   stop_daemon(daemon);
 
                   Expect(response).ToContain("\"checksums\":null");
@@ -160,13 +159,13 @@ void zowed_tests()
                 []() -> void
                 {
                   // Create test checksums file
-                  string checksums_file = zowed_dir + "/checksums.asc";
+                  std::string checksums_file = zowed_dir + "/checksums.asc";
                   unlink(checksums_file.c_str());
-                  ofstream outfile(checksums_file);
-                  outfile << "123 abc" << endl;
+                  std::ofstream outfile(checksums_file);
+                  outfile << "123 abc" << std::endl;
 
                   DaemonHandle daemon = start_daemon(zowed_command);
-                  string response = read_line_from_daemon(daemon);
+                  std::string response = read_line_from_daemon(daemon);
                   stop_daemon(daemon);
 
                   Expect(response).ToContain("\"checksums\":{\"abc\":\"123\"}");
@@ -181,7 +180,7 @@ void zowed_tests()
                 {
                   DaemonHandle daemon = start_daemon(zowed_command, true);
                   write_to_daemon(daemon, "invalid\n");
-                  string response = read_line_from_daemon(daemon);
+                  std::string response = read_line_from_daemon(daemon);
                   stop_daemon(daemon);
 
                   Expect(response).ToContain("\"code\":-32700");

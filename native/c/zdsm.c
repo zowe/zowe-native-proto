@@ -140,9 +140,9 @@ int ZDSDSCB1(ZDS *zds, const char *dsn, const char *volser, DSCBFormat1 *dscb)
   }
 
   IndexableDSCBFormat1 indexable_dscb = {0};
-  for (int i = 0; i < MAX_DSCBS - 1; i++)
+  for (size_t i = 0ULL; i < (size_t)MAX_DSCBS - 1ULL; i++)
   {
-    memcpy(&indexable_dscb, workarea + (i * (sizeof(IndexableDSCBFormat1) - 1)), sizeof(indexable_dscb));
+    memcpy(&indexable_dscb, workarea + (i * (sizeof(IndexableDSCBFormat1) - 1ULL)), sizeof(indexable_dscb));
     // The returned DSCB does not include the key, but we can infer the returned variables by re-aligning the struct
     const DSCBFormat1 *temp_dscb = (DSCBFormat1 *)&indexable_dscb;
 

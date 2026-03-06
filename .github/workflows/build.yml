@@ -46,11 +46,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
 
       - name: Download server PAX into SDK bin
+        if: ${{ matrix.os == 'ubuntu' }}
         run: gh run download $RUN_ID --dir packages/sdk/bin --name zowe-server-bin
         env:
           GH_TOKEN: ${{ github.token }}
 
       - run: npm run package
+        if: ${{ matrix.os == 'ubuntu' }}
 
       - run: npm pack ./packages/sdk --pack-destination=dist
         if: ${{ matrix.os == 'ubuntu' }}
