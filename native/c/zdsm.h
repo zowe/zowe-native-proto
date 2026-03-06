@@ -18,7 +18,7 @@
 #include "iggcsina.h"
 #include "zamtypes.h"
 
-#if defined(__cplusplus) && (defined(__IBMCPP__) || defined(__IBMC__))
+#if defined(__cplusplus) && defined(__MVS__)
 extern "OS"
 {
 #elif defined(__cplusplus)
@@ -53,13 +53,7 @@ extern "C"
 #define OBTAIN(params, rc)
 #endif
 
-#if (defined(__IBMCPP__) || defined(__IBMC__))
-#if defined(__clang__)
-#pragma pack(1)
-#else
-#pragma pack(packed)
-#endif
-#endif
+ZNP_PACK_ON
 
 typedef struct CamlstSearchParams
 {
@@ -77,9 +71,7 @@ typedef struct ObtainParams
   CamlstSearchParams listname_addrx;
 } ObtainParams;
 
-#if (defined(__IBMCPP__) || defined(__IBMC__))
-#pragma pack(reset)
-#endif
+ZNP_PACK_OFF
 
 /**
  * @brief Use the OBTAIN routine through CAMLST to access the VTOC and Data Set Control Blocks (DCSBs)

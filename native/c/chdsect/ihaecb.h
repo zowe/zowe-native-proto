@@ -1,25 +1,31 @@
+#if defined(__MVS__)
+#ifdef __open_xl__
+#pragma pack(1)
+#else
 #pragma pack(packed)
+#endif
+#endif
 
 #ifndef __ecb__
 #define __ecb__
 
 struct ecb
 {
+  struct
+  {
     struct
     {
+      struct
+      {
+        unsigned char _ecbcc; /* -            COMPLETION CODE BYTE */
         struct
         {
-            struct
-            {
-                unsigned char _ecbcc; /* -            COMPLETION CODE BYTE */
-                struct
-                {
-                    unsigned char _filler1[2]; /* -          FIRST TWO BYTES OF ECBEVTBA      @XM06072   */
-                    unsigned char _ecbbyte3;   /* -            THIRD BYTE OF ECBEVTBA (MDC303)  @XM06072 */
-                } ecbcccnt;
-            } ecbextb;
-        } ecbevtb;
-    } ecbrb;
+          unsigned char _filler1[2]; /* -          FIRST TWO BYTES OF ECBEVTBA      @XM06072   */
+          unsigned char _ecbbyte3;   /* -            THIRD BYTE OF ECBEVTBA (MDC303)  @XM06072 */
+        } ecbcccnt;
+      } ecbextb;
+    } ecbevtb;
+  } ecbrb;
 };
 
 #define ecbcc ecbrb.ecbevtb.ecbextb._ecbcc
@@ -59,17 +65,17 @@ struct ecb
 
 struct ecbe
 {
-    struct
-    {
-        unsigned char _ecbeval;  /* -            FUNCTION CODE  (MDC310)          @Z40EP9A */
-        unsigned char _ecbeflg1; /* -            FLAG BYTE                        @G860PXB */
-        unsigned char _ecberes2; /* -            RESERVED  (MDC313)               @Z40EP9A */
-        unsigned char _ecberes3; /* -            RESERVED  (MDC314)               @Z40EP9A */
-    } ecbedesc;
-    struct
-    {
-        void *__ptr32 _ecbeexad; /* -            POST EXIT ADDRESS                @G860PXB */
-    } ecbepind;
+  struct
+  {
+    unsigned char _ecbeval;  /* -            FUNCTION CODE  (MDC310)          @Z40EP9A */
+    unsigned char _ecbeflg1; /* -            FLAG BYTE                        @G860PXB */
+    unsigned char _ecberes2; /* -            RESERVED  (MDC313)               @Z40EP9A */
+    unsigned char _ecberes3; /* -            RESERVED  (MDC314)               @Z40EP9A */
+  } ecbedesc;
+  struct
+  {
+    void *__ptr32 _ecbeexad; /* -            POST EXIT ADDRESS                @G860PXB */
+  } ecbepind;
 };
 
 #define ecbeval ecbedesc._ecbeval
@@ -86,4 +92,10 @@ struct ecbe
 
 #endif
 
-#pragma pack(packed)
+#if defined(__MVS__)
+#ifdef __open_xl__
+#pragma pack()
+#else
+#pragma pack(reset)
+#endif
+#endif

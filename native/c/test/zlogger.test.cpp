@@ -9,42 +9,40 @@
  *
  */
 
+#include <cerrno>
 #include <fstream>
 #include <string>
 
 #ifdef __MVS__
 #include <sys/stat.h>
-#include <errno.h>
 #else
 #include <sys/stat.h>
 #include <unistd.h>
-#include <errno.h>
 #endif
 
 #include "ztest.hpp"
 #include "../zlogger.hpp"
 
-using namespace std;
 using namespace ztst;
 
 // Helper function to check if a file exists
-bool file_exists(const string &path)
+bool file_exists(const std::string &path)
 {
   struct stat buffer;
   return (stat(path.c_str(), &buffer) == 0);
 }
 
 // Helper function to read file contents
-string read_file_contents(const string &path)
+std::string read_file_contents(const std::string &path)
 {
-  ifstream file(path);
+  std::ifstream file(path);
   if (!file.is_open())
   {
     return "";
   }
 
-  string content((istreambuf_iterator<char>(file)),
-                 istreambuf_iterator<char>());
+  std::string content((std::istreambuf_iterator<char>(file)),
+                      std::istreambuf_iterator<char>());
   file.close();
   return content;
 }
@@ -92,7 +90,7 @@ void zlogger_tests()
             Expect(logger.get_log_level()).ToBe(ZLOGLEVEL_ERROR);
         });
 
-        it("should handle log level conversion from string", []() {
+        it("should handle log level conversion from std::string", []() {
             ZLogger& logger = ZLogger::get_instance();
             
             // Test environment variable log level setting
@@ -168,7 +166,7 @@ void zlogger_tests()
             Expect(file_exists("logs/zowex.log")).ToBe(true);
             
             // Read log contents and verify filtering
-            string contents = read_file_contents("logs/zowex.log");
+            std::string contents = read_file_contents("logs/zowex.log");
             Expect(contents).Not().ToContain("This should not be logged");
             Expect(contents).ToContain("This should be logged");
         });
@@ -182,7 +180,7 @@ void zlogger_tests()
             
             usleep(1000);
             
-            string contents = read_file_contents("logs/zowex.log");
+            std::string contents = read_file_contents("logs/zowex.log");
             Expect(contents).ToContain("Test formatted message: 42 hello");
         });
 
@@ -195,7 +193,7 @@ void zlogger_tests()
             
             usleep(1000);
             
-            string contents = read_file_contents("logs/zowex.log");
+            std::string contents = read_file_contents("logs/zowex.log");
             Expect(contents).ToContain("special chars: !@#$^&*()");
         });
 
@@ -225,7 +223,7 @@ void zlogger_tests()
             
             // If log file exists, it should be empty or not contain our messages
             if (file_exists("logs/zowex.log")) {
-                string contents = read_file_contents("logs/zowex.log");
+                std::string contents = read_file_contents("logs/zowex.log");
                 Expect(contents).Not().ToContain("This should not be logged");
             }
         }); });
@@ -247,7 +245,7 @@ void zlogger_tests()
             // Verify log file exists and has content
             Expect(file_exists("logs/zowex.log")).ToBe(true);
             
-            string contents = read_file_contents("logs/zowex.log");
+            std::string contents = read_file_contents("logs/zowex.log");
             Expect(contents).ToContain("Rapid log message");
         });
 

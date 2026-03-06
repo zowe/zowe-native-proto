@@ -161,7 +161,7 @@ int ZUTWDYN(BPXWDYN_PARM *parm, BPXWDYN_RESPONSE *response)
   for (int i = 0, j = atoi(parameters[msg_index].str); i < j && i < MSG_ENTRIES + input_parameters; i++)
   {
     // if we have messages but the message length is set to the original max length, return failure
-    if (parameters[i + input_parameters].len == RET_ARG_MAX_LEN - sizeof(parameters[i + input_parameters].len))
+    if (parameters[i + input_parameters].len == RET_ARG_MAX_LEN - (int)sizeof(parameters[i + input_parameters].len))
     {
       return (0 != rc) ? ZUT_BPXWDYN_SERVICE_FAILURE : RTNCD_SUCCESS;
     }
@@ -265,15 +265,15 @@ int ZUTRUN(ZDIAG *diag, const char *program, const char *parms)
 
     long long unsigned int ifunction = (long long unsigned int)p;
 
-    if (ifunction & 0x00000000000000001)
+    if (ifunction & 0x00000000000000001ULL)
     {
-      ifunction &= 0xFFFFFFFFFFFFFFFE; // clear low bit
+      ifunction &= 0xFFFFFFFFFFFFFFFEULL; // clear low bit
       PGM64 p64 = (PGM64)ifunction;
       rc = p64(pptr);
     }
     else
     {
-      ifunction &= 0x000000007FFFFFFF; // clear high bit
+      ifunction &= 0x000000007FFFFFFFULL; // clear high bit
       PGM31 p31 = (PGM31)ifunction;
       rc = p31(pptr);
     }
@@ -323,7 +323,7 @@ int ZUTMLPLB(ZDIAG *diag, int *num_dsns, PARMLIB_DSNS *dsns)
 
   rc = zutm1lpl(&diag31, &num_dsns31, &dsns31);
 
-  memcpy(dsns->dsn, &dsns31.dsn, num_dsns31 * sizeof(dsns31.dsn[0]));
+  memcpy(dsns->dsn, &dsns31.dsn, (size_t)num_dsns31 * sizeof(dsns31.dsn[0]));
 
   memcpy(diag, &diag31, sizeof(ZDIAG));
   *num_dsns = num_dsns31;
