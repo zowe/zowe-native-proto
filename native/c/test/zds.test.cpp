@@ -449,6 +449,34 @@ void zds_tests()
                              Expect(members[0].name == "ABC1" || members[1].name == "ABC1").ToBe(true);
                              Expect(members[0].name == "ABC2" || members[1].name == "ABC2").ToBe(true);
                            });
+                        it("should list members with correct ISPF statistics attributes",
+                           [&]() -> void
+                           {
+                             ListMembersTestContext tc(created_dsns);
+                             tc.setup_pds();
+
+                             ZDS zds = {0};
+                             vector<ZDSMem> members;
+
+                             int rc = zds_list_members(&zds, tc.pds_dsn, members, "ABC1", true);
+
+                             ExpectWithContext(rc, zds.diag.e_msg).ToBe(0);
+                             Expect(members.size()).ToBe(1);
+
+                             ZDSMem &mem = members[0];
+                             Expect(mem.name).ToBe("ABC1");
+                             Expect(mem.user.empty()).ToBe(false);
+
+                             Expect(mem.c4date.empty()).ToBe(false);
+                             Expect(mem.m4date.empty()).ToBe(false);
+
+                             Expect(mem.mtime.empty()).ToBe(false);
+
+                             Expect(mem.c4date[2]).ToBe('/');
+                             Expect(mem.c4date[5]).ToBe('/');
+
+                             Expect(mem.sclm).ToBe(false);
+                           });
                       });
 
              describe("source encoding tests",
