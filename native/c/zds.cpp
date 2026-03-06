@@ -39,6 +39,7 @@
 #include <stdlib.h>
 #include "zbase64.h"
 #include "zdsm.h"
+#include "zamtypes.h"
 
 const size_t MAX_DS_LENGTH = 44u;
 const size_t MAX_VOLSER_LENGTH = 6u;
@@ -1838,6 +1839,48 @@ int zds_rename_members(ZDS *zds, const string &dsname, const string &member_befo
   return 0;
 }
 
+void parse_packed_time(
+    const unsigned char hours_byte,   // Byte 13: HH
+    const unsigned char minutes_byte, // Byte 14: MM
+    const unsigned char seconds_byte, // Byte 4: SS
+    std::string *time_out             // Output: "HH:MM:SS" or ""
+)
+{
+  // Check if time is all zeros (not set)
+  if (hours_byte == 0 && minutes_byte == 0 && seconds_byte == 0)
+  {
+    *time_out = "";
+    return;
+  }
+
+  // Unpack hours (packed decimal HH)
+  int hours_tens = (hours_byte >> 4) & 0x0F;
+  int hours_ones = hours_byte & 0x0F;
+  int hours = (hours_tens * 10) + hours_ones;
+
+  // Unpack minutes (packed decimal MM)
+  int minutes_tens = (minutes_byte >> 4) & 0x0F;
+  int minutes_ones = minutes_byte & 0x0F;
+  int minutes = (minutes_tens * 10) + minutes_ones;
+
+  // Unpack seconds (packed decimal SS)
+  int seconds_tens = (seconds_byte >> 4) & 0x0F;
+  int seconds_ones = seconds_byte & 0x0F;
+  int seconds = (seconds_tens * 10) + seconds_ones;
+
+  // Validate time values
+  if (hours > 23 || minutes > 59 || seconds > 59)
+  {
+    *time_out = "";
+    return;
+  }
+
+  // Format as "HH:MM:SS"
+  char buffer[9];
+  sprintf(buffer, "%02d:%02d:%02d", hours, minutes, seconds);
+  *time_out = buffer;
+}
+
 bool is_match(const char *s, const char *p)
 {
   const char *star_p = nullptr; // Tracks the last '*' seen in the pattern
@@ -1882,7 +1925,7 @@ bool is_match(const char *s, const char *p)
   return *p == '\0';
 }
 
-int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &members, const string &pattern)
+int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &members, const string &pattern, bool show_attributes)
 {
   // PO
   // PO-E (PDS)
@@ -1918,7 +1961,6 @@ int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &members, const string
     unsigned char *data = nullptr;
     data = (unsigned char *)&rec;
     data += sizeof(rec.count); // increment past halfword length
-
     int len = sizeof(RECORD_ENTRY);
     for (int i = 0; i < rec.count; i = i + len)
     {
@@ -1931,6 +1973,18 @@ int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &members, const string
       }
       else
       {
+        unsigned char info = entry.info;
+        unsigned char pointer_count = entry.info;
+
+        if (info & 0x80) // bit 0 indicates alias
+        {
+          // TODO(Kelosky): // member name is an alias
+        }
+
+        pointer_count &= 0x60; // bits 1-2 contain number of user data TTRNs
+        pointer_count >>= 5;   // adjust to byte boundary
+        info &= 0x1F;          // bits 3-7 contain the number of half words of user data
+
         char name[9] = {0};
         memcpy(name, entry.name, sizeof(entry.name));
 
@@ -1957,23 +2011,40 @@ int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &members, const string
 
           ZDSMem mem = {0};
           mem.name = string(name);
+          int user_data_len = info * 2;
+
+          if (show_attributes && user_data_len >= sizeof(ISPF_STATS))
+          {
+            const ISPF_STATS *stats = reinterpret_cast<const ISPF_STATS *>(data + sizeof(entry));
+            mem.vers = stats->version;
+            mem.mod = stats->level;
+
+            mem.sclm = (stats->flags & 0x80) != 0;
+
+            int rc = zut_convert_date(&stats->created_date_century, mem.c4date);
+
+            // Convert Modified Date
+            rc = zut_convert_date(&stats->modified_date_century, mem.m4date);
+
+            parse_packed_time(
+                stats->modified_time_hours,
+                stats->modified_time_minutes,
+                stats->modified_time_seconds,
+                &mem.mtime);
+
+            mem.cnorc = stats->current_number_of_lines;
+            mem.inorc = stats->initial_number_of_lines;
+            mem.mnorc = stats->modified_number_of_lines;
+
+            char user[9] = {0};
+            memcpy(user, stats->userid, 8);
+            mem.user = string(user);
+          }
           members.push_back(mem);
         }
 
-        unsigned char info = entry.info;
-        unsigned char pointer_count = entry.info;
-
-        if (info & 0x80) // bit 0 indicates alias
-        {
-          // TODO(Kelosky): // member name is an alias
-        }
-
-        pointer_count &= 0x60; // bits 1-2 contain number of user data TTRNs
-        pointer_count >>= 5;   // adjust to byte boundary
-        info &= 0x1F;          // bits 3-7 contain the number of half words of user data
-
-        data = data + sizeof(entry) + (info * 2); // skip number of half words
-        len = sizeof(entry) + (info * 2);
+        data += sizeof(entry) + info * 2;
+        len = sizeof(entry) + info * 2;
 
         int remainder = rec.count - (i + len);
         if (remainder < sizeof(entry))

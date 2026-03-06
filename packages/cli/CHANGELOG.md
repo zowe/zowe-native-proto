@@ -6,6 +6,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Recent Changes
 
+- Added an `--attributes` flag to list ISPF statistics for member attributes. [#630](https://github.com/zowe/zowe-native-proto/issues/630)
 - Added the `zssh uss copy` command to the CLI. [#379](https://github.com/zowe/zowe-native-proto/pull/379).
 
 ## `0.3.0`
