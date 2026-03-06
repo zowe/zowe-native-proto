@@ -70,7 +70,7 @@ void parser_tests()
 
                const ArgValue *foo_value = result.get_dynamic("foo");
                Expect(foo_value != nullptr).ToBe(true);
-               const std::string foo_string = foo_value ? *foo_value->get_string() : nullptr;
+               const std::string foo_string = foo_value ? *foo_value->get_string() : "";
                Expect(foo_string == "bar").ToBe(true);
 
                const std::string *name_value = result.get<std::string>("name");

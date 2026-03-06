@@ -11,7 +11,7 @@
 
 #include <cstddef>
 #include <ctime>
-#include <stdlib.h>
+#include <cstdlib>
 #include <string>
 #include <vector>
 #include <fstream>
@@ -20,22 +20,21 @@
 #include "zowex.test.hpp"
 #include "zowex.job.test.hpp"
 
-using namespace std;
 using namespace ztst;
 
-void zowex_job_submit_tests(vector<string> &_jobs, vector<string> &_ds, vector<string> &_files)
+void zowex_job_submit_tests(std::vector<std::string> &_jobs, std::vector<std::string> &_ds, std::vector<std::string> &_files)
 {
   describe("submit",
            [&]() -> void
            {
-             const string jcl_base = "//IEFBR14 JOB (IZUACCT),TEST,REGION=0M\n//RUN EXEC PGM=IEFBR14";
+             const std::string jcl_base = "//IEFBR14 JOB (IZUACCT),TEST,REGION=0M\n//RUN EXEC PGM=IEFBR14";
 
              it("should submit JCL from stdin",
                 [&]()
                 {
-                  string jobid;
-                  string stdout_output, stderr_output;
-                  string command = "printf \"" + jcl_base + "\" | " + zowex_command + " job submit-jcl --only-jobid";
+                  std::string jobid;
+                  std::string stdout_output, stderr_output;
+                  std::string command = "printf \"" + jcl_base + "\" | " + zowex_command + " job submit-jcl --only-jobid";
 
                   int rc = execute_command(command, stdout_output, stderr_output);
                   jobid = TrimChars(stdout_output);
@@ -49,11 +48,11 @@ void zowex_job_submit_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
              it("should submit JCL with --oj short form for --only-jobid",
                 [&]()
                 {
-                  string stdout_output, stderr_output;
-                  string command = "printf \"" + jcl_base + "\" | " + zowex_command + " job submit-jcl --oj";
+                  std::string stdout_output, stderr_output;
+                  std::string command = "printf \"" + jcl_base + "\" | " + zowex_command + " job submit-jcl --oj";
 
                   int rc = execute_command(command, stdout_output, stderr_output);
-                  string jobid = TrimChars(stdout_output);
+                  std::string jobid = TrimChars(stdout_output);
                   ExpectWithContext(rc, stderr_output).ToBe(0);
                   Expect(jobid).Not().ToBe("");
                   _jobs.push_back(jobid);
@@ -62,21 +61,21 @@ void zowex_job_submit_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
              it("should submit JCL with --oc short form for --only-correlator",
                 [&]()
                 {
-                  string stdout_output, stderr_output;
-                  string command = "printf \"" + jcl_base + "\" | " + zowex_command + " job submit-jcl --oc";
+                  std::string stdout_output, stderr_output;
+                  std::string command = "printf \"" + jcl_base + "\" | " + zowex_command + " job submit-jcl --oc";
 
                   int rc = execute_command(command, stdout_output, stderr_output);
-                  string correlator = TrimChars(stdout_output);
+                  std::string correlator = TrimChars(stdout_output);
                   ExpectWithContext(rc, stderr_output).ToBe(0);
                   Expect(correlator).Not().ToBe("");
 
                   // Get jobid for cleanup using correlator (RFC format: jobid,retcode,jobname,status,correlator)
-                  string response;
+                  std::string response;
                   execute_command_with_output(zowex_command + " job view-status \"" + correlator + "\" --rfc", response);
-                  vector<string> lines = parse_rfc_response(response, "\n");
+                  std::vector<std::string> lines = parse_rfc_response(response, "\n");
                   if (lines.size() > 0)
                   {
-                    vector<string> parts = parse_rfc_response(lines[0], ",");
+                    std::vector<std::string> parts = parse_rfc_response(lines[0], ",");
                     if (parts.size() >= 1)
                     {
                       _jobs.push_back(parts[0]);
@@ -87,9 +86,9 @@ void zowex_job_submit_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
              it("should submit JCL and wait for output",
                 [&]()
                 {
-                  string jobid;
-                  string stdout_output, stderr_output;
-                  string command = "printf \"" + jcl_base + "\" | " + zowex_command + " job submit-jcl --wait output";
+                  std::string jobid;
+                  std::string stdout_output, stderr_output;
+                  std::string command = "printf \"" + jcl_base + "\" | " + zowex_command + " job submit-jcl --wait output";
 
                   int rc = execute_command(command, stdout_output, stderr_output);
                   ExpectWithContext(rc, stderr_output).ToBe(0);
@@ -97,7 +96,7 @@ void zowex_job_submit_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
 
                   // Extract jobid for cleanup if possible
                   size_t pos = stdout_output.find("JOB");
-                  if (pos != string::npos)
+                  if (pos != std::string::npos)
                   {
                     jobid = stdout_output.substr(pos, 8);
                     _jobs.push_back(jobid);
@@ -107,9 +106,9 @@ void zowex_job_submit_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
              it("should submit JCL and wait for ACTIVE status",
                 [&]()
                 {
-                  string jobid;
-                  string stdout_output, stderr_output;
-                  string command = "printf \"" + jcl_base + "\" | " + zowex_command + " job submit-jcl --wait ACTIVE";
+                  std::string jobid;
+                  std::string stdout_output, stderr_output;
+                  std::string command = "printf \"" + jcl_base + "\" | " + zowex_command + " job submit-jcl --wait ACTIVE";
 
                   int rc = execute_command(command, stdout_output, stderr_output);
                   ExpectWithContext(rc, stderr_output).ToBe(0);
@@ -117,7 +116,7 @@ void zowex_job_submit_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
 
                   // Extract jobid for cleanup
                   size_t pos = stdout_output.find("JOB");
-                  if (pos != string::npos)
+                  if (pos != std::string::npos)
                   {
                     jobid = stdout_output.substr(pos, 8);
                     _jobs.push_back(jobid);
@@ -127,21 +126,21 @@ void zowex_job_submit_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
              it("should submit JCL and wait for pattern in spool files",
                 [&]()
                 {
-                  string jobid;
-                  string stdout_output, stderr_output;
-                  string command = "printf \"" + jcl_base + "\" | " + zowex_command + " job submit-jcl --only-jobid";
+                  std::string jobid;
+                  std::string stdout_output, stderr_output;
+                  std::string command = "printf \"" + jcl_base + "\" | " + zowex_command + " job submit-jcl --only-jobid";
                   int rc = execute_command(command, stdout_output, stderr_output);
                   jobid = TrimChars(stdout_output);
                   _jobs.push_back(jobid);
                   ExpectWithContext(rc, stderr_output).ToBe(0);
 
-                  string response;
+                  std::string response;
                   execute_command(zowex_command + " job list-files " + jobid + " --response-format-csv", stdout_output, stderr_output);
-                  vector<string> lines = parse_rfc_response(stdout_output, "\n");
-                  string job_dsn = "";
+                  std::vector<std::string> lines = parse_rfc_response(stdout_output, "\n");
+                  std::string job_dsn = "";
                   if (lines.size() > 0)
                   {
-                    vector<string> parts = parse_rfc_response(lines[0], ",");
+                    std::vector<std::string> parts = parse_rfc_response(lines[0], ",");
                     if (parts.size() >= 1)
                     {
                       job_dsn = parts[1];
@@ -151,7 +150,7 @@ void zowex_job_submit_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
                   command = zowex_command + " job watch " + job_dsn + " --pattern \"IEFBR14  ENDED\"";
                   rc = execute_command(command, stdout_output, stderr_output);
                   ExpectWithContext(rc, stderr_output).ToBe(0);
-                  Expect(stdout_output).ToContain("'String' pattern");
+                  Expect(stdout_output).ToContain("'string' pattern");
                   Expect(stdout_output).ToContain("job spool files matched");
                   Expect(stdout_output).ToContain("IEFBR14  ENDED");
 
@@ -190,22 +189,22 @@ void zowex_job_submit_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
                 [&]()
                 {
                   // Create DS (PS)
-                  string ds = get_random_ds();
+                  std::string ds = get_random_ds();
                   _ds.push_back(ds);
-                  string response;
+                  std::string response;
                   int rc = execute_command_with_output(zowex_command + " data-set create " + ds + " --dsorg PS --recfm FB --lrecl 80", response);
                   ExpectWithContext(rc, response).ToBe(0);
 
                   // Write JCL
-                  string command = "echo \"" + jcl_base + "\" | " + zowex_command + " data-set write " + ds;
+                  std::string command = "echo \"" + jcl_base + "\" | " + zowex_command + " data-set write " + ds;
                   rc = execute_command_with_output(command, response);
                   ExpectWithContext(rc, response).ToBe(0);
 
                   // Submit
-                  string stdout_output, stderr_output;
+                  std::string stdout_output, stderr_output;
                   command = zowex_command + " job submit " + ds + " --only-jobid";
                   rc = execute_command(command, stdout_output, stderr_output);
-                  string jobid = TrimChars(stdout_output);
+                  std::string jobid = TrimChars(stdout_output);
                   ExpectWithContext(rc, stderr_output).ToBe(0);
                   Expect(jobid).Not().ToBe("");
                   _jobs.push_back(jobid);
@@ -215,12 +214,12 @@ void zowex_job_submit_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
                 [&]()
                 {
                   // Create local file
-                  string filename = "test_job_" + get_random_string(5) + ".jcl";
+                  std::string filename = "test_job_" + get_random_string(5) + ".jcl";
                   _files.push_back(filename);
 
                   // Use printf to write the file to ensure correct newline handling and encoding
-                  string response;
-                  string cmd = "printf \"" + jcl_base + "\" > " + filename;
+                  std::string response;
+                  std::string cmd = "printf \"" + jcl_base + "\" > " + filename;
                   int rc = execute_command_with_output(cmd, response);
                   ExpectWithContext(rc, response).ToBe(0);
 
@@ -228,10 +227,10 @@ void zowex_job_submit_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
                   execute_command_with_output("chtag -r " + filename, response);
 
                   // Submit
-                  string stdout_output, stderr_output;
-                  string command = zowex_command + " job submit-uss " + filename + " --only-jobid";
+                  std::string stdout_output, stderr_output;
+                  std::string command = zowex_command + " job submit-uss " + filename + " --only-jobid";
                   rc = execute_command(command, stdout_output, stderr_output);
-                  string jobid = TrimChars(stdout_output);
+                  std::string jobid = TrimChars(stdout_output);
                   ExpectWithContext(rc, stderr_output).ToBe(0);
                   Expect(jobid).Not().ToBe("");
                   _jobs.push_back(jobid);
@@ -240,21 +239,21 @@ void zowex_job_submit_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
              it("should submit JCL with --only-correlator option",
                 [&]()
                 {
-                  string stdout_output, stderr_output;
-                  string command = "printf \"" + jcl_base + "\" | " + zowex_command + " job submit-jcl --only-correlator";
+                  std::string stdout_output, stderr_output;
+                  std::string command = "printf \"" + jcl_base + "\" | " + zowex_command + " job submit-jcl --only-correlator";
 
                   int rc = execute_command(command, stdout_output, stderr_output);
-                  string correlator = TrimChars(stdout_output);
+                  std::string correlator = TrimChars(stdout_output);
                   ExpectWithContext(rc, stderr_output).ToBe(0);
                   Expect(correlator).Not().ToBe("");
 
                   // Get jobid for cleanup using correlator (RFC format: jobid,retcode,jobname,status,correlator)
-                  string response;
+                  std::string response;
                   execute_command_with_output(zowex_command + " job view-status " + correlator + " --rfc", response);
-                  vector<string> lines = parse_rfc_response(response, "\n");
+                  std::vector<std::string> lines = parse_rfc_response(response, "\n");
                   if (lines.size() > 0)
                   {
-                    vector<string> parts = parse_rfc_response(lines[0], ",");
+                    std::vector<std::string> parts = parse_rfc_response(lines[0], ",");
                     if (parts.size() >= 1)
                     {
                       _jobs.push_back(parts[0]);
@@ -266,31 +265,31 @@ void zowex_job_submit_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
                 [&]()
                 {
                   // Create DS
-                  string ds = get_random_ds();
+                  std::string ds = get_random_ds();
                   _ds.push_back(ds);
-                  string response;
+                  std::string response;
                   int rc = execute_command_with_output(zowex_command + " data-set create " + ds + " --dsorg PS --recfm FB --lrecl 80", response);
                   ExpectWithContext(rc, response).ToBe(0);
 
                   // Write JCL
-                  string command = "echo \"" + jcl_base + "\" | " + zowex_command + " data-set write " + ds;
+                  std::string command = "echo \"" + jcl_base + "\" | " + zowex_command + " data-set write " + ds;
                   rc = execute_command_with_output(command, response);
                   ExpectWithContext(rc, response).ToBe(0);
 
                   // Submit with --only-correlator
-                  string stdout_output, stderr_output;
+                  std::string stdout_output, stderr_output;
                   command = zowex_command + " job submit " + ds + " --only-correlator";
                   rc = execute_command(command, stdout_output, stderr_output);
-                  string correlator = TrimChars(stdout_output);
+                  std::string correlator = TrimChars(stdout_output);
                   ExpectWithContext(rc, stderr_output).ToBe(0);
                   Expect(correlator).Not().ToBe("");
 
                   // Get jobid for cleanup (RFC format: jobid,retcode,jobname,status,correlator)
                   execute_command_with_output(zowex_command + " job view-status " + correlator + " --rfc", response);
-                  vector<string> lines = parse_rfc_response(response, "\n");
+                  std::vector<std::string> lines = parse_rfc_response(response, "\n");
                   if (lines.size() > 0)
                   {
-                    vector<string> parts = parse_rfc_response(lines[0], ",");
+                    std::vector<std::string> parts = parse_rfc_response(lines[0], ",");
                     if (parts.size() >= 1)
                     {
                       _jobs.push_back(parts[0]);
@@ -302,29 +301,29 @@ void zowex_job_submit_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
                 [&]()
                 {
                   // Create local file
-                  string filename = "test_job_" + get_random_string(5) + ".jcl";
+                  std::string filename = "test_job_" + get_random_string(5) + ".jcl";
                   _files.push_back(filename);
 
-                  string response;
-                  string cmd = "printf \"" + jcl_base + "\" > " + filename;
+                  std::string response;
+                  std::string cmd = "printf \"" + jcl_base + "\" > " + filename;
                   int rc = execute_command_with_output(cmd, response);
                   ExpectWithContext(rc, response).ToBe(0);
                   execute_command_with_output("chtag -r " + filename, response);
 
                   // Submit with --only-correlator
-                  string stdout_output, stderr_output;
-                  string command = zowex_command + " job submit-uss " + filename + " --only-correlator";
+                  std::string stdout_output, stderr_output;
+                  std::string command = zowex_command + " job submit-uss " + filename + " --only-correlator";
                   rc = execute_command(command, stdout_output, stderr_output);
-                  string correlator = TrimChars(stdout_output);
+                  std::string correlator = TrimChars(stdout_output);
                   ExpectWithContext(rc, stderr_output).ToBe(0);
                   Expect(correlator).Not().ToBe("");
 
                   // Get jobid for cleanup (RFC format: jobid,retcode,jobname,status,correlator)
                   execute_command_with_output(zowex_command + " job view-status " + correlator + " --rfc", response);
-                  vector<string> lines = parse_rfc_response(response, "\n");
+                  std::vector<std::string> lines = parse_rfc_response(response, "\n");
                   if (lines.size() > 0)
                   {
-                    vector<string> parts = parse_rfc_response(lines[0], ",");
+                    std::vector<std::string> parts = parse_rfc_response(lines[0], ",");
                     if (parts.size() >= 1)
                     {
                       _jobs.push_back(parts[0]);
@@ -336,19 +335,19 @@ void zowex_job_submit_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
                 [&]()
                 {
                   // Create DS
-                  string ds = get_random_ds();
+                  std::string ds = get_random_ds();
                   _ds.push_back(ds);
-                  string response;
+                  std::string response;
                   int rc = execute_command_with_output(zowex_command + " data-set create " + ds + " --dsorg PS --recfm FB --lrecl 80", response);
                   ExpectWithContext(rc, response).ToBe(0);
 
                   // Write JCL
-                  string command = "echo \"" + jcl_base + "\" | " + zowex_command + " data-set write " + ds;
+                  std::string command = "echo \"" + jcl_base + "\" | " + zowex_command + " data-set write " + ds;
                   rc = execute_command_with_output(command, response);
                   ExpectWithContext(rc, response).ToBe(0);
 
                   // Submit with --wait output
-                  string stdout_output, stderr_output;
+                  std::string stdout_output, stderr_output;
                   command = zowex_command + " job submit " + ds + " --wait output";
                   rc = execute_command(command, stdout_output, stderr_output);
                   ExpectWithContext(rc, stderr_output).ToBe(0);
@@ -356,9 +355,9 @@ void zowex_job_submit_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
 
                   // Extract jobid for cleanup
                   size_t pos = stdout_output.find("JOB");
-                  if (pos != string::npos)
+                  if (pos != std::string::npos)
                   {
-                    string jobid = stdout_output.substr(pos, 8);
+                    std::string jobid = stdout_output.substr(pos, 8);
                     _jobs.push_back(jobid);
                   }
                 });
@@ -366,18 +365,18 @@ void zowex_job_submit_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
              it("should submit from data set with --wait ACTIVE option",
                 [&]()
                 {
-                  string ds = get_random_ds();
+                  std::string ds = get_random_ds();
                   _ds.push_back(ds);
-                  string response;
+                  std::string response;
                   int rc = execute_command_with_output(zowex_command + " data-set create " + ds + " --dsorg PS --recfm FB --lrecl 80", response);
                   ExpectWithContext(rc, response).ToBe(0);
 
-                  string command = "echo \"" + jcl_base + "\" | " + zowex_command + " data-set write " + ds;
+                  std::string command = "echo \"" + jcl_base + "\" | " + zowex_command + " data-set write " + ds;
                   rc = execute_command_with_output(command, response);
                   ExpectWithContext(rc, response).ToBe(0);
 
                   // Submit with --wait ACTIVE
-                  string stdout_output, stderr_output;
+                  std::string stdout_output, stderr_output;
                   command = zowex_command + " job submit " + ds + " --wait ACTIVE";
                   rc = execute_command(command, stdout_output, stderr_output);
                   ExpectWithContext(rc, stderr_output).ToBe(0);
@@ -385,9 +384,9 @@ void zowex_job_submit_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
 
                   // Extract jobid for cleanup
                   size_t pos = stdout_output.find("JOB");
-                  if (pos != string::npos)
+                  if (pos != std::string::npos)
                   {
-                    string jobid = stdout_output.substr(pos, 8);
+                    std::string jobid = stdout_output.substr(pos, 8);
                     _jobs.push_back(jobid);
                   }
                 });
@@ -396,27 +395,27 @@ void zowex_job_submit_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
                 [&]()
                 {
                   // Create local file
-                  string filename = "test_job_" + get_random_string(5) + ".jcl";
+                  std::string filename = "test_job_" + get_random_string(5) + ".jcl";
                   _files.push_back(filename);
 
-                  string response;
-                  string cmd = "printf \"" + jcl_base + "\" > " + filename;
+                  std::string response;
+                  std::string cmd = "printf \"" + jcl_base + "\" > " + filename;
                   int rc = execute_command_with_output(cmd, response);
                   ExpectWithContext(rc, response).ToBe(0);
                   execute_command_with_output("chtag -r " + filename, response);
 
                   // Submit with --wait output
-                  string stdout_output, stderr_output;
-                  string command = zowex_command + " job submit-uss " + filename + " --wait output";
+                  std::string stdout_output, stderr_output;
+                  std::string command = zowex_command + " job submit-uss " + filename + " --wait output";
                   rc = execute_command(command, stdout_output, stderr_output);
                   ExpectWithContext(rc, stderr_output).ToBe(0);
                   Expect(stdout_output).ToContain("Submitted");
 
                   // Extract jobid for cleanup
                   size_t pos = stdout_output.find("JOB");
-                  if (pos != string::npos)
+                  if (pos != std::string::npos)
                   {
-                    string jobid = stdout_output.substr(pos, 8);
+                    std::string jobid = stdout_output.substr(pos, 8);
                     _jobs.push_back(jobid);
                   }
                 });
@@ -425,52 +424,52 @@ void zowex_job_submit_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
                 [&]()
                 {
                   // Create local file
-                  string filename = "test_job_" + get_random_string(5) + ".jcl";
+                  std::string filename = "test_job_" + get_random_string(5) + ".jcl";
                   _files.push_back(filename);
 
-                  string response;
-                  string cmd = "printf \"" + jcl_base + "\" > " + filename;
+                  std::string response;
+                  std::string cmd = "printf \"" + jcl_base + "\" > " + filename;
                   int rc = execute_command_with_output(cmd, response);
                   ExpectWithContext(rc, response).ToBe(0);
                   execute_command_with_output("chtag -r " + filename, response);
 
                   // Submit with --only-jobid
-                  string stdout_output, stderr_output;
-                  string command = zowex_command + " job submit-uss " + filename + " --only-jobid";
+                  std::string stdout_output, stderr_output;
+                  std::string command = zowex_command + " job submit-uss " + filename + " --only-jobid";
                   rc = execute_command(command, stdout_output, stderr_output);
-                  string jobid = TrimChars(stdout_output);
+                  std::string jobid = TrimChars(stdout_output);
                   ExpectWithContext(rc, stderr_output).ToBe(0);
                   Expect(jobid).Not().ToBe("");
                   // Verify it's just the jobid
-                  Expect(jobid.find("Submitted")).ToBe(string::npos);
+                  Expect(jobid.find("Submitted")).ToBe(std::string::npos);
                   _jobs.push_back(jobid);
                 });
 
              it("should submit from USS file with --wait ACTIVE option",
                 [&]()
                 {
-                  string jcl_long = "//LONGJOB JOB (IZUACCT),TEST,REGION=0M\n//STEP1 EXEC PGM=IEFBR14";
-                  string filename = "test_job_" + get_random_string(5) + ".jcl";
+                  std::string jcl_long = "//LONGJOB JOB (IZUACCT),TEST,REGION=0M\n//STEP1 EXEC PGM=IEFBR14";
+                  std::string filename = "test_job_" + get_random_string(5) + ".jcl";
                   _files.push_back(filename);
 
-                  string response;
-                  string cmd = "printf \"" + jcl_long + "\" > " + filename;
+                  std::string response;
+                  std::string cmd = "printf \"" + jcl_long + "\" > " + filename;
                   int rc = execute_command_with_output(cmd, response);
                   ExpectWithContext(rc, response).ToBe(0);
                   execute_command_with_output("chtag -r " + filename, response);
 
                   // Submit with --wait ACTIVE
-                  string stdout_output, stderr_output;
-                  string command = zowex_command + " job submit-uss " + filename + " --wait ACTIVE";
+                  std::string stdout_output, stderr_output;
+                  std::string command = zowex_command + " job submit-uss " + filename + " --wait ACTIVE";
                   rc = execute_command(command, stdout_output, stderr_output);
                   ExpectWithContext(rc, stderr_output).ToBe(0);
                   Expect(stdout_output).ToContain("Submitted");
 
                   // Extract jobid for cleanup
                   size_t pos = stdout_output.find("JOB");
-                  if (pos != string::npos)
+                  if (pos != std::string::npos)
                   {
-                    string jobid = stdout_output.substr(pos, 8);
+                    std::string jobid = stdout_output.substr(pos, 8);
                     _jobs.push_back(jobid);
                   }
                 });
@@ -478,24 +477,24 @@ void zowex_job_submit_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
              it("should submit from USS file with --wait and --only-jobid combined",
                 [&]()
                 {
-                  string filename = "test_job_" + get_random_string(5) + ".jcl";
+                  std::string filename = "test_job_" + get_random_string(5) + ".jcl";
                   _files.push_back(filename);
 
-                  string response;
-                  string cmd = "printf \"" + jcl_base + "\" > " + filename;
+                  std::string response;
+                  std::string cmd = "printf \"" + jcl_base + "\" > " + filename;
                   int rc = execute_command_with_output(cmd, response);
                   ExpectWithContext(rc, response).ToBe(0);
                   execute_command_with_output("chtag -r " + filename, response);
 
                   // Submit with --wait output and --only-jobid
-                  string stdout_output, stderr_output;
-                  string command = zowex_command + " job submit-uss " + filename + " --wait output --only-jobid";
+                  std::string stdout_output, stderr_output;
+                  std::string command = zowex_command + " job submit-uss " + filename + " --wait output --only-jobid";
                   rc = execute_command(command, stdout_output, stderr_output);
-                  string jobid = TrimChars(stdout_output);
+                  std::string jobid = TrimChars(stdout_output);
                   ExpectWithContext(rc, stderr_output).ToBe(0);
                   Expect(jobid).Not().ToBe("");
                   // Verify it's just the jobid (no "Submitted" text)
-                  Expect(jobid.find("Submitted")).ToBe(string::npos);
+                  Expect(jobid.find("Submitted")).ToBe(std::string::npos);
                   // Verify jobid format
                   Expect(jobid.length()).ToBe(8);
                   _jobs.push_back(jobid);
@@ -505,13 +504,13 @@ void zowex_job_submit_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
   describe("submit-edge-cases",
            [&]() -> void
            {
-             const string jcl_base = "//IEFBR14 JOB (IZUACCT),TEST,REGION=0M\n//RUN EXEC PGM=IEFBR14";
+             const std::string jcl_base = "//IEFBR14 JOB (IZUACCT),TEST,REGION=0M\n//RUN EXEC PGM=IEFBR14";
 
              it("should handle submit from non-existent dataset",
                 [&]()
                 {
-                  string ds = "NONEXIST.DS.NAME";
-                  string response;
+                  std::string ds = "NONEXIST.DS.NAME";
+                  std::string response;
                   int rc = execute_command_with_output(zowex_command + " job submit " + ds, response);
                   Expect(rc).Not().ToBe(0);
                 });
@@ -519,8 +518,8 @@ void zowex_job_submit_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
              it("should handle submit from non-existent USS file",
                 [&]()
                 {
-                  string filename = "nonexistent_file_12345.jcl";
-                  string response;
+                  std::string filename = "nonexistent_file_12345.jcl";
+                  std::string response;
                   int rc = execute_command_with_output(zowex_command + " job submit-uss " + filename, response);
                   Expect(rc).Not().ToBe(0);
                 });
@@ -528,8 +527,8 @@ void zowex_job_submit_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
              it("should handle empty JCL submission",
                 [&]()
                 {
-                  string command = "echo \"\" | " + zowex_command + " job submit-jcl";
-                  string response;
+                  std::string command = "echo \"\" | " + zowex_command + " job submit-jcl";
+                  std::string response;
                   int rc = execute_command_with_output(command, response);
                   Expect(rc).Not().ToBe(0);
                 });
@@ -537,9 +536,9 @@ void zowex_job_submit_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
              it("should handle malformed JCL submission",
                 [&]()
                 {
-                  string bad_jcl = "THIS IS NOT VALID JCL";
-                  string command = "printf \"" + bad_jcl + "\" | " + zowex_command + " job submit-jcl";
-                  string response;
+                  std::string bad_jcl = "THIS IS NOT VALID JCL";
+                  std::string command = "printf \"" + bad_jcl + "\" | " + zowex_command + " job submit-jcl";
+                  std::string response;
                   int rc = execute_command_with_output(command, response);
                   Expect(rc).Not().ToBe(0);
                 });
@@ -547,10 +546,10 @@ void zowex_job_submit_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
              it("should handle submit with encoding option",
                 [&]()
                 {
-                  string command = "printf \"" + jcl_base + "\" | " + zowex_command + " job submit-jcl --encoding IBM-1047 --only-jobid";
-                  string stdout_output, stderr_output;
+                  std::string command = "printf \"" + jcl_base + "\" | " + zowex_command + " job submit-jcl --encoding IBM-1047 --only-jobid";
+                  std::string stdout_output, stderr_output;
                   int rc = execute_command(command, stdout_output, stderr_output);
-                  string jobid = TrimChars(stdout_output);
+                  std::string jobid = TrimChars(stdout_output);
                   if (rc == 0)
                   {
                     Expect(jobid).Not().ToBe("");
@@ -561,10 +560,10 @@ void zowex_job_submit_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
              it("should handle submit with local-encoding option",
                 [&]()
                 {
-                  string command = "printf \"" + jcl_base + "\" | " + zowex_command + " job submit-jcl --local-encoding ISO8859-1 --only-jobid";
-                  string stdout_output, stderr_output;
+                  std::string command = "printf \"" + jcl_base + "\" | " + zowex_command + " job submit-jcl --local-encoding ISO8859-1 --only-jobid";
+                  std::string stdout_output, stderr_output;
                   int rc = execute_command(command, stdout_output, stderr_output);
-                  string jobid = TrimChars(stdout_output);
+                  std::string jobid = TrimChars(stdout_output);
                   if (rc == 0)
                   {
                     Expect(jobid).Not().ToBe("");
@@ -575,8 +574,8 @@ void zowex_job_submit_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
              it("should handle conflicting --only-jobid and --only-correlator options",
                 [&]()
                 {
-                  string command = "printf \"" + jcl_base + "\" | " + zowex_command + " job submit-jcl --only-jobid --only-correlator";
-                  string stdout_output, stderr_output;
+                  std::string command = "printf \"" + jcl_base + "\" | " + zowex_command + " job submit-jcl --only-jobid --only-correlator";
+                  std::string stdout_output, stderr_output;
                   int rc = execute_command(command, stdout_output, stderr_output);
 
                   // The command should either:
@@ -585,7 +584,7 @@ void zowex_job_submit_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
                   // For now, we just verify it doesn't crash and produces output
                   if (rc == 0)
                   {
-                    string output = TrimChars(stdout_output);
+                    std::string output = TrimChars(stdout_output);
                     Expect(output).Not().ToBe("");
 
                     // Try to determine if it's a jobid or correlator and clean up
@@ -597,14 +596,14 @@ void zowex_job_submit_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
                     else if (!output.empty())
                     {
                       // Might be a correlator, try to get jobid (RFC format: jobid,retcode,jobname,status,correlator)
-                      string response;
+                      std::string response;
                       int status_rc = execute_command_with_output(zowex_command + " job view-status \"" + output + "\" --rfc", response);
                       if (status_rc == 0)
                       {
-                        vector<string> lines = parse_rfc_response(response, "\n");
+                        std::vector<std::string> lines = parse_rfc_response(response, "\n");
                         if (lines.size() > 0)
                         {
-                          vector<string> parts = parse_rfc_response(lines[0], ",");
+                          std::vector<std::string> parts = parse_rfc_response(lines[0], ",");
                           if (parts.size() >= 1)
                           {
                             _jobs.push_back(parts[0]);
@@ -618,10 +617,10 @@ void zowex_job_submit_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
              it("should handle submit with --ec short form for --encoding",
                 [&]()
                 {
-                  string command = "printf \"" + jcl_base + "\" | " + zowex_command + " job submit-jcl --ec IBM-1047 --only-jobid";
-                  string stdout_output, stderr_output;
+                  std::string command = "printf \"" + jcl_base + "\" | " + zowex_command + " job submit-jcl --ec IBM-1047 --only-jobid";
+                  std::string stdout_output, stderr_output;
                   int rc = execute_command(command, stdout_output, stderr_output);
-                  string jobid = TrimChars(stdout_output);
+                  std::string jobid = TrimChars(stdout_output);
                   if (rc == 0)
                   {
                     Expect(jobid).Not().ToBe("");
@@ -632,10 +631,10 @@ void zowex_job_submit_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
              it("should handle submit with --lec short form for --local-encoding",
                 [&]()
                 {
-                  string command = "printf \"" + jcl_base + "\" | " + zowex_command + " job submit-jcl --lec ISO8859-1 --only-jobid";
-                  string stdout_output, stderr_output;
+                  std::string command = "printf \"" + jcl_base + "\" | " + zowex_command + " job submit-jcl --lec ISO8859-1 --only-jobid";
+                  std::string stdout_output, stderr_output;
                   int rc = execute_command(command, stdout_output, stderr_output);
-                  string jobid = TrimChars(stdout_output);
+                  std::string jobid = TrimChars(stdout_output);
                   if (rc == 0)
                   {
                     Expect(jobid).Not().ToBe("");
@@ -646,19 +645,19 @@ void zowex_job_submit_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
              it("should handle submit from dataset with special characters in name",
                 [&]()
                 {
-                  string ds = get_user() + ".T" + get_random_string(3) + "#@.JCL";
-                  string response;
+                  std::string ds = get_user() + ".T" + get_random_string(3) + "#@.JCL";
+                  std::string response;
                   int rc = execute_command_with_output(zowex_command + " data-set create " + ds + " --dsorg PS --recfm FB --lrecl 80", response);
                   ExpectWithContext(rc, response).ToBe(0);
 
-                  string command = "echo \"" + jcl_base + "\" | " + zowex_command + " data-set write " + ds;
+                  std::string command = "echo \"" + jcl_base + "\" | " + zowex_command + " data-set write " + ds;
                   rc = execute_command_with_output(command, response);
                   ExpectWithContext(rc, response).ToBe(0);
 
-                  string stdout_output, stderr_output;
+                  std::string stdout_output, stderr_output;
                   command = zowex_command + " job submit " + ds + " --only-jobid";
                   rc = execute_command(command, stdout_output, stderr_output);
-                  string jobid = TrimChars(stdout_output);
+                  std::string jobid = TrimChars(stdout_output);
                   ExpectWithContext(rc, stderr_output).ToBe(0);
                   Expect(jobid).Not().ToBe("");
                   _jobs.push_back(jobid);
@@ -670,8 +669,8 @@ void zowex_job_submit_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
              it("should handle submit with invalid wait status value",
                 [&]()
                 {
-                  string command = "printf \"" + jcl_base + "\" | " + zowex_command + " job submit-jcl --wait INVALID_STATUS";
-                  string stdout_output, stderr_output;
+                  std::string command = "printf \"" + jcl_base + "\" | " + zowex_command + " job submit-jcl --wait INVALID_STATUS";
+                  std::string stdout_output, stderr_output;
                   int rc = execute_command(command, stdout_output, stderr_output);
                   Expect(rc).Not().ToBe(0);
                   Expect(stderr_output).ToContain("cannot wait for unknown status");

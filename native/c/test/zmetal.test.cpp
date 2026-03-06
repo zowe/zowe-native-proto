@@ -15,7 +15,6 @@
 #include "ztest.hpp"
 #include "zmetal.metal.test.h"
 
-using namespace std;
 using namespace ztst;
 
 void zmetal_tests()
@@ -27,7 +26,7 @@ void zmetal_tests()
              it("should load a program",
                 []()
                 {
-                  string name = "IEFBR14";
+                  std::string name = "IEFBR14";
                   void *ep = ZMTLLOAD(name.c_str());
                   Expect(ep).Not().ToBeNull();
                   int rc = ZMTLDEL(name.c_str());
@@ -37,7 +36,7 @@ void zmetal_tests()
              it("should not load a program that does not exist",
                 []()
                 {
-                  string name = "IEFBR15";
+                  std::string name = "IEFBR15";
                   void *ep = ZMTLLOAD(name.c_str());
                   Expect(ep).ToBeNull();
                 });
@@ -45,7 +44,7 @@ void zmetal_tests()
              it("should not delete a program that does not exist",
                 []()
                 {
-                  string name = "IEFBR15";
+                  std::string name = "IEFBR15";
                   int rc = ZMTLDEL(name.c_str());
                   Expect(rc).ToBe(4);
                 });

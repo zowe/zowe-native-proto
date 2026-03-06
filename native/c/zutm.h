@@ -16,7 +16,7 @@
 #include "zprmtype.h"
 #include "iefjsqry.h"
 
-#if defined(__cplusplus) && (defined(__IBMCPP__) || defined(__IBMC__))
+#if defined(__cplusplus) && defined(__MVS__)
 extern "OS"
 {
 #elif defined(__cplusplus)
