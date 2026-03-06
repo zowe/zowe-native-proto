@@ -192,19 +192,6 @@ int zjb_delete(ZJB *zjb, const std::string &jobid);
 #endif
 
 /**
- * @brief Return a list of jobs from an input or default owner
- *
- * @param zjb job returned attributes and error information
- * @param owner_name owner name of the job to query, defaults to current user if == "", may use wild cards, i.e.
- * "IBMUS*"
- * @param prefix job prefix, defaults to "*" if == "", may use wild cards, i.e. "IBMUS*"
- * @param status job status, defaults to "*" if == "", supports "ACTIVE" only
- * @param jobs populated list returned containing job information array
- * @return int 0 for success; non zero otherwise
- */
-int zjb_list_by_owner(ZJB *zjb, std::string owner_name, std::string prefix_name, std::string status_name, std::vector<ZJob> &jobs);
-
-/**
  * @brief Cancel a job using input jobid
  *
  * @param zjb job returned attributes and error information
