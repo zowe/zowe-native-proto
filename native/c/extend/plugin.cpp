@@ -161,7 +161,7 @@ private:
 
   CommandRecord *to_record(CommandHandle handle)
   {
-    return reinterpret_cast<CommandRecord *>(handle);
+    return static_cast<CommandRecord *>(handle);
   }
 
   parser::ArgValue convert_default(const DefaultValue *value)
