@@ -260,7 +260,7 @@ int zut_list_subsystems(ZDIAG &diag, std::vector<std::string> &subsystems, std::
 
   for (int i = 0; i < area->jqry___num___subsys; i++)
   {
-    subsystems.push_back(string(reinterpret_cast<const char *>(subsys_entry->jqry___subsys___name), sizeof(subsys_entry->jqry___subsys___name)));
+    subsystems.push_back(std::string(reinterpret_cast<const char *>(subsys_entry->jqry___subsys___name), sizeof(subsys_entry->jqry___subsys___name)));
     subsys_entry = (JQRY_SUBSYS_ENTRY *)((unsigned char *)subsys_entry + next_entry);
   }
 
