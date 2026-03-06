@@ -122,7 +122,7 @@ int zjb_read_job_jcl(ZJB *zjb, const std::string &jobid, std::string &response)
 
 #define NUM_TEXT_UNITS 5
 
-int zjb_read_job_content_by_dsn(ZJB *zjb, const std::string &jobdsn, std::string &response)
+static int zjb_read_job_dynamic_allocation(ZJB *zjb, std::string jobdsn, std::string &ddname)
 {
   int rc = 0;
 
@@ -175,7 +175,7 @@ int zjb_read_job_content_by_dsn(ZJB *zjb, const std::string &jobdsn, std::string
   i++;
   dynkey = daldsnam;
   numparms = 1;
-  plen = std::strlen(jobdsn.c_str());
+  plen = strlen(jobdsn.c_str());
   memcpy(s99tunit_x[i].s99tunit.s99tukey, &dynkey, sizeof(dynkey));
   memcpy(s99tunit_x[i].s99tunit.s99tunum, &numparms, sizeof(numparms));
   memcpy(s99tunit_x[i].s99tunit.s99tulng, &plen, sizeof(plen));
@@ -259,13 +259,7 @@ int zjb_read_job_content_by_dsn(ZJB *zjb, const std::string &jobdsn, std::string
 
   char cddname[8 + 1] = {0};
   memcpy(cddname, &s99tunit_x[4].s99tunit.s99tupar, ddnamelen);
-  auto ddname = std::string(cddname);
-
-  ZDS zds = {0};
-  zds.encoding_opts.data_type = zjb->encoding_opts.data_type;
-  memcpy((void *)&zds.encoding_opts.codepage, (const void *)&zjb->encoding_opts.codepage, sizeof(zjb->encoding_opts.codepage));
-
-  rc = zds_read_from_dd(&zds, ddname, response);
+  ddname = std::string(cddname);
 
   free(parms);
 
@@ -289,6 +283,44 @@ static int zjb_free_job_dynamic_allocation(ZJB *zjb, std::string ddname)
     zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "dynfree failed with %d", rc);
     zjb->diag.detail_rc = ZJB_RTNCD_SERVICE_FAILURE;
     return RTNCD_FAILURE;
+  }
+
+  return rc;
+}
+
+int zjb_read_job_content_by_dsn(ZJB *zjb, const std::string &jobdsn, std::string &response)
+{
+  int rc = 0;
+  std::string ddname;
+  ZDS zds = {};
+
+  rc = zjb_read_job_dynamic_allocation(zjb, jobdsn, ddname);
+  if (0 != rc)
+  {
+    return rc;
+  }
+
+  zds.encoding_opts.data_type = zjb->encoding_opts.data_type;
+  memcpy((void *)&zds.encoding_opts.codepage, (const void *)&zjb->encoding_opts.codepage, sizeof(zjb->encoding_opts.codepage));
+
+  if (zjb->flags & ACB_RBL_PROCESS)
+  {
+    rc = zds_read_from_dd_acb(&zds, ddname, response);
+  }
+  else
+  {
+    rc = zds_read_from_dd(&zds, ddname, response);
+  }
+
+  if (0 != rc)
+  {
+    memcpy(&zjb->diag, &zds.diag, sizeof(ZDIAG));
+  }
+
+  int newrc = zjb_free_job_dynamic_allocation(zjb, ddname);
+  if (0 != newrc && 0 == rc)
+  {
+    return newrc;
   }
 
   return rc;
