@@ -20,23 +20,9 @@
 #include "ieftiot1.h"
 #include "zutm31.h"
 #include "ztime.h"
+#include "zio.h"
 #include "zwto.h"
 #include "zdbg.h"
-
-// NOTE(Kelosky): must be assembled in AMODE31 code
-#if defined(__IBM_METAL__)
-#define RDJFCB_MODEL(rdjfcbm)                                 \
-  __asm(                                                      \
-      "*                                                  \n" \
-      " RDJFCB (,),"                                          \
-      "MF=L                                               \n" \
-      "*                                                    " \
-      : "DS"(rdjfcbm));
-#else
-#define RDJFCB_MODEL(rdjfcbm)
-#endif
-
-RDJFCB_MODEL(rdfjfcb_model);
 
 register FILE_CTRL *fc ASMREG("r8");
 
@@ -51,6 +37,24 @@ typedef struct
   short int len;
   short int unused;
 } RDW;
+
+static IO_CTRL *PTR32 new_write_io_ctrl(char *PTR32 ddname, int lrecl, int blkSize, unsigned char recfm)
+{
+  IO_CTRL *PTR32 ioc = new_io_ctrl();
+  IHADCB *dcb = &ioc->dcb;
+  memcpy(dcb, &dcb_write_model, sizeof(IHADCB));
+  set_dcb_info(dcb, ddname, lrecl, blkSize, recfm);
+  return ioc;
+}
+
+static IO_CTRL *PTR32 new_read_io_ctrl(char *PTR32 ddname, int lrecl, int blkSize, unsigned char recfm)
+{
+  IO_CTRL *ioc = new_io_ctrl();
+  IHADCB *dcb = &ioc->dcb;
+  memcpy(dcb, &dcb_read_model, sizeof(IHADCB));
+  set_dcb_info(dcb, ddname, lrecl, blkSize, recfm);
+  return ioc;
+}
 
 static int validate_jfcb_attributes(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
 {

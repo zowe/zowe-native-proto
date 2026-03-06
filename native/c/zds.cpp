@@ -575,7 +575,7 @@ int zds_read_from_dd(ZDS *zds, std::string ddname, std::string &response)
   return 0;
 }
 
-int zds_read_from_dd_acb(ZDS *zds, string ddname, string &response)
+int zds_read_from_dd_acb(ZDS *zds, std::string ddname, std::string &response)
 {
   int rc = 0;
 
