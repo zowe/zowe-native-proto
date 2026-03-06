@@ -19,6 +19,7 @@
 #include "commands/core.hpp"
 #include "commands/ds.hpp"
 #include "commands/job.hpp"
+#include "commands/system.hpp"
 #include "commands/tool.hpp"
 #include "commands/tso.hpp"
 #include "commands/uss.hpp"
@@ -39,6 +40,7 @@ int main(int argc, char *argv[])
     console::register_commands(root_cmd);
     ds::register_commands(root_cmd);
     job::register_commands(root_cmd);
+    sys::register_commands(root_cmd);
     tool::register_commands(root_cmd);
     tso::register_commands(root_cmd);
     uss::register_commands(root_cmd);

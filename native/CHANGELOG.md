@@ -6,6 +6,8 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Recent Changes
 
+- `c`: Added `zowex system list-subsystems` with optional filter. [#842](https://github.com/zowe/zowe-native-proto/issues/842)
+- `c`: Added `zowex system` command group and relocated items `list-parmlib`, `list-proclib`, and `display-symbol` from `zowex tool` to this group. [#843](https://github.com/zowe/zowe-native-proto/issues/843) and [#844](https://github.com/zowe/zowe-native-proto/issues/844)
 - `c`: Added `toolSearch` in `zowed` for use by client SDK.
 - `c`: Added the `pattern` option to the `data-set list-members` zowex command to filter the returned members. [#817](https://github.com/zowe/zowe-native-proto/pull/817)
 - `c`: Implemented `zowex uss copy` command to copy USS files and directories. [#379](https://github.com/zowe/zowe-native-proto/issues/379)

@@ -14,6 +14,7 @@
 
 #include "ztype.h"
 #include "zprmtype.h"
+#include "iefjsqry.h"
 
 #if defined(__cplusplus) && defined(__MVS__)
 extern "OS"
@@ -34,6 +35,10 @@ extern "C"
 #define LAST_PARAMETER_INDEX MSG_INDEX // NOTE(Kelosky): this must be set to the last parameter index
 
 #define INPUT_PARAMETERS LAST_PARAMETER_INDEX + 1
+
+  typedef struct jqry___header JQRY_HEADER;
+  typedef struct jqry___subsys___entry JQRY_SUBSYS_ENTRY;
+  typedef struct jqry___vt___entry JQRY_VT_ENTRY;
 
   typedef struct
   {
@@ -61,8 +66,29 @@ extern "C"
     int reserve_1;
   } SYMBOL_DATA;
 
+  /**
+   * @brief Storage Free 64 bit areas
+   * @param PTR64 The data to free
+   * @return The return code from the service (always 0)
+   */
   int ZUTMFR64(void *PTR64);
+
+  /**
+   * @brief Storage Release 24 or 31 bit areas
+   * @param size The size of the data to release
+   * @param data The data to release
+   * @return The return code from the service
+   */
+  int ZUTMSREL(int *size, void *PTR64);
+
+  /**
+   * @brief Storage Get 64 bit areas
+   * @param PTR64 The new storage area address
+   * @param size The size of the data to get
+   * @return The return code from the service (always 0)
+   */
   int ZUTMGT64(void **PTR64, int *PTR64);
+
   int ZUTMGUSR(char[8]);
   int ZUTWDYN(BPXWDYN_PARM *, BPXWDYN_RESPONSE *);
   int ZUTEDSCT();
@@ -72,6 +98,7 @@ extern "C"
   void ZUTDBGMG(const char *);
   unsigned char ZUTMGKEY();
   int ZUTMLPLB(ZDIAG *, int *, PARMLIB_DSNS *);
+  int ZUTSSIQ(ZDIAG *, JQRY_HEADER **, const char *filter);
 
 #if defined(__cplusplus)
 }

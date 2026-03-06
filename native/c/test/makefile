@@ -97,8 +97,6 @@ build-out/zam.o \
 build-out/zjb.test.o \
 build-out/zjb.o \
 build-out/zjbm.o \
-build-out/zjbm31.o \
-build-out/zssi31.o \
 build-out/zcn.test.o \
 build-out/zcn.o \
 build-out/zcnm.o \
@@ -112,6 +110,7 @@ build-out/zusf.o \
 build-out/zowex.ds.test.o \
 build-out/zowex.uss.test.o \
 build-out/zowex.job.test.o \
+build-out/zowex.system.test.o \
 build-out/zowex.job.list.test.o \
 build-out/zowex.job.submit.test.o \
 build-out/zowex.job.manage.test.o \
@@ -150,12 +149,6 @@ build-out/zjb.o:
 build-out/zjbm.o:
 	ln -sf ../../build-out/zjbm.o build-out/zjbm.o
 
-build-out/zjbm31.o:
-	ln -sf ../../build-out/zjbm31.o build-out/zjbm31.o
-
-build-out/zssi31.o:
-	ln -sf ../../build-out/zssi31.o build-out/zssi31.o
-
 build-out/zcn.o:
 	ln -sf ../../build-out/zcn.o build-out/zcn.o
 
@@ -176,6 +169,9 @@ build-out/zowex.uss.test.o: zowex.uss.test.cpp
 
 build-out/zowex.job.test.o: zowex.job.test.cpp
 	$(CXX) $(CXXFLAGS) $(CPP_LIST_FLAG) -c $^ -o $@
+
+build-out/zowex.system.test.o: zowex.system.test.cpp
+	$(OCXX) $(CXXLANG_FLAGS) $(CPP_LIST_FLAG) -c $^ -o $@
 
 build-out/zowex.job.list.test.o: zowex.job.list.test.cpp
 	$(CXX) $(CXXFLAGS) $(CPP_LIST_FLAG) -c $^ -o $@

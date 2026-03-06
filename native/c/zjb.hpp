@@ -91,6 +91,12 @@ int zjb_list_by_owner(ZJB *zjb, const std::string &owner_name, const std::string
  */
 int zjb_list_by_owner(ZJB *zjb, const std::string &owner_name, const std::string &prefix_name, std::vector<ZJob> &jobs);
 #endif
+
+// Exclude status implementation for SWIG
+#ifdef SWIG
+extern "C"
+{
+#endif
 /**
  * @brief Return a list of proclib for a job
  *
@@ -184,6 +190,7 @@ int zjb_delete(ZJB *zjb, const std::string &jobid);
 #ifdef SWIG
 }
 #endif
+
 /**
  * @brief Cancel a job using input jobid
  *
