@@ -12,7 +12,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## `0.3.0`
 
-- Changed SDK groupings to align with zowex. [#807](https://github.com/zowe/zowe-native-proto/pull/808)
+- Changed SDK groupings to align with zowex. [#807](https://github.com/zowe/zowe-native-proto/issues/807)
 
 ## `0.2.4`
 
