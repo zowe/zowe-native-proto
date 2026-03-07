@@ -581,13 +581,21 @@ int zds_read_from_dd_acb(ZDS *zds, std::string ddname, std::string &response)
 
   IO_CTRL *ioc = new IO_CTRL();
 
-  rc = ZDSOACB(zds, &ioc, ddname.c_str());
+  rc = ZDSOIVSM(zds, &ioc, ddname.c_str());
   if (rc != RTNCD_SUCCESS)
   {
     return rc;
   }
 
-  rc = ZDSCACB(zds, ioc);
+  char *buffer = (char *)__malloc31(130); // TODO(Kelosky): use appropriate size
+  int length = 0;
+  rc = ZDSRIVSM(zds, ioc, buffer, &length);
+  if (rc != RTNCD_SUCCESS)
+  {
+    return rc;
+  }
+
+  rc = ZDSCIVSM(zds, ioc);
   if (rc != RTNCD_SUCCESS)
   {
     return rc;

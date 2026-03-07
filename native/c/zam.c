@@ -328,34 +328,58 @@ int open_input_vsam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 *PTR32 ioc, const char *PT
 
   // memset(&dsinf, 0x00, sizeof(DSINF));
 
+  // DSINF dsinf = {0}; // NOTE(Kelosky): may not be in stack storage
+  // memcpy(dsinf.dsineye, "DSIN", sizeof(dsinf.dsineye));
+  // rplp->rplermsa = &dsinf;
+  // rplp->rplemlen = dsinsiz1;
+
+  // unsigned char stck[32] = {0};
+
+  // // __asm__(" STCK %0 " : "=m"(stck[0]));
+  // // zut_dump_storage_wto("stck", stck, sizeof(stck));
+  // // __asm__(" STCKE %0 " : "=m"(stck[0]));
+  // // zut_dump_storage_wto("stcke", stck, sizeof(stck));
+
+  // // zut_dump_storage_wto("dsinf", &dsinf, sizeof(DSINF));
+  // GET(rplp);
+  // zut_dump_storage_wto("1buffer", new_ioc->buffer, new_ioc->buffer_size);
+  // // void *PTR32 rplprbar = NULL;
+  // // memcpy(&rplprbar, &rplp->rplrbar, 4);
+  // zut_dump_storage_wto("rplprbar", &rplp->rplrbar, 8);
+  // unsigned short request = 0xFF00;
+  // memcpy(&rplp->rplaixpc, &request, 2);
+  // memcpy(&rplp->rplrbar.rplrbarx, &dsinf.dsinstke, 6); // truncate to 6 bytes??
+  // // zut_dump_storage_wto("dsinf", &dsinf, sizeof(DSINF));
+  // POINT(rplp);
+  // GET(rplp);
+  // zut_dump_storage_wto("2buffer", new_ioc->buffer, new_ioc->buffer_size);
+
+  // // GET(rplp);
+  // // zut_dump_storage_wto("2buffer", new_ioc->buffer, new_ioc->buffer_size);
+
+  return rc;
+}
+
+int read_input_vsam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc, char *PTR32 buffer, int *PTR32 length)
+{
+  int rc = 0;
+
+  // TODO(Kelosky): handle EOD
   DSINF dsinf = {0}; // NOTE(Kelosky): may not be in stack storage
   memcpy(dsinf.dsineye, "DSIN", sizeof(dsinf.dsineye));
+  IFGRPL *rplp = &ioc->rpl;
   rplp->rplermsa = &dsinf;
   rplp->rplemlen = dsinsiz1;
 
-  unsigned char stck[32] = {0};
-
-  // __asm__(" STCK %0 " : "=m"(stck[0]));
-  // zut_dump_storage_wto("stck", stck, sizeof(stck));
-  // __asm__(" STCKE %0 " : "=m"(stck[0]));
-  // zut_dump_storage_wto("stcke", stck, sizeof(stck));
-
-  // zut_dump_storage_wto("dsinf", &dsinf, sizeof(DSINF));
   GET(rplp);
-  zut_dump_storage_wto("1buffer", new_ioc->buffer, new_ioc->buffer_size);
-  // void *PTR32 rplprbar = NULL;
-  // memcpy(&rplprbar, &rplp->rplrbar, 4);
+  zut_dump_storage_wto("1buffer", ioc->buffer, ioc->buffer_size);
   zut_dump_storage_wto("rplprbar", &rplp->rplrbar, 8);
   unsigned short request = 0xFF00;
   memcpy(&rplp->rplaixpc, &request, 2);
   memcpy(&rplp->rplrbar.rplrbarx, &dsinf.dsinstke, 6); // truncate to 6 bytes??
-  // zut_dump_storage_wto("dsinf", &dsinf, sizeof(DSINF));
   POINT(rplp);
   GET(rplp);
-  zut_dump_storage_wto("2buffer", new_ioc->buffer, new_ioc->buffer_size);
-
-  // GET(rplp);
-  // zut_dump_storage_wto("2buffer", new_ioc->buffer, new_ioc->buffer_size);
+  zut_dump_storage_wto("2buffer", ioc->buffer, ioc->buffer_size);
 
   return rc;
 }

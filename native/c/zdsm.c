@@ -163,9 +163,9 @@ int ZDSDSCB1(ZDS *zds, const char *dsn, const char *volser, DSCBFormat1 *dscb)
   return RTNCD_FAILURE;
 }
 
-#pragma prolog(ZDSOACB, " ZWEPROLG NEWDSA=(YES,24) ")
-#pragma epilog(ZDSOACB, " ZWEEPILG ")
-int ZDSOACB(ZDS *zds, IO_CTRL **ioc, const char *ddname)
+#pragma prolog(ZDSOIVSM, " ZWEPROLG NEWDSA=(YES,24) ")
+#pragma epilog(ZDSOIVSM, " ZWEEPILG ")
+int ZDSOIVSM(ZDS *zds, IO_CTRL **ioc, const char *ddname)
 {
   int rc = 0;
   ZDS zds31 = {0};
@@ -181,7 +181,6 @@ int ZDSOACB(ZDS *zds, IO_CTRL **ioc, const char *ddname)
 
   if (0 != rc)
   {
-
     ZDS zds_close = {0};
     close_input_vsam(&zds_close.diag, ioc31);
     *ioc = NULL;
@@ -190,9 +189,22 @@ int ZDSOACB(ZDS *zds, IO_CTRL **ioc, const char *ddname)
   return rc;
 }
 
-#pragma prolog(ZDSCACB, " ZWEPROLG NEWDSA=(YES,24) ")
-#pragma epilog(ZDSCACB, " ZWEEPILG ")
-int ZDSCACB(ZDS *zds, IO_CTRL *ioc)
+#pragma prolog(ZDSRIVSM, " ZWEPROLG NEWDSA=(YES,24) ")
+#pragma epilog(ZDSRIVSM, " ZWEEPILG ")
+int ZDSRIVSM(ZDS *zds, IO_CTRL *ioc, char *buffer, int *length)
+{
+  int rc = 0;
+  ZDS zds31 = {0};
+  memcpy(&zds31, zds, sizeof(ZDS));
+  zwto_debug("@TEST called to close acb for ddname: %.8s", ioc->ddname);
+  rc = read_input_vsam(&zds31.diag, ioc, buffer, length);
+  memcpy(zds, &zds31, sizeof(ZDS));
+  return rc;
+}
+
+#pragma prolog(ZDSCIVSM, " ZWEPROLG NEWDSA=(YES,24) ")
+#pragma epilog(ZDSCIVSM, " ZWEEPILG ")
+int ZDSCIVSM(ZDS *zds, IO_CTRL *ioc)
 {
   int rc = 0;
   ZDS zds31 = {0};

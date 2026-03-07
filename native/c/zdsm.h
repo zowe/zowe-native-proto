@@ -35,8 +35,9 @@ extern "C"
   int ZDSOBPAM(ZDS *zds, IO_CTRL **ioc, const char *ddname);
   int ZDSWBPAM(ZDS *zds, IO_CTRL *ioc, const char *data, int *length);
   int ZDSCBPAM(ZDS *zds, IO_CTRL *ioc);
-  int ZDSOACB(ZDS *zds, IO_CTRL **ioc, const char *ddname);
-  int ZDSCACB(ZDS *zds, IO_CTRL *ioc);
+  int ZDSOIVSM(ZDS *zds, IO_CTRL **ioc, const char *ddname);
+  int ZDSRIVSM(ZDS *zds, IO_CTRL *ioc, char *buffer, int *length);
+  int ZDSCIVSM(ZDS *zds, IO_CTRL *ioc);
 
 #if defined(__cplusplus)
 }
