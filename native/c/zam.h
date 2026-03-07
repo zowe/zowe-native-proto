@@ -24,6 +24,7 @@
 #include "jfcb.h"
 #include "ihaexlst.h"
 #include "zamtypes.h"
+#include "zdstype.h"
 
 #if defined(__IBM_METAL__)
 #pragma map(open_output_assert, "opnoasrt")
@@ -78,7 +79,7 @@ int close_output_bpam(ZDIAG *PTR32, IO_CTRL *PTR32) ATTRIBUTE(amode31);
 #pragma map(open_input_vsam, "OPNIVSAM")
 #pragma map(close_input_vsam, "CLSIVSAM")
 #endif
-int open_input_vsam(ZDIAG *PTR32, IO_CTRL *PTR32 *PTR32, const char *PTR32) ATTRIBUTE(amode31);
+int open_input_vsam(ZDS *PTR32 zds, IO_CTRL *PTR32 *PTR32, const char *PTR32) ATTRIBUTE(amode31);
 int close_input_vsam(ZDIAG *PTR32, IO_CTRL *PTR32) ATTRIBUTE(amode31);
 
 #if defined(__IBM_METAL__)

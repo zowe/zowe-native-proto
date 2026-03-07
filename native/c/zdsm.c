@@ -175,7 +175,7 @@ int ZDSOACB(ZDS *zds, IO_CTRL **ioc, const char *ddname)
   zwto_debug("@TEST called to open acb for ddname: %s", ddname);
 
   IO_CTRL *PTR32 ioc31 = NULL;
-  rc = open_input_vsam(&zds31.diag, &ioc31, ddname31);
+  rc = open_input_vsam(&zds31, &ioc31, ddname31);
   *ioc = ioc31;
   memcpy(zds, &zds31, sizeof(ZDS));
 

@@ -252,7 +252,7 @@ static int note_member(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc, NOTE_RESPONSE *PTR
   return rc;
 }
 
-int open_input_vsam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 *PTR32 ioc, const char *PTR32 ddname)
+int open_input_vsam(ZDS *PTR32 zds, IO_CTRL *PTR32 *PTR32 ioc, const char *PTR32 ddname)
 {
   int rc = 0;
   int rsn = 0;
@@ -299,11 +299,11 @@ int open_input_vsam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 *PTR32 ioc, const char *PT
   if (0 != rc)
   {
     zwto_debug("@TEST get failed: %d", rc);
-    diag->detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
-    strcpy(diag->service_name, "MODCB");
-    diag->e_msg_len = sprintf(diag->e_msg, "MODCB failed rc was: %d rsn was: %d", rc, rsn);
-    diag->service_rc = rc;
-    diag->service_rsn = rsn;
+    zds->diag.detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
+    strcpy(zds->diag.service_name, "MODCB");
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "MODCB failed rc was: %d rsn was: %d", rc, rsn);
+    zds->diag.service_rc = rc;
+    zds->diag.service_rsn = rsn;
     return RTNCD_FAILURE;
   }
 
@@ -315,10 +315,10 @@ int open_input_vsam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 *PTR32 ioc, const char *PT
   if (0 != rc)
   {
     zwto_debug("@TEST open acb zam.c failed: %d", rc);
-    diag->detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
-    strcpy(diag->service_name, "OPEN");
-    diag->e_msg_len = sprintf(diag->e_msg, "Failed to open acb rc was: %d", rc);
-    diag->service_rc = rc;
+    zds->diag.detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
+    strcpy(zds->diag.service_name, "OPEN");
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to open acb rc was: %d", rc);
+    zds->diag.service_rc = rc;
     return RTNCD_FAILURE;
   }
   zwto_debug("@TEST open acb zam.c success");
