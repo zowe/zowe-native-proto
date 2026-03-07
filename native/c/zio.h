@@ -95,6 +95,19 @@ RPL_MODEL(rpl_model);
 #define GET(rpl)
 #endif
 
+#if defined(__IBM_METAL__)
+#define POINT(rpl)                                     \
+  __asm(                                               \
+      "*                                         \n"   \
+      " POINT RPL=(%0)                             \n" \
+      "*                                           "   \
+      :                                                \
+      : "r"(rpl)                                       \
+      : "r0", "r1", "r14", "r15");
+#else
+#define POINT(rpl)
+#endif
+
 // https://www.ibm.com/docs/en/zos/3.2.0?topic=examples-subparameters-gencb-modcb-showcb-testcb
 #if defined(__IBM_METAL__)
 #define MODCB(rpl, acb, area, area_len, rec_len, plist, rc, rsn) \

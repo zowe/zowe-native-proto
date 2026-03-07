@@ -12,6 +12,7 @@
 #include "zam.h"
 #include "dcbd.h"
 // #include "zam24.h"
+#include "zamtypes.h"
 #include "zdstype.h"
 #include "zstorage.h"
 #include "ztype.h"
@@ -273,27 +274,34 @@ int open_input_vsam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 *PTR32 ioc, const char *PT
   new_ioc->buffer_size = 130; // new_ioc->ifgacb.acbmsgln;
   new_ioc->buffer = storage_obtain31(new_ioc->buffer_size);
 
-  void *rplp = storage_obtain24(sizeof(IFGRPL));
+  // IFGRPL *rplp = storage_obtain24(sizeof(IFGRPL));
+  IFGRPL *rplp = &new_ioc->rpl;
   memcpy(rplp, &rpl_model, sizeof(IFGRPL));
+
+  // memcpy(&new_ioc->rpl, &rpl_model, sizeof(IFGRPL));
+
+  // zut_dump_storage_wto("dsinf1", &dsinf, sizeof(DSINF));
+
   void *acbp = &new_ioc->ifgacb;
   int lrecl = 130; // new_ioc->ifgacb.acblrecl; // stvsmlrl
+  // NOTE(Kelosky): RECLEN may not be required
 
   // zut_dump_storage_wto("rplp", rplp, sizeof(IFGRPL));
   zwto_debug("@TEST lrecl is: %d buffer size is: %d", lrecl, new_ioc->buffer_size);
 
-  unsigned char plist[1024] = {0};
+  unsigned char plist[1024] = {0}; // TODO(Kelosky): use appropriate size
   void *PTR32 plistp = &plist[0];
 
   zwto_debug("@TEST rc: %d rsn: %d", rc, rsn);
-  zwto_debug("@TEST open acb zam.c success");
 
+  // IFGRPL *PTR32 rplp = &new_ioc->rpl;
   MODCB(rplp, acbp, new_ioc->buffer, new_ioc->buffer_size, lrecl, plistp, rc, rsn);
   if (0 != rc)
   {
     zwto_debug("@TEST get failed: %d", rc);
     diag->detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
     strcpy(diag->service_name, "MODCB");
-    diag->e_msg_len = sprintf(diag->e_msg, "Failed to get rc was: %d rsn was: %d", rc, rsn);
+    diag->e_msg_len = sprintf(diag->e_msg, "MODCB failed rc was: %d rsn was: %d", rc, rsn);
     diag->service_rc = rc;
     diag->service_rsn = rsn;
     return RTNCD_FAILURE;
@@ -313,12 +321,41 @@ int open_input_vsam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 *PTR32 ioc, const char *PT
     diag->service_rc = rc;
     return RTNCD_FAILURE;
   }
+  zwto_debug("@TEST open acb zam.c success");
 
   // zut_dump_storage_wto("acb", &new_ioc->ifgacb, sizeof(IFGACB));
   zwto_debug("@TEST lrecl is: %d blksize is: %d and recfm is: %x", new_ioc->ifgacb.acblrecl, new_ioc->ifgacb.acbmsgln, new_ioc->ifgacb.acbrecfm);
 
+  // memset(&dsinf, 0x00, sizeof(DSINF));
+
+  DSINF dsinf = {0}; // NOTE(Kelosky): may not be in stack storage
+  memcpy(dsinf.dsineye, "DSIN", sizeof(dsinf.dsineye));
+  rplp->rplermsa = &dsinf;
+  rplp->rplemlen = dsinsiz1;
+
+  unsigned char stck[32] = {0};
+
+  // __asm__(" STCK %0 " : "=m"(stck[0]));
+  // zut_dump_storage_wto("stck", stck, sizeof(stck));
+  // __asm__(" STCKE %0 " : "=m"(stck[0]));
+  // zut_dump_storage_wto("stcke", stck, sizeof(stck));
+
+  // zut_dump_storage_wto("dsinf", &dsinf, sizeof(DSINF));
   GET(rplp);
-  zut_dump_storage_wto("buffer", new_ioc->buffer, new_ioc->buffer_size);
+  zut_dump_storage_wto("1buffer", new_ioc->buffer, new_ioc->buffer_size);
+  // void *PTR32 rplprbar = NULL;
+  // memcpy(&rplprbar, &rplp->rplrbar, 4);
+  zut_dump_storage_wto("rplprbar", &rplp->rplrbar, 8);
+  unsigned short request = 0xFF00;
+  memcpy(&rplp->rplaixpc, &request, 2);
+  memcpy(&rplp->rplrbar.rplrbarx, &dsinf.dsinstke, 6); // truncate to 6 bytes??
+  // zut_dump_storage_wto("dsinf", &dsinf, sizeof(DSINF));
+  POINT(rplp);
+  GET(rplp);
+  zut_dump_storage_wto("2buffer", new_ioc->buffer, new_ioc->buffer_size);
+
+  // GET(rplp);
+  // zut_dump_storage_wto("2buffer", new_ioc->buffer, new_ioc->buffer_size);
 
   return rc;
 }
@@ -1095,14 +1132,14 @@ int read_input_jfcb(IO_CTRL *ioc)
   // ioc->exlst[0].exlcodes = exldcbab;
   ioc->exlst[0].exlentrb = (unsigned int)&ioc->jfcb;
   ioc->exlst[0].exlcodes = exllaste + exlrjfcb;
-  memcpy(&ioc->rpl, &rdfjfcb_model, sizeof(RDJFCB_PL));
+  memcpy(&ioc->rdjfcb_pl, &rdfjfcb_model, sizeof(RDJFCB_PL));
 
   unsigned char recfm = ioc->dcb.dcbrecfm; // save the recfm
   void *PTR32 exlst = &ioc->exlst;
   memcpy(&ioc->dcb.dcbexlst, &exlst, sizeof(ioc->dcb.dcbexlst));
   ioc->dcb.dcbrecfm = recfm; // restore the recfm
 
-  RDJFCB(ioc->dcb, ioc->rpl, rc, INPUT);
+  RDJFCB(ioc->dcb, ioc->rdjfcb_pl, rc, INPUT);
   return rc;
 }
 
@@ -1120,14 +1157,14 @@ int read_output_jfcb(IO_CTRL *ioc)
   // ioc->exlst[0].exlcodes = exldcbab;
   ioc->exlst[0].exlentrb = (unsigned int)&ioc->jfcb;
   ioc->exlst[0].exlcodes = exllaste + exlrjfcb;
-  memcpy(&ioc->rpl, &rdfjfcb_model, sizeof(RDJFCB_PL));
+  memcpy(&ioc->rdjfcb_pl, &rdfjfcb_model, sizeof(RDJFCB_PL));
 
   unsigned char recfm = ioc->dcb.dcbrecfm; // save the recfm
   void *PTR32 exlst = &ioc->exlst;
   memcpy(&ioc->dcb.dcbexlst, &exlst, sizeof(ioc->dcb.dcbexlst));
   ioc->dcb.dcbrecfm = recfm; // restore the recfm
 
-  RDJFCB(ioc->dcb, ioc->rpl, rc, OUTPUT);
+  RDJFCB(ioc->dcb, ioc->rdjfcb_pl, rc, OUTPUT);
   return rc;
 }
 

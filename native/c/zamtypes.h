@@ -15,6 +15,7 @@
 #include "dcbd.h"
 #include "ihadcbe.h"
 #include "ifgacb.h"
+#include "iazdsinf.h"
 #include "ifgrpl.h"
 #include "jfcb.h"
 #include "ihaexlst.h"
@@ -25,6 +26,7 @@ typedef struct ihadcb IHADCB;
 typedef struct dcbe DCBE;
 typedef struct ifgacb IFGACB;
 typedef struct ifgrpl IFGRPL;
+typedef struct dsinf DSINF;
 
 #define OPTION_BYTE 0X80
 
@@ -172,9 +174,10 @@ typedef struct
   DECB decb;
   JFCB jfcb;
   EXLIST exlst[NUM_EXLIST_ENTRIES];
-  RDJFCB_PL rpl;
+  RDJFCB_PL rdjfcb_pl;
   OPEN_PL opl;
   STOW_LIST stow_list;
+  IFGRPL rpl;
   char *PTR32 buffer;
   int buffer_size;
   int output : 1; // TODO(Kelosky): remove this flag
