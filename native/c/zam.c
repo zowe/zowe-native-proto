@@ -13,6 +13,7 @@
 #include "dcbd.h"
 // #include "zam24.h"
 #include "zdstype.h"
+#include "zstorage.h"
 #include "ztype.h"
 #include "zenq.h"
 #include "ihapsa.h"
@@ -253,6 +254,7 @@ static int note_member(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc, NOTE_RESPONSE *PTR
 int open_input_vsam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 *PTR32 ioc, const char *PTR32 ddname)
 {
   int rc = 0;
+  int rsn = 0;
   IO_CTRL *PTR32 ioc31 = NULL;
 
   zwto_debug("@TEST open acb zam.c");
@@ -276,19 +278,36 @@ int open_input_vsam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 *PTR32 ioc, const char *PT
     return RTNCD_FAILURE;
   }
 
-  RPL_MODEL(dsa_rpl_model);
-  memcpy(&dsa_rpl_model, &rpl_model, sizeof(RDJFCB_PL));
+  // NOTE(Kelosky): this probably cannot remain in stack memory for the entire duration of the program
+  // RPL_MODEL(dsa_rpl_model);
+  // memcpy(&dsa_rpl_model, &rpl_model, sizeof(RDJFCB_PL));
 
-  unsigned char buffer[1024] = {0};
+  // unsigned char buffer[1024] = {0};
   unsigned char plist[1024] = {0};
-  void *PTR32 bufferp = &buffer[0];
+  // void *PTR32 bufferp = &buffer[0];
   void *PTR32 plistp = &plist[0];
-  zwto_debug("@TEST buffer: %s", buffer);
+  // zwto_debug("@TEST buffer: %s", buffer);
   zwto_debug("@TEST open finished");
   zut_dump_storage_wto("acb", &new_ioc->ifgacb, sizeof(IFGACB));
   zwto_debug("@TEST lrecl is: %d blksize is: %d and recfm is: %x", new_ioc->ifgacb.acblrecl, new_ioc->ifgacb.acbmsgln, new_ioc->ifgacb.acbrecfm);
   // zut_dump_storage_wto("buffer", buffer, sizeof(buffer));
 
+  //
+  //  Obtain a buffer for the data set
+  //
+  new_ioc->buffer_size = new_ioc->ifgacb.acbmsgln;
+  new_ioc->buffer = storage_obtain31(new_ioc->buffer_size);
+
+  void *rplp = storage_obtain24(sizeof(IFGRPL));
+  memcpy(rplp, &rpl_model, sizeof(IFGRPL));
+  void *acbp = &new_ioc->ifgacb;
+  int lrecl = new_ioc->ifgacb.acblrecl;
+
+  zut_dump_storage_wto("rplp", rplp, sizeof(IFGRPL));
+
+  MODCB(rplp, acbp, new_ioc->buffer, new_ioc->buffer_size, lrecl, plistp, rc, rsn);
+
+  zwto_debug("@TEST rc: %d rsn: %d", rc, rsn);
   zwto_debug("@TEST open acb zam.c success");
 
   return rc;

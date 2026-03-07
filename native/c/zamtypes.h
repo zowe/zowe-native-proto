@@ -15,6 +15,7 @@
 #include "dcbd.h"
 #include "ihadcbe.h"
 #include "ifgacb.h"
+#include "ifgrpl.h"
 #include "jfcb.h"
 #include "ihaexlst.h"
 #include "ztype.h"
@@ -23,6 +24,7 @@
 typedef struct ihadcb IHADCB;
 typedef struct dcbe DCBE;
 typedef struct ifgacb IFGACB;
+typedef struct ifgrpl IFGRPL;
 
 #define OPTION_BYTE 0X80
 

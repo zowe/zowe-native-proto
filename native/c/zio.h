@@ -82,29 +82,33 @@ ACB_MODEL(acb_model);
 
 RPL_MODEL(rpl_model);
 
+// https://www.ibm.com/docs/en/zos/3.2.0?topic=examples-subparameters-gencb-modcb-showcb-testcb
 #if defined(__IBM_METAL__)
-#define MODCB(rpl, acb, area, area_len, rec_len, plist, rc)  \
-  __asm(                                                     \
-      "*                                                 \n" \
-      " MODCB RPL=(%0),"                                     \
-      "ACB=(%1),"                                            \
-      "AREA=(%3),"                                           \
-      "AREALEN=(%4),"                                        \
-      "RECLEN=(%5),"                                         \
-      "MF=(G,%6)                                         \n" \
-      " *                                                \n" \
-      " ST 15,%2     Save RC                             \n" \
-      " *                                                \n" \
-      : "+m"(rpl),                                           \
-        "+m"(acb),                                           \
-        "=m"(rc)                                             \
-      : "m"(area),                                           \
-        "m"(length),                                         \
-        "m"(reclen),                                         \
-        "m"(plist)                                           \
+#define MODCB(rpl, acb, area, area_len, rec_len, plist, rc, rsn) \
+  __asm(                                                         \
+      "*                                                 \n"     \
+      " MODCB RPL=(*,%0),"                                       \
+      "ACB=(*,%1),"                                              \
+      "AREA=(*,%4),"                                             \
+      "AREALEN=(*,%5),"                                          \
+      "RECLEN=(*,%6),"                                           \
+      "OPTCD=(MVE,SYN),"                                         \
+      "MF=(G,%7)                                         \n"     \
+      "*                                                 \n"     \
+      " ST 15,%2     Save RC                             \n"     \
+      " ST 0,%3      Save RSN                            \n"     \
+      "*                                                 \n"     \
+      : "+m"(rpl),                                               \
+        "+m"(acb),                                               \
+        "=m"(rc),                                                \
+        "=m"(rsn)                                                \
+      : "m"(area),                                               \
+        "m"(area_len),                                           \
+        "m"(rec_len),                                            \
+        "m"(plist)                                               \
       : "r0", "r1", "r14", "r15");
 #else
-#define MODCB(rpl, acb, area, area_len, rec_len, plist, rc)
+#define MODCB(rpl, acb, area, area_len, rec_len, plist, rc, rsn)
 #endif
 
 #if defined(__IBM_METAL__)
