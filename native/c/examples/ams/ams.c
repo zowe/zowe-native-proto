@@ -286,7 +286,7 @@ int AMSMAIN(const char *ddname)
   /**
    * @brief Perform open
    */
-  rc = open_output(&resources.sysprint->dcb);
+  rc = open_output_dcb(&resources.sysprint->dcb);
   if (0 != rc)
   {
     zwto_debug("@TEST open_output failed: %d", rc);

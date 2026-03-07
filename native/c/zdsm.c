@@ -175,7 +175,7 @@ int ZDSOACB(ZDS *zds, IO_CTRL **ioc, const char *ddname)
   zwto_debug("@TEST called to open acb for ddname: %s", ddname);
 
   IO_CTRL *PTR32 ioc31 = NULL;
-  rc = open_acb(&zds31.diag, &ioc31, ddname31);
+  rc = open_input_vsam(&zds31.diag, &ioc31, ddname31);
   *ioc = ioc31;
   memcpy(zds, &zds31, sizeof(ZDS));
 
@@ -183,7 +183,7 @@ int ZDSOACB(ZDS *zds, IO_CTRL **ioc, const char *ddname)
   {
 
     ZDS zds_close = {0};
-    close_acb(&zds_close.diag, ioc31);
+    close_input_vsam(&zds_close.diag, ioc31);
     *ioc = NULL;
   }
 
@@ -198,7 +198,7 @@ int ZDSCACB(ZDS *zds, IO_CTRL *ioc)
   ZDS zds31 = {0};
   memcpy(&zds31, zds, sizeof(ZDS));
   zwto_debug("@TEST called to close acb for ddname: %.8s", ioc->ddname);
-  rc = close_acb(&zds31.diag, ioc);
+  rc = close_input_vsam(&zds31.diag, ioc);
   memcpy(zds, &zds31, sizeof(ZDS));
   return rc;
 }

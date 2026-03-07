@@ -163,7 +163,7 @@ static int reserve_data_set(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
 static int open_data_set(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
 {
   int rc = 0;
-  rc = open_output(&ioc->dcb);
+  rc = open_output_dcb(&ioc->dcb);
   if (0 != rc)
   {
     diag->service_rc = rc;
@@ -250,7 +250,7 @@ static int note_member(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc, NOTE_RESPONSE *PTR
   return rc;
 }
 
-int open_acb(ZDIAG *PTR32 diag, IO_CTRL *PTR32 *PTR32 ioc, const char *PTR32 ddname)
+int open_input_vsam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 *PTR32 ioc, const char *PTR32 ddname)
 {
   int rc = 0;
   IO_CTRL *PTR32 ioc31 = NULL;
@@ -265,7 +265,7 @@ int open_acb(ZDIAG *PTR32 diag, IO_CTRL *PTR32 *PTR32 ioc, const char *PTR32 ddn
   memcpy(&dsa_acb_model, &acb_model, sizeof(IFGACB));
   memcpy(&new_ioc->ifgacb, &dsa_acb_model, sizeof(IFGACB));
   memcpy(new_ioc->ifgacb.acbddnm, ddname, sizeof(new_ioc->ifgacb.acbddnm));
-  rc = open_vsam(&new_ioc->ifgacb);
+  rc = open_input_acb(&new_ioc->ifgacb);
   if (0 != rc)
   {
     zwto_debug("@TEST open acb zam.c failed: %d", rc);
@@ -276,16 +276,29 @@ int open_acb(ZDIAG *PTR32 diag, IO_CTRL *PTR32 *PTR32 ioc, const char *PTR32 ddn
     return RTNCD_FAILURE;
   }
 
+  RPL_MODEL(dsa_rpl_model);
+  memcpy(&dsa_rpl_model, &rpl_model, sizeof(RDJFCB_PL));
+
+  unsigned char buffer[1024] = {0};
+  unsigned char plist[1024] = {0};
+  void *PTR32 bufferp = &buffer[0];
+  void *PTR32 plistp = &plist[0];
+  zwto_debug("@TEST buffer: %s", buffer);
+  zwto_debug("@TEST open finished");
+  zut_dump_storage_wto("acb", &new_ioc->ifgacb, sizeof(IFGACB));
+  zwto_debug("@TEST lrecl is: %d blksize is: %d and recfm is: %x", new_ioc->ifgacb.acblrecl, new_ioc->ifgacb.acbmsgln, new_ioc->ifgacb.acbrecfm);
+  // zut_dump_storage_wto("buffer", buffer, sizeof(buffer));
+
   zwto_debug("@TEST open acb zam.c success");
 
   return rc;
 }
 
-int close_acb(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
+int close_input_vsam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
 {
   int rc = 0;
   zwto_debug("@TEST close acb zam.c");
-  rc = close_vsam(&ioc->ifgacb);
+  rc = close_acb(&ioc->ifgacb);
   if (0 != rc)
   {
     diag->detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
@@ -293,6 +306,11 @@ int close_acb(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
     diag->e_msg_len = sprintf(diag->e_msg, "Failed to close acb rc was: %d", rc);
     diag->service_rc = rc;
     return RTNCD_FAILURE;
+  }
+
+  if (ioc)
+  {
+    storage_release(sizeof(IO_CTRL), ioc);
   }
 
   zwto_debug("@TEST close acb zam.c success");
@@ -937,7 +955,7 @@ IO_CTRL *open_output_assert(char *ddname, int lrecl, int blkSize, unsigned char 
   IO_CTRL *ioc = new_write_io_ctrl(ddname, lrecl, blkSize, recfm);
   IHADCB *dcb = &ioc->dcb;
   int rc = 0;
-  rc = open_output(dcb);
+  rc = open_output_dcb(dcb);
   dcb->dcbdsrg1 = dcbdsgps; // DSORG=PS
   ioc->output = 1;
   if (0 != rc)
@@ -957,7 +975,7 @@ IO_CTRL *open_input_assert(char *ddname, int lrecl, int blkSize, unsigned char r
   int rc = 0;
   dcb->dcbdsrg1 = dcbdsgps; // DSORG=PS
 
-  rc = open_input(dcb);
+  rc = open_input_dcb(dcb);
   ioc->input = 1;
 
   if (0 != rc)
@@ -1084,7 +1102,7 @@ int read_output_jfcb(IO_CTRL *ioc)
   return rc;
 }
 
-int open_output(IHADCB *dcb)
+int open_output_dcb(IHADCB *dcb)
 {
   int rc = 0;
   OPEN_PL opl = {0};
@@ -1094,17 +1112,7 @@ int open_output(IHADCB *dcb)
   return rc;
 }
 
-int open_update(IHADCB *dcb)
-{
-  int rc = 0;
-  OPEN_PL opl = {0};
-  opl.option = OPTION_BYTE;
-
-  OPEN(*dcb, opl, rc, OUTPUT);
-  return rc;
-}
-
-int open_input(IHADCB *dcb)
+int open_input_dcb(IHADCB *dcb)
 {
   int rc = 0;
   OPEN_PL opl = {0};
@@ -1120,30 +1128,19 @@ int open_input(IHADCB *dcb)
 // https://www.ibm.com/docs/en/zos/3.2.0?topic=instructions-vsam-macro-descriptions-examples
 // https://www.ibm.com/docs/en/zos/3.2.0?topic=interface-special-processing-logical-syslog-data-sets
 // https://www.ibm.com/docs/en/zos/3.2.0?topic=interface-using-rpl-based-macros
-int open_vsam(IFGACB *acb)
+int open_input_acb(IFGACB *acb)
 {
   int rc = 0;
-  zwto_debug("@TEST open vsam zam.c address: %p", acb);
-  zwto_debug("@TEST ddname: %.8s", acb->acbddnm);
+
   OPEN_MODEL(dsa_open_model);  // stack var
   dsa_open_model = open_model; // copy model
 
   OPEN_ACB(*acb, dsa_open_model, rc);
-  unsigned char buffer[1024] = {0};
-  unsigned char plist[1024] = {0};
-  void *PTR32 bufferp = &buffer[0];
-  void *PTR32 plistp = &plist[0];
-  // __asm(" SHOWCB ACB=(%0),AREA=(%1),LENGTH=1024,FIELDS=ERROR,MF=(G,%2)" : "=r"(bufferp) : "r"(acb), "m"(plistp) : "r0", "r1", "r14", "r15");
-  zwto_debug("@TEST buffer: %s", buffer);
-  zwto_debug("@TEST open finished");
-  zut_dump_storage_wto("acb", acb, sizeof(IFGACB));
-  zwto_debug("@TEST lrecl is: %d blksize is: %d and recfm is: %x", acb->acblrecl, acb->acbmsgln, acb->acbrecfm);
-  // zut_dump_storage_wto("buffer", buffer, sizeof(buffer));
 
   return rc;
 }
 
-int close_vsam(IFGACB *acb)
+int close_acb(IFGACB *acb)
 {
   int rc = 0;
   zwto_debug("@TEST close vsam zam.c address: %p", acb);

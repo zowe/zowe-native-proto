@@ -15,7 +15,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
 #include "zmetal.h"
 #include "dcbd.h"
 #include "ihaecb.h"
@@ -26,14 +25,12 @@
 #include "ihaexlst.h"
 #include "zamtypes.h"
 
-// 8-char entry points for z
 #if defined(__IBM_METAL__)
 #pragma map(open_output_assert, "opnoasrt")
 #pragma map(open_input_assert, "opniasrt")
 #pragma map(close_assert, "closasrt")
 #endif
 
-// API methods
 IO_CTRL *PTR32 open_output_assert(char *, int, int, unsigned char) ATTRIBUTE(amode31);
 IO_CTRL *PTR32 open_input_assert(char *, int, int, unsigned char) ATTRIBUTE(amode31);
 void close_assert(IO_CTRL *) ATTRIBUTE(amode31);
@@ -42,19 +39,24 @@ int write_sync(IO_CTRL *, char *) ATTRIBUTE(amode31);
 int read_sync(IO_CTRL *, char *) ATTRIBUTE(amode31);
 
 #if defined(__IBM_METAL__)
-#pragma map(open_output, "openout")
-#pragma map(open_input, "openin")
+#pragma map(open_input_dcb, "OPNIDCB")
+#pragma map(open_output_dcb, "OPNODCB")
+#pragma map(open_input_acb, "OPNIACB")
 #endif
 
-// individual api methods
-int open_output(IHADCB *) ATTRIBUTE(amode31);
-int open_update(IHADCB *) ATTRIBUTE(amode31);
-int open_input(IHADCB *) ATTRIBUTE(amode31);
-int open_vsam(IFGACB *) ATTRIBUTE(amode31);
-int close_vsam(IFGACB *) ATTRIBUTE(amode31);
+int open_input_dcb(IHADCB *) ATTRIBUTE(amode31);
+int open_output_dcb(IHADCB *) ATTRIBUTE(amode31);
+int open_input_acb(IFGACB *) ATTRIBUTE(amode31);
+
+#ifdef __IBM_METAL__
+#pragma map(close_acb, "CLOSACB")
+#pragma map(close_dcb, "CLOSEDCB")
+#endif
+
+int close_acb(IFGACB *) ATTRIBUTE(amode31);
+int close_dcb(IHADCB *) ATTRIBUTE(amode31);
 
 #if defined(__IBM_METAL__)
-#pragma map(close_dcb, "CLOSEDCB")
 #pragma map(write_dcb, "WRITEDCB")
 #pragma map(read_dcb, "READDCB")
 #endif
@@ -64,8 +66,8 @@ void read_dcb(IHADCB *, READ_PL *, char *) ATTRIBUTE(amode31);
 
 #if defined(__IBM_METAL__)
 #pragma map(open_output_bpam, "OPNOBPAM")
-#pragma map(close_output_bpam, "CLOSBPAM")
-#pragma map(write_output_bpam, "WRITBPAM")
+#pragma map(close_output_bpam, "CLSOBPAM")
+#pragma map(write_output_bpam, "WRTOBPAM")
 #endif
 
 int open_output_bpam(ZDIAG *PTR32, IO_CTRL *PTR32 *PTR32, const char *PTR32) ATTRIBUTE(amode31);
@@ -73,11 +75,11 @@ int write_output_bpam(ZDIAG *PTR32, IO_CTRL *PTR32, const char *PTR32, int lengt
 int close_output_bpam(ZDIAG *PTR32, IO_CTRL *PTR32) ATTRIBUTE(amode31);
 
 #if defined(__IBM_METAL__)
-#pragma map(open_acb, "OPNACB")
-#pragma map(close_acb, "CLOSACB")
+#pragma map(open_input_vsam, "OPNIVSAM")
+#pragma map(close_input_vsam, "CLSIVSAM")
 #endif
-int open_acb(ZDIAG *PTR32, IO_CTRL *PTR32 *PTR32, const char *PTR32) ATTRIBUTE(amode31);
-int close_acb(ZDIAG *PTR32, IO_CTRL *PTR32) ATTRIBUTE(amode31);
+int open_input_vsam(ZDIAG *PTR32, IO_CTRL *PTR32 *PTR32, const char *PTR32) ATTRIBUTE(amode31);
+int close_input_vsam(ZDIAG *PTR32, IO_CTRL *PTR32) ATTRIBUTE(amode31);
 
 #if defined(__IBM_METAL__)
 #pragma map(read_input_jfcb, "RIJFCB")
@@ -91,8 +93,6 @@ int bldl(IO_CTRL *, BLDL_PL *, int *rsn) ATTRIBUTE(amode31);
 int stow(IO_CTRL *, int *rsn) ATTRIBUTE(amode31);
 int note(IO_CTRL *, NOTE_RESPONSE *PTR32 note_response, int *rsn) ATTRIBUTE(amode31);
 int find_member(IO_CTRL *ioc, int *rsn) ATTRIBUTE(amode31);
-
-int close_dcb(IHADCB *) ATTRIBUTE(amode31);
 
 int check(DECB *ecb) ATTRIBUTE(amode31);
 

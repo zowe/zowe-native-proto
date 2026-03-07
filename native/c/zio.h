@@ -83,6 +83,31 @@ ACB_MODEL(acb_model);
 RPL_MODEL(rpl_model);
 
 #if defined(__IBM_METAL__)
+#define MODCB(rpl, acb, area, area_len, rec_len, plist, rc)  \
+  __asm(                                                     \
+      "*                                                 \n" \
+      " MODCB RPL=(%0),"                                     \
+      "ACB=(%1),"                                            \
+      "AREA=(%3),"                                           \
+      "AREALEN=(%4),"                                        \
+      "RECLEN=(%5),"                                         \
+      "MF=(G,%6)                                         \n" \
+      " *                                                \n" \
+      " ST 15,%2     Save RC                             \n" \
+      " *                                                \n" \
+      : "+m"(rpl),                                           \
+        "+m"(acb),                                           \
+        "=m"(rc)                                             \
+      : "m"(area),                                           \
+        "m"(length),                                         \
+        "m"(reclen),                                         \
+        "m"(plist)                                           \
+      : "r0", "r1", "r14", "r15");
+#else
+#define MODCB(rpl, acb, area, area_len, rec_len, plist, rc)
+#endif
+
+#if defined(__IBM_METAL__)
 #define OPEN(dcb, plist, rc, mode)                            \
   __asm(                                                      \
       "*                                                  \n" \
