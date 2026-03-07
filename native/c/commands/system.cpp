@@ -128,6 +128,8 @@ int handle_system_view_syslog(InvocationContext &context)
     context.error_stream() << "  Details: " << zjb.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
+
+  context.output_stream() << response.substr(0, 130) << endl;
   return RTNCD_SUCCESS;
 }
 

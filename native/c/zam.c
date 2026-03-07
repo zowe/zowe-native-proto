@@ -276,9 +276,9 @@ int open_input_vsam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 *PTR32 ioc, const char *PT
   void *rplp = storage_obtain24(sizeof(IFGRPL));
   memcpy(rplp, &rpl_model, sizeof(IFGRPL));
   void *acbp = &new_ioc->ifgacb;
-  int lrecl = 130; // new_ioc->ifgacb.acblrecl;
+  int lrecl = 130; // new_ioc->ifgacb.acblrecl; // stvsmlrl
 
-  zut_dump_storage_wto("rplp", rplp, sizeof(IFGRPL));
+  // zut_dump_storage_wto("rplp", rplp, sizeof(IFGRPL));
   zwto_debug("@TEST lrecl is: %d buffer size is: %d", lrecl, new_ioc->buffer_size);
 
   unsigned char plist[1024] = {0};
@@ -288,7 +288,19 @@ int open_input_vsam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 *PTR32 ioc, const char *PT
   zwto_debug("@TEST open acb zam.c success");
 
   MODCB(rplp, acbp, new_ioc->buffer, new_ioc->buffer_size, lrecl, plistp, rc, rsn);
+  if (0 != rc)
+  {
+    zwto_debug("@TEST get failed: %d", rc);
+    diag->detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
+    strcpy(diag->service_name, "MODCB");
+    diag->e_msg_len = sprintf(diag->e_msg, "Failed to get rc was: %d rsn was: %d", rc, rsn);
+    diag->service_rc = rc;
+    diag->service_rsn = rsn;
+    return RTNCD_FAILURE;
+  }
 
+  // TODO(Kelosky): refactor
+  // TODO(Kelosky): free areas
   ////////////////////////////////////////////////////////////
 
   rc = open_input_acb(&new_ioc->ifgacb);
@@ -302,8 +314,11 @@ int open_input_vsam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 *PTR32 ioc, const char *PT
     return RTNCD_FAILURE;
   }
 
-  zut_dump_storage_wto("acb", &new_ioc->ifgacb, sizeof(IFGACB));
+  // zut_dump_storage_wto("acb", &new_ioc->ifgacb, sizeof(IFGACB));
   zwto_debug("@TEST lrecl is: %d blksize is: %d and recfm is: %x", new_ioc->ifgacb.acblrecl, new_ioc->ifgacb.acbmsgln, new_ioc->ifgacb.acbrecfm);
+
+  GET(rplp);
+  zut_dump_storage_wto("buffer", new_ioc->buffer, new_ioc->buffer_size);
 
   return rc;
 }
