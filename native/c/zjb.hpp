@@ -51,7 +51,32 @@ struct ZJobDD
  * @param jobs populated list returned containing job information array
  * @return int 0 for success; non zero otherwise
  */
-int zjb_list_by_owner(ZJB *zjb, std::string owner_name, std::vector<ZJob> &jobs);
+int zjb_list_by_owner(ZJB *zjb, const std::string &owner_name, std::vector<ZJob> &jobs);
+
+/**
+ * @brief Return a list of jobs from an input or default owner
+ *
+ * @param zjb job returned attributes and error information
+ * @param owner_name owner name of the job to query, defaults to current user if == "", may use wild cards, i.e.
+ * "IBMUS*"
+ * @param prefix_name job prefix, defaults to "*" if == "", may use wild cards, i.e. "IBMUS*"
+ * @param jobs populated list returned containing job information array
+ * @return int 0 for success; non zero otherwise
+ */
+int zjb_list_by_owner(ZJB *zjb, const std::string &owner_name, const std::string &prefix_name, std::vector<ZJob> &jobs);
+
+/**
+ * @brief Return a list of jobs from an input or default owner
+ *
+ * @param zjb job returned attributes and error information
+ * @param owner_name owner name of the job to query, defaults to current user if == "", may use wild cards, i.e.
+ * "IBMUS*"
+ * @param prefix_name job prefix, defaults to "*" if == "", may use wild cards, i.e. "IBMUS*"
+ * @param status_name job status, defaults to "*" if == "", supports "ACTIVE" only
+ * @param jobs populated list returned containing job information array
+ * @return int 0 for success; non zero otherwise
+ */
+int zjb_list_by_owner(ZJB *zjb, const std::string &owner_name, const std::string &prefix_name, const std::string &status_name, std::vector<ZJob> &jobs);
 
 #ifndef SWIG
 /**
@@ -60,31 +85,12 @@ int zjb_list_by_owner(ZJB *zjb, std::string owner_name, std::vector<ZJob> &jobs)
  * @param zjb job returned attributes and error information
  * @param owner_name owner name of the job to query, defaults to current user if == "", may use wild cards, i.e.
  * "IBMUS*"
- * @param prefix job prefix, defaults to "*" if == "", may use wild cards, i.e. "IBMUS*"
+ * @param prefix_name job prefix, defaults to "*" if == "", may use wild cards, i.e. "IBMUS*"
  * @param jobs populated list returned containing job information array
  * @return int 0 for success; non zero otherwise
  */
-int zjb_list_by_owner(ZJB *zjb, std::string owner_name, std::string prefix_name, std::vector<ZJob> &jobs);
+int zjb_list_by_owner(ZJB *zjb, const std::string &owner_name, const std::string &prefix_name, std::vector<ZJob> &jobs);
 #endif
-
-// Exclude status implementation for SWIG
-#ifdef SWIG
-extern "C"
-{
-#endif
-/**
- * @brief Return a list of jobs from an input or default owner
- *
- * @param zjb job returned attributes and error information
- * @param owner_name owner name of the job to query, defaults to current user if == "", may use wild cards, i.e.
- * "IBMUS*"
- * @param prefix job prefix, defaults to "*" if == "", may use wild cards, i.e. "IBMUS*"
- * @param status job status, defaults to "*" if == "", supports "ACTIVE" only
- * @param jobs populated list returned containing job information array
- * @return int 0 for success; non zero otherwise
- */
-int zjb_list_by_owner(ZJB *zjb, std::string owner_name, std::string prefix_name, std::string status_name, std::vector<ZJob> &jobs);
-
 /**
  * @brief Return a list of proclib for a job
  *
@@ -102,7 +108,7 @@ int zjb_list_proclib(ZJB *zjb, std::vector<std::string> &proclib);
  * @param job populated struct returned for found job
  * @return int 0 for success; non zero otherwise
  */
-int zjb_view(ZJB *zjb, std::string jobid, ZJob &job);
+int zjb_view(ZJB *zjb, const std::string &jobid, ZJob &job);
 
 /**
  * @brief Return a list of job file information from an input jobid
@@ -112,7 +118,7 @@ int zjb_view(ZJB *zjb, std::string jobid, ZJob &job);
  * @param job_dds populated list returned containing job file information array
  * @return int 0 for success; non zero otherwise
  */
-int zjb_list_dds(ZJB *zjb, std::string jobid, std::vector<ZJobDD> &job_dds);
+int zjb_list_dds(ZJB *zjb, const std::string &jobid, std::vector<ZJobDD> &job_dds);
 
 /**
  * @brief Return output from a specific job file
@@ -123,10 +129,10 @@ int zjb_list_dds(ZJB *zjb, std::string jobid, std::vector<ZJobDD> &job_dds);
  * @param response return job file output
  * @return int 0 for success; non zero otherwise
  */
-int zjb_read_jobs_output_by_key(ZJB *zjb, std::string jobid, int key, std::string &response);
+int zjb_read_jobs_output_by_key(ZJB *zjb, const std::string &jobid, int key, std::string &response);
 
-int zjb_get_job_dsn_by_key(ZJB *zjb, std::string, int, std::string &);
-int zjb_read_job_content_by_dsn(ZJB *zjb, std::string job_dsn, std::string &response);
+int zjb_get_job_dsn_by_key(ZJB *zjb, const std::string &, int, std::string &);
+int zjb_read_job_content_by_dsn(ZJB *zjb, const std::string &job_dsn, std::string &response);
 
 /**
  * @brief Wait for a job to reach a specific status
@@ -135,7 +141,7 @@ int zjb_read_job_content_by_dsn(ZJB *zjb, std::string job_dsn, std::string &resp
  * @param status job status to wait for
  * @return int 0 for success; non zero otherwise
  */
-int zjb_wait(ZJB *zjb, std::string status);
+int zjb_wait(ZJB *zjb, const std::string &status);
 
 /**
  * @brief Return JCL for a job by input jobid
@@ -145,7 +151,7 @@ int zjb_wait(ZJB *zjb, std::string status);
  * @param response return JCL
  * @return int 0 for success; non zero otherwise
  */
-int zjb_read_job_jcl(ZJB *zjb, std::string jobid, std::string &response);
+int zjb_read_job_jcl(ZJB *zjb, const std::string &jobid, std::string &response);
 
 /**
  * @brief Submit a job with the given JCL
@@ -155,7 +161,7 @@ int zjb_read_job_jcl(ZJB *zjb, std::string jobid, std::string &response);
  * @param jobid jobid returned after successfully submitting JCL
  * @return int 0 for success; non zero otherwise
  */
-int zjb_submit(ZJB *zjb, std::string contents, std::string &jobId);
+int zjb_submit(ZJB *zjb, const std::string &contents, std::string &jobId);
 
 /**
  * @brief Submit a job from a given input data set
@@ -165,7 +171,7 @@ int zjb_submit(ZJB *zjb, std::string contents, std::string &jobId);
  * @param jobid jobid returned after successfully submitting JCL
  * @return int 0 for success; non zero otherwise
  */
-int zjb_submit_dsn(ZJB *zjb, std::string dsn, std::string &jobId);
+int zjb_submit_dsn(ZJB *zjb, const std::string &dsn, std::string &jobId);
 
 /**
  * @brief Delete a job using input jobid
@@ -174,7 +180,7 @@ int zjb_submit_dsn(ZJB *zjb, std::string dsn, std::string &jobId);
  * @param jobid jobid to delete, i.e. JOB00123 or J123
  * @return int 0 for success; non zero otherwise
  */
-int zjb_delete(ZJB *zjb, std::string jobid);
+int zjb_delete(ZJB *zjb, const std::string &jobid);
 #ifdef SWIG
 }
 #endif
@@ -185,7 +191,7 @@ int zjb_delete(ZJB *zjb, std::string jobid);
  * @param jobid jobid or job correlator used to cancel, i.e. JOB00123 or J123
  * @return int 0 for success; non zero otherwise
  */
-int zjb_cancel(ZJB *zjb, std::string jobid);
+int zjb_cancel(ZJB *zjb, const std::string &jobid);
 
 /**
  * @brief Hold a job using input jobid
@@ -194,7 +200,7 @@ int zjb_cancel(ZJB *zjb, std::string jobid);
  * @param jobid jobid or job correlator used to hold, i.e. JOB00123 or J123
  * @return int 0 for success; non zero otherwise
  */
-int zjb_hold(ZJB *zjb, std::string jobid);
+int zjb_hold(ZJB *zjb, const std::string &jobid);
 
 /**
  * @brief Release a job using input jobid
@@ -203,6 +209,6 @@ int zjb_hold(ZJB *zjb, std::string jobid);
  * @param jobid jobid or job correlator used to release, i.e. JOB00123 or J123
  * @return int 0 for success; non zero otherwise
  */
-int zjb_release(ZJB *zjb, std::string jobid);
+int zjb_release(ZJB *zjb, const std::string &jobid);
 
 #endif

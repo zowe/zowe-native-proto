@@ -215,9 +215,9 @@ static int ZLGWRWTO(int level, const char *message)
 
   wto_buf.len = sprintf(wto_buf.msg, "ZOWEX %s: %.100s", level_str, message);
 
-  if (wto_buf.len >= sizeof(wto_buf.msg))
+  if (wto_buf.len >= (short)sizeof(wto_buf.msg))
   {
-    wto_buf.len = sizeof(wto_buf.msg) - 1;
+    wto_buf.len = (short)(sizeof(wto_buf.msg) - 1);
   }
 
   return wto(&wto_buf);
@@ -245,7 +245,7 @@ static int ZLGWRDD(int level, const char *message)
 
   /* Format the message as a fixed-length record using local buffer */
   char writeBuf[132] = {0};
-  unsigned long long msg_len = strlen(message);
+  size_t msg_len = strlen(message);
   if (msg_len > 130)
     msg_len = 130; /* Leave room for newline */
 
@@ -318,7 +318,7 @@ int ZLGINIT(const char *log_file_path, int *min_level)
   int cmd_len = sprintf(alloc_cmd,
                         "alloc file(ZWXLOGDD) path('%.256s') pathopts(owronly,ocreat,osync) %s",
                         logger->log_path, "pathmode(sirusr,siwusr) filedata(text)");
-  if (cmd_len >= sizeof(alloc_cmd) || cmd_len < 0)
+  if (cmd_len >= (int)sizeof(alloc_cmd) || cmd_len < 0)
   {
     return -1;
   }

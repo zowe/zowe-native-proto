@@ -17,7 +17,6 @@
 #include <vector>
 
 using namespace parser;
-using namespace std;
 
 // Version information
 #ifndef PACKAGE_VERSION
@@ -29,7 +28,7 @@ using namespace std;
 
 namespace core
 {
-std::tr1::shared_ptr<ArgumentParser> g_arg_parser;
+std::shared_ptr<ArgumentParser> g_arg_parser;
 namespace
 {
 plugin::PluginManager *g_plugin_manager = nullptr;
@@ -51,7 +50,7 @@ bool should_quit(const std::string &input)
           input == "QUIT" || input == "EXIT");
 }
 
-int interactive_mode(plugin::InvocationContext &context)
+int interactive_mode(const plugin::InvocationContext &context)
 {
   context.output_stream() << "Started, enter command or 'quit' to quit..." << std::endl;
 
@@ -90,10 +89,10 @@ int interactive_mode(plugin::InvocationContext &context)
 
 int handle_version(plugin::InvocationContext &context)
 {
-  context.output_stream() << "Zowe Native Protocol CLI (zowex)" << endl;
-  context.output_stream() << "Version: " << PACKAGE_VERSION << endl;
-  context.output_stream() << "Build Date: " << BUILD_DATE << " " << BUILD_TIME << endl;
-  context.output_stream() << "Copyright Contributors to the Zowe Project." << endl;
+  context.output_stream() << "Zowe Native Protocol CLI (zowex)" << std::endl;
+  context.output_stream() << "Version: " << PACKAGE_VERSION << std::endl;
+  context.output_stream() << "Build Date: " << BUILD_DATE << " " << BUILD_TIME << std::endl;
+  context.output_stream() << "Copyright Contributors to the Zowe Project." << std::endl;
   return 0;
 }
 
@@ -108,7 +107,7 @@ int handle_plugins_list(plugin::InvocationContext &context)
     struct dirent *entry;
     while ((entry = readdir(plugins_dir)) != nullptr)
     {
-      std::string name(entry->d_name ? entry->d_name : "");
+      std::string name(entry->d_name);
       if (name == "." || name == ".." || name.empty())
         continue;
       plugin_files.push_back(name);
@@ -134,9 +133,9 @@ int handle_plugins_list(plugin::InvocationContext &context)
       {
         out << " (" << metadata.filename << ")";
       }
-      out << endl;
-      out << "  Version: " << (metadata.version.empty() ? "n/a" : metadata.version) << endl;
-      out << endl;
+      out << std::endl;
+      out << "  Version: " << (metadata.version.empty() ? "n/a" : metadata.version) << std::endl;
+      out << std::endl;
     }
   }
 
@@ -149,11 +148,11 @@ int handle_plugins_list(plugin::InvocationContext &context)
     }
     if (!has_unregistered)
     {
-      out << "The following unregistered plug-ins were found in the plugins/ dir:" << endl;
+      out << "The following unregistered plug-ins were found in the plugins/ dir:" << std::endl;
       has_unregistered = true;
     }
-    out << *it << endl;
-    out << endl;
+    out << *it << std::endl;
+    out << std::endl;
   }
 
   return 0;
@@ -187,9 +186,9 @@ int execute_command(int argc, char *argv[])
   return result.exit_code;
 }
 
-Command &setup_root_command(int argc, char *argv[])
+Command &setup_root_command(char *argv[])
 {
-  g_arg_parser = std::tr1::shared_ptr<ArgumentParser>(new ArgumentParser(argv[0], "Zowe Native CLI"));
+  g_arg_parser = std::make_shared<ArgumentParser>(argv[0], "Zowe Native CLI");
   auto &root_command = g_arg_parser->get_root_command();
 
   root_command.add_keyword_arg("interactive",

@@ -14,7 +14,8 @@
 
 #include "../c/extend/plugin.hpp"
 #include "../c/zjson.hpp"
-#include "../c/zstd.hpp"
+#include <memory>
+#include <optional>
 #include <sstream>
 
 // JSON-RPC 2.0 Standard Error Codes
@@ -36,7 +37,7 @@ struct RpcNotification
 {
   std::string jsonrpc;
   std::string method;
-  zstd::optional<zjson::Value> params;
+  std::optional<zjson::Value> params;
 };
 ZJSON_DERIVE(RpcNotification, jsonrpc, method, params);
 
@@ -50,16 +51,16 @@ struct ErrorDetails
 {
   int code;
   std::string message;
-  zstd::optional<zjson::Value> data;
+  std::optional<zjson::Value> data;
 };
 ZJSON_DERIVE(ErrorDetails, code, message, data);
 
 struct RpcResponse
 {
   std::string jsonrpc;
-  zstd::optional<zjson::Value> result;
-  zstd::optional<ErrorDetails> error;
-  zstd::optional<int> id;
+  std::optional<zjson::Value> result;
+  std::optional<ErrorDetails> error;
+  std::optional<int> id;
 };
 ZJSON_SERIALIZABLE(RpcResponse,
                    ZJSON_FIELD(RpcResponse, jsonrpc),
@@ -109,7 +110,7 @@ private:
   std::stringstream m_input_stream;
   std::stringstream m_output_stream;
   std::stringstream m_error_stream;
-  zstd::unique_ptr<RpcNotification> m_pending_notification;
+  std::unique_ptr<RpcNotification> m_pending_notification;
   std::unordered_map<std::string, std::string> m_large_data;
 };
 

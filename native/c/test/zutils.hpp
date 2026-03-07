@@ -24,8 +24,8 @@ int execute_command_with_input(const std::string &command, const std::string &in
 int execute_command_with_output(const std::string &command, std::string &output);
 int execute_su_command_with_output(const std::string &command, std::string &output);
 std::string get_random_string(const int length = 7, const bool allNumbers = true);
-std::string get_random_uss(const std::string base_dir);
-std::string get_random_ds(const int qualifier_count = 4, const std::string hlq = "");
+std::string get_random_uss(const std::string &base_dir);
+std::string get_random_ds(const int qualifier_count = 4, const std::string &hlq = "");
 std::string get_user();
 std::string get_basename(const std::string& fspath);
 std::string parse_etag_from_output(const std::string &output);
@@ -84,7 +84,7 @@ public:
 
 // Data set creation helpers - convenience wrappers around zds_* functions
 // that use sensible defaults for test data sets
-void create_dsn_with_attrs(ZDS *zds, const std::string &dsn, DS_ATTRIBUTES &attrs, const std::string &type_name);
+void create_dsn_with_attrs(ZDS *zds, const std::string &dsn, const DS_ATTRIBUTES &attrs, const std::string &type_name);
 void create_pds(ZDS *zds, const std::string &dsn);
 void create_pdse(ZDS *zds, const std::string &dsn);
 void create_seq(ZDS *zds, const std::string &dsn);

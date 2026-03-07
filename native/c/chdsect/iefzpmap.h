@@ -1,4 +1,8 @@
+#ifdef __open_xl__
+#pragma pack(1)
+#else
 #pragma pack(packed)
+#endif
  
 #ifndef __prm___list___buffer__
 #define __prm___list___buffer__
@@ -137,4 +141,8 @@ struct prm___message___buffer {
  
 #endif
  
+#ifdef __open_xl__
+#pragma pack()
+#else
 #pragma pack(reset)
+#endif
