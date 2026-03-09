@@ -11,6 +11,8 @@
 
 #include <cstdlib>
 #include <iostream>
+#include <stdexcept>
+#include <string>
 #include "server.hpp"
 #include "../server/server_main.hpp"
 
@@ -41,7 +43,27 @@ static int handle_server(plugin::InvocationContext &context)
   }
   if (num_workers_env != nullptr)
   {
-    opts.num_workers = atoi(num_workers_env);
+    try
+    {
+      std::size_t pos{};
+      auto value = std::stoll(num_workers_env, &pos);
+      if (pos != std::string(num_workers_env).size())
+      {
+        context.error_stream() << "Invalid value for num workers: '" << num_workers_env << "'" << std::endl;
+        return 1;
+      }
+      opts.num_workers = value;
+    }
+    catch (const std::invalid_argument &)
+    {
+      context.error_stream() << "Invalid value for num workers: '" << num_workers_env << "'" << std::endl;
+      return 1;
+    }
+    catch (const std::out_of_range &)
+    {
+      context.error_stream() << "Value out of range for num workers: '" << num_workers_env << "'" << std::endl;
+      return 1;
+    }
   }
 
   if (opts.num_workers <= 0)
