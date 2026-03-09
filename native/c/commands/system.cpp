@@ -86,7 +86,6 @@ int handle_system_list_proclib(InvocationContext &context)
 int handle_system_list_subsystems(InvocationContext &context)
 {
   int rc = 0;
-  ZJB zjb = {};
 
   string filter = context.get<std::string>("filter", "*");
   transform(filter.begin(), filter.end(), filter.begin(), ::toupper);
