@@ -34,7 +34,11 @@ static int handle_server(plugin::InvocationContext &context)
   opts.request_timeout = context.get<long long>("request-timeout", opts.request_timeout);
   opts.exec_dir = g_exec_dir;
 
-  const auto *num_workers_env = getenv("ZOWED_NUM_WORKERS");
+  const auto *num_workers_env = getenv("ZOWEX_NUM_WORKERS");
+  if (num_workers_env == nullptr)
+  {
+    num_workers_env = getenv("ZOWED_NUM_WORKERS");
+  }
   if (num_workers_env != nullptr)
   {
     opts.num_workers = atoi(num_workers_env);

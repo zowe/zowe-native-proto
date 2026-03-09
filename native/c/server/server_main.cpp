@@ -37,7 +37,7 @@ struct StatusMessage
 };
 ZJSON_DERIVE(StatusMessage, status, message, data);
 
-class ZowedServer
+class ZServer
 {
 private:
   server::Options options;
@@ -71,9 +71,9 @@ private:
             close(STDIN_FILENO); });
   }
 
-  static ZowedServer &get_instance()
+  static ZServer &get_instance()
   {
-    static ZowedServer instance;
+    static ZServer instance;
     return instance;
   }
 
@@ -129,7 +129,7 @@ private:
 
   void log_worker_count()
   {
-    if (!zowed::Logger::is_verbose_logging())
+    if (!server::Logger::is_verbose_logging())
       return;
 
     std::thread([this]()
@@ -149,12 +149,12 @@ private:
   }
 
 public:
-  ZowedServer() = default;
+  ZServer() = default;
   void run(const server::Options &opts)
   {
     options = opts;
 
-    zowed::Logger::init_logger(options.exec_dir.c_str(), options.verbose);
+    server::Logger::init_logger(options.exec_dir.c_str(), options.verbose);
     LOG_INFO("Starting zowex server with %lld workers and %lld seconds until request timeout (verbose=%s)", options.num_workers, options.request_timeout, options.verbose ? "true" : "false");
 
     setup_signal_handlers();
@@ -185,7 +185,7 @@ public:
     LOG_INFO("Input stream closed, shutting down");
     request_shutdown();
 
-    zowed::Logger::shutdown();
+    server::Logger::shutdown();
   }
 };
 
@@ -193,7 +193,7 @@ int server::run(const server::Options &options)
 {
   try
   {
-    ZowedServer srv;
+    ZServer srv;
     srv.run(options);
   }
   catch (const std::exception &e)

@@ -56,7 +56,7 @@ Run `npm run z:rebuild` to rebuild server code after editing files in the `nativ
 
 Run `npm run build` to rebuild client code after editing files in the `packages` folder.
 
-To test server changes without having to download artifacts and re-deploy them each time, you can define `serverPath` property in your SSH profile in `zowe.config.json`. It should point to the `<deployDir>/c/server/build-out` folder that contains the `zowed` binary. See example below.
+To test server changes without having to download artifacts and re-deploy them each time, you can define `serverPath` property in your SSH profile in `zowe.config.json`. It should point to the `<deployDir>/c/build-out` folder that contains the `zowex` binary (which includes the embedded server via `zowex server`). See example below.
 
 ```json
   "profiles": {
@@ -82,7 +82,7 @@ We use a custom build tool for interacting with z/OS that defines the following 
 | Command       | Description                                                                 |
 | ------------- | --------------------------------------------------------------------------- |
 | `z:artifacts` | Download native binaries and package them with clients                      |
-| `z:build`     | Run `make` on z/OS to build native binaries                  |
+| `z:build`     | Run `make` on z/OS to build native binaries                                 |
 | `z:clean`     | Run `make clean` on z/OS to clean build targets                             |
 | `z:delete`    | Delete all files from deploy directory                                      |
 | `z:make`      | Execute the specified Make targets on z/OS                                  |
@@ -124,7 +124,7 @@ graph LR
   end
   subgraph z/OS Server
   zowex["C++ CLI Binary<br>(zowex)"]-->cpp
-  ioserver["C++ I/O Server<br>(Middleware)"]-->cpp["C++ Libraries<br>(Backend)"]
+  ioserver["C++ I/O Server<br>(zowex server)"]-->cpp["C++ Libraries<br>(Backend)"]
   python["Python REST API<br>(experimental)"]-->cpp
   sdk<-->|SSH|ioserver
   subgraph Mainframe Resources
