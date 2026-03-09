@@ -28,7 +28,7 @@ export interface SearchSummary {
     membersWithoutLines: number;
     compareColumns: string;
     longestLine: number;
-    processOptions: string;  // See: https://www.ibm.com/docs/en/zos/3.1.0?topic=reference-process-options
+    processOptions: string; // See: https://www.ibm.com/docs/en/zos/3.1.0?topic=reference-process-options
     searchPattern: string;
 }
 
