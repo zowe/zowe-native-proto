@@ -26,7 +26,10 @@ LIBRARY = libzowed.so
 LIB_OBJECTS = $(OUT_DIR)/builder.o $(OUT_DIR)/commands.o $(OUT_DIR)/dispatcher.o \
 	$(OUT_DIR)/rpcio.o $(OUT_DIR)/server.o $(OUT_DIR)/validator.o $(OUT_DIR)/worker.o \
 	$(OUT_DIR)/zowed.o
-CMDS_OBJECTS = $(OUT_DIR)/commands/ds.o $(OUT_DIR)/commands/job.o $(OUT_DIR)/commands/tso.o \
+CMDS_OBJECTS = $(OUT_DIR)/commands/ds.o \
+  $(OUT_DIR)/commands/job.o \
+  $(OUT_DIR)/commands/tool.o \
+	$(OUT_DIR)/commands/tso.o \
 	$(OUT_DIR)/commands/uss.o
 CPP_OBJECTS = ../c/build-out/zds.o ../c/build-out/zjb.o \
 	../c/build-out/ztso.o ../c/build-out/zusf.o ../c/build-out/zut.o
