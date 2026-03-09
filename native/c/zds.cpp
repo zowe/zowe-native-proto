@@ -1840,44 +1840,30 @@ int zds_rename_members(ZDS *zds, const string &dsname, const string &member_befo
 }
 
 void parse_packed_time(
-    const unsigned char hours_byte,   // Byte 13: HH
-    const unsigned char minutes_byte, // Byte 14: MM
-    const unsigned char seconds_byte, // Byte 4: SS
-    std::string *time_out             // Output: "HH:MM:SS" or ""
-)
+    const unsigned char hours_byte,
+    const unsigned char minutes_byte,
+    const unsigned char seconds_byte,
+    std::string *time_out)
 {
-  // Check if time is all zeros (not set)
   if (hours_byte == 0 && minutes_byte == 0 && seconds_byte == 0)
   {
     *time_out = "";
     return;
   }
 
-  // Unpack hours (packed decimal HH)
-  int hours_tens = (hours_byte >> 4) & 0x0F;
-  int hours_ones = hours_byte & 0x0F;
-  int hours = (hours_tens * 10) + hours_ones;
+  unsigned char h_zoned[2], m_zoned[2], s_zoned[2];
 
-  // Unpack minutes (packed decimal MM)
-  int minutes_tens = (minutes_byte >> 4) & 0x0F;
-  int minutes_ones = minutes_byte & 0x0F;
-  int minutes = (minutes_tens * 10) + minutes_ones;
+  __unpk(h_zoned, 2, const_cast<unsigned char *>(&hours_byte), 1);
+  __unpk(m_zoned, 2, const_cast<unsigned char *>(&minutes_byte), 1);
+  __unpk(s_zoned, 2, const_cast<unsigned char *>(&seconds_byte), 1);
 
-  // Unpack seconds (packed decimal SS)
-  int seconds_tens = (seconds_byte >> 4) & 0x0F;
-  int seconds_ones = seconds_byte & 0x0F;
-  int seconds = (seconds_tens * 10) + seconds_ones;
-
-  // Validate time values
-  if (hours > 23 || minutes > 59 || seconds > 59)
-  {
-    *time_out = "";
-    return;
-  }
-
-  // Format as "HH:MM:SS"
   char buffer[9];
-  sprintf(buffer, "%02d:%02d:%02d", hours, minutes, seconds);
+
+  sprintf(buffer, "%d%d:%d%d:%d%d",
+          h_zoned[0] & 0x0F, h_zoned[1] & 0x0F,
+          m_zoned[0] & 0x0F, m_zoned[1] & 0x0F,
+          s_zoned[0] & 0x0F, s_zoned[1] & 0x0F);
+
   *time_out = buffer;
 }
 
