@@ -13,9 +13,9 @@ struct dsinf
   short int dsinlen;         /* Length of area filled in             */
   unsigned char dsinver;     /* Version of data                      */
   unsigned char dsinflg1;    /* Flag bytes                           */
-  long int dsinrecn;         /* Record number of returned record     */
-  long int dsinlglr;         /* Record number of returned record     */
-  double dsinstke;           /* Time stamp of record PUT if          */
+  long long int dsinrecn;    /* Record number of returned record     */
+  long long int dsinlglr;    /* Record number of returned record     */
+  long long int dsinstke;    /* Time stamp of record PUT if          */
   int dsindsnu;              /* JES data set number where record     */
   int dsinjbno;              /* JES binary job number of owning job  */
   unsigned char dsinjbid[8]; /* JES job id of owning job             */

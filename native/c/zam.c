@@ -360,6 +360,40 @@ int open_input_vsam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 *PTR32 ioc, const char *PT
   return rc;
 }
 
+// https://www.ibm.com/docs/en/zos/3.2.0?topic=interface-special-processing-logical-syslog-data-sets
+#define FIRST_OCCURRENCE 0xFF00
+#define NEXT_OCCURRENCE 0xFF01
+#define PREV_OCCURRENCE 0xFF02
+int point_input_vsam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
+{
+  int rc = 0;
+  zwto_debug("@TEST called to point acb for ddname: %.8s", ioc->ddname);
+
+  unsigned short request = NEXT_OCCURRENCE;
+
+  unsigned char stcke[32] = {0};
+  __asm__(" STCKE %0 " : "=m"(stcke[0]));
+  zut_dump_storage_wto("stcke", stcke, sizeof(stcke));
+
+  IFGRPL *rplp = &ioc->rpl;
+
+  memcpy(&rplp->rplaixpc, &request, sizeof(rplp->rplaixpc));
+  memcpy(&rplp->rplrbar.rplrbarx, &stcke[0], sizeof(rplp->rplrbar.rplrbarx));
+
+  POINT(rplp, rc);
+  if (0 != rc)
+  {
+    diag->detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
+    strcpy(diag->service_name, "POINT");
+    diag->e_msg_len = sprintf(diag->e_msg, "Failed to POINT rc was: %d", rc);
+    diag->service_rc = rc;
+    return rc;
+  }
+  zut_dump_storage_wto("point rplprbar", &rplp->rplrbar, 8);
+
+  return rc;
+}
+
 int read_input_vsam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc, char *PTR32 buffer, int *PTR32 length)
 {
   int rc = 0;
@@ -371,15 +405,50 @@ int read_input_vsam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc, char *PTR32 buffer, i
   rplp->rplermsa = &dsinf;
   rplp->rplemlen = dsinsiz1;
 
-  GET(rplp);
-  zut_dump_storage_wto("1buffer", ioc->buffer, ioc->buffer_size);
-  zut_dump_storage_wto("rplprbar", &rplp->rplrbar, 8);
-  unsigned short request = 0xFF00;
-  memcpy(&rplp->rplaixpc, &request, 2);
-  memcpy(&rplp->rplrbar.rplrbarx, &dsinf.dsinstke, 6); // truncate to 6 bytes??
-  POINT(rplp);
-  GET(rplp);
-  zut_dump_storage_wto("2buffer", ioc->buffer, ioc->buffer_size);
+  // zut_dump_storage_wto("before get rplprbar", &rplp->rplrbar, 8);
+  GET(rplp, rc);
+  if (0 != rc)
+  {
+    diag->detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
+    strcpy(diag->service_name, "GET");
+    diag->e_msg_len = sprintf(diag->e_msg, "Failed to GET rc was: %d", rc);
+    diag->service_rc = rc;
+    return rc;
+  }
+  // zwto_debug("get success");
+  zwto_debug("@TEST buffer: %.*s", ioc->buffer_size, ioc->buffer);
+  *length = sprintf(buffer, "%.*s", ioc->buffer_size, ioc->buffer);
+  // // zut_dump_storage_wto("first buffer", ioc->buffer, ioc->buffer_size);
+  // zwto_debug("first buffer: %.*s", ioc->buffer_size, ioc->buffer);
+  // zut_dump_storage_wto("dsinf", &dsinf, sizeof(dsinf));
+  // zut_dump_storage_wto("after get rplprbar", &rplp->rplrbar, 8);
+  // unsigned short request = 0xFF01;
+  // memcpy(&rplp->rplaixpc, &request, 2);
+  // memcpy(&rplp->rplrbar.rplrbarx, &dsinf.dsinstke, 6); // truncate to 6 bytes??
+  // memcpy(&rplp->rplaixpc, &dsinf.dsinstke, 8);         // @TEST
+
+  // zut_dump_storage_wto("after point rplprbar", &rplp->rplrbar, 8);
+  // zwto_debug("dsinf.dsinstke is: %llx and opt is: %x", dsinf.dsinstke, rplp->rplopt4);
+  // POINT(rplp, rc);
+  // if (0 != rc)
+  // {
+  //   diag->detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
+  //   strcpy(diag->service_name, "POINT");
+  //   diag->e_msg_len = sprintf(diag->e_msg, "Failed to POINT rc was: %d", rc);
+  //   diag->service_rc = rc;
+  //   return rc;
+  // }
+  // GET(rplp, rc);
+  // if (0 != rc)
+  // {
+  //   diag->detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
+  //   strcpy(diag->service_name, "GET");
+  //   diag->e_msg_len = sprintf(diag->e_msg, "Failed to GET rc was: %d", rc);
+  //   diag->service_rc = rc;
+  //   return rc;
+  // }
+  // // zut_dump_storage_wto("second buffer", ioc->buffer, ioc->buffer_size);
+  // zwto_debug("second buffer: %.*s", ioc->buffer_size, ioc->buffer);
 
   return rc;
 }

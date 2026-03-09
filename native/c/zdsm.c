@@ -189,6 +189,18 @@ int ZDSOIVSM(ZDS *zds, IO_CTRL **ioc, const char *ddname)
   return rc;
 }
 
+#pragma prolog(ZDSPIVSM, " ZWEPROLG NEWDSA=(YES,24) ")
+#pragma epilog(ZDSPIVSM, " ZWEEPILG ")
+int ZDSPIVSM(ZDS *zds, IO_CTRL *ioc)
+{
+  int rc = 0;
+  ZDS zds31 = {0};
+  memcpy(&zds31, zds, sizeof(ZDS));
+  rc = point_input_vsam(&zds31.diag, ioc);
+  memcpy(zds, &zds31, sizeof(ZDS));
+  return rc;
+}
+
 #pragma prolog(ZDSRIVSM, " ZWEPROLG NEWDSA=(YES,24) ")
 #pragma epilog(ZDSRIVSM, " ZWEEPILG ")
 int ZDSRIVSM(ZDS *zds, IO_CTRL *ioc, char *buffer, int *length)
@@ -196,7 +208,7 @@ int ZDSRIVSM(ZDS *zds, IO_CTRL *ioc, char *buffer, int *length)
   int rc = 0;
   ZDS zds31 = {0};
   memcpy(&zds31, zds, sizeof(ZDS));
-  zwto_debug("@TEST called to close acb for ddname: %.8s", ioc->ddname);
+  // zwto_debug("@TEST called to read acb for ddname: %.8s", ioc->ddname);
   rc = read_input_vsam(&zds31.diag, ioc, buffer, length);
   memcpy(zds, &zds31, sizeof(ZDS));
   return rc;

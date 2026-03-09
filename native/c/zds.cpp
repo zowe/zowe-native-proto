@@ -587,12 +587,23 @@ int zds_read_from_dd_acb(ZDS *zds, std::string ddname, std::string &response)
     return rc;
   }
 
-  char *buffer = (char *)__malloc31(130); // TODO(Kelosky): use appropriate size
-  int length = 0;
-  rc = ZDSRIVSM(zds, ioc, buffer, &length);
+  rc = ZDSPIVSM(zds, ioc);
   if (rc != RTNCD_SUCCESS)
   {
     return rc;
+  }
+
+  char *buffer = (char *)__malloc31(130 + 4); // TODO(Kelosky): use appropriate size
+  int *length = (int *)(buffer + 130);
+
+  for (int i = 0; i < 3; i++)
+  {
+    rc = ZDSRIVSM(zds, ioc, buffer, length);
+    if (rc != RTNCD_SUCCESS)
+    {
+      return rc;
+    }
+    std::cout << "@TEST buffer: " << std::string(buffer, *length) << std::endl;
   }
 
   rc = ZDSCIVSM(zds, ioc);
