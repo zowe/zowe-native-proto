@@ -1286,16 +1286,6 @@ async function test(connection: Client) {
     await retrieve(connection, [`c/test/test-results.xml`], "native", false, true);
 }
 
-async function testSingle(connection: Client) {
-    const testEnv = '_CEE_RUNOPTS="TRAP(ON,NOSPIE) TERMTHDACT(UADUMP)"';
-    const testCmd = `cd ${deployDirs.cTestDir} && ${testEnv} ./build-out/ztest_runner ${args[1] ?? ""}`;
-    await runCommandInShell(connection, `${testCmd}\n`, {
-        streamOutput: true,
-        stepName: "Running zowex tests",
-    });
-    console.log("\nTesting complete!");
-    await retrieve(connection, ["c/test/test-results.xml"], "native", false, true);
-}
 
 async function buildChdsect(connection: Client, sftpcon: SFTPWrapper, target: string) {
     await uploadFile(
@@ -1563,9 +1553,6 @@ async function main() {
                 break;
             case "test":
                 await test(sshClient);
-                break;
-            case "test:zowex":
-                await testSingle(sshClient);
                 break;
             case "test:python":
                 await make(sshClient, deployDirs.pythonTestDir);
