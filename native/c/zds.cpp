@@ -39,6 +39,7 @@
 #include "zbase64.h"
 #include "zdsm.h"
 #include "zamtypes.h"
+#include "builtins.h"
 
 const size_t MAX_DS_LENGTH = 44u;
 const size_t MAX_VOLSER_LENGTH = 6u;
@@ -1947,9 +1948,9 @@ int zds_list_members(ZDS *zds, std::string dsn, std::vector<ZDSMem> &members, co
         // TODO(Trae): Consider removing this? It's not used anywhere.
         // pointer_count &= 0x60; // bits 1-2 contain number of user data TTRNs
         // pointer_count >>= 5;   // adjust to byte boundary
-        // info &= 0x1F; // bits 3-7 contain the number of half words of user data
 
-        char name[9] = {0};
+        info &= 0x1F; // bits 3-7 contain the number of half words of user data
+
         char name[9] = {};
         memcpy(name, entry.name, sizeof(entry.name));
 
@@ -2002,7 +2003,7 @@ int zds_list_members(ZDS *zds, std::string dsn, std::vector<ZDSMem> &members, co
 
             char user[9] = {0};
             memcpy(user, stats->userid, 8);
-            mem.user = string(user);
+            mem.user = std::string(user);
           }
           members.push_back(mem);
         }
