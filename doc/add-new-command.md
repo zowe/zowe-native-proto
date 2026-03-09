@@ -247,7 +247,7 @@ export * as sample from "./sample";
 Then run the type generation script to convert your TypeScript types to C++ schemas:
 
 ```bash
-npm run build:types:zowed
+npm run build:types
 ```
 
 This generates `native/c/server/schemas/requests.hpp` and `responses.hpp` with schema definitions for all RPC types.
@@ -451,7 +451,7 @@ You've successfully added a new command to the Zowe Native Protocol stack! Here'
 1. **Created a low-level C++ command** in `native/c/commands/` that can be invoked directly via `zowex`
 2. **Tested it locally** on z/OS using the zowex CLI
 3. **Defined RPC types** in `packages/sdk/src/doc/rpc/` as TypeScript interfaces
-4. **Generated C++ schemas** using `npm run build:types:zowed`
+4. **Generated C++ schemas** using `npm run build:types`
 5. **Registered it with the server** using the `CommandBuilder` API in `native/c/server/rpc_commands.cpp`
 6. **Added SDK methods** in TypeScript for easy client-side access
 7. **Tested end-to-end** with a sample script

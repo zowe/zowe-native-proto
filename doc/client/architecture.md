@@ -2,9 +2,9 @@
 
 ## SDK Package
 
-The SDK defines a `ZSshClient` class with a `request` method that communicates with the [server component](../server/zowed_architecture.md) over SSH.
+The SDK defines a `ZSshClient` class with a `request` method that communicates with the [server component](../backend/server_architecture.md) over SSH.
 
-For each command supported by the middleware, a `Request` and `Response` type is defined in the `doc` folder. For example, to list data sets:
+For each command supported by the server component, a `Request` and `Response` type is defined in the `doc` folder. For example, to list data sets:
 
 ```typescript
 export namespace ListDatasets {
