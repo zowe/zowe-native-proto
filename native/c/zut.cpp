@@ -246,7 +246,6 @@ int zut_list_subsystems(ZDIAG &diag, std::vector<std::string> &subsystems, std::
 {
   int rc = 0;
   JQRY_HEADER *area = NULL;
-  int rsn = 0;
   rc = ZUTSSIQ(&diag, &area, filter.c_str());
 
   if (0 != rc)
