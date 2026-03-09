@@ -92,7 +92,7 @@ jobs:
         if: ${{ !cancelled() }}
         with:
           name: Test results
-          path: native/c/test/test-results.xml,native/c/server/test/test-results.xml
+          path: native/c/test/test-results.xml
           reporter: java-junit
 
       - name: Clean up on z/OS

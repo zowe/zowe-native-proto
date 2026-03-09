@@ -10,9 +10,9 @@
  */
 
 #include "worker.test.hpp"
-#include "../../test/ztest.hpp"
-#include "../worker.hpp"
-#include "../logger.hpp"
+#include "ztest.hpp"
+#include "../server/worker.hpp"
+#include "../server/logger.hpp"
 
 #include <string>
 #include <stdexcept>
@@ -421,4 +421,4 @@ void worker_tests()
       Expect(server.timeout_error_count.load()).ToBe(1); }); });
 }
 // Include the implementation so the stubs above satisfy the real compilation unit.
-#include "../worker.cpp"
+#include "../server/worker.cpp"

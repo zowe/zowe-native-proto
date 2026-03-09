@@ -78,9 +78,7 @@ SWIG_EXTENDER_OBJS = $(OUT_DIR_SWIG)/zut.o $(OUT_DIR_SWIG)/zds.o $(OUT_DIR_SWIG)
 
 all: libzut.so libzut.a libzds.so libzds.a libzusf.so libzusf.a libzcn.so libzcn.a libzjb.so libzjb.a zowex zoweax
 swig-extenders: $(OUT_DIR_SWIG) $(SWIG_EXTENDER_OBJS)
-zowed-tests:
-	 $(MAKE) -c server/test
-tests: zowed-tests
+tests:
 	 $(MAKE) -c test
 
 #
@@ -181,7 +179,7 @@ $(OUT_DIR)/libzds.so: $(OUT_DIR)/zds.o $(OUT_DIR)/zdsm.o $(OUT_DIR)/zam.o $(OUT_
 
 libzds.so: $(OUT_DIR) $(OUT_DIR)/libzds.so
 
-$(OUT_DIR)/libzds.a: $(OUT_DIR)/zds.o $(OUT_DIR)/zdsm.o $(OUT_DIR)/zam.o $(OUT_DIR)/libzut.a
+$(OUT_DIR)/libzds.a: $(OUT_DIR)/zds.o $(OUT_DIR)/zdsm.o $(OUT_DIR)/zam.o
 	@echo 'Building $(OUT_DIR)/libzds.a'
 	ar -rv $@ $^
 
@@ -228,7 +226,7 @@ $(OUT_DIR)/libzjb.so: $(OUT_DIR)/zjb.o $(OUT_DIR)/zjbm.o $(OUT_DIR)/zssi31.o $(O
 
 libzjb.so: $(OUT_DIR) $(OUT_DIR)/libzjb.so
 
-$(OUT_DIR)/libzjb.a: $(OUT_DIR)/zjb.o $(OUT_DIR)/zjbm.o $(OUT_DIR)/zssi31.o $(OUT_DIR)/zjbm31.o $(OUT_DIR)/libzds.a $(OUT_DIR)/libzut.a
+$(OUT_DIR)/libzjb.a: $(OUT_DIR)/zjb.o $(OUT_DIR)/zjbm.o $(OUT_DIR)/zssi31.o $(OUT_DIR)/zjbm31.o
 	@echo 'Building $(OUT_DIR)/libzjb.a'
 	ar -rv $@ $^
 
@@ -262,7 +260,7 @@ $(OUT_DIR)/libzcn.so: $(OUT_DIR)/zcn.o $(OUT_DIR)/zcnm.o $(OUT_DIR)/zcnm31.o $(O
 
 libzcn.so: $(OUT_DIR) $(OUT_DIR)/libzcn.so
 
-$(OUT_DIR)/libzcn.a: $(OUT_DIR)/zcn.o $(OUT_DIR)/zcnm.o $(OUT_DIR)/zcnm31.o $(OUT_DIR)/libzut.a
+$(OUT_DIR)/libzcn.a: $(OUT_DIR)/zcn.o $(OUT_DIR)/zcnm.o $(OUT_DIR)/zcnm31.o
 	@echo 'Building libzcn.a'
 	ar -rv $@ $^
 
@@ -285,7 +283,7 @@ $(OUT_DIR)/libzusf.so: $(OUT_DIR)/zusf.o $(OUT_DIR)/libzut.a
 
 libzusf.so: $(OUT_DIR) $(OUT_DIR)/libzusf.so
 
-$(OUT_DIR)/libzusf.a: $(OUT_DIR)/zusf.o $(OUT_DIR)/libzut.a
+$(OUT_DIR)/libzusf.a: $(OUT_DIR)/zusf.o
 	@echo 'Building $(OUT_DIR)/libzusf.a'
 	ar -rv $@ $^
 
@@ -308,7 +306,7 @@ $(OUT_DIR)/libztso.so: ztso
 
 libztso.so: $(OUT_DIR) $(OUT_DIR)/libztso.so
 
-$(OUT_DIR)/libztso.a: $(OUT_DIR)/ztso.o $(OUT_DIR)/libzut.a
+$(OUT_DIR)/libztso.a: $(OUT_DIR)/ztso.o
 	@echo 'Building $(OUT_DIR)/libztso.a'
 	ar -rv $@ $^
 
