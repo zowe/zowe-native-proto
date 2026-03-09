@@ -121,7 +121,6 @@ int zut_run_program(const std::string &program, const std::vector<std::string> &
     // collect stdout + stderr in a std::string
     std::stringstream response_ss(response_raw);
     std::string line;
-    auto index = 0;
 
     while (std::getline(response_ss, line))
     {
