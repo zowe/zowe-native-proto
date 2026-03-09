@@ -39,7 +39,6 @@
 #include "zbase64.h"
 #include "zdsm.h"
 #include "zamtypes.h"
-#include "builtins.h"
 
 const size_t MAX_DS_LENGTH = 44u;
 const size_t MAX_VOLSER_LENGTH = 6u;
@@ -1832,19 +1831,19 @@ void parse_packed_time(
     return;
   }
 
-  unsigned char h_zoned[2], m_zoned[2], s_zoned[2];
+  // Bit-shifting is safe from Compiler Backend crashes
+  int hh = ((hours_byte >> 4) & 0x0F) * 10 + (hours_byte & 0x0F);
+  int mm = ((minutes_byte >> 4) & 0x0F) * 10 + (minutes_byte & 0x0F);
+  int ss = ((seconds_byte >> 4) & 0x0F) * 10 + (seconds_byte & 0x0F);
 
-  __unpk(h_zoned, 2, const_cast<unsigned char *>(&hours_byte), 1);
-  __unpk(m_zoned, 2, const_cast<unsigned char *>(&minutes_byte), 1);
-  __unpk(s_zoned, 2, const_cast<unsigned char *>(&seconds_byte), 1);
+  if (hh > 23 || mm > 59 || ss > 59)
+  {
+    *time_out = "";
+    return;
+  }
 
   char buffer[9];
-
-  sprintf(buffer, "%d%d:%d%d:%d%d",
-          h_zoned[0] & 0x0F, h_zoned[1] & 0x0F,
-          m_zoned[0] & 0x0F, m_zoned[1] & 0x0F,
-          s_zoned[0] & 0x0F, s_zoned[1] & 0x0F);
-
+  sprintf(buffer, "%02d:%02d:%02d", hh, mm, ss);
   *time_out = buffer;
 }
 

@@ -583,9 +583,9 @@ int handle_data_set_list_members(InvocationContext &context)
 
   if (RTNCD_SUCCESS == rc || RTNCD_WARNING == rc)
   {
-    vector<string> fields;
+    std::vector<std::string> fields;
     const auto entries_array = arr();
-    for (const auto &mem : members)
+    for (std::vector<ZDSMem>::iterator it = members.begin(); it != members.end(); ++it)
     {
       if (emit_csv)
       {
@@ -593,42 +593,42 @@ int handle_data_set_list_members(InvocationContext &context)
 
         if (attributes)
         {
-          fields.push_back(it->vers == -1 ? "" : zut_int_to_string(it->vers));
-          fields.push_back(it->mod == -1 ? "" : zut_int_to_string(it->mod));
+          fields.push_back(it->vers == -1 ? "" : std::to_string(it->vers));
+          fields.push_back(it->mod == -1 ? "" : std::to_string(it->mod));
           fields.push_back(it->c4date);
           fields.push_back(it->m4date);
           fields.push_back(it->mtime);
-          fields.push_back(it->cnorc == -1 ? "" : zut_int_to_string(it->cnorc));
-          fields.push_back(it->inorc == -1 ? "" : zut_int_to_string(it->inorc));
-          fields.push_back(it->mnorc == -1 ? "" : zut_int_to_string(it->mnorc));
+          fields.push_back(it->cnorc == -1 ? "" : std::to_string(it->cnorc));
+          fields.push_back(it->inorc == -1 ? "" : std::to_string(it->inorc));
+          fields.push_back(it->mnorc == -1 ? "" : std::to_string(it->mnorc));
           fields.push_back(it->user);
           fields.push_back(it->sclm ? "Y" : "N");
         }
 
-        context.output_stream() << zut_format_as_csv(fields) << endl;
+        context.output_stream() << zut_format_as_csv(fields) << std::endl;
         fields.clear();
       }
       else
       {
         if (attributes)
         {
-          context.output_stream() << left
-                                  << setw(12) << it->name << " "
-                                  << setw(4) << (it->vers == -1 ? "" : zut_int_to_string(it->vers)) << " "
-                                  << setw(4) << (it->mod == -1 ? "" : zut_int_to_string(it->mod)) << " "
-                                  << setw(10) << it->c4date << " "
-                                  << setw(10) << it->m4date << " "
-                                  << setw(8) << it->mtime << " "
-                                  << setw(6) << (it->cnorc == -1 ? "" : zut_int_to_string(it->cnorc)) << " "
-                                  << setw(6) << (it->inorc == -1 ? "" : zut_int_to_string(it->inorc)) << " "
-                                  << setw(6) << (it->mnorc == -1 ? "" : zut_int_to_string(it->mnorc)) << " "
-                                  << setw(8) << it->user << " "
+          context.output_stream() << std::left
+                                  << std::setw(12) << it->name << " "
+                                  << std::setw(4) << (it->vers == -1 ? "" : std::to_string(it->vers)) << " "
+                                  << std::setw(4) << (it->mod == -1 ? "" : std::to_string(it->mod)) << " "
+                                  << std::setw(10) << it->c4date << " "
+                                  << std::setw(10) << it->m4date << " "
+                                  << std::setw(8) << it->mtime << " "
+                                  << std::setw(6) << (it->cnorc == -1 ? "" : std::to_string(it->cnorc)) << " "
+                                  << std::setw(6) << (it->inorc == -1 ? "" : std::to_string(it->inorc)) << " "
+                                  << std::setw(6) << (it->mnorc == -1 ? "" : std::to_string(it->mnorc)) << " "
+                                  << std::setw(8) << it->user << " "
                                   << (it->sclm ? "Y" : "N")
-                                  << endl;
+                                  << std::endl;
         }
         else
         {
-          context.output_stream() << left << setw(12) << it->name << endl;
+          context.output_stream() << std::left << std::setw(12) << it->name << std::endl;
         }
       }
 
