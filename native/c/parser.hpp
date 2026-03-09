@@ -27,9 +27,6 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
-#if defined(__MVS__) && !defined(__clang__)
-#include <xtr1common>
-#endif
 
 namespace parser
 {
@@ -84,13 +81,8 @@ inline std::vector<std::string> make_aliases(const char *a1 = 0,
 }
 
 class Command;
-#if defined(COMPAT_USE_TR1_SHARED_PTR) || !defined(__clang__)
-typedef std::tr1::shared_ptr<Command> command_ptr;
-typedef std::tr1::enable_shared_from_this<Command> enable_shared_command;
-#else
 typedef std::shared_ptr<Command> command_ptr;
 typedef std::enable_shared_from_this<Command> enable_shared_command;
-#endif
 
 class ArgumentParser;
 class ParseResult;
@@ -308,11 +300,11 @@ private:
   ArgumentBuilder &operator=(const ArgumentBuilder &);
 };
 
-typedef struct _CmdExample
+struct CmdExample
 {
   std::string title;
   std::string command;
-} CmdExample;
+};
 
 // represents a command or subcommand with its arguments
 class Command : public enable_shared_command
@@ -454,21 +446,16 @@ public:
       throw std::invalid_argument("subcommand name '" + sub_name +
                                   "' already exists.");
     }
-    for (std::map<std::string, command_ptr>::const_iterator it =
-             m_commands.begin();
-         it != m_commands.end(); ++it)
+    for (const auto &pair : m_commands)
     {
-      const std::pair<const std::string, command_ptr> &pair = *it;
       if (pair.second->has_alias(sub_name))
       {
         throw std::invalid_argument("subcommand name '" + sub_name +
                                     "' conflicts with an existing alias.");
       }
       const std::vector<std::string> &aliases = sub->get_aliases();
-      for (std::vector<std::string>::const_iterator alias_it = aliases.begin();
-           alias_it != aliases.end(); ++alias_it)
+      for (const auto &alias : aliases)
       {
-        const std::string &alias = *alias_it;
         if (pair.first == alias || pair.second->has_alias(alias))
         {
           throw std::invalid_argument(
@@ -549,30 +536,25 @@ public:
   {
     std::vector<ArgumentDef> pos_args;
     std::vector<ArgumentDef> kw_args;
-    for (std::vector<ArgumentDef>::const_iterator it = m_args.begin();
-         it != m_args.end(); ++it)
+    for (const auto &arg : m_args)
     {
-      if (it->positional)
-        pos_args.push_back(*it);
+      if (arg.positional)
+        pos_args.push_back(arg);
       else
-        kw_args.push_back(*it);
+        kw_args.push_back(arg);
     }
     // calculate max widths for alignment
     size_t max_pos_arg_width = 0;
-    for (std::vector<ArgumentDef>::const_iterator it = pos_args.begin();
-         it != pos_args.end(); ++it)
+    for (const auto &arg : pos_args)
     {
-      const ArgumentDef &arg = *it;
       if (arg.hidden)
         continue;
       max_pos_arg_width = std::max(max_pos_arg_width, arg.name.length());
     }
 
     size_t max_kw_arg_width = 0;
-    for (std::vector<ArgumentDef>::const_iterator it = kw_args.begin();
-         it != kw_args.end(); ++it)
+    for (const auto &arg : kw_args)
     {
-      const ArgumentDef &arg = *it;
       if (arg.hidden)
         continue;
       max_kw_arg_width =
@@ -589,12 +571,10 @@ public:
     }
 
     size_t max_cmd_width = 0;
-    for (std::map<std::string, command_ptr>::const_iterator it =
-             m_commands.begin();
-         it != m_commands.end(); ++it)
+    for (const auto &cmd_pair : m_commands)
     {
-      size_t current_cmd_width = it->first.length();
-      const std::vector<std::string> &aliases = it->second->get_aliases();
+      size_t current_cmd_width = cmd_pair.first.length();
+      const std::vector<std::string> &aliases = cmd_pair.second->get_aliases();
       if (!aliases.empty())
       {
         current_cmd_width += 3; // for " (" and ")"
@@ -631,10 +611,8 @@ public:
     os << "Usage: " << full_command_path;
     // collect display names for positional args
     std::string positional_usage;
-    for (std::vector<ArgumentDef>::const_iterator it = pos_args.begin();
-         it != pos_args.end(); ++it)
+    for (const auto &pos_arg : pos_args)
     {
-      const ArgumentDef &pos_arg = *it;
       positional_usage += " ";
       positional_usage += (pos_arg.required ? "<" : "[");
       positional_usage += pos_arg.name;
@@ -665,10 +643,8 @@ public:
     if (!pos_args.empty())
     {
       os << "Arguments:\n";
-      for (std::vector<ArgumentDef>::const_iterator it = pos_args.begin();
-           it != pos_args.end(); ++it)
+      for (const auto &arg : pos_args)
       {
-        const ArgumentDef &arg = *it;
         os << "  " << std::left << std::setw(max_pos_arg_width) << arg.name
            << arg.help;
         // check default value is not none
@@ -689,10 +665,8 @@ public:
     if (!kw_args.empty() || m_allow_dynamic_keywords)
     {
       os << "Options:\n";
-      for (std::vector<ArgumentDef>::const_iterator it = kw_args.begin();
-           it != kw_args.end(); ++it)
+      for (const auto &arg : kw_args)
       {
-        const ArgumentDef &arg = *it;
         if (arg.hidden)
           continue;
         os << "  " << std::left << std::setw(max_kw_arg_width)
@@ -737,12 +711,10 @@ public:
     if (!m_commands.empty())
     {
       os << "Commands:\n";
-      for (std::map<std::string, command_ptr>::const_iterator it =
-               m_commands.begin();
-           it != m_commands.end(); ++it)
+      for (const auto &cmd_pair : m_commands)
       {
-        std::string cmd_display = it->first;
-        const std::vector<std::string> &aliases = it->second->get_aliases();
+        std::string cmd_display = cmd_pair.first;
+        const std::vector<std::string> &aliases = cmd_pair.second->get_aliases();
         if (!aliases.empty())
         {
           cmd_display += " (";
@@ -757,7 +729,7 @@ public:
           cmd_display += ")";
         }
         os << "  " << std::left << std::setw(max_cmd_width) << cmd_display
-           << it->second->get_help() << "\n";
+           << cmd_pair.second->get_help() << "\n";
       }
       os << "\nRun '" << full_command_path
          << " <command> --help' for more information on a command.\n";
@@ -791,12 +763,12 @@ private:
   std::vector<std::string> m_aliases;
   std::vector<CmdExample> m_examples;
 
-  typedef struct
+  struct DynamicKw
   {
     ArgType keyword_type;
     std::string description;
     std::string placeholder;
-  } DynamicKw;
+  };
   DynamicKw m_dynamic;
 
 public:
@@ -817,15 +789,13 @@ private:
     return kind == lexer::TokFlagShort || kind == lexer::TokFlagLong;
   }
 
-  // find keyword argument definition by flag name (use iterator loop)
+  // find keyword argument definition by flag name
   const ArgumentDef *find_keyword_arg(
       const std::string &flag_name_value, // name part only (e.g., "f", "force")
       bool is_short_flag_kind) const
   {
-    for (std::vector<ArgumentDef>::const_iterator it = m_args.begin();
-         it != m_args.end(); ++it)
+    for (const auto &arg : m_args)
     {
-      const ArgumentDef &arg = *it;
       if (arg.positional)
         continue;
       if (arg.name == flag_name_value)
@@ -926,10 +896,9 @@ private:
   void ensure_help_argument()
   {
     bool help_exists = false;
-    for (std::vector<ArgumentDef>::const_iterator it = m_args.begin();
-         it != m_args.end(); ++it)
+    for (const auto &arg : m_args)
     {
-      if (it->name == "help")
+      if (arg.name == "help")
       {
         help_exists = true;
         break;
@@ -988,20 +957,17 @@ public:
     }
 
     // ensure the new argument name is unique
-    for (std::vector<ArgumentDef>::const_iterator it = m_args.begin();
-         it != m_args.end(); ++it)
+    for (const auto &existing : m_args)
     {
-      if (it->name == arg.name)
+      if (existing.name == arg.name)
       {
         throw std::invalid_argument("argument name '" + arg.name +
                                     "' already exists.");
       }
     }
     // ensure aliases are unique across all args
-    for (std::vector<ArgumentDef>::const_iterator arg_it = m_args.begin();
-         arg_it != m_args.end(); ++arg_it)
+    for (const auto &existing_arg : m_args)
     {
-      const ArgumentDef &existing_arg = *arg_it;
       for (size_t i = 0; i < arg.aliases.size(); ++i)
       {
         for (size_t j = 0; j < existing_arg.aliases.size(); ++j)
@@ -1030,10 +996,9 @@ public:
       std::string no_flag_help = "disable the --" + arg.name + " flag.";
 
       // ensure the generated --no- name/alias doesn't conflict
-      for (std::vector<ArgumentDef>::const_iterator it = m_args.begin();
-           it != m_args.end(); ++it)
+      for (const auto &existing : m_args)
       {
-        if (it->name == no_flag_name)
+        if (existing.name == no_flag_name)
         {
           throw std::invalid_argument("automatic negation flag name '" +
                                       no_flag_name +
@@ -1096,7 +1061,7 @@ public:
   template <typename T>
   const T *get(const std::string &name) const
   {
-    std::map<std::string, ArgValue>::const_iterator it = m_values.find(name);
+    auto it = m_values.find(name);
     if (it == m_values.end())
       return nullptr;
     return plugin::ArgGetter<T>::get(it->second);
@@ -1104,8 +1069,7 @@ public:
 
   const ArgValue *get_dynamic(const std::string &name) const
   {
-    std::map<std::string, ArgValue>::const_iterator it =
-        m_dynamic_values.find(name);
+    auto it = m_dynamic_values.find(name);
     if (it == m_dynamic_values.end())
       return nullptr;
     return &it->second;
@@ -1210,10 +1174,8 @@ Command::parse(const std::vector<lexer::Token> &tokens,
   size_t current_positional_arg_index = 0;
 
   std::vector<ArgumentDef> pos_args;
-  for (std::vector<ArgumentDef>::const_iterator it = m_args.begin();
-       it != m_args.end(); ++it)
+  for (const auto &arg : m_args)
   {
-    const ArgumentDef &arg = *it;
     if (arg.is_help_flag)
     {
       continue;
@@ -1564,8 +1526,7 @@ Command::parse(const std::vector<lexer::Token> &tokens,
             return result;
           }
 
-          std::map<std::string, ArgValue>::iterator map_it =
-              result.m_values.find(matched_arg->name);
+          auto map_it = result.m_values.find(matched_arg->name);
           if (map_it == result.m_values.end() ||
               !map_it->second.is_string_vector() || map_it->second.is_none())
           {
@@ -1641,11 +1602,8 @@ Command::parse(const std::vector<lexer::Token> &tokens,
       else
       {
         // if not a direct name match, check aliases
-        for (std::map<std::string, command_ptr>::const_iterator it2 =
-                 m_commands.begin();
-             it2 != m_commands.end(); ++it2)
+        for (const auto &pair : m_commands)
         {
-          const std::pair<const std::string, command_ptr> &pair = *it2;
           if (pair.second->has_alias(potential_subcommand_or_alias))
           {
             // prevent aliasing to multiple commands
@@ -1684,18 +1642,17 @@ Command::parse(const std::vector<lexer::Token> &tokens,
         // Suggest similar subcommand/group
         size_t best_dist = (size_t)-1;
         std::string best_match;
-        for (std::map<std::string, command_ptr>::const_iterator it2 = m_commands.begin();
-             it2 != m_commands.end(); ++it2)
+        for (const auto &cmd_pair : m_commands)
         {
           // Check subcommand name
-          size_t dist = parser::levenshtein_distance(potential_subcommand_or_alias, it2->first);
+          size_t dist = parser::levenshtein_distance(potential_subcommand_or_alias, cmd_pair.first);
           if (dist < best_dist)
           {
             best_dist = dist;
-            best_match = it2->first;
+            best_match = cmd_pair.first;
           }
           // Check aliases
-          const std::vector<std::string> &aliases = it2->second->get_aliases();
+          const std::vector<std::string> &aliases = cmd_pair.second->get_aliases();
           for (size_t j = 0; j < aliases.size(); ++j)
           {
             dist = parser::levenshtein_distance(potential_subcommand_or_alias, aliases[j]);
@@ -1817,10 +1774,8 @@ Command::parse(const std::vector<lexer::Token> &tokens,
   }
 
   // check for required arguments
-  for (std::vector<ArgumentDef>::const_iterator it = m_args.begin();
-       it != m_args.end(); ++it)
+  for (const auto &arg : m_args)
   {
-    const ArgumentDef &arg = *it;
     if (arg.positional || arg.is_help_flag)
       continue;
 
@@ -1860,10 +1815,8 @@ Command::parse(const std::vector<lexer::Token> &tokens,
 
   // check for conflicting arguments - aggregate conflicts for reporting
   std::set<std::pair<std::string, std::string>> conflict_pairs;
-  for (std::vector<ArgumentDef>::const_iterator it = m_args.begin();
-       it != m_args.end(); ++it)
+  for (const auto &arg : m_args)
   {
-    const ArgumentDef &arg = *it;
     if (!args_seen.count(arg.name) || arg.conflicts_with.empty())
       continue;
 
@@ -1890,13 +1843,11 @@ Command::parse(const std::vector<lexer::Token> &tokens,
     std::stringstream ss;
     ss << "conflicting options provided: ";
     bool first_pair = true;
-    for (std::set<std::pair<std::string, std::string>>::const_iterator it =
-             conflict_pairs.begin();
-         it != conflict_pairs.end(); ++it)
+    for (const auto &conflict_pair : conflict_pairs)
     {
       if (!first_pair)
         ss << "; ";
-      ss << "--" << it->first << " conflicts with --" << it->second;
+      ss << "--" << conflict_pair.first << " conflicts with --" << conflict_pair.second;
       first_pair = false;
     }
     result.error_message = ss.str();
@@ -1913,17 +1864,13 @@ Command::parse(const std::vector<lexer::Token> &tokens,
     ZLOG_TRACE("Executing handler for command '%s'", m_name.c_str());
 
     plugin::ArgumentMap invocation_args;
-    for (std::map<std::string, ArgValue>::const_iterator it =
-             result.m_values.begin();
-         it != result.m_values.end(); ++it)
+    for (const auto &kv : result.m_values)
     {
-      invocation_args[it->first] = it->second;
+      invocation_args[kv.first] = kv.second;
     }
-    for (std::map<std::string, ArgValue>::const_iterator it =
-             result.m_dynamic_values.begin();
-         it != result.m_dynamic_values.end(); ++it)
+    for (const auto &kv : result.m_dynamic_values)
     {
-      invocation_args[it->first] = it->second;
+      invocation_args[kv.first] = kv.second;
     }
 
     plugin::ContextArgs context_args(result.command_path, invocation_args, result.m_passthrough_args);
@@ -2276,11 +2223,11 @@ inline void generate_bash_completion(std::ostream &os, const std::string &prog_n
       os << arr_name << "=( ";
       // Subcommands
       const std::map<std::string, command_ptr> &subs = cmd.get_commands();
-      for (std::map<std::string, command_ptr>::const_iterator it = subs.begin(); it != subs.end(); ++it)
+      for (const auto &sub_pair : subs)
       {
-        os << "'" << it->first << "' ";
+        os << "'" << sub_pair.first << "' ";
         // Aliases
-        const std::vector<std::string> &aliases = it->second->get_aliases();
+        const std::vector<std::string> &aliases = sub_pair.second->get_aliases();
         for (size_t j = 0; j < aliases.size(); ++j)
         {
           os << "'" << aliases[j] << "' ";
@@ -2320,10 +2267,10 @@ inline void generate_bash_completion(std::ostream &os, const std::string &prog_n
       }
       os << ")\n";
       // Recurse for subcommands
-      for (std::map<std::string, command_ptr>::const_iterator it = subs.begin(); it != subs.end(); ++it)
+      for (const auto &sub_pair : subs)
       {
-        std::string sub_prefix = prefix.empty() ? it->first : (prefix + "_" + it->first);
-        emit_command_tree(*it->second, sub_prefix, os);
+        std::string sub_prefix = prefix.empty() ? sub_pair.first : (prefix + "_" + sub_pair.first);
+        emit_command_tree(*sub_pair.second, sub_prefix, os);
       }
     }
   };

@@ -71,7 +71,7 @@ typedef int (*PTR32 iean4rt_fn)(int *PTR64, ZNT_NAME *PTR64, ZNT_TOKEN *PTR64, i
 #define IEAN4DL(func)
 #endif
 
-#if defined(__cplusplus) && (defined(__IBMCPP__) || defined(__IBMC__))
+#if defined(__cplusplus) && defined(__MVS__)
 extern "OS"
 {
 #elif defined(__cplusplus)

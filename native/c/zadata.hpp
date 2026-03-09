@@ -14,7 +14,7 @@
 
 #include <string>
 
-typedef struct
+struct ADATA_HEADER
 {
   unsigned char language;
   unsigned short record_type;
@@ -23,9 +23,9 @@ typedef struct
   unsigned char edition;
   unsigned char reserved[4];
   unsigned short len;
-} ADATA_HEADER;
+};
 
-typedef struct
+struct MACHINE_RECORD
 {
   unsigned char esid[4];
   int statement_number;
@@ -34,9 +34,9 @@ typedef struct
   int instruction_offset;
   int instruction_length;
   unsigned char instruction_value[3];
-} MACHINE_RECORD;
+};
 
-typedef struct
+struct SOURCE_ANALYSIS_RECORD
 {
   unsigned char esid[4];
   int statement_number;
@@ -76,6 +76,6 @@ typedef struct
   char input_macro_name[1];
   char parent_macro_name[1];
   char source_record[1];
-} SOURCE_ANALYSIS_RECORD;
+};
 
 #endif

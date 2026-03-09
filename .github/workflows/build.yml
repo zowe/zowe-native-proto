@@ -30,25 +30,39 @@ jobs:
 
       - run: npm run test
 
-      - run: |
-          RUN_ID=$(gh run list --commit=${{ github.event.pull_request.head.sha || github.sha }} --workflow=zos-build.yml --limit=1 --json=databaseId --jq='.[0].databaseId')
-          [ -z "$RUN_ID" ] || gh run watch $RUN_ID
+      - name: Get z/OS build run ID
         if: ${{ matrix.os == 'ubuntu' }}
+        run: |
+          RUN_ID=$(gh run list --commit=${{ github.event.pull_request.head.sha || github.sha }} --workflow=zos-build.yml --limit=1 --json=databaseId --jq='.[0].databaseId')
+          echo "RUN_ID=$RUN_ID" >> $GITHUB_ENV
         env:
           GH_TOKEN: ${{ github.token }}
 
-      - run: gh run download --dir packages/sdk/bin --name zowe-server-bin
+      - name: Watch z/OS build
+        if: ${{ matrix.os == 'ubuntu' }}
+        run: |
+          [ -z "$RUN_ID" ] || gh run watch $RUN_ID
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Download server PAX into SDK bin
+        if: ${{ matrix.os == 'ubuntu' }}
+        run: gh run download $RUN_ID --dir packages/sdk/bin --name zowe-server-bin
         env:
           GH_TOKEN: ${{ github.token }}
 
       - run: npm run package
+        if: ${{ matrix.os == 'ubuntu' }}
+
+      - run: npm pack ./packages/sdk --pack-destination=dist
+        if: ${{ matrix.os == 'ubuntu' }}
 
       - uses: actions/upload-artifact@v4
         id: cli-artifact-upload
         if: ${{ matrix.os == 'ubuntu' }}
         with:
           name: zowe-native-proto-cli
-          path: dist/*.tgz
+          path: dist/zowe-native-proto-cli-*.tgz
 
       - uses: actions/upload-artifact@v4
         id: vsce-artifact-upload
@@ -56,6 +70,13 @@ jobs:
         with:
           name: zowe-native-proto-vsce
           path: dist/*.vsix
+
+      - uses: actions/upload-artifact@v4
+        id: sdk-artifact-upload
+        if: ${{ matrix.os == 'ubuntu' }}
+        with:
+          name: zowe-native-proto-sdk
+          path: dist/zowe-native-proto-sdk-*.tgz
 
       - name: Comment on PR
         if: ${{ github.event_name == 'pull_request' && matrix.os == 'ubuntu' && github.event.pull_request.head.repo.full_name == github.repository }}
@@ -67,3 +88,4 @@ jobs:
             Client artifacts:
              - CLI Plug-in: ${{ steps.cli-artifact-upload.outputs.artifact-url }}
              - VSCode Extension: ${{ steps.vsce-artifact-upload.outputs.artifact-url }}
+             - SDK: ${{ steps.sdk-artifact-upload.outputs.artifact-url }}

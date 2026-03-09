@@ -11,7 +11,8 @@ An open-source, native protocol for z/OS mainframe operations via SSH with minim
 
 ### z/OS
 
-- [IBM C/C++ for z/OS](https://www.ibm.com/products/xl-cpp-compiler-zos) - `xlclang` and `xlclang++`
+- [IBM Open XL C/C++ for z/OS](https://www.ibm.com/docs/en/open-xl-c-cpp-zos/latest) - `ibm-clang++` (C++ compilation)
+- [IBM C/C++ for z/OS](https://www.ibm.com/products/xl-cpp-compiler-zos) - `xlc` (required for Metal C compilation)
 - [SWIG](https://github.com/t1m0thyj/swig-zos) (optional) - used to build experimental Python bindings
 
 ## Setup
