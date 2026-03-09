@@ -33,12 +33,13 @@ struct ZConvData
 };
 
 /**
- * @brief Runs a shell command
- * @param command The command to run
- * @param response Reference to a string where the result will be stored
+ * @brief Runs a program
+ * @param program The program to run. The program must be on PATH or a fully-qualified path to the executable
+ * @param args Arguments passed to the program
+ * @param response Reference to a string where the result will be stored. The result is combined stdout and stderr
  * @returns The return code from running the command, or non-zero for error submitting
  */
-int zut_run_shell_command(std::string command, std::string &response);
+int zut_run_program(const std::string &program, const std::vector<std::string> &args, std::string &response);
 
 /**
  * @brief Search for a specific string

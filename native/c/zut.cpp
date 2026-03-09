@@ -31,45 +31,111 @@
 #include <ios>
 #include "zdyn.h"
 #include "zuttype.h"
+#include <vector>
+#include <sys/wait.h>
 #include <_Nascii.h>
 
-int zut_run_shell_command(std::string command, std::string &response)
+int zut_run_program(const std::string &program, const std::vector<std::string> &args, std::string &response)
 {
-  int rc = 0;
-  std::string response_raw;
-  FILE *cmd = popen(command.c_str(), "r");
-  if (nullptr == cmd)
+  if (0 == program.size())
+  {
+    response = "Error: You must specify a program to run.";
+    return RTNCD_FAILURE;
+  }
+
+  // pipefd[0] is for reading, pipefd[1] is for writing
+  int pipefd[2];
+  if (-1 == pipe(pipefd))
   {
     return RTNCD_FAILURE;
   }
 
-  char buffer[256] = {0};
-  while (fgets(buffer, sizeof(buffer), cmd) != nullptr)
+  // execvp replaces the current process in-place. so we fork and run execvp in the child process
+  pid_t pid = fork();
+
+  // Fork failed
+  if (-1 == pid)
   {
-    response_raw += std::string(buffer);
+    close(pipefd[0]);
+    close(pipefd[1]);
+    return RTNCD_FAILURE;
   }
 
-  std::stringstream response_ss(response_raw);
-
-  std::string line;
-  auto index = 0;
-
-  while (std::getline(response_ss, line))
+  if (0 == pid)
   {
-    index++;
-    if (index > 1)
+    // --- CHILD PROCESS ---
+    close(pipefd[0]); // Child doesn't read from the pipe
+
+    // Redirect stdout and stderr to pipe
+    if (-1 == dup2(pipefd[1], STDOUT_FILENO))
+    {
+      exit(127);
+    }
+    if (-1 == dup2(pipefd[1], STDERR_FILENO))
+    {
+      exit(127);
+    }
+
+    close(pipefd[1]);
+
+    // convert std::vector<std::string> to char* array for execvp
+    std::vector<char *> c_args;
+    c_args.reserve(args.size() + 2); // 2 = program + ending nullptr
+    c_args.push_back(const_cast<char *>(program.c_str()));
+    for (const auto &arg : args)
+    {
+      c_args.push_back(const_cast<char *>(arg.c_str()));
+    }
+    c_args.push_back(nullptr); // Must be null-terminated
+
+    execvp(program.c_str(), c_args.data());
+
+    // If execvp returns, the program didn't run
+    const std::string error = "zut_run_program: error executing " + program;
+    perror(error.c_str());
+    exit(RTNCD_FAILURE);
+  }
+  else
+  {
+    // --- PARENT PROCESS ---
+    close(pipefd[1]); 
+
+    std::string response_raw;
+    char buffer[256];
+    ssize_t bytes_read;
+
+    // read all output from the child process
+    while ((bytes_read = read(pipefd[0], buffer, sizeof(buffer))) > 0)
+    {
+      response_raw.append(buffer, bytes_read);
+    }
+    close(pipefd[0]);
+
+    // wait for the child process to finish and get its exit status
+    int status;
+    if (-1 == waitpid(pid, &status, 0))
+    {
+      return RTNCD_FAILURE;
+    }
+
+    // collect stdout + stderr in a std::string
+    std::stringstream response_ss(response_raw);
+    std::string line;
+    auto index = 0;
+
+    while (std::getline(response_ss, line))
     {
       response += line + '\n';
     }
-  }
 
-  rc = pclose(cmd);
-  if (0 != rc)
-  {
-    return WEXITSTATUS(rc);
-  }
+    // Evaluate the exit status
+    if (WIFEXITED(status))
+    {
+      return WEXITSTATUS(status);
+    }
 
-  return rc;
+    return RTNCD_FAILURE;
+  }
 }
 
 int zut_search(const std::string &parms)

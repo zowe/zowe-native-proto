@@ -12,7 +12,6 @@
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
-
 #include "ztest.hpp"
 #include "zut.hpp"
 #include "zstorage.metal.test.h"
@@ -25,17 +24,86 @@ void zut_tests()
   describe("zut tests",
            []() -> void
            {
-             it("should run shell command",
-                []() -> void
-                {
-                  std::string output;
-                  int rc = zut_run_shell_command("echo 'hello world' 2>&1", output);
-                  expect(rc).ToBe(0);
-                  // TODO: Why is output an empty string? The below doesn't work
-                  // expect(output).ToBe("'hello world'");
-                  rc = zut_run_shell_command("fakeutility doesnotexist 2>&1", output);
-                  expect(rc).Not().ToBe(0);
-                });
+
+             it("should run programs", []() -> void {
+                  std::string response;
+
+                  std::string program = "printf";
+                  std::vector<std::string> args = {"line1\nline2\nline3\n"};
+                  
+                  int rc = zut_run_program(program, args, response);
+                  ExpectWithContext(rc, response).ToBe(0);
+                  ExpectWithContext(response, "Expected all lines").ToBe(args[0]);
+
+                  program = "/bin/printf";
+                  response = "";
+                  rc = zut_run_program(program, args, response);
+                  ExpectWithContext(rc, response).ToBe(0);
+                  ExpectWithContext(response, "Expected all lines").ToBe(args[0]);
+
+                  program = "fakeutility";
+                  response = "";
+                  rc = zut_run_program(program, {}, response);
+                  ExpectWithContext(rc, response).ToBe(255);
+                  ExpectWithContext(response, "Expecting an error").ToContain("zut_run_program: error executing fakeutility");
+
+                  program = "";
+                  response = "";
+                  rc = zut_run_program(program, {}, response);
+                  ExpectWithContext(rc, response).ToBe(-1);
+                  ExpectWithContext(response, "Expecting an error").ToContain("You must specify a program to run.");
+
+                  response = "";
+                  rc = zut_run_program(nullptr, {}, response);
+                  ExpectWithContext(rc, response).ToBe(-1);
+                  ExpectWithContext(response, "Expecting an error").ToContain("You must specify a program to run.");
+
+             });
+
+             // Tests if a semicolon can break out of the command
+             it("test semicolon injection", []() -> void {
+                std::string response;
+                std::vector<std::string> args = {"line1\nline2; echo INJECTED_PAYLOAD"};
+                
+                int rc = zut_run_program("echo", args, response);
+                ExpectWithContext(rc, response).ToBe(0);
+                
+                // If vulnerable, the shell would execute `echo INJECTED_PAYLOAD` and the output would just be "INJECTED_PAYLOAD\n"
+                ExpectWithContext(response.find("line2; echo INJECTED_PAYLOAD"), "Expected the semicolon and second command to be treated as literal text").Not().ToBe(std::string::npos);
+
+                // same case as above, with split args
+                args.clear();
+                args = {"line1\nline2;", "echo", "INJECTED_PAYLOAD"};
+                
+                rc = zut_run_program("echo", args, response);
+
+                ExpectWithContext(rc, response).ToBe(0);
+                ExpectWithContext(response.find("line2; echo INJECTED_PAYLOAD"), "Expected the semicolon and second command to be treated as literal text").Not().ToBe(std::string::npos);
+
+             });
+
+            // Tests if pipes can output to another command or modify the filesystem
+             it("test pipe and redirect injection", []() -> void {
+                std::string response;
+                std::vector<std::string> args = {"line1\nline2 | grep line > /tmp/hacked.txt"};
+              
+                int rc = zut_run_program("echo", args, response);
+              
+                // If vulnerable, this would create a file and output nothing. Instead we print everything
+                ExpectWithContext(rc, response).ToBe(0);
+                ExpectWithContext(response.find("| grep"), "Expected pipe and redirect to be treated as literal text").Not().ToBe(std::string::npos);
+
+                // Same case, split up args
+                response = "";
+                args.clear();
+                args = {"line1\nline2", "|", "grep", "line", ">", "/tmp/hacked.txt"};
+
+                rc = zut_run_program("echo", args, response);
+
+                ExpectWithContext(rc, response).ToBe(0);
+                ExpectWithContext(response.find("| grep"), "Expected pipe and redirect to be treated as literal text").Not().ToBe(std::string::npos);
+             });
+
              it("should upper case and truncate a long string",
                 []() -> void
                 {

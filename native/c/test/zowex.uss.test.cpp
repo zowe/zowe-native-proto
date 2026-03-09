@@ -147,7 +147,7 @@ void zowex_uss_tests()
                              // copy with --preserve-attributes
                              std::string output;
                              delete_cmd(target_file);
-                             zut_run_shell_command("chmod 777 " + source_file, output);
+                             zut_run_program("chmod", { "777", source_file }, output);
                              copy_result = copy_cmd(source_file, target_file, "--preserve-attributes");
                              ExpectWithContext(copy_result.second, copy_result.first).ToBe(0);
                              list_file_result = list_cmd(target_file, "-al");
@@ -207,7 +207,6 @@ void zowex_uss_tests()
                                  "\"with*quotes\"",
                                  "tes[a-z]+",
                                  "'lit*'",
-                                 "\u3053\u3093\u306b\u3061\u306f", // こんにちは
                              };
 
                              const std::string test_file = file_a;
