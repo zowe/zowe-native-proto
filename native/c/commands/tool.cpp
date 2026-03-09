@@ -465,17 +465,19 @@ void register_commands(parser::Command &root_command)
 
   // Search subcommand
   auto tool_search_cmd = command_ptr(new Command("search", "search members for string with parms, e.g. --parms anyc"));
-  tool_search_cmd->add_positional_arg(DSN);
-  tool_search_cmd->add_positional_arg("string", "string to search for", ArgType_Single, true);
-  tool_search_cmd->add_keyword_arg("parms",
-                                   make_aliases("--parms", "--p"),
-                                   "parms to pass to ISRSUPC", ArgType_Single, false);
-  tool_search_cmd->add_keyword_arg("outdd-attributes",
-                                   make_aliases("--outdd-attributes", "--oa"),
-                                   "attributes for output dd, e.g. 'space(50,100)'", ArgType_Single, false);
-  tool_search_cmd->add_example("Search 'SYS1.MACLIB' for string 'world' with parms 'ANYC'", "zowex tool search sys1.maclib world --parms anyc");
-  tool_search_cmd->add_example("Search 'SYS1.MACLIB' for string 'world' with parms 'ANYC,LPSF'", "zowex tool search sys1.maclib world --parms anyc,lpsf --outdd-attributes \"cylinders space(50,5)\"");
-  tool_search_cmd->set_handler(handle_tool_search);
+  tool_search_cmd->add_positional_arg(DSN)
+      .add_positional_arg("string", "string to search for", ArgType_Single, true)
+      .add_keyword_arg("parms",
+                       make_aliases("--parms", "--p"),
+                       "parms to pass to ISRSUPC", ArgType_Single, false)
+      .add_keyword_arg("outdd-attributes",
+                       make_aliases("--outdd-attributes", "--oa"),
+                       "attributes for output dd, e.g. 'space(50,100)'", ArgType_Single, false)
+      .add_example("Search 'SYS1.MACLIB' for string 'world' with parms 'ANYC'",
+                   "zowex tool search sys1.maclib world --parms anyc")
+      .add_example("Search 'SYS1.MACLIB' for string 'world' with parms 'ANYC,LPSF'",
+                   "zowex tool search sys1.maclib world --parms anyc,lpsf --outdd-attributes \"cylinders space(50,5)\"")
+      .set_handler(handle_tool_search);
   tool_cmd->add_command(tool_search_cmd);
 
   // Amblist subcommand
