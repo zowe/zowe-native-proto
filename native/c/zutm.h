@@ -99,6 +99,7 @@ extern "C"
   unsigned char ZUTMGKEY();
   int ZUTMLPLB(ZDIAG *, int *, PARMLIB_DSNS *);
   int ZUTSSIQ(ZDIAG *, JQRY_HEADER **, const char *filter);
+  int ZUTCVTD(const char *ptr, char *time_out);
 
 #if defined(__cplusplus)
 }

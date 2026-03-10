@@ -339,6 +339,8 @@ int zut_list_subsystems(ZDIAG &diag, std::vector<std::string> &subsystems, std::
  */
 std::string zut_read_input(std::istream &input_stream);
 
+int zut_convert_date(const unsigned char *date_ptr, std::string &out_str);
+
 /**
  * @brief RAII class to manage auto-conversion state
  *

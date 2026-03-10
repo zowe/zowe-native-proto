@@ -22,7 +22,16 @@ extern const size_t MAX_DS_LENGTH;
 struct ZDSMem
 {
   std::string name;
-  // std::string dsorg;
+  int vers;
+  int mod;
+  std::string c4date;
+  std::string m4date;
+  std::string mtime;
+  int cnorc;
+  int inorc;
+  int mnorc;
+  std::string user;
+  bool sclm;
 };
 
 struct ZDSEntry
@@ -234,7 +243,7 @@ int zds_rename_members(ZDS *zds, const std::string &dsn, const std::string &memb
  * @param pattern optional wildcard pattern to filter members (supports '*' and '?')
  * @return int 0 for success; non zero otherwise
  */
-int zds_list_members(ZDS *zds, std::string dsn, std::vector<ZDSMem> &members, const std::string &pattern = "");
+int zds_list_members(ZDS *zds, std::string dsn, std::vector<ZDSMem> &members, const std::string &pattern = "", bool show_attributes = false);
 
 int zds_list_data_sets(ZDS *zds, std::string dsn, std::vector<ZDSEntry> &datasets, bool show_attributes = false);
 #ifdef SWIG
