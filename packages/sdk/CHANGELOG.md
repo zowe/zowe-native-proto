@@ -7,6 +7,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 ## Recent Changes
 
 - Added `copyDataset` to `RpcClientApi.ds` for copying data sets and members with optional `replace` and `deleteTargetMembers` options. [#778](https://github.com/zowe/zowe-native-proto/pull/778)
+- Added support for listing member attributes to `DsMember` type [#630](https://github.com/zowe/zowe-native-proto/issues/630)
 - Added support for invoking the tool search group.
 - Added support for copying USS files in the `RpcClientApi` class. [#379](https://github.com/zowe/zowe-native-proto/issues/379)
 - Added support for USS Move operations. [#789](https://github.com/zowe/zowe-native-proto/pull/789)

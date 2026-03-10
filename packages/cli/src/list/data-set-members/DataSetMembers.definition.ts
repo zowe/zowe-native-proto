@@ -34,9 +34,16 @@ export const ListDataSetMembersDefinition: ICommandDefinition = {
     ],
     options: [
         {
-            name: "pattern",
-            description: "A wildcard pattern used to filter the returned entries (supports '*' and '?')",
-            type: "string",
+            name: "attributes",
+            aliases: ["a"],
+            description: "Fetch attributes of the members being listed.",
+            type: "boolean",
+        },
+        {
+            name: "attributes",
+            aliases: ["a"],
+            description: "Fetch attributes of the members being listed.",
+            type: "boolean",
         },
     ],
     profile: { optional: ["ssh"] },

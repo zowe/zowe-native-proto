@@ -6,6 +6,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Recent Changes
 
+- `c`: Added support for displaying member statistics. [#630](https://github.com/zowe/zowe-native-proto/issues/630)
 - `c`: Added `toolSearch` in `zowed` for use by client SDK.
 - `c`: Added the `pattern` option to the `data-set list-members` zowex command to filter the returned members. [#817](https://github.com/zowe/zowe-native-proto/pull/817)
 - `c`: Implemented `zowex uss copy` command to copy USS files and directories. [#379](https://github.com/zowe/zowe-native-proto/issues/379)

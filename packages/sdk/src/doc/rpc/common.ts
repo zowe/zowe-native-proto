@@ -227,10 +227,17 @@ export interface DatasetAttributes {
 }
 
 export interface DsMember {
-    /**
-     * Dataset member name
-     */
     name: string;
+    user?: string;
+    vers?: number;
+    mod?: number;
+    c4date?: string;
+    m4date?: string;
+    mtime?: string;
+    cnorc?: number;
+    inorc?: number;
+    mnorc?: number;
+    sclm?: string;
 }
 
 // USS-related types

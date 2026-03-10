@@ -7,6 +7,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 ## Recent Changes
 - Added `zssh copy data-set` command to copy data sets and members with optional `--replace` and `--delete-target-members`. Supports PDS-to-PDS, member-to-member, and sequential-to-sequential copies. Note: RECFM=U data sets are not supported.[#778](https://github.com/zowe/zowe-native-proto/pull/778)
 
+- Added an `--attributes` flag to list ISPF statistics for member attributes. [#630](https://github.com/zowe/zowe-native-proto/issues/630)
 - Added the `zssh uss copy` command to the CLI. [#379](https://github.com/zowe/zowe-native-proto/pull/379).
 
 ## `0.3.0`
