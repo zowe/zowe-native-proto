@@ -455,7 +455,7 @@ void zds_tests()
                              tc.setup_pds();
 
                              ZDS zds = {0};
-                             vector<ZDSMem> members;
+                             std::vector<ZDSMem> members;
 
                              int rc = zds_list_members(&zds, tc.pds_dsn, members, "ABC1", true);
 
