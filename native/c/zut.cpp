@@ -33,20 +33,41 @@
 #include "zuttype.h"
 #include <vector>
 #include <sys/wait.h>
+#include <poll.h>
 #include <_Nascii.h>
 
-int zut_run_program(const std::string &program, const std::vector<std::string> &args, std::string &response)
-{
+void zut_strip_final_newline(std::string &input) {
+  if (!input.empty() && input.back() == '\n') {
+    input.pop_back();
+  }
+}
+
+int zut_private_run_program(const std::string &program, const std::vector<std::string> &args, std::string &stdout_response, std::string &stderr_response, bool merge_streams) {
+ 
+  stdout_response.clear();
+  stderr_response.clear();
+
   if (0 == program.size())
   {
-    response = "Error: You must specify a program to run.";
+    if (merge_streams) {
+      stdout_response = "Error: You must specify a program to run.";
+    } else {
+      stderr_response = "Error: You must specify a program to run.";
+    }
     return RTNCD_FAILURE;
   }
 
   // pipefd[0] is for reading, pipefd[1] is for writing
-  int pipefd[2];
-  if (-1 == pipe(pipefd))
+  int stdout_pipe[2];
+  int stderr_pipe[2];
+  if (-1 == pipe(stdout_pipe))
   {
+    return RTNCD_FAILURE;
+  }
+
+  if (-1 == pipe(stderr_pipe)) 
+  {
+    close(stdout_pipe[0]); close(stdout_pipe[1]);
     return RTNCD_FAILURE;
   }
 
@@ -56,27 +77,29 @@ int zut_run_program(const std::string &program, const std::vector<std::string> &
   // Fork failed
   if (-1 == pid)
   {
-    close(pipefd[0]);
-    close(pipefd[1]);
+    close(stdout_pipe[0]); close(stdout_pipe[1]);
+    close(stderr_pipe[0]); close(stderr_pipe[1]);
     return RTNCD_FAILURE;
   }
 
   if (0 == pid)
   {
     // --- CHILD PROCESS ---
-    close(pipefd[0]); // Child doesn't read from the pipe
+    // doesn't read from pipes
+    close(stdout_pipe[0]); 
+    close(stderr_pipe[0]);
 
-    // Redirect stdout and stderr to pipe
-    if (-1 == dup2(pipefd[1], STDOUT_FILENO))
-    {
-      exit(127);
-    }
-    if (-1 == dup2(pipefd[1], STDERR_FILENO))
-    {
-      exit(127);
+    if (merge_streams) {
+      // both stdout and stderr go to stdout pipe
+      if (-1 == dup2(stdout_pipe[1], STDOUT_FILENO)) { exit(127); }
+      if (-1 == dup2(stdout_pipe[1], STDERR_FILENO)) { exit(127); }
+    } else {
+      if (-1 == dup2(stdout_pipe[1], STDOUT_FILENO)) { exit(127); }
+      if (-1 == dup2(stderr_pipe[1], STDERR_FILENO)) { exit(127); }
     }
 
-    close(pipefd[1]);
+    close(stderr_pipe[1]);
+    close(stdout_pipe[1]);
 
     // convert std::vector<std::string> to char* array for execvp
     std::vector<char *> c_args;
@@ -98,33 +121,61 @@ int zut_run_program(const std::string &program, const std::vector<std::string> &
   else
   {
     // --- PARENT PROCESS ---
-    close(pipefd[1]); 
+    close(stdout_pipe[1]);
+    close(stderr_pipe[1]); 
 
-    std::string response_raw;
-    char buffer[256];
+    struct pollfd fds[2];
+    fds[0].fd = stdout_pipe[0];
+    fds[0].events = POLLIN;
+
+    // only watch stderr pipe if we're not merging streams, otherwise set to -1
+    if (!merge_streams) {
+      fds[1].fd = stderr_pipe[0];
+      fds[1].events = POLLIN;
+    } else {
+      fds[1].fd = -1;
+    }
+
+    char buffer[4096];
     ssize_t bytes_read;
 
-    // read all output from the child process
-    while ((bytes_read = read(pipefd[0], buffer, sizeof(buffer))) > 0)
-    {
-      response_raw.append(buffer, bytes_read);
+    // while pipes still open
+    while (fds[0].fd != -1 || fds[1].fd != -1) {
+      // blocks until there's data or an error
+      if (-1 == poll(fds, 2, -1)) {
+        break; // system error
+      }
+
+      for (int i = 0; i < 2; i++) {
+        if (fds[i].fd != -1) {
+
+          std::string &output = ((0 == i) ? stdout_response : stderr_response);
+          // close pipe if there's a hangup or error, otherwise read
+          if (fds[i].revents & POLLIN) {
+            ssize_t bytes_read = read(fds[i].fd, buffer, sizeof(buffer));
+            if (bytes_read > 0) {
+              output.append(buffer, bytes_read);
+            } else if (bytes_read == 0){
+              fds[i].fd = -1; // EOF
+            }
+          } else if (fds[i].revents & (POLLHUP | POLLERR)) {
+            fds[i].fd = -1;
+          } 
+        }
+      }
     }
-    close(pipefd[0]);
+    
+    zut_strip_final_newline(stdout_response);
+    zut_strip_final_newline(stderr_response);
+
+    close(stdout_pipe[0]);
+    close(stderr_pipe[0]);
 
     // wait for the child process to finish and get its exit status
     int status;
     if (-1 == waitpid(pid, &status, 0))
     {
       return RTNCD_FAILURE;
-    }
-
-    // collect stdout + stderr in a std::string
-    std::stringstream response_ss(response_raw);
-    std::string line;
-
-    while (std::getline(response_ss, line))
-    {
-      response += line + '\n';
     }
 
     // Evaluate the exit status
@@ -135,6 +186,17 @@ int zut_run_program(const std::string &program, const std::vector<std::string> &
 
     return RTNCD_FAILURE;
   }
+}
+
+int zut_run_program(const std::string &program, const std::vector<std::string> &args, std::string &stdout_response, std::string &stderr_response)
+{
+  return zut_private_run_program(program, args, stdout_response, stderr_response, false);
+}
+
+int zut_run_program(const std::string &program, const std::vector<std::string> &args, std::string &response)
+{
+  std::string dummy;
+  return zut_private_run_program(program, args, response, dummy, true);
 }
 
 int zut_search(const std::string &parms)

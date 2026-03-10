@@ -904,11 +904,11 @@ int zusf_copy_file_or_dir(ZUSF *zusf, const std::string &source_path, const std:
   command_parameters.emplace_back(source_path);
   command_parameters.emplace_back(destination_path);
 
-  std::string response;
-  int rc = zut_run_program("cp", command_parameters, response);
+  std::string stdout_resp, stderr_resp;
+  int rc = zut_run_program("cp", command_parameters, stdout_resp, stderr_resp);
   if (rc > 0)
   {
-    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to copy %s to %s, errno: %d\nstderr: %s", source_path.c_str(), destination_path.c_str(), rc, response.c_str());
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to copy %s to %s, errno: %d\nstderr: %s", source_path.c_str(), destination_path.c_str(), rc, stderr_resp.c_str());
     return RTNCD_FAILURE;
   }
   return rc;
@@ -1065,8 +1065,8 @@ int zusf_move_uss_file_or_dir(ZUSF *zusf, const std::string &source, const std::
   }
 
   // TODO(zFernand0): Use std::filesystem::rename instead of rename when C++17 is available
-  std::string response;
-  int rc = zut_run_program("mv", {source, target}, response);
+  std::string stdout_resp, stderr_resp;
+  int rc = zut_run_program("mv", {source, target}, stdout_resp, stderr_resp);
   if (rc != 0)
   {
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to move file or directory from '%s' to '%s', errno: %d", truncated_source.c_str(), truncated_target.c_str(), rc);

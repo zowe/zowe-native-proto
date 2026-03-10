@@ -34,5 +34,6 @@
 // - Load TMP directly, untested, but potentially useful if we read/write SYSTSIN/SYSTSPRT
 int ztso_issue(const std::string &command, std::string &response)
 {
-  return zut_run_program("tsocmd", {command}, response);
+  std::string stderr_discard;
+  return zut_run_program("tsocmd", {command}, response, stderr_discard);
 }

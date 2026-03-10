@@ -26,37 +26,63 @@ void zut_tests()
            {
 
              it("should run programs", []() -> void {
+                  
                   std::string response;
-
                   std::string program = "printf";
-                  std::vector<std::string> args = {"line1\nline2\nline3\n"};
+                  std::vector<std::string> args = {"line1\nline2\nline3"};
                   
                   int rc = zut_run_program(program, args, response);
                   ExpectWithContext(rc, response).ToBe(0);
                   ExpectWithContext(response, "Expected all lines").ToBe(args[0]);
 
                   program = "/bin/printf";
-                  response = "";
                   rc = zut_run_program(program, args, response);
                   ExpectWithContext(rc, response).ToBe(0);
                   ExpectWithContext(response, "Expected all lines").ToBe(args[0]);
 
                   program = "fakeutility";
-                  response = "";
                   rc = zut_run_program(program, {}, response);
                   ExpectWithContext(rc, response).ToBe(255);
                   ExpectWithContext(response, "Expecting an error").ToContain("zut_run_program: error executing fakeutility");
 
                   program = "";
-                  response = "";
                   rc = zut_run_program(program, {}, response);
                   ExpectWithContext(rc, response).ToBe(-1);
                   ExpectWithContext(response, "Expecting an error").ToContain("You must specify a program to run.");
 
-                  response = "";
                   rc = zut_run_program(nullptr, {}, response);
                   ExpectWithContext(rc, response).ToBe(-1);
                   ExpectWithContext(response, "Expecting an error").ToContain("You must specify a program to run.");
+
+                  // now with split stdout/stderr
+                  std::string stdout_data, stderr_data;
+                  program = "printf";
+                  
+                  rc = zut_run_program(program, args, stdout_data, stderr_data);
+                  ExpectWithContext(rc, stderr_data).ToBe(0);
+                  ExpectWithContext(stdout_data, "Expected all lines").ToBe(args[0]);
+
+                  program = "/bin/printf";
+                  rc = zut_run_program(program, args, stdout_data, stderr_data);
+                  ExpectWithContext(rc, stderr_data).ToBe(0);
+                  ExpectWithContext(stdout_data, "Expected all lines").ToBe(args[0]);
+
+                  program = "fakeutility";
+                  rc = zut_run_program(program, {}, stdout_data, stderr_data);
+                  ExpectWithContext(rc, stderr_data).ToBe(255);
+                  ExpectWithContext(stderr_data, "Expecting an error").ToContain("zut_run_program: error executing fakeutility");
+                  Expect(stdout_data).ToBe("");
+
+                  program = "";
+                  rc = zut_run_program(program, {}, stdout_data, stderr_data);
+                  ExpectWithContext(rc, stderr_data).ToBe(-1);
+                  ExpectWithContext(stderr_data, "Expecting an error").ToContain("You must specify a program to run.");
+                  Expect(stdout_data).ToBe("");
+
+                  rc = zut_run_program(nullptr, {}, stdout_data, stderr_data);
+                  ExpectWithContext(rc, stderr_data).ToBe(-1);
+                  ExpectWithContext(stderr_data, "Expecting an error").ToContain("You must specify a program to run.");
+                  Expect(stdout_data).ToBe("");
 
              });
 
