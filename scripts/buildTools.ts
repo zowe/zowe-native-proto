@@ -600,6 +600,12 @@ function DEBUG_MODE() {
     return process.env.ZOWE_NATIVE_DEBUG?.toUpperCase() === "TRUE" || process.env.ZOWE_NATIVE_DEBUG === "1";
 }
 
+function BUILD_TYPE_FLAG() {
+    if (DEBUG_MODE()) return "-DBuildType=DEBUG";
+    if (process.env.CI != null) return "-DBuildType=RELEASE";
+    return "";
+}
+
 // ANSI escape codes for terminal formatting
 const ANSI = {
     HIDE_CURSOR: "\x1b[?25l",
@@ -1252,7 +1258,7 @@ async function upload(connection: Client, sshProfile: IProfile) {
 async function build(connection: Client) {
     const response = await runCommandInShell(
         connection,
-        `cd ${deployDirs.cDir} && make ${DEBUG_MODE() ? "-DBuildType=DEBUG" : ""}\n`,
+        `cd ${deployDirs.cDir} && make ${BUILD_TYPE_FLAG()}\n`,
         { stepName: "Building native/c" },
     );
     DEBUG_MODE() && console.log(response);
@@ -1264,7 +1270,7 @@ async function make(connection: Client, inDir?: string) {
     const targets = args.filter((arg, idx) => idx > 0 && !arg.startsWith("--")).join(" ");
     const response = await runCommandInShell(
         connection,
-        `cd ${pwd} && make ${targets} ${DEBUG_MODE() ? "-DBuildType=DEBUG" : ""}\n`,
+        `cd ${pwd} && make ${targets} ${BUILD_TYPE_FLAG()}\n`,
         { stepName: `Running make ${targets || "all"}` },
     );
     console.log(response);
