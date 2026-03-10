@@ -17,6 +17,7 @@
 #include "../c/commands/job.hpp"
 #include "../c/commands/tso.hpp"
 #include "../c/commands/uss.hpp"
+#include "../c/commands/tool.hpp"
 
 // Helper functions to create builders with common argument mappings
 static CommandBuilder create_ds_builder(CommandBuilder::CommandHandler handler)
@@ -32,6 +33,11 @@ static CommandBuilder create_job_builder(CommandBuilder::CommandHandler handler)
 static CommandBuilder create_uss_builder(CommandBuilder::CommandHandler handler)
 {
   return CommandBuilder(handler).rename_arg("fspath", "file-path");
+}
+
+static CommandBuilder copy_uss_builder(CommandBuilder::CommandHandler handler) 
+{
+    return CommandBuilder(handler).rename_arg("srcFsPath", "source-path").rename_arg("dstFsPath", "destination-path");
 }
 
 void register_ds_commands(CommandDispatcher &dispatcher)
@@ -56,7 +62,8 @@ void register_ds_commands(CommandDispatcher &dispatcher)
                               create_ds_builder(ds::handle_data_set_list_members)
                                   .validate<ListDsMembersRequest, ListDsMembersResponse>()
                                   .rename_arg("maxItems", "max-entries")
-                                  .set_default("warn", false));
+                                  .set_default("warn", false)
+                                  .set_default("pattern", ""));
   dispatcher.register_command("readDataset",
                               create_ds_builder(ds::handle_data_set_view)
                                   .validate<ReadDatasetRequest, ReadDatasetResponse>()
@@ -144,6 +151,7 @@ void register_uss_commands(CommandDispatcher &dispatcher)
   dispatcher.register_command("chtagFile",
                               create_uss_builder(uss::handle_uss_chtag)
                                   .validate<ChtagFileRequest, ChtagFileResponse>());
+  dispatcher.register_command("copyUss", copy_uss_builder(uss::handle_uss_copy).validate<CopyUssRequest, CopyUssResponse>());
   const auto handle_uss_create = [](plugin::InvocationContext &context) -> int
   {
     auto handler = context.get<bool>("is-dir", false) ?
@@ -156,6 +164,11 @@ void register_uss_commands(CommandDispatcher &dispatcher)
   dispatcher.register_command("deleteFile",
                               create_uss_builder(uss::handle_uss_delete)
                                   .validate<DeleteFileRequest, DeleteFileResponse>());
+  // {"id": 1, "jsonrpc": "2.0", "method": "moveFile", "params": {"source": "source-path", "target": "target-path", "force": false}}
+  dispatcher.register_command("moveFile",
+                              create_uss_builder(uss::handle_uss_move)
+                                  .validate<MoveFileRequest, MoveFileResponse>()
+                                  .set_default("force", true));
   dispatcher.register_command("listFiles",
                               create_uss_builder(uss::handle_uss_list)
                                   .validate<ListFilesRequest, ListFilesResponse>()
@@ -175,14 +188,20 @@ void register_uss_commands(CommandDispatcher &dispatcher)
                                   .handle_fifo("stream", "pipe-path", FifoMode::PUT));
 }
 
-void register_cmd_commands(CommandDispatcher &dispatcher)
+void register_tso_commands(CommandDispatcher &dispatcher)
 {
-  // TODO Support APF authorized commands with zoweax
-  // dispatcher.register_command("consoleCommand", CommandBuilder(console::handle_console_issue));
   dispatcher.register_command("tsoCommand",
                               CommandBuilder(tso::handle_tso_issue)
-                                  .validate<IssueTsoRequest, IssueTsoResponse>()
+                                  .validate<IssueTsoCmdRequest, IssueTsoCmdResponse>()
                                   .rename_arg("commandText", "command")
+                                  .read_stdout("data", false));
+}
+
+void register_tool_commands(CommandDispatcher &dispatcher)
+{
+  dispatcher.register_command("toolSearch",
+                              create_ds_builder(tool::handle_tool_search)
+                                  .validate<ToolSearchRequest, ToolSearchResponse>()
                                   .read_stdout("data", false));
 }
 
@@ -191,5 +210,6 @@ void register_all_commands(CommandDispatcher &dispatcher)
   register_ds_commands(dispatcher);
   register_job_commands(dispatcher);
   register_uss_commands(dispatcher);
-  register_cmd_commands(dispatcher);
+  register_tool_commands(dispatcher);
+  register_tso_commands(dispatcher);
 }

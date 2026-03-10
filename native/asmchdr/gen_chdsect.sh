@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
+set -e
 printf "\n"
+
+script_dir="$(cd "$(dirname "$0")" && pwd)"
+export PATH="$script_dir/../c/build-out:$PATH"
 
 echo "Setting required env vars..."
 printf "\n"
@@ -55,6 +59,28 @@ echo "Command: iconv -f 1047 -t utf8 build-out/$filename_no_ext.h.u > build-out/
 iconv -f 1047 -t utf8 build-out/$filename_no_ext.h.u > build-out/$filename_no_ext.h
 chtag -tc ISO8859-1 build-out/$filename_no_ext.h
 echo "Conversion completed."
+printf "\n"
+
+echo "Adding #ifdef for ibm-clang vs legacy pragma syntax..."
+awk '{
+  if ($0 ~ /#pragma pack\(packed\)/) {
+    print "#ifdef __open_xl__"
+    print "#pragma pack(1)"
+    print "#else"
+    print "#pragma pack(packed)"
+    print "#endif"
+  } else if ($0 ~ /#pragma pack\(reset\)/) {
+    print "#ifdef __open_xl__"
+    print "#pragma pack()"
+    print "#else"
+    print "#pragma pack(reset)"
+    print "#endif"
+  } else {
+    print $0
+  }
+}' build-out/$filename_no_ext.h > build-out/$filename_no_ext.h.tmp && \
+  mv build-out/$filename_no_ext.h.tmp build-out/$filename_no_ext.h
+echo "Pragma ifdef replacement completed."
 printf "\n"
 
 echo "Cleaning up..."

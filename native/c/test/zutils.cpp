@@ -13,13 +13,12 @@
 #include "zutils.hpp"
 #include <vector>
 #include <string>
-#include <sstream>
 #include <cstring>
 #include <chrono>
 #include <thread>
+#include <unistd.h>
 #include <stdexcept>
-
-using namespace std;
+#include <random>
 
 int execute_command_with_input(const std::string &command, const std::string &input, bool suppress_output)
 {
@@ -69,44 +68,56 @@ int execute_command_with_output(const std::string &command, std::string &output)
   return WEXITSTATUS(exit_status);
 }
 
-string get_random_string(const int length, const bool allNumbers)
+int execute_su_command_with_output(const std::string &command, std::string &output)
 {
-  static bool seeded = false;
-  if (!seeded)
-  {
-    srand(static_cast<unsigned int>(time(NULL)));
-    seeded = true;
-  }
-  string ret = "";
+  std::string su_command = "echo '" + command + "' | su";
+  return execute_command_with_output(su_command, output);
+}
 
+static std::mt19937 &get_rng()
+{
+  static std::mt19937 rng{std::random_device{}()};
+  return rng;
+}
+
+std::string get_random_string(const int length, const bool allNumbers)
+{
+  auto &rng = get_rng();
+  std::uniform_int_distribution<int> digit_dist(0, 9);
+  std::uniform_int_distribution<int> letter_dist(0, 25);
+  static const char letters[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+  std::string ret;
+  ret.reserve(length);
   for (int i = 0; i < length; ++i)
   {
     if (allNumbers)
     {
-      ret += to_string(rand() % 10);
+      ret += std::to_string(digit_dist(rng));
     }
     else
     {
-      static const char letters[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-      ret += letters[rand() % 26];
+      ret += letters[letter_dist(rng)];
     }
   }
   return ret;
 }
 
-string get_random_uss(const string base_dir)
+std::string get_basename(const std::string &fspath)
 {
-  static bool seeded = false;
-  if (!seeded)
-  {
-    srand(static_cast<unsigned int>(time(NULL)));
-    seeded = true;
-  }
+  if (fspath.empty()) return "";
 
-  string ret = base_dir;
+  auto lastSlash = fspath.find_last_of("/\\");
+
+  return (lastSlash == std::string::npos) ? std::string(fspath) : fspath.substr(lastSlash + 1);
+}
+
+std::string get_random_uss(const std::string &base_dir)
+{
+  std::string ret{base_dir};
   if (ret.back() != '/')
   {
-    ret += "/";
+    ret.push_back('/');
   }
 
   ret += "test_" + get_random_string(10);
@@ -115,11 +126,11 @@ string get_random_uss(const string base_dir)
 }
 
 static std::string s_user = "";
-string get_user()
+std::string get_user()
 {
   if (s_user.empty())
   {
-    string user;
+    std::string user;
     // Note: using `basename $HOME` instead of `whoami` to get the current user
     // because `whoami` may be mapped to a kernel user instead of a real one.
     execute_command_with_output("basename $HOME | tr '[:lower:]' '[:upper:]'", user);
@@ -128,24 +139,24 @@ string get_user()
   return s_user;
 }
 
-string get_random_ds(const int qualifier_count, const string hlq)
+std::string get_random_ds(const int qualifier_count, const std::string &hlq)
 {
   const auto q = hlq.length() == 0 ? get_user() : hlq;
-  string ret = q + ".ZNP#TEST";
+  std::string ret{q + ".ZNP#TEST"};
   for (int i = 0; i < qualifier_count - 2; ++i)
   {
-    ret += ".Z" + get_random_string();
+    ret.append(".Z").append(get_random_string());
   }
   return ret;
 }
 
 // Helper function to get etag from command response
-string parse_etag_from_output(const string &output)
+std::string parse_etag_from_output(const std::string &output)
 {
-  const string label = "etag: ";
+  const std::string label = "etag: ";
   size_t etag_label_pos = output.find(label);
 
-  if (etag_label_pos == string::npos)
+  if (etag_label_pos == std::string::npos)
   {
     return "";
   }
@@ -154,20 +165,20 @@ string parse_etag_from_output(const string &output)
 
   size_t end_value_pos = output.find_first_of("\r\n", start_value_pos);
 
-  if (end_value_pos == string::npos)
+  if (end_value_pos == std::string::npos)
   {
     end_value_pos = output.length();
   }
 
-  string etag = output.substr(start_value_pos, end_value_pos - start_value_pos);
+  std::string etag = output.substr(start_value_pos, end_value_pos - start_value_pos);
 
   return etag;
 }
 
-vector<string> parse_rfc_response(const string input, const char *delim)
+std::vector<std::string> parse_rfc_response(const std::string input, const char *delim)
 {
-  vector<string> ret;
-  string current;
+  std::vector<std::string> ret;
+  std::string current;
   char delimiter = delim[0];
 
   for (size_t i = 0; i < input.length(); ++i)
@@ -187,40 +198,39 @@ vector<string> parse_rfc_response(const string input, const char *delim)
   return ret;
 }
 
-bool wait_for_job(const string &jobid, int max_retries, int delay_ms)
+bool wait_for_job(const std::string &jobid, int max_retries, int delay_ms)
 {
-  string output;
+  std::string output;
   for (int i = 0; i < max_retries; ++i)
   {
     int rc = execute_command_with_output(zowex_command + " job view-status " + jobid, output);
-    if (rc == 0 && output.find(jobid) != string::npos)
+    if (rc == 0 && output.find(jobid) != std::string::npos)
     {
       return true;
     }
-    this_thread::sleep_for(chrono::milliseconds(delay_ms));
+    std::this_thread::sleep_for(std::chrono::milliseconds(delay_ms));
   }
   return false;
 }
 
 // Data set creation helpers
-
-void create_dsn_with_attrs(ZDS *zds, const string &dsn, DS_ATTRIBUTES &attrs, const string &type_name)
+void create_dsn_with_attrs(ZDS *zds, const std::string &dsn, const DS_ATTRIBUTES &attrs, const std::string &type_name)
 {
   memset(zds, 0, sizeof(ZDS));
-  string response;
+  std::string response;
   int rc = zds_create_dsn(zds, dsn, attrs, response);
   if (rc != 0)
   {
-    string err = zds->diag.e_msg_len > 0 ? string(zds->diag.e_msg)
-                 : response.length() > 0 ? response
-                                         : "rc=" + to_string(rc);
-    throw runtime_error("Failed to create " + type_name + ": " + err);
+    std::string err = zds->diag.e_msg_len > 0 ? std::string(zds->diag.e_msg)
+                      : response.length() > 0 ? response
+                                              : "rc=" + std::to_string(rc);
+    throw std::runtime_error("Failed to create " + type_name + ": " + err);
   }
 }
 
-void create_pds(ZDS *zds, const string &dsn)
+void create_pds(ZDS *zds, const std::string &dsn)
 {
-  DS_ATTRIBUTES attrs = {0};
+  DS_ATTRIBUTES attrs{};
   attrs.dsorg = "PO";
   attrs.dsntype = "PDS";
   attrs.recfm = "F,B";
@@ -230,9 +240,9 @@ void create_pds(ZDS *zds, const string &dsn)
   create_dsn_with_attrs(zds, dsn, attrs, "PDS");
 }
 
-void create_pdse(ZDS *zds, const string &dsn)
+void create_pdse(ZDS *zds, const std::string &dsn)
 {
-  DS_ATTRIBUTES attrs = {0};
+  DS_ATTRIBUTES attrs{};
   attrs.dsorg = "PO";
   attrs.dsntype = "LIBRARY";
   attrs.recfm = "F,B";
@@ -242,9 +252,9 @@ void create_pdse(ZDS *zds, const string &dsn)
   create_dsn_with_attrs(zds, dsn, attrs, "PDSE");
 }
 
-void create_seq(ZDS *zds, const string &dsn)
+void create_seq(ZDS *zds, const std::string &dsn)
 {
-  DS_ATTRIBUTES attrs = {0};
+  DS_ATTRIBUTES attrs{};
   attrs.dsorg = "PS";
   attrs.recfm = "F,B";
   attrs.lrecl = 80;
@@ -254,9 +264,118 @@ void create_seq(ZDS *zds, const string &dsn)
   create_dsn_with_attrs(zds, dsn, attrs, "sequential data set");
 }
 
-void write_to_dsn(const string &dsn, const string &content)
+void write_to_dsn(const std::string &dsn, const std::string &content)
 {
-  ZDS zds = {0};
-  string data = content;
+  ZDS zds{};
+  std::string data = content;
   zds_write_to_dsn(&zds, dsn, data);
+}
+
+TestFileGuard::TestFileGuard(const char *_filename, const char &mode, const char *_link)
+    : fp()
+{
+  if (mode == 'p')
+  {
+    mkfifo(_filename, 0666);
+    _file = std::string(_filename);
+  }
+  else if (mode == 'l')
+  {
+    symlink(_link, _filename);
+    _file = std::string(_filename);
+  }
+  else
+  {
+    _file = std::string(_filename);
+    fp = FileGuard(_filename, std::string(1, mode).c_str());
+  }
+}
+
+void TestFileGuard::reset(const char *_filename)
+{
+  struct stat file_stats;
+  if (stat(_file.c_str(), &file_stats) == 0)
+  {
+    if (S_ISDIR(file_stats.st_mode))
+    {
+      rmdir(_file.c_str());
+    }
+    else
+    {
+      unlink(_file.c_str());
+    }
+  }
+  _file = std::string(_filename);
+  if (stat(_file.c_str(), &file_stats) == -1)
+  {
+    fp = FileGuard(_file.c_str(), "w");
+  }
+}
+
+TestFileGuard::~TestFileGuard()
+{
+  unlink(_file.c_str());
+}
+
+TestFileGuard::operator FILE *() const
+{
+  return fp;
+}
+
+TestFileGuard::operator bool() const
+{
+  return fp != nullptr;
+}
+
+TestDirGuard::TestDirGuard(const char *_dirname, const mode_t mode)
+    : _dir(std::string(_dirname))
+{
+  struct stat dir_stats;
+  if (stat(_dir.c_str(), &dir_stats) == 0 && S_ISDIR(dir_stats.st_mode))
+  {
+    rmdir(_dir.c_str());
+  }
+  mkdir(_dir.c_str(), mode);
+}
+
+TestDirGuard::~TestDirGuard()
+{
+  struct stat dir_stats;
+  if (stat(_dir.c_str(), &dir_stats) == 0)
+  {
+    if (S_ISDIR(dir_stats.st_mode))
+    {
+      rmdir(_dir.c_str());
+    }
+    else
+    {
+      unlink(_dir.c_str());
+    }
+  }
+}
+
+void TestDirGuard::reset(const char *_dirname)
+{
+  struct stat dir_stats;
+  if (stat(_dir.c_str(), &dir_stats) == 0)
+  {
+    if (S_ISDIR(dir_stats.st_mode))
+    {
+      rmdir(_dir.c_str());
+    }
+    else
+    {
+      unlink(_dir.c_str());
+    }
+  }
+  _dir = std::string(_dirname);
+  if (stat(_dir.c_str(), &dir_stats) == -1)
+  {
+    mkdir(_dir.c_str(), 0755);
+  }
+}
+
+TestDirGuard::operator std::string() const
+{
+  return _dir;
 }

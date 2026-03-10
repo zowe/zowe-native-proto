@@ -13,7 +13,7 @@
 #include <chrono>
 #include <map>
 #include <mutex>
-#include <signal.h>
+#include <csignal>
 #include <sstream>
 #include <string>
 #include <thread>
@@ -33,7 +33,7 @@ struct StatusMessage
 {
   string status;
   string message;
-  zstd::optional<zjson::Value> data;
+  std::optional<zjson::Value> data;
 };
 ZJSON_DERIVE(StatusMessage, status, message, data);
 
@@ -82,7 +82,7 @@ private:
   std::map<string, string> load_checksums()
   {
     std::map<string, string> checksums;
-    ZUSF zusf = {.encoding_opts = {.data_type = eDataTypeText, .source_codepage = "IBM-1047"}};
+    ZUSF zusf = {.encoding_opts = {.source_codepage = "IBM-1047", .data_type = eDataTypeText}};
     string checksums_file = exec_dir + "/checksums.asc";
     string checksums_content;
 
@@ -123,7 +123,7 @@ private:
     StatusMessage status_msg{
         .status = "ready",
         .message = "zowed is ready to accept input",
-        .data = zstd::optional<zjson::Value>(data),
+        .data = std::optional<zjson::Value>(data),
     };
 
     string json_string = RpcServer::serialize_json(zjson::to_value(status_msg).value());

@@ -6,6 +6,20 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Recent Changes
 
+- `c`: Added `toolSearch` in `zowed` for use by client SDK.
+- `c`: Added the `pattern` option to the `data-set list-members` zowex command to filter the returned members. [#817](https://github.com/zowe/zowe-native-proto/pull/817)
+- `c`: Implemented `zowex uss copy` command to copy USS files and directories. [#379](https://github.com/zowe/zowe-native-proto/issues/379)
+- `c`: Implemented `zowex uss move` command to move files and directories in z/OS Unix. [#378](https://github.com/zowe/zowe-native-proto/issues/378)
+- `python`: Implemented basic move APIs and fixed build issues. [#789](https://github.com/zowe/zowe-native-proto/pull/789)
+- `c`: Updated the `gen_chdsect.sh` shell script used to generate chdsect header files to generate appropriate pragma syntax expected by the `ibm-clang` C/C++ compiler. When the headers are included in Open XL-compiled code, the new pragma syntax is used. Otherwise, the legacy `pack(packed)` and `pack(reset)` macro syntax is used. [#368](https://github.com/zowe/zowe-native-proto/issues/368)
+- `native`: Migrated compiler from xlclang/xlclang++ to ibm-clang/ibm-clang++ (Open XL C/C++, v2.1, supports C++17). The `xlclang-extenders` makefile target has been removed in favor of the `all` target. [#653](https://github.com/zowe/zowe-native-proto/issues/653)
+- `c`: Modernized C++ code to align with C++17 best practices and adopted new standard library implementations (`unordered_map`, `to_string`, `if constexpr`, brace initialization, etc.). [#812](https://github.com/zowe/zowe-native-proto/pull/812)
+- `c`: Removed all cases of `using namespace std` in native code to prevent namespace collisions and unintended effects on API consumers. All uses of `std` classes and utilities are now explicitly prefixed with `std::`. [#812](https://github.com/zowe/zowe-native-proto/pull/812)
+- `c`: Removed redundant standard library utilities from the `zstd.hpp` C++ header, in favor of the verified implementations included with ibm-clang and C++17. [#812](https://github.com/zowe/zowe-native-proto/pull/812)
+- `c`: Renamed `zut_int_to_string` to `zut_hex_to_string` to align with use cases for the function. [#812](https://github.com/zowe/zowe-native-proto/pull/812)
+
+## `0.2.4`
+
 - `c`: Fixed an issue where errors during `zowex` initialization and command execution were unhandled, causing abends as a result. Now, if a fatal error is encountered, the error is caught and its details are displayed before the process exits. [#784](https://github.com/zowe/zowe-native-proto/issues/784)
 - `c`: Fixed an issue where the `zowex uss list` command would return the file type `d` for symlinked directories instead of `l`. Now, symlinks in a file list are marked with file type `l`. [#791](https://github.com/zowe/zowe-native-proto/issues/791)
 - `c`: Fixed an issue where the `zowex uss delete` command could not remove symlinks or directories containing symlinks. Now, the command properly deletes a directory with a symlink in it, and treats the link as a file. No sub-directories or files in the target link are deleted. [#792](https://github.com/zowe/zowe-native-proto/issues/792)
@@ -15,14 +29,14 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 ## `0.2.3`
 
 - `c`: Added `zowex ds copy` command to copy data sets and members with optional `--replace` flag (overwrites matching members) and `--delete-target-members` flag (deletes all target members before copying, making target match source exactly). Supports PDS-to-PDS, member-to-member, and sequential-to-sequential copies. Note: RECFM=U data sets are not supported. [#750](https://github.com/zowe/zowe-native-proto/pull/750)
-- `c`: Added rename data set members functionality to the backend. [#765] (https://github.com/zowe/zowe-native-proto/pull/765)
+- `c`: Added rename data set members functionality to the backend. [#765](https://github.com/zowe/zowe-native-proto/pull/765)
 - `c`: Implement `zowex job watch` command to watch spool output for a string or regex until terminating.
 - `c`: Implement `zut_bpxwdyn_rtdsn` to obtain and return a system allocated data set name.
 - `c`: Implement command `zowex job view-file` to print contents of a job output data set.
 - The `zowex job submit-jcl` command now displays the submitted job in the following format: `JobName(JobId)` [#733](https://github.com/zowe/zowe-native-proto/issues/733)
 - `c`: Rename command `zowex job view-file` to `zowex job view-file-by-id` so that `view-file` can be used to print a specific file (data set) name. [#740](https://github.com/zowe/zowe-native-proto/issues/740)
 - `c`: The zowex CLI parser now supports enabling passthrough arguments for commands. When enabled, arguments passed after a double-dash (`--`) are passed directly to the command as raw input. [#729](https://github.com/zowe/zowe-native-proto/pull/729)
-- Added the rename dataset functionality to the backend. [#376] (https://github.com/zowe/zowe-native-proto/issues/376)
+- Added the rename dataset functionality to the backend. [#376](https://github.com/zowe/zowe-native-proto/issues/376)
 - `c`: Fixed results being truncated when listing all jobs on a system. [#735](https://github.com/zowe/zowe-native-proto/issues/735)
 - `c`: Fixed default behavior of `zowex job list` command to list jobs for only the current user. [#739](https://github.com/zowe/zowe-native-proto/issues/739)
 - `c`: Added `--status` argument to `zowex job list` command that supports filtering by job status. [#743](https://github.com/zowe/zowe-native-proto/issues/743)

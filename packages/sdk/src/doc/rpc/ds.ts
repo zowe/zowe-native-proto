@@ -114,6 +114,10 @@ export interface ListDsMembersRequest
      * Whether to include attributes in the response
      */
     attributes?: boolean;
+    /**
+     * A wildcard pattern used to filter the returned entries (supports '*' and '?').
+     */
+    pattern?: string;
 }
 
 export interface ListDsMembersResponse extends common.CommandResponse {

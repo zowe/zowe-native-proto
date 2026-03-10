@@ -14,25 +14,25 @@
 #include <cstring>
 #include <ctime>
 #include <iterator>
-#include <stdlib.h>
+#include <sstream>
+#include <cstdlib>
 #include <string>
 #include "zutils.hpp"
-#include <stdio.h>
+#include <cstdio>
 #include "test_utils.hpp"
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include "../zut.hpp"
 
-using namespace std;
 using namespace ztst;
 
-const string ussTestDir = "/tmp/zowex-uss_" + get_random_string(10);
+const std::string ussTestDir = "/tmp/zowex-uss_" + get_random_string(10);
 
 void zowex_uss_tests()
 {
   int rc;
-  string response;
+  std::string response;
   describe("uss",
            [&]() -> void
            {
@@ -49,27 +49,234 @@ void zowex_uss_tests()
                       { execute_command_with_output(zowex_command + " uss delete " + ussTestDir + " --recursive", response); });
 
              // Helper function to create a test file
-             auto create_test_file_cmd = [&](const string &uss_file, const string &options = "") -> void
+             auto create_test_file_cmd = [&](const std::string &uss_file, const std::string &options = "") -> void
              {
-               string command = zowex_command + " uss create-file " + uss_file + " " + options;
+               std::string command = zowex_command + " uss create-file " + uss_file + " " + options;
                rc = execute_command_with_output(command, response);
                ExpectWithContext(rc, response).ToBe(0);
                Expect(response).ToContain("USS file '" + uss_file + "' created");
              };
 
              // Helper function to create a test directory
-             auto create_test_dir_cmd = [&](const string &uss_dir, const string &options = "") -> void
+             auto create_test_dir_cmd = [&](const std::string &uss_dir, const std::string &options = "") -> void
              {
-               string command = zowex_command + " uss create-dir " + uss_dir + " " + options;
+               std::string command = zowex_command + " uss create-dir " + uss_dir + " " + options;
                rc = execute_command_with_output(command, response);
                ExpectWithContext(rc, response).ToBe(0);
                Expect(response).ToContain("USS directory '" + uss_dir + "' created");
              };
 
+             describe("copy uss tests",
+                      [&]() -> void
+                      {
+                        // Helper functions
+                        auto copy_cmd = [&](const std::string &source, const std::string &dest, const std::string &options = "") -> std::pair<std::string, int>
+                        {
+                          int lrc;
+                          std::string lresponse;
+                          std::string command = zowex_command + " uss copy \"" + source + "\" \"" + dest + "\" " + options;
+                          lrc = execute_command_with_output(command, lresponse);
+                          return {lresponse, lrc};
+                        };
+
+                        auto delete_cmd = [&](const std::string &file_path, const std::string &options = "") -> std::pair<std::string, int>
+                        {
+                          int lrc;
+                          std::string lresponse;
+                          std::string command = zowex_command + " uss delete \"" + file_path + "\" " + options;
+                          lrc = execute_command_with_output(command, lresponse);
+                          return {lresponse, lrc};
+                        };
+
+                        auto list_cmd = [&](const std::string &file_path, const std::string &options = "") -> std::pair<std::string, int>
+                        {
+                          int lrc;
+                          std::string lresponse;
+                          std::string command = zowex_command + " uss list \"" + file_path + "\" " + options;
+                          lrc = execute_command_with_output(command, lresponse);
+                          return {lresponse, lrc};
+                        };
+
+                        auto chmod_cmd = [&](const std::string &file_path, const std::string &permissions, const std::string &options = "") -> std::pair<std::string, int>
+                        {
+                          int lrc;
+                          std::string lresponse;
+                          std::string command = zowex_command + " uss chmod " + permissions + " \"" + file_path + "\"";
+                          lrc = execute_command_with_output(command, lresponse);
+                          return {lresponse, lrc};
+                        };
+
+                        std::string uss_path;
+                        std::string file_a;
+                        std::string file_b;
+                        std::string dir_a;
+                        std::string dir_b;
+
+                        beforeEach([&]()
+                                   {
+                  uss_path = get_random_uss(ussTestDir);
+                  file_a = uss_path + "/test_file_a";
+                  file_b = uss_path + "/test_file_b";
+                  dir_a = uss_path + "/test_dir_a";
+                  dir_b = uss_path + "/test_dir_b";
+                  create_test_dir_cmd(uss_path); });
+
+                        it("copy file->file smoke", [&]()
+                           {
+                             std::string source_file = file_a;
+                             std::string target_file = file_b;
+                             create_test_file_cmd(file_a);
+                             std::pair<std::string, int> copy_result, list_file_result;
+
+                             // normal copy
+                             copy_result = copy_cmd(source_file, target_file);
+                             ExpectWithContext(copy_result.second, copy_result.first).ToBe(0);
+                             list_file_result = list_cmd(target_file);
+                             ExpectWithContext(list_file_result.second, list_file_result.first).ToBe(0);
+
+                             // copy when target already exists: replaces it
+                             copy_result = copy_cmd(source_file, target_file);
+                             ExpectWithContext(copy_result.second, copy_result.first).ToBe(0);
+                             list_file_result = list_cmd(target_file);
+                             ExpectWithContext(list_file_result.second, list_file_result.first).ToBe(0);
+                             ExpectWithContext(copy_result.second, copy_result.first).ToBe(0);
+                             list_file_result = list_cmd(target_file, "-al");
+                             ExpectWithContext(list_file_result.second, list_file_result.first).ToBe(0);
+                             Expect(list_file_result.first).ToContain("-rw-r--r--");
+
+                             // copy with --preserve-attributes
+                             std::string output;
+                             delete_cmd(target_file);
+                             zut_run_shell_command("chmod 777 " + source_file, output);
+                             copy_result = copy_cmd(source_file, target_file, "--preserve-attributes");
+                             ExpectWithContext(copy_result.second, copy_result.first).ToBe(0);
+                             list_file_result = list_cmd(target_file, "-al");
+                             ExpectWithContext(list_file_result.second, list_file_result.first).ToBe(0);
+                             Expect(list_file_result.first).ToContain("-rwxrwxrwx");
+                           });
+
+                        it("copy dir->dir smoke", [&]()
+                           {
+                             std::string source_dir = dir_a;
+                             std::string target_dir = dir_b;
+                             create_test_dir_cmd(source_dir);
+                             std::pair<std::string, int> copy_result, list_file_result;
+
+                             copy_result = copy_cmd(source_dir, target_dir, "--recursive --follow-symlinks --force --preserve-attributes");
+                             ExpectWithContext(copy_result.second, copy_result.first).ToBe(0);
+                             list_file_result = list_cmd(target_dir); // dir created
+                             ExpectWithContext(list_file_result.second, list_file_result.first).ToBe(0);
+                           });
+
+                        it("copy dir->file smoke", [&]()
+                           {
+                             std::string source_dir = dir_a;
+                             std::string target_file = file_b;
+                             create_test_dir_cmd(source_dir);
+                             create_test_file_cmd(target_file);
+                             std::pair<std::string, int> copy_result, list_file_result;
+
+                             copy_result = copy_cmd(source_dir, target_file);
+                             ExpectWithContext(copy_result.second, copy_result.first).ToBe(255);
+                             list_file_result = list_cmd(target_file); // file still exists
+                             ExpectWithContext(list_file_result.second, list_file_result.first).ToBe(0);
+                           });
+
+                        it("copy file->dir smoke", [&]()
+                           {
+                             const std::string source_file = file_a;
+                             const std::string target_dir = dir_a;
+                             std::string output_file = target_dir + "/" + get_basename(source_file);
+                             create_test_dir_cmd(source_file);
+                             create_test_file_cmd(target_dir);
+                             std::pair<std::string, int> copy_result, list_file_result;
+
+                             copy_result = copy_cmd(source_file, target_dir);
+                             ExpectWithContext(copy_result.second, copy_result.first).ToBe(255);
+                             list_file_result = list_cmd(output_file);
+                             ExpectWithContext(list_file_result.second, list_file_result.first).ToBe(255);
+                           });
+
+                        it("special characters", [&]()
+                           {
+                             const std::vector<std::string> test_cases = {
+                                 "abc*",
+                                 "abc\\*",
+                                 "abc\\\\*",
+                                 "def?ghi",
+                                 "\"with*quotes\"",
+                                 "tes[a-z]+",
+                                 "'lit*'",
+                                 "\u3053\u3093\u306b\u3061\u306f", // こんにちは
+                             };
+
+                             const std::string test_file = file_a;
+                             const std::string test_dir = dir_a;
+                             create_test_file_cmd(test_file);
+                             create_test_dir_cmd(test_dir);
+
+                             for (int i = 0; i < test_cases.size(); i++)
+                             {
+                               std::pair<std::string, int> result;
+                               std::string cmd_output, list_output;
+                               const std::string test_basename = test_cases.at(i);
+                               const std::string test = uss_path + "/" + test_basename;
+
+                               // copy static file -> new file w/ special chars
+                               result = copy_cmd(test_file, test);
+                               ExpectWithContext(result.second, result.first).ToBe(0);
+
+                               result = list_cmd(test, "-al");
+                               ExpectWithContext(result.second, result.first).ToBe(0);
+                               Expect(result.first).ToContain("-rw-r--r--");
+
+                               std::pair<std::string, int> del_res = delete_cmd(test, "-r");
+                               ExpectWithContext(del_res.second, del_res.first).ToBe(0);
+
+                               // copy static dir -> new dir w/ special chars
+                               result = copy_cmd(test_dir, test, "-r");
+                               ExpectWithContext(result.second, result.first).ToBe(0);
+
+                               result = list_cmd(test, "-al");
+                               ExpectWithContext(result.second, result.first).ToBe(0);
+                               Expect(result.first).ToContain("drwxr-xr-x");
+                             }
+                           });
+
+                        it("illegal syntax tests", [&]()
+                           {
+                  std::pair<std::string, int> copy_result;
+                  
+                  copy_result = copy_cmd("", "some-destination");
+                  ExpectWithContext(copy_result.second, copy_result.first).ToBe(255);
+                  copy_result = copy_cmd("/some/source", "");
+                  ExpectWithContext(copy_result.second, copy_result.first).ToBe(255);
+                  copy_result = copy_cmd("", "");
+                  ExpectWithContext(copy_result.second, copy_result.first).ToBe(255);
+                  copy_result = copy_cmd("/some/source", "/some/dest", "--illegal-parameter");
+                  ExpectWithContext(copy_result.second, copy_result.first).ToBe(1); });
+
+                        it("illegal parameter combinations", [&]()
+                           {
+                  std::pair<std::string, int> copy_result;
+                  std::string source_dir = dir_a;
+                  std::string target_dir = dir_b;
+
+                  create_test_dir_cmd(source_dir);
+
+                  // requires --recursive
+                  copy_result = copy_cmd(source_dir, target_dir, "--follow-symlinks");
+                  ExpectWithContext(copy_result.second, copy_result.first).ToBe(255);
+                
+                  // still requires --recursive
+                  copy_result = copy_cmd(source_dir, target_dir, "--follow-symlinks --preserve-attributes --force");
+                  ExpectWithContext(copy_result.second, copy_result.first).ToBe(255); });
+                      });
+
              describe("chmod",
                       [&]() -> void
                       {
-                        string uss_path;
+                        std::string uss_path;
 
                         describe("on a file",
                                  [&]() -> void
@@ -82,8 +289,8 @@ void zowex_uss_tests()
                                    it("should properly chmod a file",
                                       [&]() -> void
                                       {
-                                        string getPermissionsCommand = "ls -l " + uss_path;
-                                        string chmodFileCommand = zowex_command + " uss chmod 777 " + uss_path;
+                                        std::string getPermissionsCommand = "ls -l " + uss_path;
+                                        std::string chmodFileCommand = zowex_command + " uss chmod 777 " + uss_path;
 
                                         rc = execute_command_with_output(getPermissionsCommand, response);
                                         ExpectWithContext(rc, response).ToBe(0);
@@ -108,8 +315,8 @@ void zowex_uss_tests()
                                    it("should properly chmod a directory",
                                       [&]() -> void
                                       {
-                                        string getPermissionsCommand = "ls -ld " + uss_path;
-                                        string chmodFileCommand = zowex_command + " uss chmod 777 " + uss_path + " -r";
+                                        std::string getPermissionsCommand = "ls -ld " + uss_path;
+                                        std::string chmodFileCommand = zowex_command + " uss chmod 777 " + uss_path + " -r";
 
                                         rc = execute_command_with_output(getPermissionsCommand, response);
                                         ExpectWithContext(rc, response).ToBe(0);
@@ -126,8 +333,8 @@ void zowex_uss_tests()
                         it("should properly handle calling chmod on a file that does not exist",
                            [&]() -> void
                            {
-                             string uss_file = ussTestDir + "/test_does_not_exist";
-                             string chmodFileCommand = zowex_command + " uss chmod 777 " + uss_file;
+                             std::string uss_file = ussTestDir + "/test_does_not_exist";
+                             std::string chmodFileCommand = zowex_command + " uss chmod 777 " + uss_file;
                              {
                                test_utils::ErrorStreamCapture c;
                                rc = execute_command_with_output(chmodFileCommand, response);
@@ -139,35 +346,44 @@ void zowex_uss_tests()
              describe("chown",
                       [&]() -> void
                       {
-                        string uss_path;
+                        std::string uss_path;
                         static int testUid;
                         static int testGid;
 
                         beforeAll([&]() -> void
                                   {
-                       string resp;
+                       std::string resp;
                        int rc;
 
-                       testGid = 60000;
-                       while (true)
-                       {
-                         string idCheck = "id -g " + to_string(testGid) + " > /dev/null 2>&1";
-                         rc = execute_command_with_output(idCheck, resp);
-                         if (rc != 0) 
-                           break;
-                         testGid++;
-                         if (testGid > 65530) throw runtime_error("Could not find a free GID for testing");
-                       }
+                       // Use the current user's own UID — chown to self is always permitted
+                       rc = execute_command_with_output("id -u", resp);
+                       if (rc != 0) throw std::runtime_error("Could not determine current UID");
+                       resp.erase(resp.find_last_not_of(" \t\r\n") + 1);
+                       testUid = std::stoi(resp);
 
-                       testUid = 60000;
-                       while (true)
+                       // Pick a supplementary group that differs from the primary GID so the
+                       // change is observable. Fall back to the primary GID if none found.
+                       std::string primaryResp;
+                       rc = execute_command_with_output("id -g", primaryResp);
+                       if (rc != 0) throw std::runtime_error("Could not determine primary GID");
+                       primaryResp.erase(primaryResp.find_last_not_of(" \t\r\n") + 1);
+                       int primaryGid = std::stoi(primaryResp);
+
+                       std::string allGroupsResp;
+                       rc = execute_command_with_output("id -G", allGroupsResp);
+                       if (rc != 0) throw std::runtime_error("Could not determine supplementary GIDs");
+
+                       testGid = primaryGid;
+                       std::istringstream iss(allGroupsResp);
+                       std::string token;
+                       while (iss >> token)
                        {
-                         string idCheck = "id -u " + to_string(testUid) + " > /dev/null 2>&1";
-                         rc = execute_command_with_output(idCheck, resp);
-                         if (rc != 0)
+                         int gid = std::stoi(token);
+                         if (gid != primaryGid)
+                         {
+                           testGid = gid;
                            break;
-                         testUid++;
-                         if (testUid > 65530) throw runtime_error("Could not find a free UID for testing");
+                         }
                        } });
 
                         describe("on a file",
@@ -181,32 +397,32 @@ void zowex_uss_tests()
                                    it("should properly change the group on a file using numeric GID",
                                       [&]() -> void
                                       {
-                                        string newGroupChownCommand = zowex_command + " uss chown :" + to_string(testGid) + " " + uss_path;
-                                        string listUser = "ls -n " + uss_path;
+                                        std::string newGroupChownCommand = zowex_command + " uss chown :" + std::to_string(testGid) + " " + uss_path;
+                                        std::string listUser = "ls -n " + uss_path;
 
                                         rc = execute_command_with_output(newGroupChownCommand, response);
                                         ExpectWithContext(rc, response).ToBe(0);
-                                        Expect(response).ToContain("USS path '" + uss_path + "' owner changed to ':" + to_string(testGid) + "'");
+                                        Expect(response).ToContain("USS path '" + uss_path + "' owner changed to ':" + std::to_string(testGid) + "'");
 
                                         rc = execute_command_with_output(listUser, response);
                                         ExpectWithContext(rc, response).ToBe(0);
-                                        Expect(response).ToContain(to_string(testGid));
+                                        Expect(response).ToContain(std::to_string(testGid));
                                       });
 
                                    it("should properly change the group and user on a file using numeric IDs",
                                       [&]() -> void
                                       {
-                                        string newUserNewGroupChownCommand = zowex_command + " uss chown " + to_string(testUid) + ":" + to_string(testGid) + " " + uss_path;
-                                        string listUser = "ls -n " + uss_path;
+                                        std::string newUserNewGroupChownCommand = zowex_command + " uss chown " + std::to_string(testUid) + ":" + std::to_string(testGid) + " " + uss_path;
+                                        std::string listUser = "ls -n " + uss_path;
 
                                         rc = execute_command_with_output(newUserNewGroupChownCommand, response);
                                         ExpectWithContext(rc, response).ToBe(0);
-                                        Expect(response).ToContain("USS path '" + uss_path + "' owner changed to '" + to_string(testUid) + ":" + to_string(testGid) + "'");
+                                        Expect(response).ToContain("USS path '" + uss_path + "' owner changed to '" + std::to_string(testUid) + ":" + std::to_string(testGid) + "'");
 
                                         rc = execute_command_with_output(listUser, response);
                                         ExpectWithContext(rc, response).ToBe(0);
-                                        Expect(response).ToContain(to_string(testUid));
-                                        Expect(response).ToContain(to_string(testGid));
+                                        Expect(response).ToContain(std::to_string(testUid));
+                                        Expect(response).ToContain(std::to_string(testGid));
                                       });
                                  });
 
@@ -221,26 +437,26 @@ void zowex_uss_tests()
                                    it("should properly change the group and user on a directory using numeric IDs",
                                       [&]() -> void
                                       {
-                                        string newUserNewGroupChownCommand = zowex_command + " uss chown " + to_string(testUid) + ":" + to_string(testGid) + " " + uss_path + " -r";
+                                        std::string newUserNewGroupChownCommand = zowex_command + " uss chown " + std::to_string(testUid) + ":" + std::to_string(testGid) + " " + uss_path + " -r";
 
                                         // Use -nd to list directory details numerically without entering it
-                                        string listUser = "ls -nd " + uss_path;
+                                        std::string listUser = "ls -nd " + uss_path;
 
                                         rc = execute_command_with_output(newUserNewGroupChownCommand, response);
                                         ExpectWithContext(rc, response).ToBe(0);
-                                        Expect(response).ToContain("USS path '" + uss_path + "' owner changed to '" + to_string(testUid) + ":" + to_string(testGid) + "'");
+                                        Expect(response).ToContain("USS path '" + uss_path + "' owner changed to '" + std::to_string(testUid) + ":" + std::to_string(testGid) + "'");
 
                                         rc = execute_command_with_output(listUser, response);
                                         ExpectWithContext(rc, response).ToBe(0);
-                                        Expect(response).ToContain(to_string(testUid));
-                                        Expect(response).ToContain(to_string(testGid));
+                                        Expect(response).ToContain(std::to_string(testUid));
+                                        Expect(response).ToContain(std::to_string(testGid));
                                       });
                                  });
                       });
              describe("chtag",
                       [&]() -> void
                       {
-                        string uss_file;
+                        std::string uss_file;
 
                         describe("on a file",
                                  [&]() -> void
@@ -253,8 +469,8 @@ void zowex_uss_tests()
                                    it("should properly change the file tag on a file",
                                       [&]() -> void
                                       {
-                                        string chtagCommand = zowex_command + " uss chtag " + uss_file + " IBM-1047";
-                                        string listUser = "ls -alT " + uss_file;
+                                        std::string chtagCommand = zowex_command + " uss chtag " + uss_file + " IBM-1047";
+                                        std::string listUser = "ls -alT " + uss_file;
 
                                         rc = execute_command_with_output(chtagCommand, response);
                                         ExpectWithContext(rc, response).ToBe(0);
@@ -268,8 +484,8 @@ void zowex_uss_tests()
                                    it("should properly handle setting an invalid file tag",
                                       [&]() -> void
                                       {
-                                        string chtagCommand = zowex_command + " uss chtag " + uss_file + " bad-tag";
-                                        string listUser = "ls -alT " + uss_file;
+                                        std::string chtagCommand = zowex_command + " uss chtag " + uss_file + " bad-tag";
+                                        std::string listUser = "ls -alT " + uss_file;
                                         {
                                           test_utils::ErrorStreamCapture c;
                                           rc = execute_command_with_output(chtagCommand, response);
@@ -282,10 +498,10 @@ void zowex_uss_tests()
                         it("should properly change the file tag recursively (on a file)",
                            [&]() -> void
                            {
-                             string uss_dir_like_file = get_random_uss(ussTestDir) + "_dir";
+                             std::string uss_dir_like_file = get_random_uss(ussTestDir) + "_dir";
                              create_test_file_cmd(uss_dir_like_file);
-                             string chtagCommand = zowex_command + " uss chtag " + uss_dir_like_file + " IBM-1047 -r";
-                             string listUser = "ls -alT " + uss_dir_like_file;
+                             std::string chtagCommand = zowex_command + " uss chtag " + uss_dir_like_file + " IBM-1047 -r";
+                             std::string listUser = "ls -alT " + uss_dir_like_file;
 
                              rc = execute_command_with_output(chtagCommand, response);
                              ExpectWithContext(rc, response).ToBe(0);
@@ -302,9 +518,9 @@ void zowex_uss_tests()
                         it("should properly create a directory with mode 777 specified",
                            [&]() -> void
                            {
-                             string uss_dir = get_random_uss(ussTestDir) + "_dir";
+                             std::string uss_dir = get_random_uss(ussTestDir) + "_dir";
                              create_test_dir_cmd(uss_dir, "--mode 777");
-                             string listUser = "ls -ld " + uss_dir;
+                             std::string listUser = "ls -ld " + uss_dir;
 
                              rc = execute_command_with_output(listUser, response);
                              ExpectWithContext(rc, response).ToBe(0);
@@ -313,9 +529,9 @@ void zowex_uss_tests()
                         it("should properly create a directory with mode 700 specified",
                            [&]() -> void
                            {
-                             string uss_dir = get_random_uss(ussTestDir) + "_dir";
+                             std::string uss_dir = get_random_uss(ussTestDir) + "_dir";
                              create_test_dir_cmd(uss_dir, "--mode 700");
-                             string listUser = "ls -ld " + uss_dir;
+                             std::string listUser = "ls -ld " + uss_dir;
 
                              rc = execute_command_with_output(listUser, response);
                              ExpectWithContext(rc, response).ToBe(0);
@@ -324,9 +540,9 @@ void zowex_uss_tests()
                         it("should properly handle recursive directory creation",
                            [&]() -> void
                            {
-                             string uss_dir = get_random_uss(ussTestDir) + "_dir/recursive_test";
+                             std::string uss_dir = get_random_uss(ussTestDir) + "_dir/recursive_test";
                              create_test_dir_cmd(uss_dir);
-                             string listUser = "ls -ld " + uss_dir;
+                             std::string listUser = "ls -ld " + uss_dir;
 
                              rc = execute_command_with_output(listUser, response);
                              ExpectWithContext(rc, response).ToBe(0);
@@ -335,8 +551,8 @@ void zowex_uss_tests()
                         it("should properly handle an invalid directory path creation",
                            [&]() -> void
                            {
-                             string uss_dir = get_random_uss(ussTestDir);
-                             string command = zowex_command + " uss create-dir " + uss_dir + "//";
+                             std::string uss_dir = get_random_uss(ussTestDir);
+                             std::string command = zowex_command + " uss create-dir " + uss_dir + "//";
                              {
                                test_utils::ErrorStreamCapture c;
                                rc = execute_command_with_output(command, response);
@@ -351,9 +567,9 @@ void zowex_uss_tests()
                         it("should properly create a file with mode 777 specified",
                            [&]() -> void
                            {
-                             string uss_file = get_random_uss(ussTestDir);
+                             std::string uss_file = get_random_uss(ussTestDir);
                              create_test_file_cmd(uss_file, "--mode 777");
-                             string listUser = "ls -l " + uss_file;
+                             std::string listUser = "ls -l " + uss_file;
 
                              rc = execute_command_with_output(listUser, response);
                              ExpectWithContext(rc, response).ToBe(0);
@@ -362,9 +578,9 @@ void zowex_uss_tests()
                         it("should properly create a file with mode 644 by default",
                            [&]() -> void
                            {
-                             string uss_file = get_random_uss(ussTestDir);
+                             std::string uss_file = get_random_uss(ussTestDir);
                              create_test_file_cmd(uss_file);
-                             string listUser = "ls -l " + uss_file;
+                             std::string listUser = "ls -l " + uss_file;
 
                              rc = execute_command_with_output(listUser, response);
                              ExpectWithContext(rc, response).ToBe(0);
@@ -373,8 +589,8 @@ void zowex_uss_tests()
                         it("should properly handle a creating a file in a non-existant directory",
                            [&]() -> void
                            {
-                             string uss_file = get_random_uss(ussTestDir) + "/does_not_exist";
-                             string command = zowex_command + " uss create-file " + uss_file;
+                             std::string uss_file = get_random_uss(ussTestDir) + "/does_not_exist";
+                             std::string command = zowex_command + " uss create-file " + uss_file;
                              {
                                test_utils::ErrorStreamCapture c;
                                rc = execute_command_with_output(command, response);
@@ -389,15 +605,15 @@ void zowex_uss_tests()
                         it("should properly delete a file",
                            [&]() -> void
                            {
-                             string uss_file = get_random_uss(ussTestDir);
+                             std::string uss_file = get_random_uss(ussTestDir);
                              create_test_file_cmd(uss_file);
 
-                             string deleteCommand = zowex_command + " uss delete " + uss_file;
+                             std::string deleteCommand = zowex_command + " uss delete " + uss_file;
                              rc = execute_command_with_output(deleteCommand, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain("USS item '" + uss_file + "' deleted");
 
-                             string listCommand = "ls " + uss_file;
+                             std::string listCommand = "ls " + uss_file;
                              rc = execute_command_with_output(listCommand, response);
                              Expect(rc).ToBe(1);
                            });
@@ -405,25 +621,25 @@ void zowex_uss_tests()
                         it("should properly delete a directory recursively",
                            [&]() -> void
                            {
-                             string uss_dir = get_random_uss(ussTestDir) + "_dir";
+                             std::string uss_dir = get_random_uss(ussTestDir) + "_dir";
                              create_test_dir_cmd(uss_dir);
-                             string uss_file_in_dir = uss_dir + "/test_file.txt";
+                             std::string uss_file_in_dir = uss_dir + "/test_file.txt";
                              create_test_file_cmd(uss_file_in_dir);
 
-                             string deleteCommand = zowex_command + " uss delete " + uss_dir + " -r";
+                             std::string deleteCommand = zowex_command + " uss delete " + uss_dir + " -r";
                              rc = execute_command_with_output(deleteCommand, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain("USS item '" + uss_dir + "' deleted");
 
-                             string listCommand = "ls -d " + uss_dir;
+                             std::string listCommand = "ls -d " + uss_dir;
                              rc = execute_command_with_output(listCommand, response);
                              Expect(rc).ToBe(1);
                            });
                         it("should properly handle deleting a non-existent item",
                            [&]() -> void
                            {
-                             string uss_file = ussTestDir + "/test_does_not_exist";
-                             string deleteCommand = zowex_command + " uss delete " + uss_file;
+                             std::string uss_file = ussTestDir + "/test_does_not_exist";
+                             std::string deleteCommand = zowex_command + " uss delete " + uss_file;
                              {
                                test_utils::ErrorStreamCapture c;
                                rc = execute_command_with_output(deleteCommand, response);
@@ -435,9 +651,9 @@ void zowex_uss_tests()
                         it("should properly handle deleting a directory without the recursive flag",
                            [&]() -> void
                            {
-                             string uss_dir = get_random_uss(ussTestDir) + "_dir";
+                             std::string uss_dir = get_random_uss(ussTestDir) + "_dir";
                              create_test_dir_cmd(uss_dir);
-                             string deleteCommand = zowex_command + " uss delete " + uss_dir;
+                             std::string deleteCommand = zowex_command + " uss delete " + uss_dir;
                              {
                                test_utils::ErrorStreamCapture c;
                                rc = execute_command_with_output(deleteCommand, response);
@@ -449,23 +665,23 @@ void zowex_uss_tests()
                         it("should properly delete a symlink to a directory without recursive flag",
                            [&]() -> void
                            {
-                             string target_dir = get_random_uss(ussTestDir) + "_target_dir";
-                             string link_path = get_random_uss(ussTestDir) + "_dir_link";
+                             std::string target_dir = get_random_uss(ussTestDir) + "_target_dir";
+                             std::string link_path = get_random_uss(ussTestDir) + "_dir_link";
                              create_test_dir_cmd(target_dir);
 
                              int link_rc = symlink(target_dir.c_str(), link_path.c_str());
                              Expect(link_rc).ToBe(0);
 
-                             string deleteCommand = zowex_command + " uss delete " + link_path;
+                             std::string deleteCommand = zowex_command + " uss delete " + link_path;
                              rc = execute_command_with_output(deleteCommand, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain("USS item '" + link_path + "' deleted");
 
-                             string listLinkCommand = "ls -ld " + link_path;
+                             std::string listLinkCommand = "ls -ld " + link_path;
                              rc = execute_command_with_output(listLinkCommand, response);
                              Expect(rc).ToBe(1);
 
-                             string listTargetCommand = "ls -ld " + target_dir;
+                             std::string listTargetCommand = "ls -ld " + target_dir;
                              rc = execute_command_with_output(listTargetCommand, response);
                              ExpectWithContext(rc, response).ToBe(0);
 
@@ -475,10 +691,10 @@ void zowex_uss_tests()
                         it("should not traverse symlink targets during recursive directory delete",
                            [&]() -> void
                            {
-                             string external_dir = get_random_uss(ussTestDir) + "_external_dir";
-                             string external_file = external_dir + "/preserve.txt";
-                             string parent_dir = get_random_uss(ussTestDir) + "_parent_dir";
-                             string link_path = parent_dir + "/external_link";
+                             std::string external_dir = get_random_uss(ussTestDir) + "_external_dir";
+                             std::string external_file = external_dir + "/preserve.txt";
+                             std::string parent_dir = get_random_uss(ussTestDir) + "_parent_dir";
+                             std::string link_path = parent_dir + "/external_link";
 
                              create_test_dir_cmd(external_dir);
                              create_test_file_cmd(external_file);
@@ -487,16 +703,16 @@ void zowex_uss_tests()
                              int link_rc = symlink(external_dir.c_str(), link_path.c_str());
                              Expect(link_rc).ToBe(0);
 
-                             string deleteCommand = zowex_command + " uss delete " + parent_dir + " -r";
+                             std::string deleteCommand = zowex_command + " uss delete " + parent_dir + " -r";
                              rc = execute_command_with_output(deleteCommand, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain("USS item '" + parent_dir + "' deleted");
 
-                             string listParentCommand = "ls -ld " + parent_dir;
+                             std::string listParentCommand = "ls -ld " + parent_dir;
                              rc = execute_command_with_output(listParentCommand, response);
                              Expect(rc).ToBe(1);
 
-                             string listExternalFileCommand = "ls -l " + external_file;
+                             std::string listExternalFileCommand = "ls -l " + external_file;
                              rc = execute_command_with_output(listExternalFileCommand, response);
                              ExpectWithContext(rc, response).ToBe(0);
 
@@ -507,7 +723,7 @@ void zowex_uss_tests()
              describe("write and view",
                       [&]() -> void
                       {
-                        string uss_path;
+                        std::string uss_path;
                         beforeEach([&]() -> void
                                    {
                                                  uss_path = get_random_uss(ussTestDir);
@@ -515,9 +731,9 @@ void zowex_uss_tests()
                         it("should properly write and view files",
                            [&]() -> void
                            {
-                             string viewCommand = zowex_command + " uss view " + uss_path + " --ec UTF-8";
-                             string writeCommand = "echo 'Hello World!' | " + zowex_command + " uss write " + uss_path + " --ec UTF-8";
-                             string view_response;
+                             std::string viewCommand = zowex_command + " uss view " + uss_path + " --ec UTF-8";
+                             std::string writeCommand = "echo 'Hello World!' | " + zowex_command + " uss write " + uss_path + " --ec UTF-8";
+                             std::string view_response;
 
                              rc = execute_command_with_output(writeCommand, response);
                              ExpectWithContext(rc, "Write command failed").ToBe(0);
@@ -530,9 +746,9 @@ void zowex_uss_tests()
                         it("should successfully write using a valid etag",
                            [&]() -> void
                            {
-                             string viewCommand = zowex_command + " uss view " + uss_path + " --return-etag --ec UTF-8";
-                             string writeCommand = "echo 'Initial Content' | " + zowex_command + " uss write " + uss_path + " --ec UTF-8";
-                             string view_response;
+                             std::string viewCommand = zowex_command + " uss view " + uss_path + " --return-etag --ec UTF-8";
+                             std::string writeCommand = "echo 'Initial Content' | " + zowex_command + " uss write " + uss_path + " --ec UTF-8";
+                             std::string view_response;
 
                              rc = execute_command_with_output(writeCommand, response);
                              ExpectWithContext(rc, "Initial write failed").ToBe(0);
@@ -540,23 +756,23 @@ void zowex_uss_tests()
                              rc = execute_command_with_output(viewCommand, view_response);
                              ExpectWithContext(rc, view_response).ToBe(0);
                              Expect(view_response).ToContain("Initial Content");
-                             string valid_etag = parse_etag_from_output(view_response);
+                             std::string valid_etag = parse_etag_from_output(view_response);
                              ExpectWithContext(valid_etag, "Failed to parse ETag from view output.").Not().ToBe("");
 
-                             string writeWithValidEtagCmd = "echo 'Updated Content' | " + zowex_command + " uss write " + uss_path + " --ec UTF-8 --etag " + valid_etag;
+                             std::string writeWithValidEtagCmd = "echo 'Updated Content' | " + zowex_command + " uss write " + uss_path + " --ec UTF-8 --etag " + valid_etag;
                              rc = execute_command_with_output(writeWithValidEtagCmd, response);
                              ExpectWithContext(rc, "Write with valid etag failed").ToBe(0);
 
-                             string final_view_response;
-                             string simpleViewCmd = zowex_command + " uss view " + uss_path + " --ec UTF-8";
+                             std::string final_view_response;
+                             std::string simpleViewCmd = zowex_command + " uss view " + uss_path + " --ec UTF-8";
                              rc = execute_command_with_output(simpleViewCmd, final_view_response);
                              Expect(final_view_response).ToContain("Updated Content");
                            });
                         it("should fail to view a file that does not exist",
                            [&]() -> void
                            {
-                             string viewCommand = zowex_command + " uss view /tmp/does/not/exist";
-                             string view_response;
+                             std::string viewCommand = zowex_command + " uss view /tmp/does/not/exist";
+                             std::string view_response;
                              {
                                test_utils::ErrorStreamCapture c;
                                rc = execute_command_with_output(viewCommand, view_response);
@@ -567,9 +783,9 @@ void zowex_uss_tests()
                         it("should properly translate EBCDIC text to ASCII/UTF-8",
                            [&]() -> void
                            {
-                             string ebcdic_text = "Hello World - This is a test.";
+                             std::string ebcdic_text = "Hello World - This is a test.";
 
-                             string expected_ascii_text =
+                             std::string expected_ascii_text =
                                  "\x48\x65\x6c\x6c\x6f\x20" // "Hello "
                                  "\x57\x6f\x72\x6c\x64\x20" // "World "
                                  "\x2d\x20"                 // "- "
@@ -578,12 +794,12 @@ void zowex_uss_tests()
                                  "\x61\x20"                 // "a "
                                  "\x74\x65\x73\x74\x2e";    // "test."
 
-                             string writeCommand = "printf '%s' '" + ebcdic_text + "' | " + zowex_command + " uss write " + uss_path + " --lec IBM-1047 --ec UTF-8";
+                             std::string writeCommand = "printf '%s' '" + ebcdic_text + "' | " + zowex_command + " uss write " + uss_path + " --lec IBM-1047 --ec UTF-8";
                              rc = execute_command_with_output(writeCommand, response);
                              ExpectWithContext(rc, "Write command failed").ToBe(0);
 
-                             string viewCommand = zowex_command + " uss view " + uss_path + " --ec UTF-8";
-                             string view_response_hex_dump;
+                             std::string viewCommand = zowex_command + " uss view " + uss_path + " --ec UTF-8";
+                             std::string view_response_hex_dump;
                              rc = execute_command_with_output(viewCommand, view_response_hex_dump);
                              ExpectWithContext(rc, view_response_hex_dump).ToBe(0);
 
@@ -594,8 +810,8 @@ void zowex_uss_tests()
                         it("should write content to a USS file with multibyte encoding",
                            [&]() -> void
                            {
-                             string response;
-                             string command = "echo '\xe3\x81\x93\xe3\x82\x93\xe3\x81\xab\xe3\x81\xa1\xe3\x81\xaf' | " + zowex_command + " uss write " + uss_path + " --encoding IBM-939";
+                             std::string response;
+                             std::string command = "echo '\xe3\x81\x93\xe3\x82\x93\xe3\x81\xab\xe3\x81\xa1\xe3\x81\xaf' | " + zowex_command + " uss write " + uss_path + " --encoding IBM-939";
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain("Wrote data to '" + uss_path + "'");
@@ -608,9 +824,9 @@ void zowex_uss_tests()
                         it("should handle write and view for a FIFO pipe",
                            [&]() -> void
                            {
-                             string writeCommand = "echo 'Hello World!' | " + zowex_command + " uss write " + uss_path + " --ec binary";
-                             string viewCommand = zowex_command + " uss view " + uss_path + " --ec binary";
-                             string view_response;
+                             std::string writeCommand = "echo 'Hello World!' | " + zowex_command + " uss write " + uss_path + " --ec binary";
+                             std::string viewCommand = zowex_command + " uss view " + uss_path + " --ec binary";
+                             std::string view_response;
                              mkfifo(uss_path.c_str(), 0777);
 
                              rc = execute_command_with_output(writeCommand, response);
@@ -625,16 +841,16 @@ void zowex_uss_tests()
                            [&]() -> void
                            {
                              // Create symlink
-                             string symPath = uss_path + "_sym";
+                             std::string symPath = uss_path + "_sym";
                              symlink(uss_path.c_str(), symPath.c_str());
 
                              // Write to sym link
-                             string writeCommand = "echo 'Hello World!' | " + zowex_command + " uss write " + symPath + " --ec binary";
+                             std::string writeCommand = "echo 'Hello World!' | " + zowex_command + " uss write " + symPath + " --ec binary";
 
                              // Read from original path
-                             string viewCommand = zowex_command + " uss view " + uss_path + " --ec binary";
-                             string listCommand = zowex_command + " uss ls " + uss_path + " -l";
-                             string view_response;
+                             std::string viewCommand = zowex_command + " uss view " + uss_path + " --ec binary";
+                             std::string listCommand = zowex_command + " uss ls " + uss_path + " -l";
+                             std::string view_response;
 
                              rc = execute_command_with_output(writeCommand, response);
                              ExpectWithContext(rc, "Write command failed").ToBe(0);
@@ -659,7 +875,7 @@ void zowex_uss_tests()
                         it("should properly list files",
                            [&]() -> void
                            {
-                             string listCommand = zowex_command + " uss ls " + ussTestDir;
+                             std::string listCommand = zowex_command + " uss ls " + ussTestDir;
                              rc = execute_command_with_output(listCommand, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain("subDir1");
@@ -667,7 +883,7 @@ void zowex_uss_tests()
                         it("should properly list files with the --all option",
                            [&]() -> void
                            {
-                             string listAllCommand = zowex_command + " uss ls " + ussTestDir + " --all";
+                             std::string listAllCommand = zowex_command + " uss ls " + ussTestDir + " --all";
                              rc = execute_command_with_output(listAllCommand, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain(".");
@@ -677,9 +893,9 @@ void zowex_uss_tests()
                         it("should properly list files with the --depth option set to 1 and should match the output of no depth option specified",
                            [&]() -> void
                            {
-                             string testResponse;
-                             string listCommand = zowex_command + " uss ls " + ussTestDir;
-                             string listDepthCommand = zowex_command + " uss ls " + ussTestDir + " --depth 1";
+                             std::string testResponse;
+                             std::string listCommand = zowex_command + " uss ls " + ussTestDir;
+                             std::string listDepthCommand = zowex_command + " uss ls " + ussTestDir + " --depth 1";
                              rc = execute_command_with_output(listDepthCommand, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain("subDir1");
@@ -689,7 +905,7 @@ void zowex_uss_tests()
                         it("should properly list files with the --depth option set to 2",
                            [&]() -> void
                            {
-                             string listDepthCommand = zowex_command + " uss ls " + ussTestDir + " --depth 2";
+                             std::string listDepthCommand = zowex_command + " uss ls " + ussTestDir + " --depth 2";
                              rc = execute_command_with_output(listDepthCommand, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain("subDir1/subDir2");
@@ -698,7 +914,7 @@ void zowex_uss_tests()
                         it("should properly list files with the --depth option set to 3",
                            [&]() -> void
                            {
-                             string listDepthCommand = zowex_command + " uss ls " + ussTestDir + " --depth 3";
+                             std::string listDepthCommand = zowex_command + " uss ls " + ussTestDir + " --depth 3";
                              rc = execute_command_with_output(listDepthCommand, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain("subDir1/subDir2");
@@ -709,7 +925,7 @@ void zowex_uss_tests()
                         it("should properly list files with --response-format-csv",
                            [&]() -> void
                            {
-                             string listDepthCommand = zowex_command + " uss ls " + ussTestDir + " -l --rfc";
+                             std::string listDepthCommand = zowex_command + " uss ls " + ussTestDir + " -l --rfc";
                              rc = execute_command_with_output(listDepthCommand, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain("drwxrwxrwx,");
@@ -718,14 +934,14 @@ void zowex_uss_tests()
                         it("should preserve symlink file type in long listing",
                            [&]() -> void
                            {
-                             string linkTargetDir = get_random_uss(ussTestDir) + "_target";
-                             string linkPath = get_random_uss(ussTestDir) + "_link";
+                             std::string linkTargetDir = get_random_uss(ussTestDir) + "_target";
+                             std::string linkPath = get_random_uss(ussTestDir) + "_link";
 
                              create_test_dir_cmd(linkTargetDir, "--mode 777");
                              rc = symlink(linkTargetDir.c_str(), linkPath.c_str());
                              ExpectWithContext(rc, "Failed to create symlink").ToBe(0);
 
-                             string listCommand = zowex_command + " uss ls " + ussTestDir + " -l";
+                             std::string listCommand = zowex_command + " uss ls " + ussTestDir + " -l";
                              rc = execute_command_with_output(listCommand, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain("lrwx");
@@ -737,7 +953,7 @@ void zowex_uss_tests()
                         it("should properly handle missing options",
                            [&]() -> void
                            {
-                             string incompleteCommand = zowex_command + " uss ls";
+                             std::string incompleteCommand = zowex_command + " uss ls";
                              {
                                test_utils::ErrorStreamCapture c;
                                rc = execute_command_with_output(incompleteCommand, response);
@@ -748,7 +964,7 @@ void zowex_uss_tests()
                         it("should properly handle listing a path that does not exist",
                            [&]() -> void
                            {
-                             string incompleteCommand = zowex_command + " uss ls /does/not/exist";
+                             std::string incompleteCommand = zowex_command + " uss ls /does/not/exist";
                              {
                                test_utils::ErrorStreamCapture c;
                                rc = execute_command_with_output(incompleteCommand, response);

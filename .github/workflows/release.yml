@@ -87,6 +87,9 @@ jobs:
           GIT_COMMITTER_EMAIL: ${{ secrets.ZOWE_ROBOT_EMAIL }}
           GIT_CREDENTIALS: x-access-token:${{ secrets.ZOWE_ROBOT_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_USERNAME: ${{ secrets.ARTIFACTORY_USERNAME }}
+          NPM_PASSWORD: ${{ secrets.ARTIFACTORY_PASSWORD }}
+          NPM_EMAIL: ${{ secrets.ZOWE_ROBOT_EMAIL }}
         with:
           config-dir: .github
           dry-run: ${{ inputs.dry-run }}
@@ -106,6 +109,7 @@ jobs:
       - name: Publish Release to Artifactory
         if: ${{ !inputs.dry-run && env.TRAIN == 'Release' }}
         run: |
-          jfrog rt u --detailed-summary dist/*.tgz libs-release-local/org/zowe/zowe-native-proto/$NEW_VERSION_SUFFIX/zowe-native-proto-cli-$NEW_VERSION_SUFFIX.tgz
+          jfrog rt u --detailed-summary dist/*cli*.tgz libs-release-local/org/zowe/zowe-native-proto/$NEW_VERSION_SUFFIX/zowe-native-proto-cli-$NEW_VERSION_SUFFIX.tgz
+          jfrog rt u --detailed-summary dist/*sdk*.tgz libs-release-local/org/zowe/zowe-native-proto/$NEW_VERSION_SUFFIX/zowe-native-proto-sdk-$NEW_VERSION_SUFFIX.tgz
           jfrog rt u --detailed-summary dist/*.vsix libs-release-local/org/zowe/zowe-native-proto/$NEW_VERSION_SUFFIX/zowe-native-proto-vsce-$NEW_VERSION_SUFFIX.vsix
           jfrog rt u --detailed-summary dist/*.pax.Z libs-release-local/org/zowe/zowe-native-proto/$NEW_VERSION_SUFFIX/zowe-server-$NEW_VERSION_SUFFIX.pax.Z

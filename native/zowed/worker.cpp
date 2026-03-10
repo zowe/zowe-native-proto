@@ -86,8 +86,27 @@ void Worker::stop()
   }
 
   queue_condition.notify_all();
+
   if (worker_thread.joinable())
-    worker_thread.join();
+  {
+    std::unique_lock<std::mutex> lock(exit_mutex);
+    bool exited = exit_condition.wait_for(lock, std::chrono::seconds(5), [this] {
+      auto s = state.load(std::memory_order_acquire);
+      return s == WorkerState::Exited || s == WorkerState::Faulted;
+    });
+    lock.unlock();
+
+    if (!exited)
+    {
+      LOG_WARN("Worker %d did not exit within stop timeout; detaching", id);
+      worker_thread.detach();
+      state.store(WorkerState::Faulted, std::memory_order_release);
+      return;
+    }
+
+    if (worker_thread.joinable())
+      worker_thread.join();
+  }
 
   if (state.load(std::memory_order_acquire) != WorkerState::Faulted)
   {
@@ -181,6 +200,11 @@ void Worker::worker_loop()
     stop_requested.store(true, std::memory_order_release);
     LOG_ERROR("Worker %d encountered unknown fatal error", id);
   }
+
+  {
+    std::lock_guard<std::mutex> lock(exit_mutex);
+  }
+  exit_condition.notify_all();
 }
 
 bool Worker::is_ready() const

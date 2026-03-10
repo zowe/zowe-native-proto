@@ -10,7 +10,7 @@
  */
 
 import type { IRpcClient } from "./doc/client";
-import type { CommandRequest, CommandResponse, cmds, ds, jobs, uss } from "./doc/rpc";
+import type { CommandRequest, CommandResponse, console, ds, jobs, tool, tso, uss } from "./doc/rpc";
 import type { ProgressCallback } from "./doc/types";
 
 export abstract class RpcClientApi implements IRpcClient {
@@ -19,10 +19,8 @@ export abstract class RpcClientApi implements IRpcClient {
         progressCallback?: (percent: number) => void,
     ): Promise<RespT>;
 
-    public cmds = {
-        issueConsole: this.rpc<cmds.IssueConsoleRequest, cmds.IssueConsoleResponse>("consoleCommand"),
-        issueTso: this.rpc<cmds.IssueTsoRequest, cmds.IssueTsoResponse>("tsoCommand"),
-        issueUnix: this.rpc<cmds.IssueUnixRequest, cmds.IssueUnixResponse>("unixCommand"),
+    public console = {
+        issueCmd: this.rpc<console.IssueConsoleCmdRequest, console.IssueConsoleCmdResponse>("consoleCommand"),
     };
 
     public ds = {
@@ -54,7 +52,16 @@ export abstract class RpcClientApi implements IRpcClient {
         submitUss: this.rpc<jobs.SubmitUssRequest, jobs.SubmitUssResponse>("submitUss"),
     };
 
+    public tool = {
+        search: this.rpc<tool.ToolSearchRequest, tool.ToolSearchResponse>("toolSearch"),
+    };
+
+    public tso = {
+        issueCmd: this.rpc<tso.IssueTsoCmdRequest, tso.IssueTsoCmdResponse>("tsoCommand"),
+    };
+
     public uss = {
+        copyUss: this.rpc<uss.CopyUssRequest, uss.CopyUssResponse>("copyUss"),
         chmodFile: this.rpc<uss.ChmodFileRequest, uss.ChmodFileResponse>("chmodFile"),
         chownFile: this.rpc<uss.ChownFileRequest, uss.ChownFileResponse>("chownFile"),
         chtagFile: this.rpc<uss.ChtagFileRequest, uss.ChtagFileResponse>("chtagFile"),
@@ -63,6 +70,8 @@ export abstract class RpcClientApi implements IRpcClient {
         listFiles: this.rpc<uss.ListFilesRequest, uss.ListFilesResponse>("listFiles"),
         readFile: this.rpcWithProgress<uss.ReadFileRequest, uss.ReadFileResponse>("readFile"),
         writeFile: this.rpcWithProgress<uss.WriteFileRequest, uss.WriteFileResponse>("writeFile"),
+        issueCmd: this.rpc<uss.IssueUssCmdRequest, uss.IssueUssCmdResponse>("unixCommand"),
+        moveFile: this.rpc<uss.MoveFileRequest, uss.MoveFileResponse>("moveFile"),
     };
 
     private rpc<ReqT extends CommandRequest, RespT extends CommandResponse>(command: ReqT["command"]) {

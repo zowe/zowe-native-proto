@@ -11,7 +11,6 @@
 
 #include "ztest.hpp"
 
-using namespace std;
 using namespace ztst;
 
 void more_tests()

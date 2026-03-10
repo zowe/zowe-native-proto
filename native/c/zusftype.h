@@ -14,10 +14,7 @@
 
 #include <stdint.h>
 #include "ztype.h"
-
-#ifdef __clang__
 #include <functional>
-#endif
 
 #define ZUSF_RTNCD_SERVICE_FAILURE -2
 #define ZUSF_RTNCD_MAX_JOBS_REACHED -3
@@ -28,13 +25,7 @@
 #define ZUSF_DEFAULT_MAX_JOBS 100
 #define ZUSF_DEFAULT_MAX_DDS 100
 
-#if (defined(__IBMCPP__) || defined(__IBMC__))
-#if defined(__clang__)
-#pragma pack(1)
-#else
-#pragma pack(packed)
-#endif
-#endif
+ZNP_PACK_ON
 
 // NOTE(zFernand0): Figure out how to visualize the struct in memory
 // NOTE(Kelosky): struct is padded to nearest double word boundary; ensure proper alignment for fields
@@ -56,13 +47,9 @@ typedef struct
   bool created;
   char _pad[3];
 
-#ifdef __clang__
   std::function<void(uint64_t)> set_size_callback;
-#endif
 } ZUSF;
 
-#if (defined(__IBMCPP__) || defined(__IBMC__))
-#pragma pack(reset)
-#endif
+ZNP_PACK_OFF
 
 #endif

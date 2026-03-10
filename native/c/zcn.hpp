@@ -23,7 +23,7 @@
  * @param name console name, max of 8 characters e.g. MYCONSOL
  * @return int 0 for success; non zero otherwise
  */
-int zcn_activate(ZCN *zcn, std::string name);
+int zcn_activate(ZCN *zcn, const std::string &name);
 
 /**
  * @brief Deactivate extended console
@@ -40,7 +40,7 @@ int zcn_deactivate(ZCN *zcn);
  * @param command command to run, e.g. D IPLINFO
  * @return int
  */
-int zcn_put(ZCN *zcn, std::string command);
+int zcn_put(ZCN *zcn, const std::string &command);
 
 /**
  * @brief Obtain data from extended console

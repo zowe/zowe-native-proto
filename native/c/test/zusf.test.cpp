@@ -15,26 +15,304 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <string.h>
+#include <cstring>
 #include <pwd.h>
 #include <grp.h>
-#include <time.h>
+#include <ctime>
 
 #include "ztest.hpp"
-#include "zusf.hpp"
+#include "../zusf.hpp"
 #include "ztype.h"
 #include "zutils.hpp"
 
-using namespace std;
 using namespace ztst;
 
 void zusf_tests()
 {
+  describe("zusf_copy_uss_file_or_dir tests",
+           [&]() -> void
+           {
+             ZUSF zusf{};
+             ListOptions short_list_opts{false, false, 1};
+             ListOptions long_list_opts{false, true, 1};
+             ListOptions all_long_list_opts{true, true, 1};
+             const CopyOptions copts_preserve(false, false, true, false);
+             const CopyOptions copts_recurse_symlink_preserve(true, true, true, false);
+             const CopyOptions copts_all_off(false, false, false, false);
+             const CopyOptions copts_recurse_preserve(true, false, true, false);
+             const CopyOptions copts_force(false, false, false, true);
+             const CopyOptions copts_recursive(true, false, false, false);
+             const CopyOptions copts_recursive_force(true, false, false, true);
+             const std::string tmp_base = "/tmp/zusf_copy_tests_" + get_random_string(10);
+             std::string file_a;
+             std::string file_b;
+             std::string dir_a;
+             std::string dir_b;
+
+             beforeEach([&]() -> void
+                        { 
+                          zusf = {};
+                          std::string discard;
+                          execute_command_with_output("rm -rf " + tmp_base, discard);
+                          mkdir(tmp_base.c_str(), 0755);
+                          file_a = tmp_base + "/test_file_a";
+                          file_b = tmp_base + "/test_file_b";
+                          dir_a = tmp_base + "/test_dir_a";
+                          dir_b = tmp_base + "/test_dir_b"; });
+
+             afterAll([&]() -> void
+                      {
+                  std::string discard;
+                  execute_command_with_output("rm -rf " + tmp_base, discard); });
+
+             it("file->file tests", [&]() -> void
+                {
+                  const std::string source_file = file_a;
+                  const std::string dest_file = file_b;
+                  std::string list_response;
+                  zusf_create_uss_file_or_dir(&zusf, source_file, 0664, false);
+                  zusf_create_uss_file_or_dir(&zusf, dest_file, 0775, true);
+                  int rc;
+                  rc = zusf_copy_file_or_dir(&zusf, source_file, dest_file, copts_preserve);
+                  Expect(rc).ToBe(0);
+                  rc = zusf_list_uss_file_path(&zusf, dest_file, list_response, short_list_opts, false);
+                  Expect(rc).ToBe(0);
+                  // copy over an existing file
+                  rc = zusf_copy_file_or_dir(&zusf, source_file, dest_file, copts_preserve);
+                  Expect(rc).ToBe(0);
+                  rc = zusf_list_uss_file_path(&zusf, dest_file, list_response, short_list_opts, false);
+                  Expect(rc).ToBe(0);
+                  // copy over an existing file with -RL
+                  rc = zusf_copy_file_or_dir(&zusf, source_file, dest_file, copts_recurse_symlink_preserve);
+                  Expect(rc).ToBe(0);
+                  rc = zusf_list_uss_file_path(&zusf, dest_file, list_response, short_list_opts, false);
+                  Expect(rc).ToBe(0);
+
+                  // copy a file to itself
+                  rc = zusf_copy_file_or_dir(&zusf, source_file, source_file, copts_preserve);
+                  Expect(rc).ToBe(-1);
+
+                  // with and without -p
+                  zusf_chmod_uss_file_or_dir(&zusf, source_file, 0777, false);
+                  rc = zusf_copy_file_or_dir(&zusf, source_file, dest_file, copts_all_off);
+                  Expect(rc).ToBe(0);
+                  rc = zusf_list_uss_file_path(&zusf, dest_file, list_response, long_list_opts, false);
+                  Expect(rc).ToBe(0);
+                  Expect(list_response).ToContain("-rw-rw-r--"); // NOT 777
+
+                  rc = zusf_copy_file_or_dir(&zusf, source_file, dest_file, copts_preserve);
+                  Expect(rc).ToBe(0);
+                  rc = zusf_list_uss_file_path(&zusf, dest_file, list_response, long_list_opts, false);
+                  Expect(rc).ToBe(0);
+                  Expect(list_response).ToContain("-rwxrwxrwx"); // keeps 777
+                });
+
+             it("file->dir tests", [&]() -> void
+                {
+                  const std::string source_file = file_a;
+                  const std::string dest_dir = dir_b;
+                  std::string list_response;
+                  const std::string dest_copied_file = dest_dir + "/" + get_basename(source_file);
+                  zusf_create_uss_file_or_dir(&zusf, source_file, 0664, false);
+                  zusf_create_uss_file_or_dir(&zusf, dest_dir, 0775, true);
+                  int rc;
+                  rc = zusf_copy_file_or_dir(&zusf, source_file, dest_dir, copts_preserve);
+                  Expect(rc).ToBe(0);
+
+                  // overwrite
+                  rc = zusf_copy_file_or_dir(&zusf, source_file, dest_dir, copts_preserve);
+                  Expect(rc).ToBe(0);
+                  rc = zusf_list_uss_file_path(&zusf, dest_copied_file, list_response, short_list_opts, false);
+                  Expect(rc).ToBe(0);
+                  // overwrite with -RL
+                  rc = zusf_copy_file_or_dir(&zusf, source_file, dest_dir, copts_recurse_symlink_preserve);
+                  Expect(rc).ToBe(0);
+                  rc = zusf_list_uss_file_path(&zusf, dest_copied_file, list_response, short_list_opts, false);
+                  Expect(rc).ToBe(0);
+
+                  rc = zusf_copy_file_or_dir(&zusf, source_file, "/some/dir/doesnt/exist", copts_preserve);
+                  Expect(rc).ToBe(-1);
+
+                  // with and without -p. dir is 0775 and file is 0664
+                  // file already exists from last tests: replacement does not change permissions
+                  rc = zusf_copy_file_or_dir(&zusf, source_file, dest_dir, copts_all_off);
+                  Expect(rc).ToBe(0);
+                  rc = zusf_list_uss_file_path(&zusf, dest_copied_file, list_response, long_list_opts, false);
+                  Expect(rc).ToBe(0);
+                  Expect(list_response).ToContain("-rw-rw-r--"); // 0644
+
+                  // after removing, we should see 0644 (file attributes not preserved)
+                  rc = zusf_delete_uss_item(&zusf, dest_copied_file, false);
+                  rc = zusf_copy_file_or_dir(&zusf, source_file, dest_dir, copts_all_off);
+                  Expect(rc).ToBe(0);
+                  rc = zusf_list_uss_file_path(&zusf, dest_copied_file, list_response, long_list_opts, false);
+                  Expect(rc).ToBe(0);
+                  Expect(list_response).ToContain("-rw-r--r--"); // 0644
+
+                  rc = zusf_copy_file_or_dir(&zusf, source_file, dest_dir, copts_preserve);
+                  Expect(rc).ToBe(0);
+                  rc = zusf_list_uss_file_path(&zusf, dest_copied_file, list_response, long_list_opts, false);
+                  Expect(rc).ToBe(0);
+                  Expect(list_response).ToContain("-rw-rw-r--"); // keeps file's 0664
+                });
+
+             // Not allowed - all errors
+             it("dir->file tests", [&]() -> void
+                {
+                  const std::string source_dir = dir_a;
+                  const std::string dest_file = file_b;
+                  std::string list_response;
+                  zusf_create_uss_file_or_dir(&zusf, source_dir, 0775, true);
+                  zusf_create_uss_file_or_dir(&zusf, dest_file, 0664, false);
+                  int rc;
+
+                  // copy to an existing file: error and no change to file/dir
+                  rc = zusf_copy_file_or_dir(&zusf, source_dir, dest_file, copts_preserve);
+                  Expect(rc).ToBe(-1);
+                  rc = zusf_list_uss_file_path(&zusf, dest_file, list_response, all_long_list_opts, false);
+                  Expect(rc).ToBe(0);
+                  Expect(list_response).ToContain("-rw-rw-r--");
+                  rc = zusf_list_uss_file_path(&zusf, source_dir, list_response, all_long_list_opts, false);
+                  Expect(rc).ToBe(0);
+                  Expect(list_response).ToContain("drwxrwxr-x");
+
+                  // copy to an existing file with -RL, also fail
+                  rc = zusf_copy_file_or_dir(&zusf, source_dir, dest_file, copts_recurse_preserve);
+                  Expect(rc).ToBe(-1);
+                  rc = zusf_copy_file_or_dir(&zusf, source_dir, dest_file, copts_recurse_symlink_preserve);
+                  Expect(rc).ToBe(-1);
+
+                  const std::string unused_path = file_a;
+                  // copy to a non-existent file or dir (creates it)
+                  rc = zusf_copy_file_or_dir(&zusf, source_dir, unused_path, copts_preserve);
+                  Expect(rc).ToBe(-1); // missing -R
+
+                  rc = zusf_copy_file_or_dir(&zusf, source_dir, unused_path, copts_recurse_symlink_preserve);
+                  Expect(rc).ToBe(0); // now exists
+                  rc = zusf_list_uss_file_path(&zusf, unused_path, list_response, all_long_list_opts, false);
+                  Expect(rc).ToBe(0);
+                  Expect(list_response).ToContain("drwxrwxr-x"); });
+
+             it("dir->dir tests", [&]() -> void
+                {
+                  const std::string source_dir = dir_a;
+                  const std::string source_nested = dir_a + "/some/nested/directories";
+                  const std::string dest_dir = dir_b;
+                  const std::string dest_nested = dir_b + "/some/nested/directories";
+                  int rc;
+                  std::string list_response;
+
+                  zusf_create_uss_file_or_dir(&zusf, source_dir, 0775, true);
+
+                  // bad source
+                  rc = zusf_copy_file_or_dir(&zusf, "/noway/src/noexist", dest_dir, copts_preserve);
+                  Expect(rc).ToBe(-1);
+                  // bad target
+                  rc = zusf_copy_file_or_dir(&zusf, source_dir, "/noway/dest/noexist", copts_preserve);
+                  Expect(rc).ToBe(-1);
+
+                  // missing -R
+                  rc = zusf_copy_file_or_dir(&zusf, source_dir, dest_dir, copts_preserve);
+                  Expect(rc).ToBe(-1);
+                  rc = zusf_list_uss_file_path(&zusf, dest_dir, list_response, short_list_opts, false);
+                  Expect(rc).ToBe(-1);
+
+                  // with -R
+                  rc = zusf_copy_file_or_dir(&zusf, source_dir, dest_dir, copts_recurse_preserve);
+                  Expect(rc).ToBe(0);
+                  rc = zusf_list_uss_file_path(&zusf, dest_dir, list_response, short_list_opts, false);
+                  Expect(rc).ToBe(0);
+                  zusf_delete_uss_item(&zusf, dest_dir, true);
+
+                  // nested dirs and symlinks
+                  const std::string symlink_nested_dir = tmp_base + "/find/me/with/symlink";
+                  const std::string symlink_target = tmp_base + "/find";
+                  const std::string source_symlink_filepath = source_dir + "/find";
+                  const std::string dest_link_filepath = dest_dir + "/find";
+                  const std::string dest_symlink_nested_dir = dest_dir + "/find/me/with/symlink";
+
+                  zusf_create_uss_file_or_dir(&zusf, source_nested, 0775, true);
+                  zusf_create_uss_file_or_dir(&zusf, symlink_nested_dir, 0775, true);
+
+                  // symlink
+                  std::string cmd_output;
+                  execute_command_with_output("ln -s " + symlink_target + " " + source_symlink_filepath, cmd_output);
+
+                  // link is copied
+                  rc = zusf_copy_file_or_dir(&zusf, source_dir, dest_dir, copts_recurse_preserve);
+                  Expect(rc).ToBe(0);
+                  rc = zusf_list_uss_file_path(&zusf, dest_symlink_nested_dir, list_response, short_list_opts, false);
+                  Expect(rc).ToBe(0);
+                  rc = zusf_list_uss_file_path(&zusf, dest_dir, list_response, all_long_list_opts, false);
+                  Expect(rc).ToBe(0);
+                  // chmod hack won't work here, can't modify symlink permissions
+                  // Expect(list_response).ToContain("lrwxr-xr-x"); //TODO: https://github.com/zowe/zowe-native-proto/issues/791
+                  // rc = zusf_delete_uss_item(&zusf, dest_dir, true);
+                  // Expect(rc).ToBe(-1); // TODO: https://github.com/zowe/zowe-native-proto/issues/792
+
+                  execute_command_with_output("rm -rf " + dest_dir, cmd_output);
+
+                  // data is copied (--follow-symlinks)
+                  rc = zusf_copy_file_or_dir(&zusf, source_dir, dest_dir, copts_recurse_symlink_preserve);
+                  Expect(rc).ToBe(0);
+                  rc = zusf_list_uss_file_path(&zusf, symlink_target, list_response, short_list_opts, true);
+                  Expect(rc).ToBe(0);
+                  zusf_chmod_uss_file_or_dir(&zusf, dest_link_filepath, 0755, false); // hack: make this 755 for Expect() check
+                  rc = zusf_list_uss_file_path(&zusf, dest_dir, list_response, all_long_list_opts, false);
+                  Expect(rc).ToBe(0);
+                  Expect(list_response).ToContain("drwxr-xr-x"); // it should be a dir
+                });
+             it("should not copy to/from fifo pipes", [&]() -> void
+                {
+                  const std::string pipe = file_a;
+                  const std::string non_pipe = file_b;
+                  std::string dispose;
+                  execute_command_with_output("mkfifo -m 0666 " + pipe, dispose);
+                  ExpectWithContext(zusf_copy_file_or_dir(&zusf, pipe, non_pipe, copts_all_off), zusf.diag.e_msg).ToBe(-1);
+                  ExpectWithContext(zusf_copy_file_or_dir(&zusf, non_pipe, pipe, copts_all_off), zusf.diag.e_msg).ToBe(-1); });
+
+             it("force copy tests", [&]() -> void
+                {
+                  const std::string source_file = file_a;
+                  const std::string target_file = file_b;
+
+                  const std::string source_dir = dir_a;
+                  const std::string target_dir = dir_b;
+
+                  ExpectWithContext(zusf_create_uss_file_or_dir(&zusf, source_file, 0664, false), zusf.diag.e_msg).ToBe(0);
+                  ExpectWithContext(zusf_create_uss_file_or_dir(&zusf, target_file, 0400, false), zusf.diag.e_msg).ToBe(0);
+                  ExpectWithContext(zusf_create_uss_file_or_dir(&zusf, source_dir, 0664, true), zusf.diag.e_msg).ToBe(0);
+                  ExpectWithContext(zusf_create_uss_file_or_dir(&zusf, target_dir, 0775, true), zusf.diag.e_msg).ToBe(0);
+                  ExpectWithContext(zusf_create_uss_file_or_dir(&zusf, target_dir + "/" + get_basename(source_dir), 0400, true), zusf.diag.e_msg).ToBe(0);
+
+                  // can't overwrite 0400 target without force
+                  zusf_chmod_uss_file_or_dir(&zusf, target_file, 0400, false);
+                  ExpectWithContext(zusf_copy_file_or_dir(&zusf, source_file, target_file, copts_all_off), zusf.diag.e_msg).ToBe(-1);
+                  ExpectWithContext(zusf_copy_file_or_dir(&zusf, source_file, target_file, copts_force), zusf.diag.e_msg).ToBe(0); });
+
+             it("insufficient permissions tests", [&]() -> void
+                {
+                  const std::string source_file = file_a;
+                  const std::string dest_dir = dir_b;
+
+                  zusf_create_uss_file_or_dir(&zusf, source_file, 0664, false);
+                  zusf_create_uss_file_or_dir(&zusf, dest_dir, 0400, true); // TODO: this does not set permissions to 0400. why? `zowex uss create-dir test_dir --mode 0400` works!
+                  // chmod must succeed for copy to fail
+                  ExpectWithContext(zusf_chmod_uss_file_or_dir(&zusf, dest_dir, 0400, true), zusf.diag.e_msg).ToBe(0);
+                  int rc;
+                  rc = zusf_copy_file_or_dir(&zusf, source_file, dest_dir, copts_preserve);
+                  ExpectWithContext(rc, zusf.diag.e_msg).ToBe(-1);
+
+                  zusf_chmod_uss_file_or_dir(&zusf, dest_dir, 0775, true);
+                  rc = zusf_copy_file_or_dir(&zusf, source_file, dest_dir, copts_preserve);
+                  Expect(rc).ToBe(0); });
+           }
+
+  );
   describe("zusf_chown_uss_file_or_dir tests",
            [&]() -> void
            {
-             ZUSF zusf;
-             memset(&zusf, 0, sizeof(zusf));
+             ZUSF zusf{};
 
              const std::string tmp_base = "/tmp/zusf_chown_tests_" + get_random_string(10);
              const std::string file_path = tmp_base + "/one.txt";
@@ -202,17 +480,14 @@ void zusf_tests()
   describe("zusf_chmod_uss_file_or_dir tests",
            [&]() -> void
            {
-             ZUSF zusf;
-             const string test_file = "/tmp/zusf_test_file.txt";
-             const string test_dir = "/tmp/zusf_test_dir";
-             const string nonexistent_file = "/tmp/nonexistent_file.txt";
-
-             beforeEach([&]() -> void
-                        { memset(&zusf, 0, sizeof(zusf)); });
+             ZUSF zusf{};
+             const std::string test_file = "/tmp/zusf_test_file.txt";
+             const std::string test_dir = "/tmp/zusf_test_dir";
+             const std::string nonexistent_file = "/tmp/nonexistent_file.txt";
 
              afterEach([&]() -> void
                        {
-                         string inner_file = test_dir + "/inner_file.txt";
+                         std::string inner_file = test_dir + "/inner_file.txt";
                          unlink(inner_file.c_str());
                          unlink(test_file.c_str());
                          rmdir(test_dir.c_str());
@@ -226,7 +501,7 @@ void zusf_tests()
 
                   int result = zusf_chmod_uss_file_or_dir(&zusf, nonexistent_file, 0644, false);
                   Expect(result).ToBe(RTNCD_FAILURE);
-                  Expect(string(zusf.diag.e_msg)).ToBe("Path '/tmp/nonexistent_file.txt' does not exist");
+                  Expect(std::string(zusf.diag.e_msg)).ToBe("Path '/tmp/nonexistent_file.txt' does not exist");
                 });
 
              it("should fail when trying to chmod directory without recursive flag",
@@ -237,14 +512,14 @@ void zusf_tests()
 
                   int result = zusf_chmod_uss_file_or_dir(&zusf, test_dir, 0644, false);
                   Expect(result).ToBe(RTNCD_FAILURE);
-                  Expect(string(zusf.diag.e_msg)).ToBe("Path '/tmp/zusf_test_dir' is a folder and recursive is false");
+                  Expect(std::string(zusf.diag.e_msg)).ToBe("Path '/tmp/zusf_test_dir' is a folder and recursive is false");
                 });
 
              it("should successfully chmod a regular file",
                 [&]() -> void
                 {
                   // Create test file
-                  ofstream file(test_file);
+                  std::ofstream file(test_file);
                   file << "test content";
                   file.close();
 
@@ -269,8 +544,8 @@ void zusf_tests()
                   mkdir(test_dir.c_str(), 0700);
 
                   // Create a file inside the directory to test recursive behavior
-                  string inner_file = test_dir + "/inner_file.txt";
-                  ofstream file(inner_file);
+                  std::string inner_file = test_dir + "/inner_file.txt";
+                  std::ofstream file(inner_file);
                   file << "inner content";
                   file.close();
                   chmod(inner_file.c_str(), 0600);
@@ -296,7 +571,7 @@ void zusf_tests()
                 [&]() -> void
                 {
                   // Create test file
-                  ofstream file(test_file);
+                  std::ofstream file(test_file);
                   file << "test content";
                   file.close();
 
@@ -319,14 +594,12 @@ void zusf_tests()
   describe("zusf_get_file_ccsid tests",
            [&]() -> void
            {
-             ZUSF zusf;
-             const string test_file = "/tmp/zusf_ccsid_test_file.txt";
-             const string test_dir = "/tmp/zusf_ccsid_test_dir";
-             const string nonexistent_file = "/tmp/nonexistent_ccsid_file.txt";
+             ZUSF zusf{};
+             const std::string test_file = "/tmp/zusf_ccsid_test_file.txt";
+             const std::string test_dir = "/tmp/zusf_ccsid_test_dir";
+             const std::string nonexistent_file = "/tmp/nonexistent_ccsid_file.txt";
 
              // --- Hooks ---
-             beforeEach([&]() -> void
-                        { memset(&zusf, 0, sizeof(zusf)); });
 
              afterEach([&]() -> void
                        {
@@ -343,7 +616,7 @@ void zusf_tests()
 
                   int result = zusf_get_file_ccsid(&zusf, nonexistent_file);
                   Expect(result).ToBe(RTNCD_FAILURE);
-                  Expect(string(zusf.diag.e_msg)).ToBe("Path '/tmp/nonexistent_ccsid_file.txt' does not exist");
+                  Expect(std::string(zusf.diag.e_msg)).ToBe("Path '/tmp/nonexistent_ccsid_file.txt' does not exist");
                 });
 
              it("should fail when path is a directory",
@@ -354,14 +627,14 @@ void zusf_tests()
 
                   int result = zusf_get_file_ccsid(&zusf, test_dir);
                   Expect(result).ToBe(RTNCD_FAILURE);
-                  Expect(string(zusf.diag.e_msg)).ToBe("Path '/tmp/zusf_ccsid_test_dir' is a directory");
+                  Expect(std::string(zusf.diag.e_msg)).ToBe("Path '/tmp/zusf_ccsid_test_dir' is a directory");
                 });
 
              it("should return CCSID for a regular file",
                 [&]() -> void
                 {
                   // Create test file
-                  ofstream file(test_file);
+                  std::ofstream file(test_file);
                   file << "test content";
                   file.close();
 
@@ -377,21 +650,21 @@ void zusf_tests()
              it("should return 'untagged' for CCSID 0",
                 [&]() -> void
                 {
-                  string result = zusf_get_ccsid_display_name(0);
+                  std::string result = zusf_get_ccsid_display_name(0);
                   Expect(result).ToBe("untagged");
                 });
 
              it("should return 'untagged' for negative CCSID",
                 [&]() -> void
                 {
-                  string result = zusf_get_ccsid_display_name(-1);
+                  std::string result = zusf_get_ccsid_display_name(-1);
                   Expect(result).ToBe("untagged");
                 });
 
              it("should return 'binary' for CCSID 65535",
                 [&]() -> void
                 {
-                  string result = zusf_get_ccsid_display_name(65535);
+                  std::string result = zusf_get_ccsid_display_name(65535);
                   Expect(result).ToBe("binary");
                 });
 
@@ -399,13 +672,13 @@ void zusf_tests()
                 [&]() -> void
                 {
                   // Test some well-known CCSIDs
-                  string result37 = zusf_get_ccsid_display_name(37);
+                  std::string result37 = zusf_get_ccsid_display_name(37);
                   Expect(result37).ToBe("IBM-037");
 
-                  string result819 = zusf_get_ccsid_display_name(819);
+                  std::string result819 = zusf_get_ccsid_display_name(819);
                   Expect(result819).ToBe("ISO8859-1");
 
-                  string result1047 = zusf_get_ccsid_display_name(1047);
+                  std::string result1047 = zusf_get_ccsid_display_name(1047);
                   Expect(result1047).ToBe("IBM-1047");
                 });
 
@@ -413,11 +686,11 @@ void zusf_tests()
                 [&]() -> void
                 {
                   // Test with an unknown CCSID
-                  string result = zusf_get_ccsid_display_name(99999);
+                  std::string result = zusf_get_ccsid_display_name(99999);
                   Expect(result).ToBe("99999");
 
                   // Test with another unknown CCSID
-                  string result2 = zusf_get_ccsid_display_name(12345);
+                  std::string result2 = zusf_get_ccsid_display_name(12345);
                   Expect(result2).ToBe("12345");
                 });
 
@@ -428,11 +701,11 @@ void zusf_tests()
                   // and leave it up to the caller to decide what to do with them.
 
                   // Test maximum positive CCSID
-                  string result = zusf_get_ccsid_display_name(2147483647); // INT_MAX
+                  std::string result = zusf_get_ccsid_display_name(2147483647); // INT_MAX
                   Expect(result).ToBe("2147483647");
 
                   // Test very negative CCSID
-                  string result2 = zusf_get_ccsid_display_name(-999);
+                  std::string result2 = zusf_get_ccsid_display_name(-999);
                   Expect(result2).ToBe("untagged");
                 });
            });
@@ -446,7 +719,7 @@ void zusf_tests()
                   // Use a known timestamp: January 1, 2024 12:00:00 UTC
                   time_t test_time = 1704110400; // 2024-01-01 12:00:00 UTC
 
-                  string result = zusf_format_ls_time(test_time, false);
+                  std::string result = zusf_format_ls_time(test_time, false);
 
                   // Should be in format like "Jan  1 12:00" (but will be in local time)
                   // We'll just check that it contains expected elements
@@ -460,7 +733,7 @@ void zusf_tests()
                   // Use a known timestamp: January 1, 2024 12:00:00 UTC
                   time_t test_time = 1704110400; // 2024-01-01 12:00:00 UTC
 
-                  string result = zusf_format_ls_time(test_time, true);
+                  std::string result = zusf_format_ls_time(test_time, true);
 
                   // Should be in format "2024-01-01T12:00:00"
                   Expect(result).ToBe("2024-01-01T12:00:00");
@@ -471,7 +744,7 @@ void zusf_tests()
                 {
                   time_t test_time = 0; // Unix epoch
 
-                  string result = zusf_format_ls_time(test_time, true);
+                  std::string result = zusf_format_ls_time(test_time, true);
 
                   // Should be in format "1970-01-01T00:00:00"
                   Expect(result).ToBe("1970-01-01T00:00:00");
@@ -482,7 +755,7 @@ void zusf_tests()
                 {
                   time_t test_time = -1; // Invalid time
 
-                  string result = zusf_format_ls_time(test_time, true);
+                  std::string result = zusf_format_ls_time(test_time, true);
 
                   // Should fallback to epoch time
                   Expect(result).ToBe("1970-01-01T00:00:00");
@@ -494,7 +767,7 @@ void zusf_tests()
                   // Use year 2038 (close to 32-bit time_t limit)
                   time_t test_time = 2147483647; // 2038-01-19 03:14:07 UTC
 
-                  string result = zusf_format_ls_time(test_time, true);
+                  std::string result = zusf_format_ls_time(test_time, true);
 
                   // Should format correctly
                   Expect(result).ToBe("2038-01-19T03:14:07");
@@ -508,7 +781,7 @@ void zusf_tests()
                 [&]() -> void
                 {
                   uid_t current_uid = getuid();
-                  string result = zusf_get_owner_from_uid(current_uid);
+                  std::string result = zusf_get_owner_from_uid(current_uid);
 
                   // Should return a valid username (not null)
                   Expect(result).Not().ToBe("");
@@ -517,7 +790,7 @@ void zusf_tests()
                   struct passwd *pwd = getpwuid(current_uid);
                   if (pwd != nullptr)
                   {
-                    Expect(string(result)).ToBe(string(pwd->pw_name));
+                    Expect(std::string(result)).ToBe(std::string(pwd->pw_name));
                   }
                 });
 
@@ -526,7 +799,7 @@ void zusf_tests()
                 {
                   // Use a UID that's very unlikely to exist
                   uid_t invalid_uid = 99999;
-                  string result = zusf_get_owner_from_uid(invalid_uid);
+                  std::string result = zusf_get_owner_from_uid(invalid_uid);
 
                   // Should return null for non-existent UID
                   Expect(result).ToBe("");
@@ -540,7 +813,7 @@ void zusf_tests()
                 [&]() -> void
                 {
                   gid_t current_gid = getgid();
-                  string result = zusf_get_group_from_gid(current_gid);
+                  std::string result = zusf_get_group_from_gid(current_gid);
 
                   // Should return a valid group name (not null)
                   Expect(result).Not().ToBe("");
@@ -549,7 +822,7 @@ void zusf_tests()
                   struct group *grp = getgrgid(current_gid);
                   if (grp != nullptr)
                   {
-                    Expect(string(result)).ToBe(string(grp->gr_name));
+                    Expect(std::string(result)).ToBe(std::string(grp->gr_name));
                   }
                 });
 
@@ -558,7 +831,7 @@ void zusf_tests()
                 {
                   // Use a GID that's very unlikely to exist
                   gid_t invalid_gid = 99999;
-                  string result = zusf_get_group_from_gid(invalid_gid);
+                  std::string result = zusf_get_group_from_gid(invalid_gid);
 
                   // Should return null for non-existent GID
                   Expect(result).ToBe("");
@@ -568,7 +841,7 @@ void zusf_tests()
                 [&]() -> void
                 {
                   gid_t root_gid = 0;
-                  string result = zusf_get_group_from_gid(root_gid);
+                  std::string result = zusf_get_group_from_gid(root_gid);
 
                   // May or may not exist depending on system, but should handle gracefully
                   // If it exists, commonly "root" or "wheel"
@@ -582,12 +855,9 @@ void zusf_tests()
   describe("zusf_format_file_entry tests",
            [&]() -> void
            {
-             ZUSF zusf;
-             const string test_file = "/tmp/zusf_format_test_file.txt";
-             const string test_dir = "/tmp/zusf_format_test_dir";
-
-             beforeEach([&]() -> void
-                        { memset(&zusf, 0, sizeof(zusf)); });
+             ZUSF zusf{};
+             const std::string test_file = "/tmp/zusf_format_test_file.txt";
+             const std::string test_dir = "/tmp/zusf_format_test_dir";
 
              afterEach([&]() -> void
                        {
@@ -599,15 +869,16 @@ void zusf_tests()
                 {
                   // Create test file
                   unlink(test_file.c_str());
-                  ofstream file(test_file);
+                  std::ofstream file(test_file);
                   file << "test content";
                   file.close();
 
                   struct stat file_stats;
                   stat(test_file.c_str(), &file_stats);
 
-                  ListOptions options = {false, false, 1}; // not all files, not long format, no recursion
-                  string result = zusf_format_file_entry(&zusf, file_stats, test_file, "testfile.txt", options, false);
+                  ListOptions options{false, false, 1};
+                  ; // not all files, not long format, no recursion
+                  std::string result = zusf_format_file_entry(&zusf, file_stats, test_file, "testfile.txt", options, false);
 
                   // Short format should just be filename + newline
                   Expect(result).ToBe("testfile.txt\n");
@@ -618,7 +889,7 @@ void zusf_tests()
                 {
                   // Create test file
                   unlink(test_file.c_str());
-                  ofstream file(test_file);
+                  std::ofstream file(test_file);
                   file << "test content";
                   file.close();
                   chmod(test_file.c_str(), 0644);
@@ -626,8 +897,9 @@ void zusf_tests()
                   struct stat file_stats;
                   stat(test_file.c_str(), &file_stats);
 
-                  ListOptions options = {false, true, 1}; // not all files, long format, no recursion
-                  string result = zusf_format_file_entry(&zusf, file_stats, test_file, "testfile.txt", options, false);
+                  ListOptions options{false, true, 1};
+                  ; // not all files, long format, no recursion
+                  std::string result = zusf_format_file_entry(&zusf, file_stats, test_file, "testfile.txt", options, false);
 
                   // Long format should contain permissions, size, time, filename
                   Expect(result).ToContain("-rw-r--r--");   // permissions
@@ -641,7 +913,7 @@ void zusf_tests()
                 {
                   // Create test file
                   unlink(test_file.c_str());
-                  ofstream file(test_file);
+                  std::ofstream file(test_file);
                   file << "test content";
                   file.close();
                   chmod(test_file.c_str(), 0644);
@@ -649,8 +921,9 @@ void zusf_tests()
                   struct stat file_stats;
                   stat(test_file.c_str(), &file_stats);
 
-                  ListOptions options = {false, true, 1}; // not all files, long format, no recursion
-                  string result = zusf_format_file_entry(&zusf, file_stats, test_file, "testfile.txt", options, true);
+                  ListOptions options{false, true, 1};
+                  ; // not all files, long format, no recursion
+                  std::string result = zusf_format_file_entry(&zusf, file_stats, test_file, "testfile.txt", options, true);
 
                   // CSV format should have comma-separated values
                   Expect(result).ToContain(",");            // should have commas
@@ -679,8 +952,9 @@ void zusf_tests()
                   struct stat dir_stats;
                   stat(test_dir.c_str(), &dir_stats);
 
-                  ListOptions options = {false, true, 1}; // not all files, long format, no recursion
-                  string result = zusf_format_file_entry(&zusf, dir_stats, test_dir, "testdir", options, false);
+                  ListOptions options{false, true, 1};
+                  ; // not all files, long format, no recursion
+                  std::string result = zusf_format_file_entry(&zusf, dir_stats, test_dir, "testdir", options, false);
 
                   // Directory should start with 'd'
                   Expect(result).ToContain("drwxr-xr-x"); // directory permissions
@@ -692,21 +966,22 @@ void zusf_tests()
                 {
                   // Create test file
                   unlink(test_file.c_str());
-                  ofstream file(test_file);
+                  std::ofstream file(test_file);
                   file << "test content";
                   file.close();
 
                   struct stat file_stats;
                   stat(test_file.c_str(), &file_stats);
 
-                  ListOptions options = {false, true, 1}; // long format, no recursion
-                  string result = zusf_format_file_entry(&zusf, file_stats, test_file, "testfile.txt", options, false);
+                  ListOptions options{false, true, 1};
+                  ; // long format, no recursion
+                  std::string result = zusf_format_file_entry(&zusf, file_stats, test_file, "testfile.txt", options, false);
 
                   // Should contain CCSID information (could be "untagged" or a specific CCSID)
-                  bool has_ccsid_info = result.find("untagged") != string::npos ||
-                                        result.find("IBM-") != string::npos ||
-                                        result.find("UTF-8") != string::npos ||
-                                        result.find("binary") != string::npos;
+                  bool has_ccsid_info = result.find("untagged") != std::string::npos ||
+                                        result.find("IBM-") != std::string::npos ||
+                                        result.find("UTF-8") != std::string::npos ||
+                                        result.find("binary") != std::string::npos;
                   Expect(has_ccsid_info).ToBe(true);
                 });
            });
@@ -714,24 +989,22 @@ void zusf_tests()
   describe("zusf_list_uss_file_path tests",
            [&]() -> void
            {
-             ZUSF zusf;
-             const string test_file = "/tmp/zusf_list_test_file.txt";
-             const string test_dir = "/tmp/zusf_list_test_dir";
-             const string nonexistent_path = "/tmp/nonexistent_path_for_list";
-
-             beforeEach([&]() -> void
-                        { memset(&zusf, 0, sizeof(zusf)); });
+             ZUSF zusf{};
+             const std::string test_file = "/tmp/zusf_list_test_file.txt";
+             const std::string test_dir = "/tmp/zusf_list_test_dir";
+             const std::string nonexistent_path = "/tmp/nonexistent_path_for_list";
 
              it("should fail for nonexistent path",
                 [&]() -> void
                 {
-                  string response;
-                  ListOptions options = {false, false, 1}; // no recursion
+                  std::string response;
+                  ListOptions options{false, false, 1};
+                  ; // no recursion
 
                   int result = zusf_list_uss_file_path(&zusf, nonexistent_path, response, options, false);
 
                   Expect(result).ToBe(RTNCD_FAILURE);
-                  Expect(string(zusf.diag.e_msg)).ToContain("does not exist");
+                  Expect(std::string(zusf.diag.e_msg)).ToContain("does not exist");
                 });
 
              it("should list single file successfully",
@@ -739,12 +1012,13 @@ void zusf_tests()
                 {
                   // Create test file
                   unlink(test_file.c_str());
-                  ofstream file(test_file);
+                  std::ofstream file(test_file);
                   file << "test content for listing";
                   file.close();
 
-                  string response;
-                  ListOptions options = {false, false, 1}; // short format, no recursion
+                  std::string response;
+                  ListOptions options{false, false, 1};
+                  ; // short format, no recursion
 
                   int result = zusf_list_uss_file_path(&zusf, test_file, response, options, false);
 
@@ -760,12 +1034,13 @@ void zusf_tests()
                 {
                   // Create test file
                   unlink(test_file.c_str());
-                  ofstream file(test_file);
+                  std::ofstream file(test_file);
                   file << "test content for long listing";
                   file.close();
 
-                  string response;
-                  ListOptions options = {false, true, 1}; // long format, no recursion
+                  std::string response;
+                  ListOptions options{false, true, 1};
+                  ; // long format, no recursion
 
                   int result = zusf_list_uss_file_path(&zusf, test_file, response, options, false);
 
@@ -785,22 +1060,23 @@ void zusf_tests()
                   mkdir(test_dir.c_str(), 0755);
 
                   // Create files in directory
-                  string file1 = test_dir + "/file1.txt";
-                  string file2 = test_dir + "/file2.txt";
-                  string subdir = test_dir + "/subdir";
+                  std::string file1 = test_dir + "/file1.txt";
+                  std::string file2 = test_dir + "/file2.txt";
+                  std::string subdir = test_dir + "/subdir";
 
-                  ofstream f1(file1);
+                  std::ofstream f1(file1);
                   f1 << "content1";
                   f1.close();
 
-                  ofstream f2(file2);
+                  std::ofstream f2(file2);
                   f2 << "content2";
                   f2.close();
 
                   mkdir(subdir.c_str(), 0755);
 
-                  string response;
-                  ListOptions options = {false, false, 1}; // short format, no recursion
+                  std::string response;
+                  ListOptions options{false, false, 1};
+                  ; // short format, no recursion
 
                   int result = zusf_list_uss_file_path(&zusf, test_dir, response, options, false);
 
@@ -829,13 +1105,14 @@ void zusf_tests()
                   mkdir(test_dir.c_str(), 0755);
 
                   // Create file in directory
-                  string file1 = test_dir + "/testfile.txt";
-                  ofstream f1(file1);
+                  std::string file1 = test_dir + "/testfile.txt";
+                  std::ofstream f1(file1);
                   f1 << "test content";
                   f1.close();
 
-                  string response;
-                  ListOptions options = {false, true, 1}; // long format, no recursion
+                  std::string response;
+                  ListOptions options{false, true, 1};
+                  ; // long format, no recursion
 
                   int result = zusf_list_uss_file_path(&zusf, test_dir, response, options, false);
 
@@ -856,20 +1133,20 @@ void zusf_tests()
                   mkdir(test_dir.c_str(), 0755);
 
                   // Create regular and hidden files
-                  string regular_file = test_dir + "/regular.txt";
-                  string hidden_file = test_dir + "/.hidden.txt";
+                  std::string regular_file = test_dir + "/regular.txt";
+                  std::string hidden_file = test_dir + "/.hidden.txt";
 
-                  ofstream f1(regular_file);
+                  std::ofstream f1(regular_file);
                   f1 << "regular content";
                   f1.close();
 
-                  ofstream f2(hidden_file);
+                  std::ofstream f2(hidden_file);
                   f2 << "hidden content";
                   f2.close();
 
                   // Test without all_files option
-                  string response1;
-                  ListOptions options1 = {false, false, 1}; // no all_files, no recursion
+                  std::string response1;
+                  ListOptions options1{false, false, 1}; // no all_files, no recursion
                   int result1 = zusf_list_uss_file_path(&zusf, test_dir, response1, options1, false);
 
                   Expect(result1).ToBe(RTNCD_SUCCESS);
@@ -877,8 +1154,8 @@ void zusf_tests()
                   Expect(response1).Not().ToContain(".hidden.txt");
 
                   // Test with all_files option
-                  string response2;
-                  ListOptions options2 = {true, false, 1}; // with all_files, no recursion
+                  std::string response2;
+                  ListOptions options2{true, false, 1}; // with all_files, no recursion
                   int result2 = zusf_list_uss_file_path(&zusf, test_dir, response2, options2, false);
 
                   Expect(result2).ToBe(RTNCD_SUCCESS);
@@ -896,12 +1173,13 @@ void zusf_tests()
                 {
                   // Create test file
                   unlink(test_file.c_str());
-                  ofstream file(test_file);
+                  std::ofstream file(test_file);
                   file << "csv test content";
                   file.close();
 
-                  string response;
-                  ListOptions options = {false, true, 1}; // long format, no recursion
+                  std::string response;
+                  ListOptions options{false, true, 1};
+                  ; // long format, no recursion
 
                   int result = zusf_list_uss_file_path(&zusf, test_file, response, options, true); // CSV format
 
@@ -931,8 +1209,9 @@ void zusf_tests()
                   rmdir(test_dir.c_str());
                   mkdir(test_dir.c_str(), 0755);
 
-                  string response;
-                  ListOptions options = {false, false, 1}; // no recursion
+                  std::string response;
+                  ListOptions options{false, false, 1};
+                  ; // no recursion
 
                   int result = zusf_list_uss_file_path(&zusf, test_dir, response, options, false);
 
@@ -951,13 +1230,14 @@ void zusf_tests()
                   mkdir(test_dir.c_str(), 0755);
 
                   // Create only hidden files
-                  string hidden_file = test_dir + "/.hidden1.txt";
-                  ofstream f1(hidden_file);
+                  std::string hidden_file = test_dir + "/.hidden1.txt";
+                  std::ofstream f1(hidden_file);
                   f1 << "hidden content";
                   f1.close();
 
-                  string response;
-                  ListOptions options = {false, false, 1}; // no all_files, no recursion
+                  std::string response;
+                  ListOptions options{false, false, 1};
+                  ; // no all_files, no recursion
 
                   int result = zusf_list_uss_file_path(&zusf, test_dir, response, options, false);
 
@@ -973,19 +1253,16 @@ void zusf_tests()
   describe("zusf_list_uss_file_path recursive tests",
            [&]() -> void
            {
-             ZUSF zusf;
-
-             beforeEach([&]() -> void
-                        { memset(&zusf, 0, sizeof(zusf)); });
+             ZUSF zusf{};
 
              it("should list immediate children only with depth 1",
                 [&]() -> void
                 {
                   // Create test directory structure
-                  string test_dir = "/tmp/test_depth1_dir";
-                  string sub_dir = test_dir + "/subdir";
-                  string file1 = test_dir + "/file1.txt";
-                  string file2 = sub_dir + "/file2.txt";
+                  std::string test_dir = "/tmp/test_depth1_dir";
+                  std::string sub_dir = test_dir + "/subdir";
+                  std::string file1 = test_dir + "/file1.txt";
+                  std::string file2 = sub_dir + "/file2.txt";
 
                   // Cleanup first
                   unlink(file2.c_str());
@@ -998,16 +1275,17 @@ void zusf_tests()
                   mkdir(sub_dir.c_str(), 0755);
 
                   // Create files
-                  ofstream f1(file1);
+                  std::ofstream f1(file1);
                   f1 << "content1";
                   f1.close();
 
-                  ofstream f2(file2);
+                  std::ofstream f2(file2);
                   f2 << "content2";
                   f2.close();
 
-                  string response;
-                  ListOptions options = {false, false, 1}; // depth 1 = immediate children only
+                  std::string response;
+                  ListOptions options{false, false, 1};
+                  ; // depth 1 = immediate children only
 
                   int result = zusf_list_uss_file_path(&zusf, test_dir, response, options, false);
 
@@ -1027,10 +1305,10 @@ void zusf_tests()
                 [&]() -> void
                 {
                   // Create test directory structure
-                  string test_dir = "/tmp/test_depth0_dir";
-                  string sub_dir = test_dir + "/subdir";
-                  string file1 = test_dir + "/file1.txt";
-                  string file2 = sub_dir + "/file2.txt";
+                  std::string test_dir = "/tmp/test_depth0_dir";
+                  std::string sub_dir = test_dir + "/subdir";
+                  std::string file1 = test_dir + "/file1.txt";
+                  std::string file2 = sub_dir + "/file2.txt";
 
                   // Cleanup first
                   unlink(file2.c_str());
@@ -1043,16 +1321,17 @@ void zusf_tests()
                   mkdir(sub_dir.c_str(), 0755);
 
                   // Create files
-                  ofstream f1(file1);
+                  std::ofstream f1(file1);
                   f1 << "content1";
                   f1.close();
 
-                  ofstream f2(file2);
+                  std::ofstream f2(file2);
                   f2 << "content2";
                   f2.close();
 
-                  string response;
-                  ListOptions options = {false, false, 0}; // all_files=false, depth=0 = show directory itself
+                  std::string response;
+                  ListOptions options{false, false, 0};
+                  ; // all_files=false, depth=0 = show directory itself
 
                   int result = zusf_list_uss_file_path(&zusf, test_dir, response, options, false);
 
@@ -1074,10 +1353,10 @@ void zusf_tests()
                 [&]() -> void
                 {
                   // Create test directory structure
-                  string test_dir = "/tmp/test_depth2_dir";
-                  string sub_dir = test_dir + "/subdir";
-                  string file1 = test_dir + "/file1.txt";
-                  string file2 = sub_dir + "/file2.txt";
+                  std::string test_dir = "/tmp/test_depth2_dir";
+                  std::string sub_dir = test_dir + "/subdir";
+                  std::string file1 = test_dir + "/file1.txt";
+                  std::string file2 = sub_dir + "/file2.txt";
 
                   // Cleanup first
                   unlink(file2.c_str());
@@ -1090,16 +1369,17 @@ void zusf_tests()
                   mkdir(sub_dir.c_str(), 0755);
 
                   // Create files
-                  ofstream f1(file1);
+                  std::ofstream f1(file1);
                   f1 << "content1";
                   f1.close();
 
-                  ofstream f2(file2);
+                  std::ofstream f2(file2);
                   f2 << "content2";
                   f2.close();
 
-                  string response;
-                  ListOptions options = {false, false, 2}; // depth 2 = immediate children + 1 level of subdirs
+                  std::string response;
+                  ListOptions options{false, false, 2};
+                  ; // depth 2 = immediate children + 1 level of subdirs
 
                   int result = zusf_list_uss_file_path(&zusf, test_dir, response, options, false);
 
@@ -1119,9 +1399,9 @@ void zusf_tests()
                 [&]() -> void
                 {
                   // Create test directory structure
-                  string test_dir = "/tmp/test_all_files_dir";
-                  string sub_dir = test_dir + "/subdir";
-                  string file1 = test_dir + "/file1.txt";
+                  std::string test_dir = "/tmp/test_all_files_dir";
+                  std::string sub_dir = test_dir + "/subdir";
+                  std::string file1 = test_dir + "/file1.txt";
 
                   // Cleanup first
                   unlink(file1.c_str());
@@ -1133,14 +1413,14 @@ void zusf_tests()
                   mkdir(sub_dir.c_str(), 0755);
 
                   // Create files
-                  ofstream f1(file1);
+                  std::ofstream f1(file1);
                   f1 << "content1";
                   f1.close();
 
-                  string response;
+                  std::string response;
 
                   // Test with depth 0 and all_files = true (should behave like 'ls -d')
-                  ListOptions options_depth0 = {true, false, 0}; // all_files=true, depth=0
+                  ListOptions options_depth0{true, false, 0}; // all_files=true, depth=0
                   int result = zusf_list_uss_file_path(&zusf, test_dir, response, options_depth0, false);
 
                   Expect(result).ToBe(RTNCD_SUCCESS);
@@ -1152,7 +1432,7 @@ void zusf_tests()
 
                   // Test with depth 1 and all_files = true
                   response.clear();
-                  ListOptions options_depth1 = {true, false, 1}; // all_files=true, depth=1
+                  ListOptions options_depth1{true, false, 1}; // all_files=true, depth=1
                   result = zusf_list_uss_file_path(&zusf, test_dir, response, options_depth1, false);
 
                   Expect(result).ToBe(RTNCD_SUCCESS);
@@ -1171,10 +1451,7 @@ void zusf_tests()
   describe("zusf source encoding tests",
            [&]() -> void
            {
-             ZUSF zusf;
-
-             beforeEach([&]() -> void
-                        { memset(&zusf, 0, sizeof(zusf)); });
+             ZUSF zusf{};
 
              it("should use default source encoding (UTF-8) when not specified",
                 [&]() -> void
@@ -1185,8 +1462,8 @@ void zusf_tests()
                   // source_codepage should be empty/null
 
                   // The encoding conversion logic should use UTF-8 as source when source_codepage is empty
-                  Expect(strlen(zusf.encoding_opts.source_codepage)).ToBe(0);
-                  Expect(strlen(zusf.encoding_opts.codepage)).ToBe(8); // "IBM-1047"
+                  Expect(std::strlen(zusf.encoding_opts.source_codepage)).ToBe(0);
+                  Expect(std::strlen(zusf.encoding_opts.codepage)).ToBe(8); // "IBM-1047"
                 });
 
              it("should use specified source encoding when provided",
@@ -1198,8 +1475,8 @@ void zusf_tests()
                   zusf.encoding_opts.data_type = eDataTypeText;
 
                   // Verify both encodings are set correctly
-                  Expect(string(zusf.encoding_opts.codepage)).ToBe("IBM-1047");
-                  Expect(string(zusf.encoding_opts.source_codepage)).ToBe("IBM-037");
+                  Expect(std::string(zusf.encoding_opts.codepage)).ToBe("IBM-1047");
+                  Expect(std::string(zusf.encoding_opts.source_codepage)).ToBe("IBM-037");
                   Expect(zusf.encoding_opts.data_type).ToBe(eDataTypeText);
                 });
 
@@ -1211,8 +1488,8 @@ void zusf_tests()
                   zusf.encoding_opts.data_type = eDataTypeBinary;
 
                   // For binary data, encoding should not be used for conversion
-                  Expect(string(zusf.encoding_opts.codepage)).ToBe("binary");
-                  Expect(string(zusf.encoding_opts.source_codepage)).ToBe("UTF-8");
+                  Expect(std::string(zusf.encoding_opts.codepage)).ToBe("binary");
+                  Expect(std::string(zusf.encoding_opts.source_codepage)).ToBe("UTF-8");
                   Expect(zusf.encoding_opts.data_type).ToBe(eDataTypeBinary);
                 });
 
@@ -1225,8 +1502,8 @@ void zusf_tests()
                   zusf.encoding_opts.data_type = eDataTypeText;
 
                   // Should handle empty source encoding (will default to UTF-8 in actual conversion)
-                  Expect(strlen(zusf.encoding_opts.source_codepage)).ToBe(0);
-                  Expect(string(zusf.encoding_opts.codepage)).ToBe("IBM-1047");
+                  Expect(std::strlen(zusf.encoding_opts.source_codepage)).ToBe(0);
+                  Expect(std::string(zusf.encoding_opts.codepage)).ToBe("IBM-1047");
                 });
 
              it("should preserve encoding settings in file operations struct",
@@ -1240,8 +1517,8 @@ void zusf_tests()
                   ZUSF zusf_copy = zusf;
 
                   // Verify encodings are preserved
-                  Expect(string(zusf_copy.encoding_opts.codepage)).ToBe("IBM-1047");
-                  Expect(string(zusf_copy.encoding_opts.source_codepage)).ToBe("ISO8859-1");
+                  Expect(std::string(zusf_copy.encoding_opts.codepage)).ToBe("IBM-1047");
+                  Expect(std::string(zusf_copy.encoding_opts.source_codepage)).ToBe("ISO8859-1");
                   Expect(zusf_copy.encoding_opts.data_type).ToBe(eDataTypeText);
                 });
 
@@ -1252,19 +1529,19 @@ void zusf_tests()
                   strcpy(zusf.encoding_opts.source_codepage, "IBM-1047");
                   zusf.encoding_opts.data_type = eDataTypeText;
 
-                  const string test_file = "/tmp/zusf_source_encoding_test.txt";
+                  const std::string test_file = "/tmp/zusf_source_encoding_test.txt";
 
                   // Create a test file with some content
                   unlink(test_file.c_str());
-                  ofstream file(test_file);
+                  std::ofstream file(test_file);
                   file << "Test content for source encoding";
                   file.close();
 
                   // Test that the encoding options are properly set for file operations
                   // We can't easily test the actual encoding conversion without mainframe-specific
                   // file tags, but we can verify the struct is configured correctly
-                  Expect(string(zusf.encoding_opts.codepage)).ToBe("UTF-8");
-                  Expect(string(zusf.encoding_opts.source_codepage)).ToBe("IBM-1047");
+                  Expect(std::string(zusf.encoding_opts.codepage)).ToBe("UTF-8");
+                  Expect(std::string(zusf.encoding_opts.source_codepage)).ToBe("IBM-1047");
 
                   // Test that file exists and can be accessed
                   struct stat file_stats;
@@ -1280,8 +1557,8 @@ void zusf_tests()
                 [&]() -> void
                 {
                   // Test maximum length encoding names (15 chars + null terminator)
-                  string long_target = "IBM-1234567890A"; // 15 characters
-                  string long_source = "UTF-1234567890B"; // 15 characters
+                  std::string long_target = "IBM-1234567890A"; // 15 characters
+                  std::string long_source = "UTF-1234567890B"; // 15 characters
 
                   strncpy(zusf.encoding_opts.codepage, long_target.c_str(), sizeof(zusf.encoding_opts.codepage) - 1);
                   strncpy(zusf.encoding_opts.source_codepage, long_source.c_str(), sizeof(zusf.encoding_opts.source_codepage) - 1);
@@ -1290,8 +1567,8 @@ void zusf_tests()
                   zusf.encoding_opts.codepage[sizeof(zusf.encoding_opts.codepage) - 1] = '\0';
                   zusf.encoding_opts.source_codepage[sizeof(zusf.encoding_opts.source_codepage) - 1] = '\0';
 
-                  Expect(string(zusf.encoding_opts.codepage)).ToBe(long_target);
-                  Expect(string(zusf.encoding_opts.source_codepage)).ToBe(long_source);
+                  Expect(std::string(zusf.encoding_opts.codepage)).ToBe(long_target);
+                  Expect(std::string(zusf.encoding_opts.source_codepage)).ToBe(long_source);
 
                   // Verify the struct size assumptions
                   Expect(sizeof(zusf.encoding_opts.codepage)).ToBe(16);
@@ -1326,9 +1603,9 @@ void zusf_tests()
                     strcpy(zusf.encoding_opts.codepage, pair.target);
                     zusf.encoding_opts.data_type = eDataTypeText;
 
-                    // Verify encoding pair is set correctly
-                    Expect(string(zusf.encoding_opts.source_codepage)).ToBe(string(pair.source));
-                    Expect(string(zusf.encoding_opts.codepage)).ToBe(string(pair.target));
+                    // Verify encoding std::pair is set correctly
+                    Expect(std::string(zusf.encoding_opts.source_codepage)).ToBe(std::string(pair.source));
+                    Expect(std::string(zusf.encoding_opts.codepage)).ToBe(std::string(pair.target));
                     Expect(zusf.encoding_opts.data_type).ToBe(eDataTypeText);
                   }
                 });
@@ -1340,7 +1617,7 @@ void zusf_tests()
                   strcpy(zusf.encoding_opts.source_codepage, "UTF-8");
                   zusf.encoding_opts.data_type = eDataTypeText;
 
-                  const string test_file = "/tmp/zusf_create_with_source_encoding.txt";
+                  const std::string test_file = "/tmp/zusf_create_with_source_encoding.txt";
 
                   // Cleanup any existing file
                   unlink(test_file.c_str());
@@ -1356,8 +1633,8 @@ void zusf_tests()
                   Expect(S_ISREG(file_stats.st_mode)).ToBe(true);
 
                   // Verify encoding options are still set correctly
-                  Expect(string(zusf.encoding_opts.codepage)).ToBe("IBM-1047");
-                  Expect(string(zusf.encoding_opts.source_codepage)).ToBe("UTF-8");
+                  Expect(std::string(zusf.encoding_opts.codepage)).ToBe("IBM-1047");
+                  Expect(std::string(zusf.encoding_opts.source_codepage)).ToBe("UTF-8");
 
                   // Cleanup
                   unlink(test_file.c_str());
@@ -1370,7 +1647,7 @@ void zusf_tests()
                   strcpy(zusf.encoding_opts.source_codepage, "IBM-037");
                   zusf.encoding_opts.data_type = eDataTypeText;
 
-                  const string test_dir = "/tmp/zusf_dir_source_encoding_test";
+                  const std::string test_dir = "/tmp/zusf_dir_source_encoding_test";
 
                   // Cleanup any existing directory
                   rmdir(test_dir.c_str());
@@ -1385,8 +1662,8 @@ void zusf_tests()
                   Expect(S_ISDIR(dir_stats.st_mode)).ToBe(true);
 
                   // Verify encoding options are still preserved
-                  Expect(string(zusf.encoding_opts.codepage)).ToBe("UTF-8");
-                  Expect(string(zusf.encoding_opts.source_codepage)).ToBe("IBM-037");
+                  Expect(std::string(zusf.encoding_opts.codepage)).ToBe("UTF-8");
+                  Expect(std::string(zusf.encoding_opts.source_codepage)).ToBe("IBM-037");
 
                   // Cleanup
                   rmdir(test_dir.c_str());
@@ -1399,7 +1676,7 @@ void zusf_tests()
                   strcpy(zusf.encoding_opts.source_codepage, "UTF-8");
                   zusf.encoding_opts.data_type = eDataTypeText;
 
-                  const string nonexistent_file = "/tmp/nonexistent_path_for_encoding_test.txt";
+                  const std::string nonexistent_file = "/tmp/nonexistent_path_for_encoding_test.txt";
 
                   // Ensure the file doesn't exist
                   unlink(nonexistent_file.c_str());
@@ -1409,12 +1686,259 @@ void zusf_tests()
                   Expect(result).ToBe(RTNCD_FAILURE);
 
                   // Verify encoding options are still set correctly after error
-                  Expect(string(zusf.encoding_opts.codepage)).ToBe("IBM-1047");
-                  Expect(string(zusf.encoding_opts.source_codepage)).ToBe("UTF-8");
+                  Expect(std::string(zusf.encoding_opts.codepage)).ToBe("IBM-1047");
+                  Expect(std::string(zusf.encoding_opts.source_codepage)).ToBe("UTF-8");
                   Expect(zusf.encoding_opts.data_type).ToBe(eDataTypeText);
 
                   // Verify error message was set but encoding preserved
-                  Expect(strlen(zusf.diag.e_msg)).ToBeGreaterThan(0);
+                  Expect(std::strlen(zusf.diag.e_msg)).ToBeGreaterThan(0);
                 });
+           });
+
+  describe("zusf_move_uss_file_or_dir tests",
+           [&]() -> void
+           {
+             std::string zusf_test_dir = "/tmp/zusf_test_dir_" + get_random_string(10);
+             TestDirGuard test_dir(zusf_test_dir.c_str());
+
+             ZUSF zusf{};
+             beforeEach([&zusf]() -> void
+                        { zusf = {}; });
+
+             describe("error conditions", [&]() -> void
+                      {
+                        it("should fail when source or destination is empty",
+                           [&]() -> void
+                           {
+                             int result = zusf_move_uss_file_or_dir(&zusf, "", "");
+                             Expect(result).ToBe(RTNCD_FAILURE);
+                             Expect(std::string(zusf.diag.e_msg)).ToContain("Source or target path is empty or too long");
+
+                             result = zusf_move_uss_file_or_dir(&zusf, "test_file.txt", "");
+                             Expect(result).ToBe(RTNCD_FAILURE);
+                             Expect(std::string(zusf.diag.e_msg)).ToContain("Source or target path is empty or too long");
+
+                             result = zusf_move_uss_file_or_dir(&zusf, "", "test_file.txt");
+                             Expect(result).ToBe(RTNCD_FAILURE);
+                             Expect(std::string(zusf.diag.e_msg)).ToContain("Source or target path is empty or too long");
+                           });
+
+                        it("should fail when source or target path is too long",
+                           [&]() -> void
+                           {
+                             std::string source = get_random_uss(zusf_test_dir);
+                             std::string target = get_random_uss(zusf_test_dir);
+                             source.append(PATH_MAX, 'a');
+                             target.append(PATH_MAX, 'a');
+
+                             int rc = zusf_move_uss_file_or_dir(&zusf, source, zusf_test_dir);
+                             Expect(rc).ToBe(RTNCD_FAILURE);
+                             Expect(std::string(zusf.diag.e_msg)).ToContain("Source or target path is empty or too long");
+
+                             rc = zusf_move_uss_file_or_dir(&zusf, zusf_test_dir, target);
+                             Expect(rc).ToBe(RTNCD_FAILURE);
+                             Expect(std::string(zusf.diag.e_msg)).ToContain("Source or target path is empty or too long");
+
+                             rc = zusf_move_uss_file_or_dir(&zusf, source, target);
+                             Expect(rc).ToBe(RTNCD_FAILURE);
+                             Expect(std::string(zusf.diag.e_msg)).ToContain("Source or target path is empty or too long");
+                           });
+
+                        it("should fail when source does not exist",
+                           [&]() -> void
+                           {
+                             std::string source = get_random_uss(zusf_test_dir);
+                             int result = zusf_move_uss_file_or_dir(&zusf, source, "test_file.txt");
+                             Expect(result).ToBe(RTNCD_FAILURE);
+                             Expect(std::string(zusf.diag.e_msg)).ToContain("Source path '" + source + "' does not exist");
+                           });
+
+                        it("should fail when source and target are the same",
+                           [&]() -> void
+                           {
+                             std::string source = get_random_uss(zusf_test_dir);
+                             TestFileGuard file(source.c_str());
+
+                             int result = zusf_move_uss_file_or_dir(&zusf, source, source);
+                             Expect(result).ToBe(RTNCD_FAILURE);
+                             Expect(std::string(zusf.diag.e_msg)).ToContain("Source '" + source + "' and target '" + source + "' are identical");
+                           });
+
+                        it("should fail when source is a directory and target is not a directory",
+                           [&]() -> void
+                           {
+                             std::string target = get_random_uss(zusf_test_dir);
+                             TestFileGuard file(target.c_str());
+
+                             int result = zusf_move_uss_file_or_dir(&zusf, zusf_test_dir, target);
+                             Expect(result).ToBe(RTNCD_FAILURE);
+                             Expect(std::string(zusf.diag.e_msg)).ToContain("Cannot move directory '" + zusf_test_dir + "'. Target '" + target + "' is not a directory");
+                           });
+
+                        it("should fail when source is a pipe and target is not a pipe",
+                           [&]() -> void
+                           {
+                             std::string source = get_random_uss(zusf_test_dir);
+                             std::string target = get_random_uss(zusf_test_dir);
+                             TestFileGuard file(source.c_str(), 'p');
+                             TestFileGuard target_file(target.c_str());
+
+                             int result = zusf_move_uss_file_or_dir(&zusf, source, target);
+                             Expect(result).ToBe(RTNCD_FAILURE);
+                             Expect(std::string(zusf.diag.e_msg)).ToContain("Cannot move pipe '" + source + "'. Target '" + target + "' is not a pipe");
+                           });
+
+                        it("should fail to move a symlink to a file if the symlink points to the same file",
+                           [&]() -> void
+                           {
+                             std::string source = get_random_uss(zusf_test_dir);
+                             std::string target = get_random_uss(zusf_test_dir);
+                             TestFileGuard target_file(target.c_str());
+                             TestFileGuard file(source.c_str(), 'l', target.c_str());
+
+                             int result = zusf_move_uss_file_or_dir(&zusf, source, target);
+                             Expect(result).ToBe(RTNCD_FAILURE);
+                             Expect(std::string(zusf.diag.e_msg)).ToContain("Source '" + source + "' and target '" + target + "' are identical");
+                           });
+
+                        it("should fail to move a symlink to a file if the symlink points to a directory",
+                           [&]() -> void
+                           {
+                             std::string source = get_random_uss(zusf_test_dir);
+                             std::string target = get_random_uss(zusf_test_dir);
+                             std::string test_file = get_random_uss(zusf_test_dir);
+                             TestDirGuard target_dir(target.c_str());
+                             TestFileGuard file(source.c_str(), 'l', target.c_str());
+                             TestFileGuard test_file_guard(test_file.c_str());
+
+                             int result = zusf_move_uss_file_or_dir(&zusf, source, test_file);
+                             Expect(result).ToBe(RTNCD_FAILURE);
+                             Expect(std::string(zusf.diag.e_msg)).ToContain("Cannot move directory '" + source + "'. Target '" + test_file + "' is not a directory");
+                           });
+
+                        it("should fail when using force false and target exists",
+                           [&]() -> void
+                           {
+                             std::string source = get_random_uss(zusf_test_dir);
+                             std::string target = get_random_uss(zusf_test_dir);
+                             TestFileGuard source_file(source.c_str());
+                             TestFileGuard target_file(target.c_str());
+
+                             int result = zusf_move_uss_file_or_dir(&zusf, source, target, false);
+                             Expect(result).ToBe(RTNCD_FAILURE);
+                             Expect(std::string(zusf.diag.e_msg)).ToContain("Target path '" + target + "' already exists");
+                           });
+                        // Done with error conditions
+                      });
+             describe("target missing - happy paths", [&]() -> void
+                      {
+                        it("should move a file to a new location",
+                           [&]() -> void
+                           {
+                             std::string source = get_random_uss(zusf_test_dir);
+                             std::string target = get_random_uss(zusf_test_dir);
+                             TestFileGuard file(source.c_str());
+
+                             int result = zusf_move_uss_file_or_dir(&zusf, source, target);
+                             file.reset(target.c_str());
+                             Expect(result).ToBe(RTNCD_SUCCESS);
+                             Expect(std::string(zusf.diag.e_msg)).ToBe("");
+
+                             struct stat file_stats;
+                             Expect(stat(target.c_str(), &file_stats)).ToBe(0);
+                             Expect(S_ISREG(file_stats.st_mode)).ToBe(true);
+                           });
+
+                        it("should move a file to a new location with special characters in the path",
+                           [&]() -> void
+                           {
+                             std::string source = get_random_uss(zusf_test_dir);
+                             std::string target = get_random_uss(zusf_test_dir);
+                             source = source.append(" (&$");
+                             target = target.append(" (&$");
+                             TestFileGuard file(source.c_str());
+
+                             int result = zusf_move_uss_file_or_dir(&zusf, source, target);
+                             file.reset(target.c_str());
+                             Expect(std::string(zusf.diag.e_msg)).ToBe("");
+                             Expect(result).ToBe(RTNCD_SUCCESS);
+
+                             struct stat file_stats;
+                             Expect(stat(target.c_str(), &file_stats)).ToBe(0);
+                             Expect(S_ISREG(file_stats.st_mode)).ToBe(true);
+                           });
+
+                        it("should resolve the path of the source, even when navigating back",
+                           [&]() -> void
+                           {
+                             std::string source = get_random_uss(zusf_test_dir);
+                             std::string target = get_random_uss(zusf_test_dir);
+                             TestFileGuard file(source.c_str());
+
+                             std::string temp_source = zusf_test_dir + "/../" + zusf_test_dir.substr(zusf_test_dir.find_last_of("/") + 1) + "/" + source.substr(source.find_last_of("/") + 1);
+
+                             int result = zusf_move_uss_file_or_dir(&zusf, temp_source, target);
+                             Expect(result).ToBe(RTNCD_SUCCESS);
+                             Expect(std::string(zusf.diag.e_msg)).ToBe("");
+
+                             struct stat file_stats;
+                             Expect(stat(target.c_str(), &file_stats)).ToBe(0);
+                             Expect(S_ISREG(file_stats.st_mode)).ToBe(true);
+                           });
+                        it("should move a directory inside a directory",
+                           [&]() -> void
+                           {
+                             std::string source = get_random_uss(zusf_test_dir);
+                             std::string target = get_random_uss(zusf_test_dir);
+                             TestDirGuard source_dir(source.c_str());
+                             TestDirGuard target_dir(target.c_str());
+
+                             int result = zusf_move_uss_file_or_dir(&zusf, source, target);
+                             Expect(result).ToBe(RTNCD_SUCCESS);
+                             Expect(std::string(zusf.diag.e_msg)).ToBe("");
+
+                             std::string new_target = target + "/" + source.substr(source.find_last_of("/") + 1);
+                             source_dir.reset(new_target.c_str());
+
+                             struct stat dir_stats;
+                             Expect(stat(new_target.c_str(), &dir_stats)).ToBe(0);
+                             Expect(S_ISDIR(dir_stats.st_mode)).ToBe(true);
+                           });
+                        it("should move a FIFO pipe to a new location",
+                           [&]() -> void
+                           {
+                             std::string source = get_random_uss(zusf_test_dir);
+                             std::string target = get_random_uss(zusf_test_dir);
+                             TestFileGuard file(source.c_str(), 'p');
+
+                             int result = zusf_move_uss_file_or_dir(&zusf, source, target);
+                             file.reset(target.c_str());
+                             Expect(result).ToBe(RTNCD_SUCCESS);
+                             Expect(std::string(zusf.diag.e_msg)).ToBe("");
+
+                             struct stat file_stats;
+                             Expect(stat(target.c_str(), &file_stats)).ToBe(0);
+                             Expect(S_ISFIFO(file_stats.st_mode)).ToBe(true);
+                           });
+                        it("should move a symlink to a new location",
+                           [&]() -> void
+                           {
+                             std::string source = get_random_uss(zusf_test_dir);
+                             std::string target = get_random_uss(zusf_test_dir);
+                             std::string test_file = get_random_uss(zusf_test_dir);
+                             TestFileGuard target_file_guard(target.c_str());
+                             TestFileGuard file(source.c_str(), 'l', target.c_str());
+
+                             int result = zusf_move_uss_file_or_dir(&zusf, source, test_file);
+                             file.reset(test_file.c_str());
+                             Expect(result).ToBe(RTNCD_SUCCESS);
+                             Expect(std::string(zusf.diag.e_msg)).ToBe("");
+
+                             struct stat file_stats;
+                             Expect(lstat(test_file.c_str(), &file_stats)).ToBe(0);
+                             Expect(S_ISLNK(file_stats.st_mode)).ToBe(true);
+                           });
+                        // Done with target missing
+                      });
            });
 }

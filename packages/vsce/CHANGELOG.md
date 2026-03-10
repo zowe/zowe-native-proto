@@ -6,9 +6,21 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Recent Changes
 
+- Added the functionality for the **Rename** option in the USS tree. [#820](https://github.com/zowe/zowe-native-proto/pull/820)
+- Added the functionality to move files in the USS tree. [#820](https://github.com/zowe/zowe-native-proto/pull/820)
+- Added the functionality to copy USS files and directories. [#379](https://github.com/zowe/zowe-native-proto/pull/379).
+
+## `0.3.0`
+
+- Used new SDK groupings that align with zowex. [#807](https://github.com/zowe/zowe-native-proto/pull/808)
+- Added support for passing member patterns when filtering data sets. [#817](https://github.com/zowe/zowe-native-proto/pull/817)
+
+## `0.2.4`
+
 - Added the functionality for the **Rename Member** option. [#765] (https://github.com/zowe/zowe-native-proto/pull/765).
 - Added the `multivolume` (`mvol`) property when displaying data set attributes. [#782](https://github.com/zowe/zowe-native-proto/pull/782)
 - Added `deleteTargetMembers` option to `copyDataSetMember` API for PDS-to-PDS copies (deletes all target members before copying, making target match source exactly).
+- Fixed an issue where using the "Upload Member" option with an SSH profile in Zowe Explorer caused an error. Now, the member name is provided to the back end for each member that is uploaded. [#785](https://github.com/zowe/zowe-native-proto/issues/785)
 
 ## `0.2.3`
 

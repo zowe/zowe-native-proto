@@ -86,20 +86,8 @@ ZJSON_SCHEMA(UssItem,
     FIELD_OPTIONAL(mode, STRING)
 );
 
-struct IssueConsoleResponse {};
-ZJSON_SCHEMA(IssueConsoleResponse,
-    FIELD_REQUIRED(success, BOOL),
-    FIELD_REQUIRED(data, STRING)
-);
-
-struct IssueTsoResponse {};
-ZJSON_SCHEMA(IssueTsoResponse,
-    FIELD_REQUIRED(success, BOOL),
-    FIELD_REQUIRED(data, STRING)
-);
-
-struct IssueUnixResponse {};
-ZJSON_SCHEMA(IssueUnixResponse,
+struct IssueConsoleCmdResponse {};
+ZJSON_SCHEMA(IssueConsoleCmdResponse,
     FIELD_REQUIRED(success, BOOL),
     FIELD_REQUIRED(data, STRING)
 );
@@ -254,6 +242,18 @@ ZJSON_SCHEMA(SubmitUssResponse,
     FIELD_REQUIRED(jobName, STRING)
 );
 
+struct ToolSearchResponse {};
+ZJSON_SCHEMA(ToolSearchResponse,
+    FIELD_REQUIRED(success, BOOL),
+    FIELD_REQUIRED(data, STRING)
+);
+
+struct IssueTsoCmdResponse {};
+ZJSON_SCHEMA(IssueTsoCmdResponse,
+    FIELD_REQUIRED(success, BOOL),
+    FIELD_REQUIRED(data, STRING)
+);
+
 struct ChmodFileResponse {};
 ZJSON_SCHEMA(ChmodFileResponse,
     FIELD_REQUIRED(success, BOOL)
@@ -266,6 +266,11 @@ ZJSON_SCHEMA(ChownFileResponse,
 
 struct ChtagFileResponse {};
 ZJSON_SCHEMA(ChtagFileResponse,
+    FIELD_REQUIRED(success, BOOL)
+);
+
+struct CopyUssResponse {};
+ZJSON_SCHEMA(CopyUssResponse,
     FIELD_REQUIRED(success, BOOL)
 );
 
@@ -301,6 +306,17 @@ ZJSON_SCHEMA(WriteFileResponse,
     FIELD_REQUIRED(etag, STRING),
     FIELD_REQUIRED(created, BOOL),
     FIELD_OPTIONAL(contentLen, NUMBER)
+);
+
+struct IssueUssCmdResponse {};
+ZJSON_SCHEMA(IssueUssCmdResponse,
+    FIELD_REQUIRED(success, BOOL),
+    FIELD_REQUIRED(data, STRING)
+);
+
+struct MoveFileResponse {};
+ZJSON_SCHEMA(MoveFileResponse,
+    FIELD_REQUIRED(success, BOOL)
 );
 
 #endif

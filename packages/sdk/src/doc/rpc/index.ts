@@ -9,8 +9,10 @@
  *
  */
 
-export * as cmds from "./cmds";
 export * from "./common";
+export * as console from "./console";
 export * as ds from "./ds";
 export * as jobs from "./jobs";
+export * as tool from "./tool";
+export * as tso from "./tso";
 export * as uss from "./uss";
