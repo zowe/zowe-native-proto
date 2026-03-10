@@ -11,7 +11,7 @@ lib
 listings
 node_modules
 out
-typedoc
+typedoc*
 zowe-native-proto-package
 
 # Files
