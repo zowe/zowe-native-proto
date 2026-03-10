@@ -72,6 +72,7 @@ extern "C"
   void ZUTDBGMG(const char *);
   unsigned char ZUTMGKEY();
   int ZUTMLPLB(ZDIAG *, int *, PARMLIB_DSNS *);
+  int ZUTCVTD(const char *ptr, char *time_out);
 
 #if defined(__cplusplus)
 }

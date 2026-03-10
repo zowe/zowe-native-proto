@@ -8,6 +8,8 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 - `c`: Removed the standalone `zowed` binary entry point (`native/c/server/main.cpp`). The server is now exclusively an embedded subcommand of `zowex` (`zowex server`), eliminating the need for a separate binary and `libzowed.so` dynamic loading. [#TBD](https://github.com/zowe/zowe-native-proto/pull/TBD)
 - `c`: Renamed the `ZOWED_NUM_WORKERS` environment variable to `ZOWEX_NUM_WORKERS`. The old name is still supported as a fallback for backwards compatibility. [#TBD](https://github.com/zowe/zowe-native-proto/pull/TBD)
+- `c`: Added support for displaying member statistics. [#630](https://github.com/zowe/zowe-native-proto/issues/630)
+- `c`: Added `toolSearch` in `zowed` for use by client SDK.
 - `c`: Added the `pattern` option to the `data-set list-members` zowex command to filter the returned members. [#817](https://github.com/zowe/zowe-native-proto/pull/817)
 - `c`: Implemented `zowex uss copy` command to copy USS files and directories. [#379](https://github.com/zowe/zowe-native-proto/issues/379)
 - `c`: Implemented `zowex uss move` command to move files and directories in z/OS Unix. [#378](https://github.com/zowe/zowe-native-proto/issues/378)
@@ -30,14 +32,14 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 ## `0.2.3`
 
 - `c`: Added `zowex ds copy` command to copy data sets and members with optional `--replace` flag (overwrites matching members) and `--delete-target-members` flag (deletes all target members before copying, making target match source exactly). Supports PDS-to-PDS, member-to-member, and sequential-to-sequential copies. Note: RECFM=U data sets are not supported. [#750](https://github.com/zowe/zowe-native-proto/pull/750)
-- `c`: Added rename data set members functionality to the backend. [#765] (https://github.com/zowe/zowe-native-proto/pull/765)
+- `c`: Added rename data set members functionality to the backend. [#765](https://github.com/zowe/zowe-native-proto/pull/765)
 - `c`: Implement `zowex job watch` command to watch spool output for a string or regex until terminating.
 - `c`: Implement `zut_bpxwdyn_rtdsn` to obtain and return a system allocated data set name.
 - `c`: Implement command `zowex job view-file` to print contents of a job output data set.
 - The `zowex job submit-jcl` command now displays the submitted job in the following format: `JobName(JobId)` [#733](https://github.com/zowe/zowe-native-proto/issues/733)
 - `c`: Rename command `zowex job view-file` to `zowex job view-file-by-id` so that `view-file` can be used to print a specific file (data set) name. [#740](https://github.com/zowe/zowe-native-proto/issues/740)
 - `c`: The zowex CLI parser now supports enabling passthrough arguments for commands. When enabled, arguments passed after a double-dash (`--`) are passed directly to the command as raw input. [#729](https://github.com/zowe/zowe-native-proto/pull/729)
-- Added the rename dataset functionality to the backend. [#376] (https://github.com/zowe/zowe-native-proto/issues/376)
+- Added the rename dataset functionality to the backend. [#376](https://github.com/zowe/zowe-native-proto/issues/376)
 - `c`: Fixed results being truncated when listing all jobs on a system. [#735](https://github.com/zowe/zowe-native-proto/issues/735)
 - `c`: Fixed default behavior of `zowex job list` command to list jobs for only the current user. [#739](https://github.com/zowe/zowe-native-proto/issues/739)
 - `c`: Added `--status` argument to `zowex job list` command that supports filtering by job status. [#743](https://github.com/zowe/zowe-native-proto/issues/743)
