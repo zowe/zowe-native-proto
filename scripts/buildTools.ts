@@ -330,9 +330,7 @@ class WatchUtils {
         });
         const cTestChanged = paths.some((filePath) => toPosixPath(filePath).startsWith("c/test/"));
 
-        const tasksToRun = [
-            ...(cSourceChanged ? ["c"] : []),
-        ];
+        const tasksToRun = [...(cSourceChanged ? ["c"] : [])];
 
         const shouldRunZowexTests =
             this.testScope &&
@@ -1089,7 +1087,7 @@ function getDirs(next = "") {
 }
 
 async function artifacts(connection: Client, packageAll: boolean) {
-    const artifactPaths = ["c/build-out/zoweax", "c/build-out/zowex"];
+    const artifactPaths = ["c/build-out/zowex", packageAll && "c/build-out/zoweax"].filter(Boolean);
     const artifactNames = artifactPaths.map((file) => path.basename(file)).sort(localeCompare);
     const localDir = packageAll ? "dist" : "packages/sdk/bin";
     const localFiles = ["server.pax.Z", "checksums.asc"];
@@ -1286,7 +1284,6 @@ async function test(connection: Client) {
     await retrieve(connection, [`c/test/test-results.xml`], "native", false, true);
 }
 
-
 async function buildChdsect(connection: Client, sftpcon: SFTPWrapper, target: string) {
     await uploadFile(
         sftpcon,
@@ -1310,9 +1307,7 @@ async function buildChdsect(connection: Client, sftpcon: SFTPWrapper, target: st
 async function chdsect(connection: Client) {
     const targets =
         args[1] == null
-            ? fs
-                  .readdirSync(path.resolve(__dirname, `${localDeployDir}/asmchdr`))
-                  .filter((f) => f.endsWith(".s"))
+            ? fs.readdirSync(path.resolve(__dirname, `${localDeployDir}/asmchdr`)).filter((f) => f.endsWith(".s"))
             : [args[1]];
 
     if (targets.length === 0) {
