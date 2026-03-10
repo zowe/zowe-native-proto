@@ -245,7 +245,8 @@ int zut_hello(const std::string &name)
 int zut_list_subsystems(ZDIAG &diag, std::vector<std::string> &subsystems, std::string filter)
 {
   int rc = 0;
-  JQRY_HEADER *area = NULL;
+  JQRY_HEADER *area = nullptr;
+
   rc = ZUTSSIQ(&diag, &area, filter.c_str());
 
   if (0 != rc)
@@ -253,7 +254,7 @@ int zut_list_subsystems(ZDIAG &diag, std::vector<std::string> &subsystems, std::
     return rc;
   }
 
-  JQRY_SUBSYS_ENTRY *subsys_entry = NULL;
+  JQRY_SUBSYS_ENTRY *subsys_entry = nullptr;
   subsys_entry = (JQRY_SUBSYS_ENTRY *)((unsigned char *)area + sizeof(JQRY_HEADER));
   int next_entry = sizeof(JQRY_HEADER) + sizeof(JQRY_VT_ENTRY) * 2; // NOTE(Kelosky): 2 is the number of vector tables
 
