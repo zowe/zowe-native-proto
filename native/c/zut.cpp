@@ -184,7 +184,7 @@ int zut_private_run_program(const std::string &program, const std::vector<std::s
           // close pipe if there's a hangup or error, otherwise read
           if (fds[i].revents & POLLIN)
           {
-            ssize_t bytes_read = read(fds[i].fd, buffer, sizeof(buffer));
+            bytes_read = read(fds[i].fd, buffer, sizeof(buffer));
             if (bytes_read > 0)
             {
               output.append(buffer, bytes_read);
