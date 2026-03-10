@@ -300,7 +300,11 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
         });
         const sourceDs = listResponse.items[0];
         if (!sourceDs) {
-            return this.buildZosFilesResponse({ success: false }, false, `Source data set "${likeDataSetName}" not found`);
+            return this.buildZosFilesResponse(
+                { success: false },
+                false,
+                `Source data set "${likeDataSetName}" not found`,
+            );
         }
         const attributes: DatasetAttributes = {
             dsname: dataSetName,
