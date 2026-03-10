@@ -9,8 +9,8 @@
  *
  */
 
-#ifndef SERVER_HPP
-#define SERVER_HPP
+#ifndef RPC_SERVER_HPP
+#define RPC_SERVER_HPP
 
 #include <string>
 #include <mutex>

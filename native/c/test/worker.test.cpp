@@ -27,14 +27,14 @@
 using namespace ztst;
 
 /**
- * @brief Stub for server.hpp
+ * @brief Stub for rpc_server.hpp
  *
  * Provides a mock RpcServer singleton that worker.cpp depends on.
  * This mock is controllable to simulate successful work, faults (exceptions),
  * and hangs (timeouts).
  */
-#ifndef SERVER_HPP
-#define SERVER_HPP
+#ifndef RPC_SERVER_HPP
+#define RPC_SERVER_HPP
 
 class RpcServer
 {
@@ -135,7 +135,7 @@ private:
   RpcServer(const RpcServer &) = delete;
   RpcServer &operator=(const RpcServer &) = delete;
 };
-#endif // SERVER_HPP
+#endif // RPC_SERVER_HPP
 
 using namespace std::chrono_literals;
 

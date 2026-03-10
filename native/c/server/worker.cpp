@@ -10,7 +10,7 @@
  */
 
 #include "worker.hpp"
-#include "server.hpp"
+#include "rpc_server.hpp"
 #include "logger.hpp"
 #include <thread>
 #include <chrono>

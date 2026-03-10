@@ -12,13 +12,56 @@
 #ifndef COMMANDS_SERVER_HPP
 #define COMMANDS_SERVER_HPP
 
+#include <atomic>
+#include <map>
+#include <memory>
+#include <mutex>
 #include <string>
 #include "../parser.hpp"
 
+class WorkerPool;
+
 namespace server
 {
+
+struct Options
+{
+  long long num_workers = 10;
+  bool verbose = false;
+  long long request_timeout = 60;
+  std::string exec_dir = ".";
+};
+
 void set_exec_dir(const std::string &dir);
 void register_commands(parser::Command &root_command);
+
 } // namespace server
+
+class ZServer
+{
+private:
+  server::Options options;
+  std::unique_ptr<WorkerPool> worker_pool;
+  std::atomic<bool> shutdown_requested{false};
+  std::mutex shutdown_mutex;
+  std::once_flag shutdown_flag;
+
+  static void signal_handler(int sig);
+  void setup_signal_handlers();
+  void request_shutdown();
+  std::map<std::string, std::string> load_checksums();
+  void print_ready_message();
+  void log_worker_count();
+
+  ZServer() = default;
+
+public:
+  ZServer(const ZServer &) = delete;
+  ZServer &operator=(const ZServer &) = delete;
+  ~ZServer();
+
+  static ZServer &get_instance();
+  void run(const server::Options &opts);
+};
 
 #endif

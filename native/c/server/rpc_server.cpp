@@ -9,7 +9,7 @@
  *
  */
 
-#include "server.hpp"
+#include "rpc_server.hpp"
 #include "rpcio.hpp"
 #include "dispatcher.hpp"
 #include "logger.hpp"

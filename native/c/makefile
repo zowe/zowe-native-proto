@@ -69,10 +69,9 @@ SERVER_OBJS = $(OUT_DIR)/server/builder.o \
 	$(OUT_DIR)/server/rpc_commands.o \
 	$(OUT_DIR)/server/dispatcher.o \
 	$(OUT_DIR)/server/rpcio.o \
-	$(OUT_DIR)/server/server.o \
+	$(OUT_DIR)/server/rpc_server.o \
 	$(OUT_DIR)/server/validator.o \
-	$(OUT_DIR)/server/worker.o \
-	$(OUT_DIR)/server/server_main.o
+	$(OUT_DIR)/server/worker.o
 
 SWIG_EXTENDER_OBJS = $(OUT_DIR_SWIG)/zut.o $(OUT_DIR_SWIG)/zds.o $(OUT_DIR_SWIG)/zjb.o $(OUT_DIR_SWIG)/zcn.o $(OUT_DIR_SWIG)/zusf.o $(OUT_DIR_SWIG)/ztso.o
 
