@@ -52,7 +52,7 @@ int zut_run_program(const std::string &program, const std::vector<std::string> &
  * @brief Runs a program
  * @param program The program to run. The program must be on PATH or a fully-qualified path to the executable
  * @param args Arguments passed to the program
- * @param stdout_response Reference to a string where the program's stdout content will be stored. 
+ * @param stdout_response Reference to a string where the program's stdout content will be stored.
  * @param stderr_response Reference to a string where the program's stderr content will be stored.
  * @returns The return code from running the command, or non-zero for error submitting
  */

@@ -24,13 +24,12 @@ void zut_tests()
   describe("zut tests",
            []() -> void
            {
-
-             it("should run programs", []() -> void {
-                  
+             it("should run programs", []() -> void
+                {
                   std::string response;
                   std::string program = "printf";
                   std::vector<std::string> args = {"line1\nline2\nline3"};
-                  
+
                   int rc = zut_run_program(program, args, response);
                   ExpectWithContext(rc, response).ToBe(0);
                   ExpectWithContext(response, "Expected all lines").ToBe(args[0]);
@@ -57,7 +56,7 @@ void zut_tests()
                   // now with split stdout/stderr
                   std::string stdout_data, stderr_data;
                   program = "printf";
-                  
+
                   rc = zut_run_program(program, args, stdout_data, stderr_data);
                   ExpectWithContext(rc, stderr_data).ToBe(0);
                   ExpectWithContext(stdout_data, "Expected all lines").ToBe(args[0]);
@@ -83,33 +82,33 @@ void zut_tests()
                   ExpectWithContext(rc, stderr_data).ToBe(-1);
                   ExpectWithContext(stderr_data, "Expecting an error").ToContain("You must specify a program to run.");
                   Expect(stdout_data).ToBe("");
-
-             });
+                });
 
              // Tests if a semicolon can break out of the command
-             it("test semicolon injection", []() -> void {
-                std::string response;
-                std::vector<std::string> args = {"line1\nline2; echo INJECTED_PAYLOAD"};
-                
-                int rc = zut_run_program("echo", args, response);
-                ExpectWithContext(rc, response).ToBe(0);
-                
-                // If vulnerable, the shell would execute `echo INJECTED_PAYLOAD` and the output would just be "INJECTED_PAYLOAD\n"
-                ExpectWithContext(response.find("line2; echo INJECTED_PAYLOAD"), "Expected the semicolon and second command to be treated as literal text").Not().ToBe(std::string::npos);
+             it("test semicolon injection", []() -> void
+                {
+                  std::string response;
+                  std::vector<std::string> args = {"line1\nline2; echo INJECTED_PAYLOAD"};
 
-                // same case as above, with split args
-                args.clear();
-                args = {"line1\nline2;", "echo", "INJECTED_PAYLOAD"};
-                
-                rc = zut_run_program("echo", args, response);
+                  int rc = zut_run_program("echo", args, response);
+                  ExpectWithContext(rc, response).ToBe(0);
 
-                ExpectWithContext(rc, response).ToBe(0);
-                ExpectWithContext(response.find("line2; echo INJECTED_PAYLOAD"), "Expected the semicolon and second command to be treated as literal text").Not().ToBe(std::string::npos);
+                  // If vulnerable, the shell would execute `echo INJECTED_PAYLOAD` and the output would just be "INJECTED_PAYLOAD\n"
+                  ExpectWithContext(response.find("line2; echo INJECTED_PAYLOAD"), "Expected the semicolon and second command to be treated as literal text").Not().ToBe(std::string::npos);
 
-             });
+                  // same case as above, with split args
+                  args.clear();
+                  args = {"line1\nline2;", "echo", "INJECTED_PAYLOAD"};
 
-            // Tests if pipes can output to another command or modify the filesystem
-             it("test pipe and redirect injection", []() -> void {
+                  rc = zut_run_program("echo", args, response);
+
+                  ExpectWithContext(rc, response).ToBe(0);
+                  ExpectWithContext(response.find("line2; echo INJECTED_PAYLOAD"), "Expected the semicolon and second command to be treated as literal text").Not().ToBe(std::string::npos);
+                });
+
+             // Tests if pipes can output to another command or modify the filesystem
+             it("test pipe and redirect injection", []() -> void
+                {
                 std::string response;
                 std::vector<std::string> args = {"line1\nline2 | grep line > /tmp/hacked.txt"};
               
@@ -127,8 +126,7 @@ void zut_tests()
                 rc = zut_run_program("echo", args, response);
 
                 ExpectWithContext(rc, response).ToBe(0);
-                ExpectWithContext(response.find("| grep"), "Expected pipe and redirect to be treated as literal text").Not().ToBe(std::string::npos);
-             });
+                ExpectWithContext(response.find("| grep"), "Expected pipe and redirect to be treated as literal text").Not().ToBe(std::string::npos); });
 
              it("should upper case and truncate a long string",
                 []() -> void

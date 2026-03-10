@@ -36,22 +36,28 @@
 #include <poll.h>
 #include <_Nascii.h>
 
-void zut_strip_final_newline(std::string &input) {
-  if (!input.empty() && input.back() == '\n') {
+void zut_strip_final_newline(std::string &input)
+{
+  if (!input.empty() && input.back() == '\n')
+  {
     input.pop_back();
   }
 }
 
-int zut_private_run_program(const std::string &program, const std::vector<std::string> &args, std::string &stdout_response, std::string &stderr_response, bool merge_streams) {
- 
+int zut_private_run_program(const std::string &program, const std::vector<std::string> &args, std::string &stdout_response, std::string &stderr_response, bool merge_streams)
+{
+
   stdout_response.clear();
   stderr_response.clear();
 
   if (0 == program.size())
   {
-    if (merge_streams) {
+    if (merge_streams)
+    {
       stdout_response = "Error: You must specify a program to run.";
-    } else {
+    }
+    else
+    {
       stderr_response = "Error: You must specify a program to run.";
     }
     return RTNCD_FAILURE;
@@ -65,9 +71,10 @@ int zut_private_run_program(const std::string &program, const std::vector<std::s
     return RTNCD_FAILURE;
   }
 
-  if (-1 == pipe(stderr_pipe)) 
+  if (-1 == pipe(stderr_pipe))
   {
-    close(stdout_pipe[0]); close(stdout_pipe[1]);
+    close(stdout_pipe[0]);
+    close(stdout_pipe[1]);
     return RTNCD_FAILURE;
   }
 
@@ -77,8 +84,10 @@ int zut_private_run_program(const std::string &program, const std::vector<std::s
   // Fork failed
   if (-1 == pid)
   {
-    close(stdout_pipe[0]); close(stdout_pipe[1]);
-    close(stderr_pipe[0]); close(stderr_pipe[1]);
+    close(stdout_pipe[0]);
+    close(stdout_pipe[1]);
+    close(stderr_pipe[0]);
+    close(stderr_pipe[1]);
     return RTNCD_FAILURE;
   }
 
@@ -86,16 +95,31 @@ int zut_private_run_program(const std::string &program, const std::vector<std::s
   {
     // --- CHILD PROCESS ---
     // doesn't read from pipes
-    close(stdout_pipe[0]); 
+    close(stdout_pipe[0]);
     close(stderr_pipe[0]);
 
-    if (merge_streams) {
+    if (merge_streams)
+    {
       // both stdout and stderr go to stdout pipe
-      if (-1 == dup2(stdout_pipe[1], STDOUT_FILENO)) { exit(127); }
-      if (-1 == dup2(stdout_pipe[1], STDERR_FILENO)) { exit(127); }
-    } else {
-      if (-1 == dup2(stdout_pipe[1], STDOUT_FILENO)) { exit(127); }
-      if (-1 == dup2(stderr_pipe[1], STDERR_FILENO)) { exit(127); }
+      if (-1 == dup2(stdout_pipe[1], STDOUT_FILENO))
+      {
+        exit(127);
+      }
+      if (-1 == dup2(stdout_pipe[1], STDERR_FILENO))
+      {
+        exit(127);
+      }
+    }
+    else
+    {
+      if (-1 == dup2(stdout_pipe[1], STDOUT_FILENO))
+      {
+        exit(127);
+      }
+      if (-1 == dup2(stderr_pipe[1], STDERR_FILENO))
+      {
+        exit(127);
+      }
     }
 
     close(stderr_pipe[1]);
@@ -122,17 +146,20 @@ int zut_private_run_program(const std::string &program, const std::vector<std::s
   {
     // --- PARENT PROCESS ---
     close(stdout_pipe[1]);
-    close(stderr_pipe[1]); 
+    close(stderr_pipe[1]);
 
     struct pollfd fds[2];
     fds[0].fd = stdout_pipe[0];
     fds[0].events = POLLIN;
 
     // only watch stderr pipe if we're not merging streams, otherwise set to -1
-    if (!merge_streams) {
+    if (!merge_streams)
+    {
       fds[1].fd = stderr_pipe[0];
       fds[1].events = POLLIN;
-    } else {
+    }
+    else
+    {
       fds[1].fd = -1;
     }
 
@@ -140,31 +167,41 @@ int zut_private_run_program(const std::string &program, const std::vector<std::s
     ssize_t bytes_read;
 
     // while pipes still open
-    while (fds[0].fd != -1 || fds[1].fd != -1) {
+    while (fds[0].fd != -1 || fds[1].fd != -1)
+    {
       // blocks until there's data or an error
-      if (-1 == poll(fds, 2, -1)) {
+      if (-1 == poll(fds, 2, -1))
+      {
         break; // system error
       }
 
-      for (int i = 0; i < 2; i++) {
-        if (fds[i].fd != -1) {
+      for (int i = 0; i < 2; i++)
+      {
+        if (fds[i].fd != -1)
+        {
 
           std::string &output = ((0 == i) ? stdout_response : stderr_response);
           // close pipe if there's a hangup or error, otherwise read
-          if (fds[i].revents & POLLIN) {
+          if (fds[i].revents & POLLIN)
+          {
             ssize_t bytes_read = read(fds[i].fd, buffer, sizeof(buffer));
-            if (bytes_read > 0) {
+            if (bytes_read > 0)
+            {
               output.append(buffer, bytes_read);
-            } else if (bytes_read == 0){
+            }
+            else if (bytes_read == 0)
+            {
               fds[i].fd = -1; // EOF
             }
-          } else if (fds[i].revents & (POLLHUP | POLLERR)) {
+          }
+          else if (fds[i].revents & (POLLHUP | POLLERR))
+          {
             fds[i].fd = -1;
-          } 
+          }
         }
       }
     }
-    
+
     zut_strip_final_newline(stdout_response);
     zut_strip_final_newline(stderr_response);
 
