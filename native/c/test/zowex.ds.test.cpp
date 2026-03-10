@@ -833,12 +833,12 @@ void zowex_ds_tests()
                         it("should return ISPF statistics attributes when listing members with attributes",
                            [&]() -> void
                            {
-                             string ds = get_random_ds();
+                             auto ds = get_random_ds();
                              _ds.push_back(ds);
 
                              _create_ds(ds, "--dsorg PO --dirblk 2");
 
-                             string response;
+                             std::string response{};
 
                              execute_command_with_output(
                                  zowex_command + " data-set create-member '" + ds + "(STAT1)'",
@@ -847,7 +847,7 @@ void zowex_ds_tests()
                              execute_command_with_output(
                                  "echo \"TEST\" | " + zowex_command + " data-set write '" + ds + "(STAT1)'",
                                  response);
-                             string command = zowex_command + " data-set lm " + ds + " --attributes";
+                             std::string command = zowex_command + " data-set lm " + ds + " --attributes";
 
                              int rc = execute_command_with_output(command, response);
 
