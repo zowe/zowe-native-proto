@@ -129,16 +129,16 @@ class WatchUtils {
     private sftp: SFTPWrapper | null = null;
     private readonly ui: WatchUI = new WatchUI();
     private watcher: chokidar.FSWatcher;
-    private readonly testScope?: "zowex" | "all";
+    private readonly runTests: boolean;
 
     constructor(
         private readonly connection: Client,
         sshProfile: IProfile,
-        options?: { testScope?: "zowex" | "all" },
+        options?: { runTests?: boolean },
     ) {
         this.cacheFile = path.resolve(this.cacheDir, `${sshProfile.user}_${sshProfile.host}.json`);
         this.rootDir = path.resolve(__dirname, localDeployDir);
-        this.testScope = options?.testScope;
+        this.runTests = options?.runTests ?? false;
         this.loadCache();
     }
 
@@ -332,12 +332,9 @@ class WatchUtils {
 
         const tasksToRun = [...(cSourceChanged ? ["c"] : [])];
 
-        const shouldRunZowexTests =
-            this.testScope &&
-            (this.testScope === "zowex" || this.testScope === "all") &&
-            (cSourceChanged || cTestChanged);
+        const shouldRunTests = this.runTests && (cSourceChanged || cTestChanged);
 
-        if (shouldRunZowexTests) {
+        if (shouldRunTests) {
             tasksToRun.push("c:test:make", "c:test:run");
         }
 
@@ -354,7 +351,7 @@ class WatchUtils {
             }
 
             const buildSucceeded = typeof result === "string" || result === 0 || result === undefined;
-            if (buildSucceeded && shouldRunZowexTests) {
+            if (buildSucceeded && shouldRunTests) {
                 const testMakeResult = await this.makeTask("c:test:make", deployDirs.cTestDir);
                 if (typeof testMakeResult === "string" || testMakeResult === 0) {
                     await this.runTestTask("c:test:run", deployDirs.cTestDir, "ztest_runner");
@@ -1385,9 +1382,8 @@ async function watch(connection: Client, sshProfile: IProfile) {
     return new Promise<void>((resolve) => connection.on("close", () => resolve()));
 }
 
-async function watchTest(connection: Client, sshProfile: IProfile, scope?: string) {
-    const testScope = scope === "zowex" ? scope : "all";
-    await new WatchUtils(connection, sshProfile, { testScope }).start();
+async function watchTest(connection: Client, sshProfile: IProfile) {
+    await new WatchUtils(connection, sshProfile, { runTests: true }).start();
     return new Promise<void>((resolve) => connection.on("close", () => resolve()));
 }
 
@@ -1558,11 +1554,9 @@ async function main() {
             case "watch":
                 await watch(sshClient, config.sshProfile as IProfile);
                 break;
-            case "watch:test": {
-                const scope = args.splice(1, 1)[0];
-                await watchTest(sshClient, config.sshProfile as IProfile, scope);
+            case "watch:test":
+                await watchTest(sshClient, config.sshProfile as IProfile);
                 break;
-            }
             default:
                 console.error(`Unsupported command "${args[0]}". See README for instructions.`);
                 break;
