@@ -894,3 +894,21 @@ std::string zut_read_input(std::istream &input_stream)
   }
   return data;
 }
+
+int zut_convert_date(const unsigned char *date_ptr, std::string &out_str)
+{
+  char buffer[12] = {0};
+
+  int rc = ZUTCVTD(reinterpret_cast<const char *>(date_ptr), buffer);
+
+  if (rc == 0)
+  {
+    out_str = buffer;
+  }
+  else
+  {
+    out_str = "";
+  }
+
+  return rc;
+}
