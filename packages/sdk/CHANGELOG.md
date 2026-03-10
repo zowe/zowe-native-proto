@@ -11,10 +11,11 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - Added support for invoking the tool search group.
 - Added support for copying USS files in the `RpcClientApi` class. [#379](https://github.com/zowe/zowe-native-proto/issues/379)
 - Added support for USS Move operations. [#789](https://github.com/zowe/zowe-native-proto/pull/789)
+- Fixed `user` property not defined as secure when new team configuration profile is created. [#845](https://github.com/zowe/zowe-native-proto/pull/845)
 
 ## `0.3.0`
 
-- Changed SDK groupings to align with zowex. [#807](https://github.com/zowe/zowe-native-proto/pull/808)
+- Changed SDK groupings to align with zowex. [#807](https://github.com/zowe/zowe-native-proto/issues/807)
 
 ## `0.2.4`
 

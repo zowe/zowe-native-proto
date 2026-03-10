@@ -1204,7 +1204,7 @@ describe("AbstractConfigManager", async () => {
             expect(mockConfigApi.profiles.set).toHaveBeenCalledWith(
                 "testProfile",
                 expect.objectContaining({
-                    secure: ["keyPassphrase"],
+                    secure: ["user", "keyPassphrase"],
                 }),
             );
             expect(mockTeamConfig.save).toHaveBeenCalled();
@@ -1224,14 +1224,13 @@ describe("AbstractConfigManager", async () => {
             expect(mockConfigApi.profiles.set).toHaveBeenCalledWith(
                 "testProfile",
                 expect.objectContaining({
-                    secure: ["password", "keyPassphrase"],
+                    secure: ["user", "password", "keyPassphrase"],
                 }),
             );
         });
 
         it("should call layers.write() when no secure properties are present", async () => {
             const config = {
-                user: "user1",
                 host: "example.com",
                 port: 22,
                 name: "testProfile",
