@@ -71,12 +71,6 @@ private:
             close(STDIN_FILENO); });
   }
 
-  static ZServer &get_instance()
-  {
-    static ZServer instance;
-    return instance;
-  }
-
   std::map<string, string> load_checksums()
   {
     std::map<string, string> checksums;
@@ -148,8 +142,18 @@ private:
         .detach();
   }
 
-public:
   ZServer() = default;
+
+public:
+  ZServer(const ZServer &) = delete;
+  ZServer &operator=(const ZServer &) = delete;
+
+  static ZServer &get_instance()
+  {
+    static ZServer instance;
+    return instance;
+  }
+
   void run(const server::Options &opts)
   {
     options = opts;
@@ -193,8 +197,7 @@ int server::run(const server::Options &options)
 {
   try
   {
-    ZServer srv;
-    srv.run(options);
+    ZServer::get_instance().run(options);
   }
   catch (const std::exception &e)
   {
