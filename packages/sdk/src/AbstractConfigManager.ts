@@ -605,11 +605,9 @@ export abstract class AbstractConfigManager {
                 keyPassphrase: selectedConfig.keyPassphrase,
                 password: selectedConfig.password,
             },
-            secure: [],
+            //if user, password, or KP is defined, make them secure
+            secure: ["user", "password", "keyPassphrase"].filter((key) => selectedConfig[key as keyof ISshConfigExt]),
         };
-        //if password or KP is defined, make them secure
-        if (selectedConfig.password) config.secure.push("password" as never);
-        if (selectedConfig.keyPassphrase) config.secure.push("keyPassphrase" as never);
 
         if (updatedProfile) {
             for (const key of Object.keys(selectedConfig)) {
