@@ -383,7 +383,6 @@ void ZUTDBGMG(const char *msg)
   close_assert(sysprintIoc);
 }
 
-<<<<<<< HEAD
 #pragma prolog(ZUTSSIQ, " ZWEPROLG NEWDSA=(YES,4) ")
 #pragma epilog(ZUTSSIQ, " ZWEEPILG ")
 int ZUTSSIQ(ZDIAG *diag, JQRY_HEADER **area, const char *filter)
@@ -409,7 +408,7 @@ int ZUTMSREL(int *size, void *data)
   storage_release(*size, data);
   return 0;
 }
-=======
+
 #pragma prolog(ZUTCVTD, " ZWEPROLG NEWDSA=(YES,4) ")
 #pragma epilog(ZUTCVTD, " ZWEEPILG ")
 int ZUTCVTD(const char *ptr, char *time)
@@ -435,4 +434,3 @@ int ZUTCVTD(const char *ptr, char *time)
   }
   return rc;
 }
->>>>>>> main
