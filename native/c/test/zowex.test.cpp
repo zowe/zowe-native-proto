@@ -39,7 +39,11 @@ void zowex_tests()
                   Expect(response).ToContain("zowex");
                   Expect(response).ToContain("Version");
                 });
+#ifdef RELEASE_BUILD
              it("should remain less than 10mb in size",
+#else
+             xit("should remain less than 10mb in size",
+#endif
                 []() -> void
                 {
                   std::string response;

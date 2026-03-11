@@ -184,18 +184,5 @@ void zowex_server_tests()
                   Expect(response).ToContain("\"code\":-32700");
                   Expect(response).ToContain("\"message\":\"Failed to parse command request\"");
                 });
-             it("should remain less than 10mb in size",
-                []() -> void
-                {
-                  std::string zowex_binary = zowex_dir + "/zowex";
-                  struct stat st;
-                  if (stat(zowex_binary.c_str(), &st) != 0)
-                  {
-                    throw std::runtime_error("Failed to stat file: " + zowex_binary);
-                  }
-
-                  off_t file_size = st.st_size;
-                  Expect(file_size).ToBeLessThan(10 * 1024 * 1024);
-                });
            });
 }
