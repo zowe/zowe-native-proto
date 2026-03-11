@@ -6,8 +6,8 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Recent Changes
 
-- `c`: Removed the standalone `zowed` binary and its entry point. The server is now exclusively an embedded subcommand of `zowex` (`zowex server`), eliminating the need for a separate binary and `libzowed.so` dynamic loading. [#846](https://github.com/zowe/zowe-native-proto/issues/846)
-- `c`: Renamed the `ZOWED_NUM_WORKERS` environment variable to `ZOWEX_NUM_WORKERS`. [#846](https://github.com/zowe/zowe-native-proto/issues/846)
+- **Breaking:** `c`: Removed the standalone `zowed` binary and its entry point. The server is now exclusively an embedded subcommand of `zowex` (`zowex server`), eliminating the need for a separate binary and `libzowed.so` dynamic loading. [#846](https://github.com/zowe/zowe-native-proto/issues/846)
+- **Breaking:** `c`: Renamed the `ZOWED_NUM_WORKERS` environment variable to `ZOWEX_NUM_WORKERS`. [#846](https://github.com/zowe/zowe-native-proto/issues/846)
 - `c`: Enabled `-O2` optimization for release builds, improving runtime performance of native binaries. [#846](https://github.com/zowe/zowe-native-proto/issues/846)
 - `c`: Added support for displaying member statistics. [#630](https://github.com/zowe/zowe-native-proto/issues/630)
 - `c`: Added `toolSearch` in the server for use by client SDK.

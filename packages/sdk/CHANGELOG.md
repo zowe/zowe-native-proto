@@ -6,6 +6,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Recent Changes
 
+- **Breaking:** `ZSshClient` now connects to `zowex server` instead of the standalone `zowed` binary. Users must re-deploy the server to update the binaries at their `serverPath`. [#846](https://github.com/zowe/zowe-native-proto/issues/846)
 - Added support for listing member attributes to `DsMember` type [#630](https://github.com/zowe/zowe-native-proto/issues/630)
 - Added support for invoking the tool search group.
 - Added support for copying USS files in the `RpcClientApi` class. [#379](https://github.com/zowe/zowe-native-proto/issues/379)
