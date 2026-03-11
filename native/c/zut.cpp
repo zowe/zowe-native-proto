@@ -15,6 +15,7 @@
 
 #define _OPEN_SYS_EXT
 #include <sys/ps.h>
+#include <cerrno>
 #include <cstdio>
 #include <cstring>
 #include <fstream>
@@ -172,7 +173,15 @@ int zut_private_run_program(const std::string &program, const std::vector<std::s
       // blocks until there's data or an error
       if (-1 == poll(fds, 2, -1))
       {
-        break; // system error
+        if (EINTR != errno)
+        {
+          // critical problem, cleanup child process and exit loop
+          kill(pid, SIGKILL);
+          break;        
+        } else {
+          // transient problem, run another iteration of loop
+          continue;
+        }
       }
 
       for (int i = 0; i < 2; i++)
@@ -189,9 +198,15 @@ int zut_private_run_program(const std::string &program, const std::vector<std::s
             {
               output.append(buffer, bytes_read);
             }
-            else if (bytes_read == 0)
+            else if (0 == bytes_read)
             {
               fds[i].fd = -1; // EOF
+            }
+            else if (-1 == bytes_read && EINTR != errno)
+            {
+              // critical error, cleanup child process and stop watching fd
+              kill(pid, SIGKILL);
+              fds[i].fd = -1;
             }
           }
           else if (fds[i].revents & (POLLHUP | POLLERR))
