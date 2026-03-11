@@ -47,7 +47,17 @@ ZJSON_SCHEMA(Dataset,
 
 struct DsMember {};
 ZJSON_SCHEMA(DsMember,
-    FIELD_REQUIRED(name, STRING)
+    FIELD_REQUIRED(name, STRING),
+    FIELD_OPTIONAL(user, STRING),
+    FIELD_OPTIONAL(vers, NUMBER),
+    FIELD_OPTIONAL(mod, NUMBER),
+    FIELD_OPTIONAL(c4date, STRING),
+    FIELD_OPTIONAL(m4date, STRING),
+    FIELD_OPTIONAL(mtime, STRING),
+    FIELD_OPTIONAL(cnorc, NUMBER),
+    FIELD_OPTIONAL(inorc, NUMBER),
+    FIELD_OPTIONAL(mnorc, NUMBER),
+    FIELD_OPTIONAL(sclm, STRING)
 );
 
 struct Job {};
@@ -233,6 +243,12 @@ ZJSON_SCHEMA(SubmitUssResponse,
     FIELD_REQUIRED(success, BOOL),
     FIELD_REQUIRED(jobId, STRING),
     FIELD_REQUIRED(jobName, STRING)
+);
+
+struct ToolSearchResponse {};
+ZJSON_SCHEMA(ToolSearchResponse,
+    FIELD_REQUIRED(success, BOOL),
+    FIELD_REQUIRED(data, STRING)
 );
 
 struct IssueTsoCmdResponse {};

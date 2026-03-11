@@ -16,5 +16,6 @@ export * from "./doc";
 export * from "./RpcClientApi";
 export * from "./SshConfigUtils";
 export * from "./SshErrors";
+export * from "./UtilsApi";
 export * from "./ZSshClient";
 export * from "./ZSshUtils";

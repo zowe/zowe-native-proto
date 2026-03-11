@@ -12,7 +12,7 @@ listings
 node_modules
 prebuilds
 out
-typedoc
+typedoc*
 zowe-native-proto-package
 
 # Files
