@@ -12,6 +12,7 @@
 
 #ifndef _OPEN_SYS_ITOA_EXT
 #define _OPEN_SYS_ITOA_EXT
+#include "zdbg.h"
 #include "ztype.h"
 #include <cctype>
 #endif
@@ -588,16 +589,18 @@ int zds_read_from_dd_acb(ZDS *zds, std::string ddname, std::string &response)
     return rc;
   }
 
-  rc = ZDSPIVSM(zds, ioc);
-  if (rc != RTNCD_SUCCESS)
-  {
-    return rc;
-  }
+  // rc = ZDSPIVSM(zds, ioc);
+  // if (rc != RTNCD_SUCCESS)
+  // {
+  //   return rc;
+  // }
+
+  zut_dump_storage("rplp", &ioc->rpl, sizeof(ioc->rpl));
 
   char *buffer = (char *)__malloc31(130 + 4); // TODO(Kelosky): use appropriate size
   int *length = (int *)(buffer + 130);
 
-  for (int i = 0; i < 3; i++)
+  for (int i = 0; i < 1; i++)
   {
     rc = ZDSRIVSM(zds, ioc, buffer, length);
     if (rc != RTNCD_SUCCESS)

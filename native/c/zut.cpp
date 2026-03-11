@@ -652,11 +652,6 @@ int zut_alloc_debug()
   return rc;
 }
 
-void zut_debug_message(const char *message)
-{
-  fprintf(stderr, "%s", message);
-}
-
 bool zut_string_compare_c(const std::string &a, const std::string &b)
 {
   return strcmp(a.c_str(), b.c_str()) < 0;
