@@ -29,18 +29,17 @@ MTL_BASE_OPTS=metal,\
  langlvl(extended),\
  sscom,\
  nolongname,\
+ inline,\
  genasm,\
  csect,\
  nose,\
- warn64
+ warn64,\
+ optimize(2)
 MTL_LIST_OPTS=,inlrpt,list,aggregate
-MTL_OPTIMIZE_OPTS=,inline,optimize(2)
 
 MTL_OPTS=$(MTL_BASE_OPTS)
 .IF $(BuildType) == DEBUG
 MTL_OPTS+=$(MTL_LIST_OPTS)
-.ELIF $(BuildType) == RELEASE
-MTL_OPTS+=$(MTL_OPTIMIZE_OPTS)
 .END
 MTL_OPTS64=$(MTL_OPTS),lp64
 MTL_FLAGS=-S -W "c,$(MTL_OPTS)"
