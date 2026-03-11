@@ -37,6 +37,15 @@ void zowex_system_tests()
                   ExpectWithContext(rc, response).ToBeGreaterThanOrEqualTo(0);
                 });
 
+             it("should list subsystems",
+                []()
+                {
+                  int rc = 0;
+                  string response;
+                  rc = execute_command_with_output(zowex_command + " system list-subsystems", response);
+                  ExpectWithContext(rc, response).ToBeGreaterThanOrEqualTo(0);
+                });
+
              it("should list proclib and validate content",
                 []()
                 {
@@ -44,13 +53,21 @@ void zowex_system_tests()
                   string response;
                   rc = execute_command_with_output(zowex_command + " system list-proclib", response);
                   ExpectWithContext(rc, response).ToBeGreaterThanOrEqualTo(0);
-                  if (rc == 0)
-                  {
-                    Expect(response.length()).ToBeGreaterThan(0);
-                    // Basic validation that we got some output
-                    vector<string> lines = parse_rfc_response(response, "\n");
-                    Expect(lines.size()).ToBeGreaterThan(0);
-                  }
+                  Expect(response.length()).ToBeGreaterThan(0);
+                  // Basic validation that we got some output
+                  vector<string> lines = parse_rfc_response(response, "\n");
+                  Expect(lines.size()).ToBeGreaterThan(0);
+                });
+
+             it("should display a system symbol",
+                []()
+                {
+                  int rc = 0;
+                  string response;
+                  rc = execute_command_with_output(zowex_command + " system display-symbol YYMMDD", response);
+                  ExpectWithContext(rc, response).ToBeGreaterThanOrEqualTo(0);
+                  Expect(response).Not().ToContain("&");
+                  Expect(response.length()).ToBeGreaterThan(0);
                 });
 
              it("should use 'lp' alias for list-proclib command",
