@@ -43,7 +43,6 @@ private:
   server::Options options;
   std::unique_ptr<WorkerPool> worker_pool;
   std::atomic<bool> shutdown_requested{false};
-  std::mutex shutdown_mutex;
   std::once_flag shutdown_flag;
 
   static void signal_handler(int sig);

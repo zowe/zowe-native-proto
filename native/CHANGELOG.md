@@ -7,7 +7,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 ## Recent Changes
 
 - `c`: Removed the standalone `zowed` binary entry point (`native/c/server/main.cpp`). The server is now exclusively an embedded subcommand of `zowex` (`zowex server`), eliminating the need for a separate binary and `libzowed.so` dynamic loading. [#TBD](https://github.com/zowe/zowe-native-proto/pull/TBD)
-- `c`: Renamed the `ZOWED_NUM_WORKERS` environment variable to `ZOWEX_NUM_WORKERS`. The old name is still supported as a fallback for backwards compatibility. [#TBD](https://github.com/zowe/zowe-native-proto/pull/TBD)
+- `c`: Renamed the `ZOWED_NUM_WORKERS` environment variable to `ZOWEX_NUM_WORKERS`. [#TBD](https://github.com/zowe/zowe-native-proto/pull/TBD)
 - `c`: Added support for displaying member statistics. [#630](https://github.com/zowe/zowe-native-proto/issues/630)
 - `c`: Added `toolSearch` in `zowed` for use by client SDK.
 - `c`: Added the `pattern` option to the `data-set list-members` zowex command to filter the returned members. [#817](https://github.com/zowe/zowe-native-proto/pull/817)

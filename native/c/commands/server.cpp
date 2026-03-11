@@ -206,10 +206,6 @@ static int handle_server(plugin::InvocationContext &context)
   opts.exec_dir = g_exec_dir;
 
   const auto *num_workers_env = getenv("ZOWEX_NUM_WORKERS");
-  if (num_workers_env == nullptr)
-  {
-    num_workers_env = getenv("ZOWED_NUM_WORKERS");
-  }
   if (num_workers_env != nullptr)
   {
     try
@@ -265,20 +261,20 @@ void register_commands(Command &root_command)
 {
   auto server_cmd = command_ptr(new Command("server", "start the Zowe native IO server"));
   server_cmd->add_keyword_arg("num-workers",
-                               make_aliases("-w", "--num-workers"),
-                               "number of worker threads",
-                               ArgType_Single, false,
-                               ArgValue(10LL));
+                              make_aliases("-w", "--num-workers"),
+                              "number of worker threads",
+                              ArgType_Single, false,
+                              ArgValue(10LL));
   server_cmd->add_keyword_arg("verbose",
-                               make_aliases("-v", "--verbose"),
-                               "enable verbose logging",
-                               ArgType_Flag, false,
-                               ArgValue(false));
+                              make_aliases("-v", "--verbose"),
+                              "enable verbose logging",
+                              ArgType_Flag, false,
+                              ArgValue(false));
   server_cmd->add_keyword_arg("request-timeout",
-                               make_aliases("-t", "--request-timeout"),
-                               "request timeout in seconds before a worker is restarted",
-                               ArgType_Single, false,
-                               ArgValue(60LL));
+                              make_aliases("-t", "--request-timeout"),
+                              "request timeout in seconds before a worker is restarted",
+                              ArgType_Single, false,
+                              ArgValue(60LL));
   server_cmd->set_handler(handle_server);
   root_command.add_command(server_cmd);
 }
