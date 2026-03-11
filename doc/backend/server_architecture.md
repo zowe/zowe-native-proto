@@ -6,6 +6,10 @@ The `zowex server` subcommand acts as the middleware between the client and back
 
 The server mediates all requests and dispatches them to appropriate command handlers. These command handlers are defined in a map and are accessed by the command name. Those command handlers execute C++ methods in the backend layer (e.g. `handle_data_set_list`) to access data. The response data is composed and serialized as JSON before being returned to the caller through stdout.
 
+## Configuration
+
+The `ZOWEX_NUM_WORKERS` environment variable, if set, overrides the `--num-workers` argument for `zowex server`. This is useful for system administrators who want to control server concurrency at the environment level without modifying client configurations.
+
 ## Request and response processing
 
 The server process is instantiated by the client through SSH (via `zowex server`), which opens a communication channel over stdio. When a request is received from the client over stdin, the server attempts to parse the input as JSON. If the JSON response is valid, the server looks for the `command` property of the JSON object and attempts to identify a matching command handler. If a command handler is found for the given command, the handler is executed and given the JSON object for further processing.
@@ -69,7 +73,7 @@ Response:
 ```jsonc
 {
   "etag": "1234-5",
-  "data": "aGVsbG8=" // "hello" in ASCII
+  "data": "aGVsbG8=", // "hello" in ASCII
 }
 ```
 
@@ -82,7 +86,7 @@ The contents of write requests are interpreted as UTF-8 data. We convert the UTF
   "command": "writeFile",
   "path": "/u/users/you/file.txt",
   "encoding": "IBM-939",
-  "data": "pYO/pYTApYOrpYOhpYOvIQ==" // "Hello!" in Japanese, encoded as UTF-8
+  "data": "pYO/pYTApYOrpYOhpYOvIQ==", // "Hello!" in Japanese, encoded as UTF-8
 }
 ```
 
