@@ -6,9 +6,9 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Recent Changes
 
-- **Breaking:** `ZSshClient` now connects to `zowex server` instead of the standalone `zowed` binary. Users must re-deploy the server to update the binaries at their `serverPath`. [#846](https://github.com/zowe/zowe-native-proto/issues/846)
+- **Breaking:** `ZSshClient` (the SSH-based client for communicating with the z/OS server) now connects to `zowex server` (the embedded server subcommand of the `zowex` z/OS backend binary) instead of the standalone `zowed` binary. Users must re-deploy the server to update the binaries at their `serverPath` (the z/OS path where server binaries are deployed). [#846](https://github.com/zowe/zowe-native-proto/issues/846)
 - Added support for listing member attributes to `DsMember` type [#630](https://github.com/zowe/zowe-native-proto/issues/630)
-- Added support for invoking the tool search group.
+- Added support for invoking the `toolSearch` server command, which allows the client SDK to discover available server-side commands.
 - Added support for copying USS files in the `RpcClientApi` class. [#379](https://github.com/zowe/zowe-native-proto/issues/379)
 - Added support for USS Move operations. [#789](https://github.com/zowe/zowe-native-proto/pull/789)
 - Fixed `user` property not defined as secure when new team configuration profile is created. [#845](https://github.com/zowe/zowe-native-proto/pull/845)
