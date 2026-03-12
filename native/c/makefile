@@ -65,6 +65,7 @@ COMMAND_OBJS = $(OUT_DIR)/commands/console.o \
 	$(OUT_DIR)/commands/ds.o \
 	$(OUT_DIR)/commands/job.o \
 	$(OUT_DIR)/commands/server.o \
+	$(OUT_DIR)/commands/system.o \
 	$(OUT_DIR)/commands/tso.o \
 	$(OUT_DIR)/commands/uss.o \
 	$(OUT_DIR)/commands/tool.o
@@ -207,29 +208,13 @@ $(OUT_DIR_SWIG)/zjb.o: $(OUT_DIR_SWIG) zjb.cpp
 	@echo 'Building $(OUT_DIR_SWIG)/zjb.o with SWIG macro'
 	$(CXX) $(SWIG_FLAGS) -o $@ zjb.cpp
 
-$(OUT_DIR)/zjbm31.s: zjbm31.c
-	@echo 'Building $(OUT_DIR)/zjbm31.s'
-	$(CC) $(MTL_FLAGS) -qlist=$*.mtl.lst $(MTL_HEADERS) -o $@ $^
-
-$(OUT_DIR)/zjbm31.o: $(OUT_DIR)/zjbm31.s
-	@echo 'Building $(OUT_DIR)/zjbm31.o'
-	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
-
-$(OUT_DIR)/zssi31.s: zssi31.c
-	@echo 'Building $(OUT_DIR)/zssi31.s'
-	$(CC) $(MTL_FLAGS) -qlist=$*.mtl.lst $(MTL_HEADERS) -o $@ $^
-
-$(OUT_DIR)/zssi31.o: $(OUT_DIR)/zssi31.s
-	@echo 'Building $(OUT_DIR)/zssi31.o'
-	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
-
-$(OUT_DIR)/libzjb.so: $(OUT_DIR)/zjb.o $(OUT_DIR)/zjbm.o $(OUT_DIR)/zssi31.o $(OUT_DIR)/zjbm31.o $(OUT_DIR)/libzds.a $(OUT_DIR)/libzut.a
+$(OUT_DIR)/libzjb.so: $(OUT_DIR)/zjb.o $(OUT_DIR)/zjbm.o $(OUT_DIR)/libzds.a $(OUT_DIR)/libzut.a
 	@echo 'Building $(OUT_DIR)/libzjb.so'
 	$(CXX) $(DLL_BND_FLAGS) -o $@ $^
 
 libzjb.so: $(OUT_DIR) $(OUT_DIR)/libzjb.so
 
-$(OUT_DIR)/libzjb.a: $(OUT_DIR)/zjb.o $(OUT_DIR)/zjbm.o $(OUT_DIR)/zssi31.o $(OUT_DIR)/zjbm31.o
+$(OUT_DIR)/libzjb.a: $(OUT_DIR)/zjb.o $(OUT_DIR)/zjbm.o $(OUT_DIR)/libzds.a $(OUT_DIR)/libzut.a
 	@echo 'Building $(OUT_DIR)/libzjb.a'
 	ar -rv $@ $^
 

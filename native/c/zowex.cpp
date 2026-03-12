@@ -20,6 +20,7 @@
 #include "commands/ds.hpp"
 #include "commands/job.hpp"
 #include "commands/server.hpp"
+#include "commands/system.hpp"
 #include "commands/tool.hpp"
 #include "commands/tso.hpp"
 #include "commands/uss.hpp"
@@ -50,6 +51,7 @@ int main(int argc, char *argv[])
     ds::register_commands(root_cmd);
     job::register_commands(root_cmd);
     server::register_commands(root_cmd);
+    sys::register_commands(root_cmd);
     tool::register_commands(root_cmd);
     tso::register_commands(root_cmd);
     uss::register_commands(root_cmd);

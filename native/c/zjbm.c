@@ -16,7 +16,7 @@
 #include "iazjproc.h"
 #include "zssitype.h"
 #include "zjbm.h"
-#include "zssi31.h"
+#include "zssi.h"
 #include "zjbm31.h"
 #include "zstorage.h"
 #include "zjsytype.h"
