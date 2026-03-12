@@ -32,7 +32,6 @@ struct Options
   std::string exec_dir = ".";
 };
 
-void set_exec_dir(const std::string &dir);
 void register_commands(parser::Command &root_command);
 
 } // namespace server
@@ -41,6 +40,7 @@ class ZServer
 {
 private:
   server::Options options;
+  std::string exec_dir = ".";
   std::unique_ptr<WorkerPool> worker_pool;
   std::atomic<bool> shutdown_requested{false};
   std::once_flag shutdown_flag;
@@ -60,6 +60,8 @@ public:
   ~ZServer();
 
   static ZServer &get_instance();
+  void set_exec_dir(const std::string &dir) { exec_dir = dir; }
+  const std::string &get_exec_dir() const { return exec_dir; }
   void run(const server::Options &opts);
 };
 

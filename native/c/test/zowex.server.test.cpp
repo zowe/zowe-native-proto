@@ -18,6 +18,7 @@
 #include <fcntl.h>
 #include "ztest.hpp"
 #include "../ztype.h"
+#include "../commands/server.hpp"
 #include "zowex.server.test.hpp"
 
 using namespace ztst;

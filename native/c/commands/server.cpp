@@ -190,20 +190,13 @@ void ZServer::run(const server::Options &opts)
 namespace server
 {
 
-static std::string g_exec_dir = ".";
-
-void set_exec_dir(const std::string &dir)
-{
-  g_exec_dir = dir;
-}
-
 static int handle_server(plugin::InvocationContext &context)
 {
   server::Options opts;
   opts.num_workers = context.get<long long>("num-workers", opts.num_workers);
   opts.verbose = context.get<bool>("verbose", opts.verbose);
   opts.request_timeout = context.get<long long>("request-timeout", opts.request_timeout);
-  opts.exec_dir = g_exec_dir;
+  opts.exec_dir = ZServer::get_instance().get_exec_dir();
 
   const auto *num_workers_env = getenv("ZOWEX_NUM_WORKERS");
   if (num_workers_env != nullptr)

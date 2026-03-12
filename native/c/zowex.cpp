@@ -37,7 +37,7 @@ static std::string get_executable_dir(const char *argv0)
 
 int main(int argc, char *argv[])
 {
-  server::set_exec_dir(get_executable_dir(argv[0]));
+  ZServer::get_instance().set_exec_dir(get_executable_dir(argv[0]));
 
   try
   {
