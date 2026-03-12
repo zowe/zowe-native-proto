@@ -31,12 +31,11 @@
 #include "../server/worker.hpp"
 
 using namespace parser;
-using std::string;
 
 struct StatusMessage
 {
-  string status;
-  string message;
+  std::string status;
+  std::string message;
   std::optional<zjson::Value> data;
 };
 ZJSON_DERIVE(StatusMessage, status, message, data);
@@ -76,12 +75,12 @@ void ZServer::request_shutdown()
           close(STDIN_FILENO); });
 }
 
-std::map<string, string> ZServer::load_checksums()
+std::map<std::string, std::string> ZServer::load_checksums()
 {
-  std::map<string, string> checksums;
+  std::map<std::string, std::string> checksums;
   ZUSF zusf = {.encoding_opts = {.source_codepage = "IBM-1047", .data_type = eDataTypeText}};
-  string checksums_file = options.exec_dir + "/checksums.asc";
-  string checksums_content;
+  std::string checksums_file = options.exec_dir + "/checksums.asc";
+  std::string checksums_content;
 
   int rc = zusf_read_from_uss_file(&zusf, checksums_file, checksums_content);
   if (rc != 0)
@@ -91,11 +90,12 @@ std::map<string, string> ZServer::load_checksums()
   }
 
   std::istringstream infile(checksums_content);
-  string line;
+  std::string line{};
+  std::string checksum{};
+  std::string filename{};
   while (std::getline(infile, line))
   {
     std::istringstream iss(line);
-    string checksum, filename;
     if (iss >> checksum >> filename)
     {
       checksums[filename] = checksum;
@@ -122,7 +122,7 @@ void ZServer::print_ready_message()
       .data = std::optional<zjson::Value>(data),
   };
 
-  string json_string = RpcServer::serialize_json(zjson::to_value(status_msg).value());
+  std::string json_string = RpcServer::serialize_json(zjson::to_value(status_msg).value());
   std::cout << json_string << std::endl;
 }
 
@@ -170,7 +170,7 @@ void ZServer::run(const server::Options &opts)
   print_ready_message();
 
   LOG_DEBUG("Entering main input processing loop");
-  string line;
+  std::string line{};
   while (std::getline(std::cin, line) && !shutdown_requested)
   {
     if (!line.empty())
@@ -259,7 +259,7 @@ static int handle_server(plugin::InvocationContext &context)
 
 void register_commands(Command &root_command)
 {
-  auto server_cmd = command_ptr(new Command("server", "start the Zowe native IO server"));
+  auto server_cmd = std::make_shared<Command>("server", "start the Zowe native IO server");
   server_cmd->add_keyword_arg("num-workers",
                               make_aliases("-w", "--num-workers"),
                               "number of worker threads",

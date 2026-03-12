@@ -50,7 +50,7 @@ struct RequestMetadata
       : retry_count(0)
   {
   }
-  RequestMetadata(const std::string &req_data, size_t retries = 0UL, const std::string &id = "")
+  explicit RequestMetadata(const std::string &req_data, size_t retries = 0UL, const std::string &id = "")
       : data(req_data), retry_count(retries), request_id(id)
   {
   }

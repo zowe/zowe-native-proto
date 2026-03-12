@@ -79,6 +79,11 @@ struct ArgTransform
       : kind(k), arg_name(arg)
   {
   }
+
+  ArgTransform(ArgTransform &&) noexcept = default;
+  ArgTransform &operator=(ArgTransform &&) noexcept = default;
+  ArgTransform(const ArgTransform &) = default;
+  ArgTransform &operator=(const ArgTransform &) = default;
 };
 
 // CommandBuilder class for fluent command registration

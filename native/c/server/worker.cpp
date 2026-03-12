@@ -192,14 +192,6 @@ void Worker::worker_loop()
     stop_requested.store(true, std::memory_order_release);
     LOG_ERROR("Worker %d encountered fatal error: %s", id, e.what());
   }
-  catch (...)
-  {
-    state.store(WorkerState::Faulted, std::memory_order_release);
-    update_heartbeat();
-    LOG_DEBUG("Worker %d state -> %s (unknown exception)", id, worker_state_to_string(WorkerState::Faulted));
-    stop_requested.store(true, std::memory_order_release);
-    LOG_ERROR("Worker %d encountered unknown fatal error", id);
-  }
 
   {
     std::lock_guard<std::mutex> lock(exit_mutex);
