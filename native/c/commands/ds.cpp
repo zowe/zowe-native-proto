@@ -977,6 +977,7 @@ int handle_data_set_copy(InvocationContext &context)
   }
 
   const auto result = obj();
+  result->set("success", boolean(true));
   if (options.target_created)
   {
     result->set("targetCreated", boolean(true));
