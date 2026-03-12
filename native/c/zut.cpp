@@ -32,6 +32,7 @@
 #include "zdyn.h"
 #include "zuttype.h"
 #include <_Nascii.h>
+#include "iefjsqry.h"
 
 int zut_run_shell_command(std::string command, std::string &response)
 {
@@ -239,6 +240,52 @@ int zut_hello(const std::string &name)
   // #endif
 
   return 0;
+}
+
+int zut_list_subsystems(ZDIAG &diag, std::vector<std::string> &subsystems, std::string filter)
+{
+  int rc = 0;
+  JQRY_HEADER *area = nullptr;
+
+  rc = ZUTSSIQ(&diag, &area, filter.c_str());
+
+  if (0 != rc)
+  {
+    return rc;
+  }
+
+  JQRY_SUBSYS_ENTRY *subsys_entry = nullptr;
+  subsys_entry = (JQRY_SUBSYS_ENTRY *)((unsigned char *)area + sizeof(JQRY_HEADER));
+  int next_entry = sizeof(JQRY_HEADER) + sizeof(JQRY_VT_ENTRY) * 2; // NOTE(Kelosky): 2 is the number of vector tables
+
+  for (int i = 0; i < area->jqry___num___subsys; i++)
+  {
+    const unsigned char *name = subsys_entry->jqry___subsys___name;
+    bool printable = true;
+    for (size_t j = 0; j < sizeof(subsys_entry->jqry___subsys___name); j++)
+    {
+      if (!isprint(name[j]))
+      {
+        printable = false;
+        break;
+      }
+    }
+    if (printable)
+    {
+      subsystems.push_back(std::string(reinterpret_cast<const char *>(name), sizeof(subsys_entry->jqry___subsys___name)));
+    }
+    else
+    {
+      char hex[13];
+      snprintf(hex, sizeof(hex), "x'%02X%02X%02X%02X'", name[0], name[1], name[2], name[3]);
+      subsystems.push_back(std::string(hex));
+    }
+    subsys_entry = (JQRY_SUBSYS_ENTRY *)((unsigned char *)subsys_entry + next_entry);
+  }
+
+  ZUTMSREL(&area->jqrylen, area);
+
+  return rc;
 }
 
 int zut_list_parmlib(ZDIAG &diag, std::vector<std::string> &parmlibs)
