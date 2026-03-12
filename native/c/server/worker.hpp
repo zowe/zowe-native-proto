@@ -146,6 +146,7 @@ private:
 
   void initialize_worker(int worker_id);
   void monitor_workers();
+  void monitor_worker_at(size_t i);
 
   /**
    * @brief Replace a worker at the given index with the reason for replacement
