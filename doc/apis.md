@@ -25,9 +25,11 @@
 | Recall data set          | 🚧 <sup>4</sup> | ❌  | ✅              | ✅         | ✅  | ✅  | ✅   |
 | Migrate data set         | ✅              | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
 | Delete migrated data set | ✅              | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
-| Rename data set          | ✅              | ✅  | ❌              | ❌         | ❌  | ❌  | ❌   |
-| Copy data set            | ✅              | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
-| Search data sets         | 🚧 <sup>5</sup> | ❌  | 🚧 <sup>5</sup> | ❌         | ❌  | ❌  | ❌   |
+| Rename data set          | ✅              | ✅  | ✅              | ✅         | ✅  | ✅  | ✅   |
+| Rename data set member   | ✅              | ✅  | ✅              | ✅         | ✅  | ✅  | ✅   |
+| Copy data set            | ✅              | ❌  | ✅              | ✅         | ❌  | ❌  | ❌   |
+| Compress data set        | ➖              | ❌  | ✅              | ❌         | ❌  | ❌  | ❌   |
+| Search data sets         | 🚧 <sup>5</sup> | ❌  | 🚧 <sup>5</sup> | ❌         | ✅  | ❌  | ❌   |
 | Invoke AMS (VSAM)        | ✅              | ❌  | ❌              | ❌         | ❌  | ❌  | ➖   |
 
 1. Not all attributes are retrieved.
@@ -45,11 +47,12 @@
 | _Write USS file_         | ✅     | ✅  | ✅              | ✅         | ✅  | ✅  | ✅   |
 | _Create file/directory_  | ✅     | ✅  | 🚧 <sup>1</sup> | ✅         | ✅  | ✅  | ✅   |
 | _Delete file/directory_  | ✅     | ✅  | ✅              | ✅         | ✅  | ✅  | ✅   |
-| Copy file/directory      | ✅     | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
-| Move file/directory      | ✅     | ✅  | ❌              | ❌         | ❌  | ❌  | ❌   |
+| Copy file/directory      | ✅     | ❌  | ✅              | ✅         | ✅  | ✅  | ✅   |
+| Move file/directory      | ✅     | ✅  | ✅              | ✅         | ✅  | ❌  | ✅   |
 | _`chmod` file/directory_ | ✅     | ❌  | ✅              | ✅         | ✅  | ✅  | ✅   |
 | _`chown` file/directory_ | ✅     | ❌  | ✅              | ✅         | ✅  | ✅  | ✅   |
 | _`chtag` USS file_       | ✅     | ❌  | ✅              | ✅         | ✅  | ✅  | ✅   |
+| Issue UNIX command       | ✅     | ✅  | ✅              | ❌         | ✅  | ❌  | ❌   |
 | Invoke `extattr`         | ✅     | ❌  | ❌              | ❌         | ❌  | ➖  | ➖   |
 | Get ACL entries          | ✅     | ❌  | ❌              | ❌         | ❌  | ➖  | ➖   |
 | Set ACL entries          | ✅     | ❌  | ❌              | ❌         | ❌  | ➖  | ➖   |
