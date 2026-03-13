@@ -524,58 +524,6 @@ bool zds_is_valid_member_name(const std::string &name)
   return true;
 }
 
-int zds_read_from_dd(ZDS *zds, std::string ddname, std::string &response)
-{
-  ddname = "DD:" + ddname;
-
-  std::ifstream in(ddname.c_str());
-  if (!in.is_open())
-  {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open file '%s'", ddname.c_str());
-    return RTNCD_FAILURE;
-  }
-
-  int index = 0;
-
-  std::string line;
-  while (std::getline(in, line))
-  {
-    if (index > 0 || line.size() > 0)
-    {
-      if (index > 0)
-      {
-        response.push_back('\n');
-      }
-      response += line;
-      index++;
-    }
-  }
-  in.close();
-
-  const size_t size = response.size() + 1;
-  if (size > 0 && std::strlen(zds->encoding_opts.codepage) > 0)
-  {
-    std::string temp = response;
-    const auto source_encoding = std::strlen(zds->encoding_opts.source_codepage) > 0 ? std::string(zds->encoding_opts.source_codepage) : "UTF-8";
-    try
-    {
-      const auto bytes_with_encoding = zut_encode(temp, std::string(zds->encoding_opts.codepage), source_encoding, zds->diag);
-      temp = bytes_with_encoding;
-    }
-    catch (std::exception &e)
-    {
-      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from %s to %s", source_encoding.c_str(), zds->encoding_opts.codepage);
-      return RTNCD_FAILURE;
-    }
-    if (!temp.empty())
-    {
-      response = temp;
-    }
-  }
-
-  return 0;
-}
-
 /**
  * Helper function to get data set attributes (RECFM, LRECL) from DSCB.
  * Returns a DscbAttributes struct with recfm, lrecl, and is_asa flag.
@@ -674,7 +622,7 @@ static void scan_for_truncated_lines(const std::string &data, int max_len,
   truncation.flush_range();
 }
 
-int zds_read_from_dsn(ZDS *zds, const std::string &dsn, std::string &response)
+int zds_read(ZDS *zds, const std::string &dsn, std::string &response)
 {
   std::string dsname = "//'" + dsn + "'";
   if (std::strlen(zds->ddname) > 0)
@@ -1335,7 +1283,7 @@ int zds_validate_etag(ZDS *zds, const std::string &dsn, bool has_encoding)
   {
     memcpy(&read_ds.encoding_opts, &zds->encoding_opts, sizeof(ZEncode));
   }
-  const auto read_rc = zds_read_from_dsn(&read_ds, dsn, current_contents);
+  const auto read_rc = zds_read(&read_ds, dsn, current_contents);
   if (0 != read_rc)
   {
     // Truncate detail message to avoid buffer overflow
@@ -1412,7 +1360,7 @@ int zds_write_to_dsn(ZDS *zds, const std::string &dsn, std::string &data)
 
   // Print new e-tag to stdout as response
   std::string saved_contents = "";
-  const auto read_rc = zds_read_from_dsn(zds, dsn, saved_contents);
+  const auto read_rc = zds_read(zds, dsn, saved_contents);
   if (0 != read_rc)
   {
     return RTNCD_FAILURE;
@@ -3077,7 +3025,7 @@ int zds_list_data_sets(ZDS *zds, std::string dsn, std::vector<ZDSEntry> &dataset
  *
  * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
  */
-int zds_read_from_dsn_streamed(ZDS *zds, const std::string &dsn, const std::string &pipe, size_t *content_len)
+int zds_read_streamed(ZDS *zds, const std::string &dsn, const std::string &pipe, size_t *content_len)
 {
   if (content_len == nullptr)
   {
@@ -3843,7 +3791,7 @@ int zds_write_to_dsn_streamed(ZDS *zds, const std::string &dsn, const std::strin
 
   // Update the etag
   std::string saved_contents = "";
-  const auto read_rc = zds_read_from_dsn(zds, dsn, saved_contents);
+  const auto read_rc = zds_read(zds, dsn, saved_contents);
   if (0 != read_rc)
   {
     return RTNCD_FAILURE;
