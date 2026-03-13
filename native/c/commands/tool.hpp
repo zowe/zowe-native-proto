@@ -16,10 +16,8 @@ namespace tool
 using namespace plugin;
 int handle_tool_convert_dsect(InvocationContext &result);
 int handle_tool_dynalloc(InvocationContext &result);
-int handle_tool_display_symbol(InvocationContext &result);
 int handle_tool_search(InvocationContext &result);
 int handle_tool_amblist(InvocationContext &result);
 int handle_tool_run(InvocationContext &result);
-
 void register_commands(parser::Command &root_command);
 } // namespace tool
