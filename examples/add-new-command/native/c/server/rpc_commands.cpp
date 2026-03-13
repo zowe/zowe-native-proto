@@ -9,14 +9,14 @@
  *
  */
 
-#include "commands.hpp"
+#include "rpc_commands.hpp"
 #include "dispatcher.hpp"
 #include "schemas/requests.hpp"
 #include "schemas/responses.hpp"
-#include "../c/commands/ds.hpp"
-#include "../c/commands/job.hpp"
-#include "../c/commands/uss.hpp"
-#include "../c/commands/sample.hpp"
+#include "../commands/ds.hpp"
+#include "../commands/job.hpp"
+#include "../commands/uss.hpp"
+#include "../commands/sample.hpp"
 
 // ... existing registration functions ...
 
@@ -24,7 +24,7 @@ void register_sample_commands(CommandDispatcher &dispatcher)
 {
   dispatcher.register_command("ping", CommandBuilder(sample::handle_ping)
                                           .validate<PingRequest, PingResponse>()
-                                          .set_default("message", "hello from zowed"));
+                                          .set_default("message", "hello from zowex server"));
 }
 
 void register_all_commands(CommandDispatcher &dispatcher)

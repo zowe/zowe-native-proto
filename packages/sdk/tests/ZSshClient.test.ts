@@ -168,7 +168,7 @@ describe("ZSshClient", () => {
                 numWorkers: 1,
             });
             expect(execAsyncMock).toHaveBeenCalledTimes(1);
-            expect(execAsyncMock.mock.calls[0].slice(1)).toEqual(["--num-workers", "1"]);
+            expect(execAsyncMock.mock.calls[0].slice(1)).toEqual(["server", "--num-workers", "1"]);
         });
 
         it("should respect responseTimeout option", async () => {
@@ -195,7 +195,7 @@ describe("ZSshClient", () => {
                 verbose: true,
             });
             expect(execAsyncMock).toHaveBeenCalledTimes(1);
-            expect(execAsyncMock.mock.calls[0].slice(1)).toEqual(["--verbose"]);
+            expect(execAsyncMock.mock.calls[0].slice(1)).toEqual(["server", "--verbose"]);
         });
 
         it("should respect serverPath option", async () => {
@@ -209,7 +209,7 @@ describe("ZSshClient", () => {
                 serverPath: "/tmp/zowe-server",
             });
             expect(execAsyncMock).toHaveBeenCalledTimes(1);
-            expect(execAsyncMock.mock.calls[0][0]).toBe("/tmp/zowe-server/zowed");
+            expect(execAsyncMock.mock.calls[0][0]).toBe("/tmp/zowe-server/zowex");
         });
     });
 
@@ -271,7 +271,7 @@ describe("ZSshClient", () => {
             const sshStream = { stdin: { write: vi.fn() }, stdout: fakeStdout, stderr: { on: vi.fn() } };
             const client: ZSshClient = new (ZSshClient as any)();
             (client as any).mSshStream = sshStream;
-            (client as any).getServerStatus(sshStream, readyMessage, "zowed");
+            (client as any).getServerStatus(sshStream, readyMessage, "zowex server");
 
             const response = client.request(request);
             // Send response with empty lines
@@ -332,7 +332,7 @@ describe("ZSshClient", () => {
             const sshStream = { stdin: { write: vi.fn() }, stdout: { on: vi.fn() }, stderr: fakeStderr };
             const client: ZSshClient = new (ZSshClient as any)();
             (client as any).mSshStream = sshStream;
-            (client as any).getServerStatus(sshStream, readyMessage, "zowed");
+            (client as any).getServerStatus(sshStream, readyMessage, "zowex server");
             const response = client.request(request);
             fakeStderr.emit("data", `${JSON.stringify(rpcResponseBad)}\n`);
             await expect(response).rejects.toMatchObject({ message: rpcResponseBad.error?.message });
@@ -344,7 +344,7 @@ describe("ZSshClient", () => {
             const sshStream = { stdin: { write: vi.fn() }, stdout: fakeStdout, stderr: { on: vi.fn() } };
             const client: ZSshClient = new (ZSshClient as any)();
             (client as any).mSshStream = sshStream;
-            (client as any).getServerStatus(sshStream, readyMessage, "zowed");
+            (client as any).getServerStatus(sshStream, readyMessage, "zowex server");
             const response = client.request(request);
             fakeStdout.emit("data", `${JSON.stringify(rpcResponseGood)}\n`);
             expect(await response).toEqual({ success: true });
@@ -379,7 +379,7 @@ describe("ZSshClient", () => {
                 throw err;
             };
             (client as any).mSshStream = sshStream;
-            (client as any).getServerStatus(sshStream, readyMessage, "zowed");
+            (client as any).getServerStatus(sshStream, readyMessage, "zowex server");
             client.request(request);
             expect(() => fakeStdout.emit("data", "bad json\n")).toThrow("Invalid JSON response");
         });
@@ -393,7 +393,7 @@ describe("ZSshClient", () => {
                 throw err;
             };
             (client as any).mSshStream = sshStream;
-            (client as any).getServerStatus(sshStream, readyMessage, "zowed");
+            (client as any).getServerStatus(sshStream, readyMessage, "zowex server");
             client.request(request);
             expect(() => fakeStdout.emit("data", `${JSON.stringify({ ...rpcResponseGood, id: -1 })}\n`)).toThrow(
                 "Missing promise for response ID",
@@ -447,7 +447,7 @@ describe("ZSshClient", () => {
             const linkStreamToPromiseMock = vi.fn();
             (client as any).mStreamMgr = { linkStreamToPromise: linkStreamToPromiseMock };
             (client as any).mSshStream = sshStream;
-            (client as any).getServerStatus(sshStream, readyMessage, "zowed");
+            (client as any).getServerStatus(sshStream, readyMessage, "zowex server");
             (client as any).mPromiseMap.set(1, { resolve: vi.fn(), reject: vi.fn() });
 
             fakeStdout.emit("data", `${JSON.stringify(notification)}\n`);
@@ -468,7 +468,7 @@ describe("ZSshClient", () => {
             const client: ZSshClient = new (ZSshClient as any)();
             (client as any).mErrHandler = onErrorMock;
             (client as any).mSshStream = sshStream;
-            (client as any).getServerStatus(sshStream, readyMessage, "zowed");
+            (client as any).getServerStatus(sshStream, readyMessage, "zowex server");
             (client as any).mPromiseMap.set(1, { resolve: vi.fn(), reject: vi.fn() });
 
             fakeStdout.emit("data", `${JSON.stringify(notification)}\n`);

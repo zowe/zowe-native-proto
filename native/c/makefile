@@ -21,28 +21,32 @@ C_FLAGS=$(C_FLAGS_BASE) -I./chdsect
 CPP_FLAGS=$(CPP_FLAGS_BASE) -I./chdsect
 SWIG_FLAGS=$(SWIG_FLAGS_BASE) -I./chdsect -MMD -MP
 
-CPP_BND_FLAGS=$(CPP_BND_DEBUG_FLAGS)
-CPP_BND_FLAGS_AUTH=$(CPP_BND_DEBUG_FLAGS_AUTH)
-DLL_BND_FLAGS=$(DLL_BND_DEBUG_FLAGS)
-
-# make -DBuildType=DEBUG
+# make -DBuildType=DEBUG or -DBuildType=RELEASE
 .IF $(BuildType) == DEBUG
-CPP_BND_FLAGS+=$(DEBUGGER_FLAGS)
-CPP_BND_FLAGS_AUTH+=$(DEBUGGER_FLAGS)
+CPP_BND_FLAGS=$(CPP_BND_DEBUG_FLAGS) $(DEBUGGER_FLAGS)
+CPP_BND_FLAGS_AUTH=$(CPP_BND_DEBUG_FLAGS_AUTH) $(DEBUGGER_FLAGS)
 C_FLAGS+=$(DEBUGGER_FLAGS)
-DLL_BND_FLAGS+=$(DEBUGGER_FLAGS)
+DLL_BND_FLAGS=$(DLL_BND_DEBUG_FLAGS) $(DEBUGGER_FLAGS)
 CPP_FLAGS+=$(DEBUGGER_FLAGS) $(OTHER_C_FLAGS)
 MTL_FLAGS+=$(DEBUGGER_FLAGS) $(OTHER_C_FLAGS)
 MTL_FLAGS64+=$(DEBUGGER_FLAGS) $(OTHER_C_FLAGS)
 ASM_FLAGS+=--verbose
-.ELSE
-C_FLAGS+=-g0
-CPP_FLAGS+=-g0
+.ELIF $(BuildType) == RELEASE
 CPP_BND_FLAGS=$(CPP_BND_BASE_FLAGS)
 CPP_BND_FLAGS_AUTH=$(CPP_BND_BASE_FLAGS_AUTH)
 DLL_BND_FLAGS=$(DLL_BND_BASE_FLAGS)
+C_FLAGS+=$(RELEASE_FLAGS)
+CPP_FLAGS+=$(RELEASE_FLAGS)
 ASM_FLAGS+=--noverbose
-
+MTL_FLAGS+=-g1
+MTL_FLAGS64+=-g1
+.ELSE
+CPP_BND_FLAGS=$(CPP_BND_BASE_FLAGS)
+CPP_BND_FLAGS_AUTH=$(CPP_BND_BASE_FLAGS_AUTH)
+DLL_BND_FLAGS=$(DLL_BND_BASE_FLAGS)
+C_FLAGS+=-g1
+CPP_FLAGS+=-g1
+ASM_FLAGS+=--noverbose
 # Still investigating why we need `-g1` for the MetalC flags :'(
 MTL_FLAGS+=-g1
 MTL_FLAGS64+=-g1
@@ -60,18 +64,25 @@ COMMAND_OBJS = $(OUT_DIR)/commands/console.o \
 	$(OUT_DIR)/commands/core.o \
 	$(OUT_DIR)/commands/ds.o \
 	$(OUT_DIR)/commands/job.o \
+	$(OUT_DIR)/commands/server.o \
 	$(OUT_DIR)/commands/system.o \
 	$(OUT_DIR)/commands/tso.o \
 	$(OUT_DIR)/commands/uss.o \
 	$(OUT_DIR)/commands/tool.o
 
+SERVER_OBJS = $(OUT_DIR)/server/builder.o \
+	$(OUT_DIR)/server/rpc_commands.o \
+	$(OUT_DIR)/server/dispatcher.o \
+	$(OUT_DIR)/server/rpcio.o \
+	$(OUT_DIR)/server/rpc_server.o \
+	$(OUT_DIR)/server/validator.o \
+	$(OUT_DIR)/server/worker.o
+
 SWIG_EXTENDER_OBJS = $(OUT_DIR_SWIG)/zut.o $(OUT_DIR_SWIG)/zds.o $(OUT_DIR_SWIG)/zjb.o $(OUT_DIR_SWIG)/zcn.o $(OUT_DIR_SWIG)/zusf.o $(OUT_DIR_SWIG)/ztso.o
 
 all: libzut.so libzut.a libzds.so libzds.a libzusf.so libzusf.a libzcn.so libzcn.a libzjb.so libzjb.a zowex zoweax
 swig-extenders: $(OUT_DIR_SWIG) $(SWIG_EXTENDER_OBJS)
-zowed-tests:
-	 $(MAKE) -c ../zowed/test
-tests: zowed-tests
+tests:
 	 $(MAKE) -c test
 
 #
@@ -172,7 +183,7 @@ $(OUT_DIR)/libzds.so: $(OUT_DIR)/zds.o $(OUT_DIR)/zdsm.o $(OUT_DIR)/zam.o $(OUT_
 
 libzds.so: $(OUT_DIR) $(OUT_DIR)/libzds.so
 
-$(OUT_DIR)/libzds.a: $(OUT_DIR)/zds.o $(OUT_DIR)/zdsm.o $(OUT_DIR)/zam.o $(OUT_DIR)/libzut.a
+$(OUT_DIR)/libzds.a: $(OUT_DIR)/zds.o $(OUT_DIR)/zdsm.o $(OUT_DIR)/zam.o
 	@echo 'Building $(OUT_DIR)/libzds.a'
 	ar -rv $@ $^
 
@@ -237,7 +248,7 @@ $(OUT_DIR)/libzcn.so: $(OUT_DIR)/zcn.o $(OUT_DIR)/zcnm.o $(OUT_DIR)/zcnm31.o $(O
 
 libzcn.so: $(OUT_DIR) $(OUT_DIR)/libzcn.so
 
-$(OUT_DIR)/libzcn.a: $(OUT_DIR)/zcn.o $(OUT_DIR)/zcnm.o $(OUT_DIR)/zcnm31.o $(OUT_DIR)/libzut.a
+$(OUT_DIR)/libzcn.a: $(OUT_DIR)/zcn.o $(OUT_DIR)/zcnm.o $(OUT_DIR)/zcnm31.o
 	@echo 'Building libzcn.a'
 	ar -rv $@ $^
 
@@ -260,7 +271,7 @@ $(OUT_DIR)/libzusf.so: $(OUT_DIR)/zusf.o $(OUT_DIR)/libzut.a
 
 libzusf.so: $(OUT_DIR) $(OUT_DIR)/libzusf.so
 
-$(OUT_DIR)/libzusf.a: $(OUT_DIR)/zusf.o $(OUT_DIR)/libzut.a
+$(OUT_DIR)/libzusf.a: $(OUT_DIR)/zusf.o
 	@echo 'Building $(OUT_DIR)/libzusf.a'
 	ar -rv $@ $^
 
@@ -283,7 +294,7 @@ $(OUT_DIR)/libztso.so: ztso
 
 libztso.so: $(OUT_DIR) $(OUT_DIR)/libztso.so
 
-$(OUT_DIR)/libztso.a: $(OUT_DIR)/ztso.o $(OUT_DIR)/libzut.a
+$(OUT_DIR)/libztso.a: $(OUT_DIR)/ztso.o
 	@echo 'Building $(OUT_DIR)/libztso.a'
 	ar -rv $@ $^
 
@@ -298,6 +309,25 @@ $(OUT_DIR)/commands/%.o: commands/%.cpp
 	$(CXX) $(CPP_FLAGS) -c $< -o $@
 
 #
+# Server
+#
+$(OUT_DIR)/server/%.o: server/%.cpp
+	@echo 'Building $@'
+	@mkdir -p $(@D)
+	$(CXX) $(CPP_FLAGS) -c $< -o $@
+
+#
+# JSON Metal C (used by server)
+#
+$(OUT_DIR)/zjsonm.s: zjsonm.c
+	@echo 'Building $(OUT_DIR)/zjsonm.s'
+	$(CC) $(MTL_FLAGS64) -qlist=$*.mtl.lst $(MTL_HEADERS) -o $@ $^
+
+$(OUT_DIR)/zjsonm.o: $(OUT_DIR)/zjsonm.s
+	@echo 'Building $(OUT_DIR)/zjsonm.o'
+	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
+
+#
 # Extensibility
 #
 $(OUT_DIR)/extend/plugin.o: extend/plugin.cpp
@@ -308,13 +338,13 @@ $(OUT_DIR)/extend/plugin.o: extend/plugin.cpp
 #
 # Test CLI
 #
-$(OUT_DIR)/zowex: $(OUT_DIR)/zowex.o $(OUT_DIR)/extend/plugin.o $(COMMAND_OBJS) $(OUT_DIR)/libzcn.a $(OUT_DIR)/libzut.a $(OUT_DIR)/libzjb.a $(OUT_DIR)/libzds.a $(OUT_DIR)/libzusf.a $(OUT_DIR)/libztso.a
+$(OUT_DIR)/zowex: $(OUT_DIR)/zowex.o $(OUT_DIR)/extend/plugin.o $(COMMAND_OBJS) $(SERVER_OBJS) $(OUT_DIR)/zjsonm.o $(OUT_DIR)/libzcn.a $(OUT_DIR)/libzut.a $(OUT_DIR)/libzjb.a $(OUT_DIR)/libzds.a $(OUT_DIR)/libzusf.a $(OUT_DIR)/libztso.a
 	@echo 'Building zowex'
 	$(CXX) $(CPP_BND_FLAGS) -o $@ $^
 
 zowex: $(OUT_DIR) $(OUT_DIR)/zowex
 
-$(OUT_DIR)/zoweax: $(OUT_DIR)/zowex.o $(OUT_DIR)/extend/plugin.o $(COMMAND_OBJS) $(OUT_DIR)/libzcn.a $(OUT_DIR)/libzut.a $(OUT_DIR)/libzjb.a $(OUT_DIR)/libzds.a $(OUT_DIR)/libzusf.a $(OUT_DIR)/libztso.a
+$(OUT_DIR)/zoweax: $(OUT_DIR)/zowex.o $(OUT_DIR)/extend/plugin.o $(COMMAND_OBJS) $(SERVER_OBJS) $(OUT_DIR)/zjsonm.o $(OUT_DIR)/libzcn.a $(OUT_DIR)/libzut.a $(OUT_DIR)/libzjb.a $(OUT_DIR)/libzds.a $(OUT_DIR)/libzusf.a $(OUT_DIR)/libztso.a
 	@echo 'Building zoweax'
 	$(CXX) $(CPP_BND_FLAGS_AUTH) -o $@ $^
 	extattr +ap $@
