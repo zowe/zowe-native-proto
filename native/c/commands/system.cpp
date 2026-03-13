@@ -13,8 +13,8 @@
 #include "common_args.hpp"
 #include "../zut.hpp"
 #include "../zjb.hpp"
-#include "../zjb.hpp"
 #include <unistd.h>
+#include <ctime>
 
 using namespace parser;
 using namespace std;
@@ -113,13 +113,32 @@ int handle_system_view_syslog(InvocationContext &context)
 {
   int rc = 0;
 
-  string time_stamp = context.get<std::string>("time-stamp", "");
+  string time_stamp = context.get<std::string>("timestamp", "");
   string date = context.get<std::string>("date", "");
+
+  time_t now = time(nullptr);
+  struct tm *tm_now = localtime(&now);
+  char buf[32];
+
+  if (time_stamp.empty())
+  {
+    strftime(buf, sizeof(buf), "%H:%M:%S.00", tm_now);
+    time_stamp = buf;
+  }
+
+  if (date.empty())
+  {
+    strftime(buf, sizeof(buf), "%Y-%m-%d", tm_now);
+    date = buf;
+  }
+
+  context.output_stream() << "date: '" << date << "'" << endl;
+  context.output_stream() << "timestamp: '" << time_stamp << "'" << endl;
 
   string response;
   ZJB zjb = {};
 
-  rc = zjb_read_syslog(&zjb, response);
+  rc = zjb_read_syslog(&zjb, response, date, time_stamp);
   if (0 != rc)
   {
     context.error_stream() << "Error: could not view syslog, rc: '" << rc << "'" << endl;
@@ -160,8 +179,8 @@ void register_commands(parser::Command &root_command)
   // View-syslog subcommand
   auto system_view_syslog_cmd = command_ptr(new Command("view-syslog", "view syslog"));
   system_view_syslog_cmd->set_handler(handle_system_view_syslog);
-  system_list_subsystems_cmd->add_keyword_arg("time-stamp", make_aliases("--time-stamp", "-ts"), "specify timestamp, e.g. --ts 10:41:00.15", ArgType_Single, false);
-  system_list_subsystems_cmd->add_keyword_arg("date", make_aliases("--date", "-d"), "specify date yyyy-mm-dd, e.g. --date 2026-03-13", ArgType_Single, false);
+  system_view_syslog_cmd->add_keyword_arg("timestamp", make_aliases("--timestamp", "-ts"), "specify timestamp, e.g. --ts 10:41:00.15", ArgType_Single, false);
+  system_view_syslog_cmd->add_keyword_arg("date", make_aliases("--date", "-d"), "specify date yyyy-mm-dd, e.g. --date 2026-03-13", ArgType_Single, false);
   system_cmd->add_command(system_view_syslog_cmd);
 
   root_command.add_command(system_cmd);

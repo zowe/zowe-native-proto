@@ -24,6 +24,7 @@
 #include "jfcb.h"
 #include "ihaexlst.h"
 #include "zamtypes.h"
+#include "ztime.h"
 
 #if defined(__IBM_METAL__)
 #pragma map(open_output_assert, "opnoasrt")
@@ -82,7 +83,7 @@ int close_output_bpam(ZDIAG *PTR32, IO_CTRL *PTR32) ATTRIBUTE(amode31);
 #endif
 int open_input_vsam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 *PTR32, const char *PTR32) ATTRIBUTE(amode31);
 int read_input_vsam(ZDIAG *PTR32 diag, IO_CTRL *PTR32) ATTRIBUTE(amode31);
-int point_input_vsam(ZDIAG *PTR32 diag, IO_CTRL *PTR32) ATTRIBUTE(amode31);
+int point_input_vsam(ZDIAG *PTR32 diag, IO_CTRL *PTR32, TIME_STRUCT *time_struct) ATTRIBUTE(amode31);
 int close_input_vsam(ZDIAG *PTR32, IO_CTRL *PTR32) ATTRIBUTE(amode31);
 
 #if defined(__IBM_METAL__)

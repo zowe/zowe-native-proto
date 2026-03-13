@@ -108,6 +108,10 @@ typedef struct
   unsigned int dynalloc : 1; // indicates that the data set was dynamically allocated
   unsigned char reserve[20];
 
+  uint64_t ts_binary;
+  uint32_t date;
+  uint32_t alignment;
+
   ZDIAG diag;
 
 } ZDS;

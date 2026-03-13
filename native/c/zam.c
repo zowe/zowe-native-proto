@@ -309,21 +309,31 @@ int open_input_vsam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 *PTR32 ioc, const char *PT
 #define PREV_OCCURRENCE 0xFF02
 #define OFF_CURRENT_RECORD 0xFF03
 #define ABSOLUTE_RECORD 0xFF04
-int point_input_vsam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
+int point_input_vsam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc, TIME_STRUCT *time_struct)
 {
   int rc = 0;
 
   unsigned short request = FIRST_OCCURRENCE;
 
-  unsigned char stcke[32] = {0};
-  __asm__(" STCKE %0 " : "=m"(stcke[0]));
+  zut_dump_storage("time_struct", time_struct, sizeof(TIME_STRUCT));
+  etod_t etod = {0};
+  rc = convetod(time_struct, &etod);
+  if (0 != rc)
+  {
+    diag->detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
+    strcpy(diag->service_name, "CONVTOD");
+    diag->e_msg_len = sprintf(diag->e_msg, "Failed to CONVTOD rc was: %d", rc);
+    diag->service_rc = rc;
+    return rc;
+  }
+  zut_dump_storage("etod", &etod, sizeof(etod));
 
   IFGRPL *rplp = &ioc->rpl;
 
   memcpy(&rplp->rplaixpc, &request, sizeof(rplp->rplaixpc));
-  memcpy(&rplp->rplrbar.rplrbarx, &stcke[0], sizeof(rplp->rplrbar.rplrbarx));
+  memcpy(&rplp->rplrbar.rplrbarx, etod, sizeof(rplp->rplrbar.rplrbarx));
   void *PTR32 larg = &rplp->rplrbar;
-  memcpy(&rplp->rplarg, &larg, 4);
+  memcpy(&rplp->rplarg, &larg, sizeof(rplp->rplarg));
 
   POINT(rplp, rc);
   if (0 != rc)
