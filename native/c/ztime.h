@@ -12,6 +12,9 @@
 #ifndef ZTIME_H
 #define ZTIME_H
 
+#include "ihapsa.h"
+#include "cvt.h"
+
 #if defined(__IBM_METAL__)
 #define TIME(tod)                                             \
   __asm(                                                      \

@@ -31,6 +31,7 @@
 #include "zdyn.h"
 #include "ihapsa.h"
 #include "cvt.h"
+#include "zdbg.h"
 
 typedef struct iazbtokp IAZBTOKP;
 
@@ -290,35 +291,49 @@ static int zjb_free_job_dynamic_allocation(ZJB *zjb, std::string ddname)
   return rc;
 }
 
-// int zjb_read_syslog(ZJB *zjb, std::string &response)
-// {
-//   std::string date;
-//   std::string timestamp;
-//   return zjb_read_syslog(zjb, response, date, timestamp);
-// }
-
-int zjb_read_syslog(ZJB *zjb, std::string &response, std::string &date, std::string &timestamp)
+int zjb_read_syslog(ZJB *zjb, std::string &response, std::string &date, std::string &timestamp, int max_lines)
 {
   int rc = 0;
   std::string ddname;
   ZDS zds = {};
 
+  //
+  // get system name
+  //
   struct psa *psa = (struct psa *)0;
   struct cvt *cvt = (struct cvt *)psa->flccvt;
   char *sysname_char = (char *)cvt->cvtsname;
   std::string sysname_str = std::string(sysname_char, sizeof(cvt->cvtsname));
   std::string dsn = zut_rtrim(sysname_str) + ".SYSLOG" + ".SYSTEM"; // https://www.ibm.com/docs/en/zos/3.1.0?topic=allocation-specifying-data-set-name-daldsnam
 
+  //
+  // get input timestamp from format HH:MM:SS.CC to binary format (low bit represents 0.01 of a second) for CONVTOD
+  //
   int hh = 0, mm = 0, ss = 0, cs = 0;
   sscanf(timestamp.c_str(), "%d:%d:%d.%d", &hh, &mm, &ss, &cs);
   uint32_t ts_binary = ((uint32_t)hh * 360000) + ((uint32_t)mm * 6000) + ((uint32_t)ss * 100) + (uint32_t)cs;
+
+  //
+  // subtract to convert local time -> UTC for CONVTOD (which uses default offset=0/UTC)
+  //
+  int32_t tz_offset_cs = (int32_t)((double)cvt->cvttz * 1.048576 / 0.01); // documented in cvt.h
+  ts_binary -= (uint32_t)tz_offset_cs;
   memcpy(&zds.ts_binary, &ts_binary, sizeof(ts_binary)); // low half is unused
+
   unsigned char hex_date[4] = {0};
   hex_date[0] = 0x20;
   hex_date[1] = 0x26;
   hex_date[2] = 0x03;
   hex_date[3] = 0x13;
   memcpy(&zds.date, &hex_date, sizeof(hex_date));
+  std::string date_compact;
+  for (char c : date)
+  {
+    if (c != '-')
+      date_compact += c;
+  }
+  memcpy(&zds.ebcdic_date, date_compact.c_str(), sizeof(zds.ebcdic_date));
+  zds.max_lines = max_lines;
 
   rc = zjb_read_job_dynamic_allocation(zjb, dsn, ddname);
   if (0 != rc)

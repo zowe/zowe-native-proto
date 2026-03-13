@@ -115,6 +115,7 @@ int handle_system_view_syslog(InvocationContext &context)
 
   string time_stamp = context.get<std::string>("timestamp", "");
   string date = context.get<std::string>("date", "");
+  int max_lines = context.get<int>("max-lines", 5);
 
   time_t now = time(nullptr);
   struct tm *tm_now = localtime(&now);
@@ -125,11 +126,33 @@ int handle_system_view_syslog(InvocationContext &context)
     strftime(buf, sizeof(buf), "%H:%M:%S.00", tm_now);
     time_stamp = buf;
   }
+  else
+  {
+    int hh = -1, mm = -1, ss = -1, cs = -1;
+    int parsed = sscanf(time_stamp.c_str(), "%d:%d:%d.%d", &hh, &mm, &ss, &cs);
+    if (parsed < 3 || hh < 0 || hh > 23 || mm < 0 || mm > 59 || ss < 0 || ss > 59 || (parsed == 4 && (cs < 0 || cs > 99)))
+    {
+      context.error_stream() << "Error: invalid timestamp '" << time_stamp << "', expected hh:mm:ss.cs e.g. 12:01:30.03" << endl;
+      return RTNCD_FAILURE;
+    }
+    if (parsed == 3)
+      time_stamp += ".00";
+  }
 
   if (date.empty())
   {
     strftime(buf, sizeof(buf), "%Y-%m-%d", tm_now);
     date = buf;
+  }
+  else
+  {
+    int yyyy = -1, mm = -1, dd = -1;
+    int parsed = sscanf(date.c_str(), "%d-%d-%d", &yyyy, &mm, &dd);
+    if (parsed != 3 || yyyy < 1900 || yyyy > 2185 || mm < 1 || mm > 12 || dd < 1 || dd > 31)
+    {
+      context.error_stream() << "Error: invalid date '" << date << "', expected yyyy-mm-dd e.g. 2026-03-13" << endl;
+      return RTNCD_FAILURE;
+    }
   }
 
   context.output_stream() << "date: '" << date << "'" << endl;
@@ -138,7 +161,7 @@ int handle_system_view_syslog(InvocationContext &context)
   string response;
   ZJB zjb = {};
 
-  rc = zjb_read_syslog(&zjb, response, date, time_stamp);
+  rc = zjb_read_syslog(&zjb, response, date, time_stamp, max_lines);
   if (0 != rc)
   {
     context.error_stream() << "Error: could not view syslog, rc: '" << rc << "'" << endl;
@@ -146,7 +169,7 @@ int handle_system_view_syslog(InvocationContext &context)
     return RTNCD_FAILURE;
   }
 
-  context.output_stream() << response.substr(0, 130) << endl;
+  context.output_stream() << response << endl;
   return RTNCD_SUCCESS;
 }
 
@@ -181,6 +204,7 @@ void register_commands(parser::Command &root_command)
   system_view_syslog_cmd->set_handler(handle_system_view_syslog);
   system_view_syslog_cmd->add_keyword_arg("timestamp", make_aliases("--timestamp", "-ts"), "specify timestamp, e.g. --ts 10:41:00.15", ArgType_Single, false);
   system_view_syslog_cmd->add_keyword_arg("date", make_aliases("--date", "-d"), "specify date yyyy-mm-dd, e.g. --date 2026-03-13", ArgType_Single, false);
+  system_view_syslog_cmd->add_keyword_arg("max-lines", make_aliases("--max-lines", "-ml"), "specify maximum number of lines to display, e.g. --max-lines 100", ArgType_Single, false);
   system_cmd->add_command(system_view_syslog_cmd);
 
   root_command.add_command(system_cmd);

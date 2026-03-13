@@ -315,8 +315,8 @@ int point_input_vsam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc, TIME_STRUCT *time_st
 
   unsigned short request = FIRST_OCCURRENCE;
 
-  zut_dump_storage("time_struct", time_struct, sizeof(TIME_STRUCT));
   etod_t etod = {0};
+
   rc = convetod(time_struct, &etod);
   if (0 != rc)
   {
@@ -326,7 +326,6 @@ int point_input_vsam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc, TIME_STRUCT *time_st
     diag->service_rc = rc;
     return rc;
   }
-  zut_dump_storage("etod", &etod, sizeof(etod));
 
   IFGRPL *rplp = &ioc->rpl;
 
@@ -365,6 +364,7 @@ int read_input_vsam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
 #define rpleoder 0x04
     if (rplp->rplerreg == rplloger && rplp->rplfdb3 == rpleoder)
     {
+      zwto_debug("@TEST reach eof");
       ioc->eof = 1;
       return RTNCD_WARNING;
     }

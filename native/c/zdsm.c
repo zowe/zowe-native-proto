@@ -196,9 +196,13 @@ int ZDSPIVSM(ZDS *zds, IO_CTRL *ioc)
   int rc = 0;
   ZDS zds31 = {0};
   memcpy(&zds31, zds, sizeof(ZDS));
+
+  __pack((unsigned char *)&zds->date, sizeof(zds->date), (unsigned char *)&zds->ebcdic_date, sizeof(zds->ebcdic_date));
+
   TIME_STRUCT time_struct = {0};
   memcpy(&time_struct.time, &zds->ts_binary, sizeof(zds->ts_binary));
   memcpy(&time_struct.date, &zds->date, sizeof(zds->date));
+
   rc = point_input_vsam(&zds31.diag, ioc, &time_struct);
   memcpy(zds, &zds31, sizeof(ZDS));
   return rc;
