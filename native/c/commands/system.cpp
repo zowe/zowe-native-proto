@@ -14,6 +14,8 @@
 #include "../zut.hpp"
 #include "../zjb.hpp"
 #include "../zjb.hpp"
+#include "../chdsect/ihapsa.h"
+#include "../chdsect/cvt.h"
 #include <unistd.h>
 
 using namespace parser;
@@ -112,10 +114,11 @@ int handle_system_list_subsystems(InvocationContext &context)
 int handle_system_view_syslog(InvocationContext &context)
 {
   int rc = 0;
-  string sysname = context.get<std::string>("sysname", "");
-  transform(sysname.begin(), sysname.end(), sysname.begin(), ::toupper);
-
-  string dsn = sysname + ".SYSLOG" + ".SYSTEM";
+  struct psa *psa = (struct psa *)0;
+  struct cvt *cvt = (struct cvt *)psa->flccvt;
+  char *sysname_char = (char *)cvt->cvtsname;
+  std::string sysname_str = std::string(sysname_char, sizeof(cvt->cvtsname));
+  string dsn = zut_rtrim(sysname_str) + ".SYSLOG" + ".SYSTEM";
   string response;
   ZJB zjb = {};
   zjb.flags = ACB_RBL_PROCESS;
@@ -161,7 +164,6 @@ void register_commands(parser::Command &root_command)
   // View-syslog subcommand
   auto system_view_syslog_cmd = command_ptr(new Command("view-syslog", "view syslog"));
   system_view_syslog_cmd->set_handler(handle_system_view_syslog); // TODO(Kelosky): move these
-  system_view_syslog_cmd->add_positional_arg("sysname", "system name", ArgType_Single, true);
   system_cmd->add_command(system_view_syslog_cmd);
 
   root_command.add_command(system_cmd);
