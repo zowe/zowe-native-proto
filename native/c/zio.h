@@ -109,8 +109,8 @@ RPL_MODEL(rpl_model);
 #else
 #define POINT(rpl, rc)
 #endif
-// "OPTCD=(MVE,SYN),"                                         \
 
+// NOTE(Kelosky): "OPTCD=(MVE,SYN,XRBA)," workable but conflicting documentation
 // https://www.ibm.com/docs/en/zos/3.2.0?topic=examples-subparameters-gencb-modcb-showcb-testcb
 #if defined(__IBM_METAL__)
 #define MODCB(rpl, acb, area, area_len, rec_len, plist, rc, rsn) \
@@ -121,7 +121,7 @@ RPL_MODEL(rpl_model);
       "AREA=(*,%4),"                                             \
       "AREALEN=(*,%5),"                                          \
       "RECLEN=(*,%6),"                                           \
-      "OPTCD=(MVE,SYN,XRBA),"                                    \
+      "OPTCD=(MVE,SYN),"                                         \
       "MF=(G,%7)                                         \n"     \
       "*                                                 \n"     \
       " ST 15,%2     Save RC                             \n"     \
