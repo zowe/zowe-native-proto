@@ -364,32 +364,34 @@ int open_input_vsam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 *PTR32 ioc, const char *PT
 #define FIRST_OCCURRENCE 0xFF00
 #define NEXT_OCCURRENCE 0xFF01
 #define PREV_OCCURRENCE 0xFF02
+#define OFF_CURRENT_RECORD 0xFF03
+#define ABSOLUTE_RECORD 0xFF04
 int point_input_vsam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
 {
   int rc = 0;
-  zwto_debug("@TEST called to point acb for ddname: %.8s", ioc->ddname);
+  // zwto_debug("@TEST called to point acb for ddname: %.8s", ioc->ddname);
 
-  unsigned short request = FIRST_OCCURRENCE;
+  // unsigned short request = ABSOLUTE_RECORD;
 
-  unsigned char stcke[32] = {0};
-  __asm__(" STCKE %0 " : "=m"(stcke[0]));
-  zut_dump_storage("stcke", stcke, sizeof(stcke));
+  // unsigned char stcke[32] = {0};
+  // __asm__(" STCKE %0 " : "=m"(stcke[0]));
+  // zut_dump_storage("stcke", stcke, sizeof(stcke));
 
-  IFGRPL *rplp = &ioc->rpl;
+  // IFGRPL *rplp = &ioc->rpl;
 
-  memcpy(&rplp->rplaixpc, &request, sizeof(rplp->rplaixpc));
-  memcpy(&rplp->rplrbar.rplrbarx, &stcke[0], sizeof(rplp->rplrbar.rplrbarx));
+  // memcpy(&rplp->rplaixpc, &request, sizeof(rplp->rplaixpc));
+  // memcpy(&rplp->rplrbar.rplrbarx, &stcke[0], sizeof(rplp->rplrbar.rplrbarx));
 
-  POINT(rplp, rc);
-  if (0 != rc)
-  {
-    diag->detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
-    strcpy(diag->service_name, "POINT");
-    diag->e_msg_len = sprintf(diag->e_msg, "Failed to POINT rc was: %d", rc);
-    diag->service_rc = rc;
-    return rc;
-  }
-  zut_dump_storage("point rplprbar", &rplp->rplrbar, 8);
+  // POINT(rplp, rc);
+  // if (0 != rc)
+  // {
+  //   diag->detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
+  //   strcpy(diag->service_name, "POINT");
+  //   diag->e_msg_len = sprintf(diag->e_msg, "Failed to POINT rc was: %d", rc);
+  //   diag->service_rc = rc;
+  //   return rc;
+  // }
+  // zut_dump_storage("point rplprbar", &rplp->rplrbar, 8);
 
   return rc;
 }
@@ -405,29 +407,82 @@ int read_input_vsam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc, char *PTR32 buffer, i
   rplp->rplermsa = &dsinf;
   rplp->rplemlen = dsinsiz1;
 
-  zut_dump_storage("before get rplprbar", &rplp, sizeof(IFGRPL));
-  GET(rplp, rc);
-  if (0 != rc)
-  {
-    diag->detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
-    strcpy(diag->service_name, "GET");
-    diag->e_msg_len = sprintf(diag->e_msg, "Failed to GET rc was: %d", rc);
-    diag->service_rc = rc;
-    return rc;
-  }
-  zut_dump_storage("after get rplprbar", &rplp, sizeof(IFGRPL));
-  zut_dump_storage("after get dsinf", &dsinf, sizeof(DSINF));
+  unsigned char rbar[8] = {0};
 
+  for (int i = 0; i < 5000; i++)
+  {
+    // zut_dump_storage("before get rplprbar", &rplp, sizeof(IFGRPL));
+    GET(rplp, rc);
+    if (0 != rc)
+    {
+      diag->detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
+      strcpy(diag->service_name, "GET");
+      diag->e_msg_len = sprintf(diag->e_msg, "Failed to GET rc was: %d", rc);
+      diag->service_rc = rc;
+      return rc;
+    }
+
+    if (0 == i)
+    {
+      *length = sprintf(buffer, "%.*s", ioc->buffer_size, ioc->buffer);
+      zut_dump_storage("after set rplprbar", &rplp->rplrbar, 8);
+      zwto_debug("@test index is %d", i);
+      zwto_debug("%.*s", ioc->buffer_size, ioc->buffer);
+    }
+    if (100 == i)
+    {
+      *length = sprintf(buffer, "%.*s", ioc->buffer_size, ioc->buffer);
+      zut_dump_storage("after set rplprbar", &rplp->rplrbar, 8);
+      // memcpy(&rbar[0], &dsinf.dsinstke, 8);
+      memcpy(&rbar[0], &rplp->rplrbar, 8);
+      zwto_debug("@test index is %d", i);
+      zwto_debug("%.*s", ioc->buffer_size, ioc->buffer);
+    }
+    if (4999 == i)
+    {
+      *length = sprintf(buffer, "%.*s", ioc->buffer_size, ioc->buffer);
+      zut_dump_storage("after set rplprbar", &rplp->rplrbar, 8);
+      zwto_debug("@test index is %d", i);
+      zwto_debug("%.*s", ioc->buffer_size, ioc->buffer);
+    }
+  }
+  // zut_dump_storage("after get rplprbar", &rplp, sizeof(IFGRPL));
+  // zut_dump_storage("after get dsinf", &dsinf, sizeof(DSINF));
+
+  // unsigned short request = FIRST_OCCURRENCE;
   unsigned short request = FIRST_OCCURRENCE;
 
-  unsigned char stcke[32] = {0};
-  __asm__(" STCKE %0 " : "=m"(stcke[0]));
-  zut_dump_storage("stcke", stcke, sizeof(stcke));
+  // unsigned char stcke[32] = {0};
+  // __asm__(" STCKE %0 " : "=m"(stcke[0]));
+  // zut_dump_storage("stcke", stcke, sizeof(stcke));
 
   // IFGRPL *rplp = &ioc->rpl;
+  // memcpy(&stcke[0], &dsinf.dsinstke, 8);
+  // memcpy(&stcke[0], &dsinf.dsinlglr, 8);
+  // memcpy(&stcke[0], &dsinf.dsinlglr, 8);
+  // stcke[2] = 0x08;
+  // stcke[3] = 0x08;
+  // zwto_debug("@TEST dsinlglr is %llx", dsinf.dsinlglr);
+  // zwto_debug("@TEST dsinrecn is %llx", dsinf.dsinrecn);
 
-  memcpy(&rplp->rplaixpc, &request, sizeof(rplp->rplaixpc));
-  memcpy(&rplp->rplrbar.rplrbarx, &stcke[0], sizeof(rplp->rplrbar.rplrbarx));
+  // memcpy(&rplp->rplaixpc, &request, sizeof(rplp->rplaixpc));
+  // memcpy(&rplp->rplrbar.rplrbarx, &dsinf.dsinlglr, sizeof(rplp->rplrbar.rplrbarx));
+  // memcpy(&rplp->rplrbar.rplrbarx, &stcke[2], sizeof(rplp->rplrbar.rplrbarx));
+  zwto_debug("@TEST sizeof IFGRPL is %x, offset of rplrbar is %x, offset of rplrlen is %x offset pf rplarg is %x", sizeof(IFGRPL), offsetof(IFGRPL, rplrbar), offsetof(IFGRPL, rplrlen), offsetof(IFGRPL, rplarg));
+  zut_dump_storage("after set rplprbar", &rplp->rplrbar, 8);
+  zut_dump_storage("full rpl before", rplp, sizeof(IFGRPL));
+  zut_dump_storage("rplarg", &rplp->rplarg, 4);
+
+  // zwto_debug("@TEST ");
+  // zwto_debug("@TEST jobid is %.*s", 8, &dsinf.dsinjbid);
+  zut_dump_storage("saved rbar", &rbar[0], 8);
+  memcpy(&rplp->rplrbar, &rbar[0], 8);
+  // memcpy(&rplp->rplrbar, &request, 2);
+  // memcpy(&rplp->rplrbar.rplrbarx, &rbar[0], 6);
+  void *PTR32 larg = &rplp->rplrbar;
+  memcpy(&rplp->rplarg, &larg, 4);
+  zut_dump_storage("full rpl after point alter", rplp, sizeof(IFGRPL));
+  zut_dump_storage("rplarg now is  ", &rplp->rplarg, 4);
 
   POINT(rplp, rc);
   if (0 != rc)
@@ -439,6 +494,18 @@ int read_input_vsam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc, char *PTR32 buffer, i
     return rc;
   }
   // zut_dump_storage("point rplprbar", &rplp->rplrbar, 8);
+  zut_dump_storage("full rpl after point", rplp, sizeof(IFGRPL));
+
+  GET(rplp, rc);
+  if (0 != rc)
+  {
+    diag->detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
+    strcpy(diag->service_name, "GET");
+    diag->e_msg_len = sprintf(diag->e_msg, "Failed to GET rc was: %d", rc);
+    diag->service_rc = rc;
+    return rc;
+  }
+  zut_dump_storage("full rpl after get", rplp, sizeof(IFGRPL));
 
   // zwto_debug("get success");
   zwto_debug("@TEST buffer: %.*s", ioc->buffer_size, ioc->buffer);
@@ -463,16 +530,16 @@ int read_input_vsam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc, char *PTR32 buffer, i
   //   diag->service_rc = rc;
   //   return rc;
   // }
-  GET(rplp, rc);
-  if (0 != rc)
-  {
-    diag->detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
-    strcpy(diag->service_name, "GET");
-    diag->e_msg_len = sprintf(diag->e_msg, "Failed to GET rc was: %d", rc);
-    diag->service_rc = rc;
-    return rc;
-  }
-  zut_dump_storage("after get RPLFDBK", &rplp->rplfdbwd.rplfdbk, sizeof(rplp->rplfdbwd.rplfdbk));
+  // GET(rplp, rc);
+  // if (0 != rc)
+  // {
+  //   diag->detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
+  //   strcpy(diag->service_name, "GET");
+  //   diag->e_msg_len = sprintf(diag->e_msg, "Failed to GET rc was: %d", rc);
+  //   diag->service_rc = rc;
+  //   return rc;
+  // }
+  // zut_dump_storage("after get RPLFDBK", &rplp->rplfdbwd.rplfdbk, sizeof(rplp->rplfdbwd.rplfdbk));
   // // zut_dump_storage_wto("second buffer", ioc->buffer, ioc->buffer_size);
   // zwto_debug("second buffer: %.*s", ioc->buffer_size, ioc->buffer);
 

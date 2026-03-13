@@ -109,6 +109,7 @@ RPL_MODEL(rpl_model);
 #else
 #define POINT(rpl, rc)
 #endif
+// "OPTCD=(MVE,SYN),"                                         \
 
 // https://www.ibm.com/docs/en/zos/3.2.0?topic=examples-subparameters-gencb-modcb-showcb-testcb
 #if defined(__IBM_METAL__)
