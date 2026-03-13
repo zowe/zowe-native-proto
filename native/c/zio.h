@@ -110,6 +110,17 @@ RPL_MODEL(rpl_model);
 #define POINT(rpl, rc)
 #endif
 
+#if defined(__IBM_METAL__)
+#define MODCB_MODEL(modcbm)                                    \
+  __asm(                                                       \
+      "*                                                  \n"  \
+      " MODCB MF=L                                        \n"  \
+      "*                                                     " \
+      : "DS"(modcbm));
+#else
+#define MODCB_MODEL(modcbm)
+#endif
+
 // NOTE(Kelosky): "OPTCD=(MVE,SYN,XRBA)," workable but conflicting documentation
 // https://www.ibm.com/docs/en/zos/3.2.0?topic=examples-subparameters-gencb-modcb-showcb-testcb
 #if defined(__IBM_METAL__)

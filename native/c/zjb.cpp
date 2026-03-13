@@ -276,7 +276,7 @@ static int zjb_free_job_dynamic_allocation(ZJB *zjb, std::string ddname)
   ip.__ddname = (char *)ddname.c_str(); // e.g. SYS00001
   rc = dynfree(&ip);
 
-  if (0 != rc && 0 != zjb->diag.e_msg_len) // only set error if no error message was already set
+  if (0 != rc && 0 == zjb->diag.e_msg_len) // only set error if no error message was already set
   {
     strcpy(zjb->diag.service_name, "dynfree");
     zjb->diag.service_rc = rc;
@@ -305,7 +305,7 @@ int zjb_read_job_content_by_dsn(ZJB *zjb, const std::string &jobdsn, std::string
 
   if (zjb->flags & ACB_RBL_PROCESS)
   {
-    rc = zds_read_from_dd_acb(&zds, ddname, response);
+    rc = zds_read_vsam(&zds, ddname, response);
   }
   else
   {

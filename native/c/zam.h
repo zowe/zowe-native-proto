@@ -81,7 +81,7 @@ int close_output_bpam(ZDIAG *PTR32, IO_CTRL *PTR32) ATTRIBUTE(amode31);
 #pragma map(close_input_vsam, "CLSIVSAM")
 #endif
 int open_input_vsam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 *PTR32, const char *PTR32) ATTRIBUTE(amode31);
-int read_input_vsam(ZDIAG *PTR32 diag, IO_CTRL *PTR32, char *PTR32, int *PTR32) ATTRIBUTE(amode31);
+int read_input_vsam(ZDIAG *PTR32 diag, IO_CTRL *PTR32) ATTRIBUTE(amode31);
 int point_input_vsam(ZDIAG *PTR32 diag, IO_CTRL *PTR32) ATTRIBUTE(amode31);
 int close_input_vsam(ZDIAG *PTR32, IO_CTRL *PTR32) ATTRIBUTE(amode31);
 

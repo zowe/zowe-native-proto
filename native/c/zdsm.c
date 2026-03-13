@@ -172,7 +172,6 @@ int ZDSOIVSM(ZDS *zds, IO_CTRL **ioc, const char *ddname)
   memcpy(&zds31, zds, sizeof(ZDS));
   char ddname31[8] = {0};
   memcpy(ddname31, ddname, sizeof(ddname31));
-  zwto_debug("@TEST called to open acb for ddname: %s", ddname);
 
   IO_CTRL *PTR32 ioc31 = NULL;
   rc = open_input_vsam(&zds31.diag, &ioc31, ddname31);
@@ -203,13 +202,12 @@ int ZDSPIVSM(ZDS *zds, IO_CTRL *ioc)
 
 #pragma prolog(ZDSRIVSM, " ZWEPROLG NEWDSA=(YES,24) ")
 #pragma epilog(ZDSRIVSM, " ZWEEPILG ")
-int ZDSRIVSM(ZDS *zds, IO_CTRL *ioc, char *buffer, int *length)
+int ZDSRIVSM(ZDS *zds, IO_CTRL *ioc)
 {
   int rc = 0;
   ZDS zds31 = {0};
   memcpy(&zds31, zds, sizeof(ZDS));
-  // zwto_debug("@TEST called to read acb for ddname: %.8s", ioc->ddname);
-  rc = read_input_vsam(&zds31.diag, ioc, buffer, length);
+  rc = read_input_vsam(&zds31.diag, ioc);
   memcpy(zds, &zds31, sizeof(ZDS));
   return rc;
 }
@@ -221,7 +219,6 @@ int ZDSCIVSM(ZDS *zds, IO_CTRL *ioc)
   int rc = 0;
   ZDS zds31 = {0};
   memcpy(&zds31, zds, sizeof(ZDS));
-  zwto_debug("@TEST called to close acb for ddname: %.8s", ioc->ddname);
   rc = close_input_vsam(&zds31.diag, ioc);
   memcpy(zds, &zds31, sizeof(ZDS));
   return rc;

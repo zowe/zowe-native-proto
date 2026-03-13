@@ -114,14 +114,16 @@ int handle_system_list_subsystems(InvocationContext &context)
 int handle_system_view_syslog(InvocationContext &context)
 {
   int rc = 0;
+
   struct psa *psa = (struct psa *)0;
   struct cvt *cvt = (struct cvt *)psa->flccvt;
   char *sysname_char = (char *)cvt->cvtsname;
   std::string sysname_str = std::string(sysname_char, sizeof(cvt->cvtsname));
-  string dsn = zut_rtrim(sysname_str) + ".SYSLOG" + ".SYSTEM";
+  string dsn = zut_rtrim(sysname_str) + ".SYSLOG" + ".SYSTEM"; // https://www.ibm.com/docs/en/zos/3.1.0?topic=allocation-specifying-data-set-name-daldsnam
+
   string response;
   ZJB zjb = {};
-  zjb.flags = ACB_RBL_PROCESS;
+  zjb.flags = ACB_RBL_PROCESS; // use VSAM
 
   rc = zjb_read_job_content_by_dsn(&zjb, dsn, response);
   if (0 != rc)

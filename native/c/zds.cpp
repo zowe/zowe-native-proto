@@ -577,7 +577,7 @@ int zds_read_from_dd(ZDS *zds, std::string ddname, std::string &response)
   return 0;
 }
 
-int zds_read_from_dd_acb(ZDS *zds, std::string ddname, std::string &response)
+int zds_read_vsam(ZDS *zds, std::string ddname, std::string &response)
 {
   int rc = 0;
 
@@ -592,22 +592,26 @@ int zds_read_from_dd_acb(ZDS *zds, std::string ddname, std::string &response)
   rc = ZDSPIVSM(zds, ioc);
   if (rc != RTNCD_SUCCESS)
   {
+    ZDSCIVSM(zds, ioc);
     return rc;
   }
 
-  zut_dump_storage("rplp", &ioc->rpl, sizeof(ioc->rpl));
-
-  char *buffer = (char *)__malloc31(130 + 4); // TODO(Kelosky): use appropriate size
-  int *length = (int *)(buffer + 130);
-
-  for (int i = 0; i < 1; i++)
+  while (true)
   {
-    rc = ZDSRIVSM(zds, ioc, buffer, length);
-    if (rc != RTNCD_SUCCESS)
+    rc = ZDSRIVSM(zds, ioc);
+    if (rc == RTNCD_SUCCESS)
     {
+      response.append(ioc->buffer, ioc->ifgacb.acblrecl);
+    }
+    else if (rc == RTNCD_WARNING)
+    {
+      break;
+    }
+    else
+    {
+      ZDSCIVSM(zds, ioc);
       return rc;
     }
-    std::cout << "@TEST buffer: " << std::string(buffer, *length) << std::endl;
   }
 
   rc = ZDSCIVSM(zds, ioc);

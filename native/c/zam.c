@@ -252,53 +252,36 @@ static int note_member(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc, NOTE_RESPONSE *PTR
   return rc;
 }
 
+#define MAX_SYSLOG_LRECL 256
 int open_input_vsam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 *PTR32 ioc, const char *PTR32 ddname)
 {
   int rc = 0;
   int rsn = 0;
   IO_CTRL *PTR32 ioc31 = NULL;
 
-  zwto_debug("@TEST open acb zam.c");
   //
   // Obtain IO_CTRL for the data set
   //
   IO_CTRL *PTR32 new_ioc = new_io_ctrl();
   *ioc = new_ioc;
+  void *acbp = &new_ioc->ifgacb;
+
   ACB_MODEL(dsa_acb_model); // stack var
   memcpy(&dsa_acb_model, &acb_model, sizeof(IFGACB));
+
   memcpy(&new_ioc->ifgacb, &dsa_acb_model, sizeof(IFGACB));
   memcpy(new_ioc->ifgacb.acbddnm, ddname, sizeof(new_ioc->ifgacb.acbddnm));
 
-  ////////////////////////////////////////////////////////////
-
-  new_ioc->buffer_size = 130; // new_ioc->ifgacb.acbmsgln;
-  new_ioc->buffer = storage_obtain31(new_ioc->buffer_size);
-
-  // IFGRPL *rplp = storage_obtain24(sizeof(IFGRPL));
   IFGRPL *rplp = &new_ioc->rpl;
   memcpy(rplp, &rpl_model, sizeof(IFGRPL));
 
-  // memcpy(&new_ioc->rpl, &rpl_model, sizeof(IFGRPL));
+  new_ioc->buffer_size = MAX_SYSLOG_LRECL; // NOTE(Kelosky): in the future for other VSAM data sets, this could be set to the actual LRECL, we could use something like stvsmlrl
+  new_ioc->buffer = storage_obtain31(new_ioc->buffer_size);
 
-  // zut_dump_storage_wto("dsinf1", &dsinf, sizeof(DSINF));
-
-  void *acbp = &new_ioc->ifgacb;
-  int lrecl = 130; // new_ioc->ifgacb.acblrecl; // stvsmlrl
-  // NOTE(Kelosky): RECLEN may not be required
-
-  // zut_dump_storage_wto("rplp", rplp, sizeof(IFGRPL));
-  zwto_debug("@TEST lrecl is: %d buffer size is: %d", lrecl, new_ioc->buffer_size);
-
-  unsigned char plist[1024] = {0}; // TODO(Kelosky): use appropriate size
-  void *PTR32 plistp = &plist[0];
-
-  zwto_debug("@TEST rc: %d rsn: %d", rc, rsn);
-
-  // IFGRPL *PTR32 rplp = &new_ioc->rpl;
-  MODCB(rplp, acbp, new_ioc->buffer, new_ioc->buffer_size, lrecl, plistp, rc, rsn);
+  MODCB_MODEL(plist);
+  MODCB(rplp, acbp, new_ioc->buffer, new_ioc->buffer_size, new_ioc->buffer_size, plist, rc, rsn);
   if (0 != rc)
   {
-    zwto_debug("@TEST get failed: %d", rc);
     diag->detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
     strcpy(diag->service_name, "MODCB");
     diag->e_msg_len = sprintf(diag->e_msg, "MODCB failed rc was: %d rsn was: %d", rc, rsn);
@@ -307,55 +290,15 @@ int open_input_vsam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 *PTR32 ioc, const char *PT
     return RTNCD_FAILURE;
   }
 
-  // TODO(Kelosky): refactor
-  // TODO(Kelosky): free areas
-  ////////////////////////////////////////////////////////////
-
   rc = open_input_acb(&new_ioc->ifgacb);
   if (0 != rc)
   {
-    zwto_debug("@TEST open acb zam.c failed: %d", rc);
     diag->detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
     strcpy(diag->service_name, "OPEN");
     diag->e_msg_len = sprintf(diag->e_msg, "Failed to open acb rc was: %d", rc);
     diag->service_rc = rc;
     return RTNCD_FAILURE;
   }
-  zwto_debug("@TEST open acb zam.c success");
-
-  // zut_dump_storage_wto("acb", &new_ioc->ifgacb, sizeof(IFGACB));
-  zwto_debug("@TEST lrecl is: %d blksize is: %d and recfm is: %x", new_ioc->ifgacb.acblrecl, new_ioc->ifgacb.acbmsgln, new_ioc->ifgacb.acbrecfm);
-
-  // memset(&dsinf, 0x00, sizeof(DSINF));
-
-  // DSINF dsinf = {0}; // NOTE(Kelosky): may not be in stack storage
-  // memcpy(dsinf.dsineye, "DSIN", sizeof(dsinf.dsineye));
-  // rplp->rplermsa = &dsinf;
-  // rplp->rplemlen = dsinsiz1;
-
-  // unsigned char stck[32] = {0};
-
-  // // __asm__(" STCK %0 " : "=m"(stck[0]));
-  // // zut_dump_storage_wto("stck", stck, sizeof(stck));
-  // // __asm__(" STCKE %0 " : "=m"(stck[0]));
-  // // zut_dump_storage_wto("stcke", stck, sizeof(stck));
-
-  // // zut_dump_storage_wto("dsinf", &dsinf, sizeof(DSINF));
-  // GET(rplp);
-  // zut_dump_storage_wto("1buffer", new_ioc->buffer, new_ioc->buffer_size);
-  // // void *PTR32 rplprbar = NULL;
-  // // memcpy(&rplprbar, &rplp->rplrbar, 4);
-  // zut_dump_storage_wto("rplprbar", &rplp->rplrbar, 8);
-  // unsigned short request = 0xFF00;
-  // memcpy(&rplp->rplaixpc, &request, 2);
-  // memcpy(&rplp->rplrbar.rplrbarx, &dsinf.dsinstke, 6); // truncate to 6 bytes??
-  // // zut_dump_storage_wto("dsinf", &dsinf, sizeof(DSINF));
-  // POINT(rplp);
-  // GET(rplp);
-  // zut_dump_storage_wto("2buffer", new_ioc->buffer, new_ioc->buffer_size);
-
-  // // GET(rplp);
-  // // zut_dump_storage_wto("2buffer", new_ioc->buffer, new_ioc->buffer_size);
 
   return rc;
 }
@@ -369,13 +312,11 @@ int open_input_vsam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 *PTR32 ioc, const char *PT
 int point_input_vsam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
 {
   int rc = 0;
-  // zwto_debug("@TEST called to point acb for ddname: %.8s", ioc->ddname);
 
   unsigned short request = FIRST_OCCURRENCE;
 
   unsigned char stcke[32] = {0};
   __asm__(" STCKE %0 " : "=m"(stcke[0]));
-  // zut_dump_storage("stcke", stcke, sizeof(stcke));
 
   IFGRPL *rplp = &ioc->rpl;
 
@@ -393,157 +334,41 @@ int point_input_vsam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
     diag->service_rc = rc;
     return rc;
   }
-  // zut_dump_storage("point rplprbar", &rplp->rplrbar, 8);
 
   return rc;
 }
 
-int read_input_vsam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc, char *PTR32 buffer, int *PTR32 length)
+int read_input_vsam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
 {
   int rc = 0;
 
-  // TODO(Kelosky): handle EOD??
-  DSINF dsinf = {0}; // NOTE(Kelosky): may not be in stack storage
+  DSINF dsinf = {0};
   memcpy(dsinf.dsineye, "DSIN", sizeof(dsinf.dsineye));
   IFGRPL *rplp = &ioc->rpl;
   rplp->rplermsa = &dsinf;
   rplp->rplemlen = dsinsiz1;
 
-  // unsigned char rbar[8] = {0};
-
-  // for (int i = 0; i < 5000; i++)
-  // {
-  //   // zut_dump_storage("before get rplprbar", &rplp, sizeof(IFGRPL));
-  //   GET(rplp, rc);
-  //   if (0 != rc)
-  //   {
-  //     diag->detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
-  //     strcpy(diag->service_name, "GET");
-  //     diag->e_msg_len = sprintf(diag->e_msg, "Failed to GET rc was: %d", rc);
-  //     diag->service_rc = rc;
-  //     return rc;
-  //   }
-
-  //   if (0 == i)
-  //   {
-  //     *length = sprintf(buffer, "%.*s", ioc->buffer_size, ioc->buffer);
-  //     zut_dump_storage("after set rplprbar", &rplp->rplrbar, 8);
-  //     zwto_debug("@test index is %d", i);
-  //     zwto_debug("%.*s", ioc->buffer_size, ioc->buffer);
-  //   }
-  //   if (100 == i)
-  //   {
-  //     *length = sprintf(buffer, "%.*s", ioc->buffer_size, ioc->buffer);
-  //     zut_dump_storage("after set rplprbar", &rplp->rplrbar, 8);
-  //     // memcpy(&rbar[0], &dsinf.dsinstke, 8);
-  //     memcpy(&rbar[0], &rplp->rplrbar, 8);
-  //     zwto_debug("@test index is %d", i);
-  //     zwto_debug("%.*s", ioc->buffer_size, ioc->buffer);
-  //   }
-  //   if (4999 == i)
-  //   {
-  //     *length = sprintf(buffer, "%.*s", ioc->buffer_size, ioc->buffer);
-  //     zut_dump_storage("after set rplprbar", &rplp->rplrbar, 8);
-  //     zwto_debug("@test index is %d", i);
-  //     zwto_debug("%.*s", ioc->buffer_size, ioc->buffer);
-  //   }
-  // }
-  // zut_dump_storage("after get rplprbar", &rplp, sizeof(IFGRPL));
-  // zut_dump_storage("after get dsinf", &dsinf, sizeof(DSINF));
-
-  // unsigned short request = FIRST_OCCURRENCE;
-  // unsigned short request = FIRST_OCCURRENCE;
-
-  // unsigned char stcke[32] = {0};
-  // __asm__(" STCKE %0 " : "=m"(stcke[0]));
-  // zut_dump_storage("stcke", stcke, sizeof(stcke));
-
-  // IFGRPL *rplp = &ioc->rpl;
-  // memcpy(&stcke[0], &dsinf.dsinstke, 8);
-  // memcpy(&stcke[0], &dsinf.dsinlglr, 8);
-  // memcpy(&stcke[0], &dsinf.dsinlglr, 8);
-  // stcke[2] = 0x08;
-  // stcke[3] = 0x08;
-  // zwto_debug("@TEST dsinlglr is %llx", dsinf.dsinlglr);
-  // zwto_debug("@TEST dsinrecn is %llx", dsinf.dsinrecn);
-
-  // memcpy(&rplp->rplaixpc, &request, sizeof(rplp->rplaixpc));
-  // memcpy(&rplp->rplrbar.rplrbarx, &dsinf.dsinlglr, sizeof(rplp->rplrbar.rplrbarx));
-  // memcpy(&rplp->rplrbar.rplrbarx, &stcke[2], sizeof(rplp->rplrbar.rplrbarx));
-  // zwto_debug("@TEST sizeof IFGRPL is %x, offset of rplrbar is %x, offset of rplrlen is %x offset pf rplarg is %x", sizeof(IFGRPL), offsetof(IFGRPL, rplrbar), offsetof(IFGRPL, rplrlen), offsetof(IFGRPL, rplarg));
-  // zut_dump_storage("after set rplprbar", &rplp->rplrbar, 8);
-  // zut_dump_storage("full rpl before", rplp, sizeof(IFGRPL));
-  // zut_dump_storage("rplarg", &rplp->rplarg, 4);
-
-  // zwto_debug("@TEST ");
-  // zwto_debug("@TEST jobid is %.*s", 8, &dsinf.dsinjbid);
-  // zut_dump_storage("saved rbar", &rbar[0], 8);
-  // memcpy(&rplp->rplrbar, &rbar[0], 8);
-  // // memcpy(&rplp->rplrbar, &request, 2);
-  // // memcpy(&rplp->rplrbar.rplrbarx, &rbar[0], 6);
-  // void *PTR32 larg = &rplp->rplrbar;
-  // memcpy(&rplp->rplarg, &larg, 4);
-  // zut_dump_storage("full rpl after point alter", rplp, sizeof(IFGRPL));
-  // zut_dump_storage("rplarg now is  ", &rplp->rplarg, 4);
-
-  // POINT(rplp, rc);
-  // if (0 != rc)
-  // {
-  //   diag->detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
-  //   strcpy(diag->service_name, "POINT");
-  //   diag->e_msg_len = sprintf(diag->e_msg, "Failed to POINT rc was: %d", rc);
-  //   diag->service_rc = rc;
-  //   return rc;
-  // }
-  // // zut_dump_storage("point rplprbar", &rplp->rplrbar, 8);
-  // zut_dump_storage("full rpl after point", rplp, sizeof(IFGRPL));
-
   GET(rplp, rc);
   if (0 != rc)
   {
-    diag->detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
-    strcpy(diag->service_name, "GET");
-    diag->e_msg_len = sprintf(diag->e_msg, "Failed to GET rc was: %d", rc);
-    diag->service_rc = rc;
-    return rc;
+// https://www.ibm.com/docs/en/zos/3.1.0?topic=uai-return-codes
+#define rpleoder 0x04
+    if (rplp->rplerreg == rplloger && rplp->rplfdb3 == rpleoder)
+    {
+      ioc->eof = 1;
+      return RTNCD_WARNING;
+    }
+    else
+    {
+      unsigned char rplrdbk[3] = {0};
+      diag->detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
+      strcpy(diag->service_name, "GET");
+      memcpy(rplrdbk, &rplp->rplfdbwd.rplfdbk, sizeof(rplrdbk));
+      diag->e_msg_len = sprintf(diag->e_msg, "Failed to GET rc was: %d, RPLRDBK was: %02X%02X%02X", rc, rplrdbk[0], rplrdbk[1], rplrdbk[2]);
+      diag->service_rc = rc;
+      return rc;
+    }
   }
-  zut_dump_storage("full rpl after get", rplp, sizeof(IFGRPL));
-
-  // zwto_debug("get success");
-  zwto_debug("@TEST buffer: %.*s", ioc->buffer_size, ioc->buffer);
-  *length = sprintf(buffer, "%.*s", ioc->buffer_size, ioc->buffer);
-  // // zut_dump_storage_wto("first buffer", ioc->buffer, ioc->buffer_size);
-  // zwto_debug("first buffer: %.*s", ioc->buffer_size, ioc->buffer);
-  // zut_dump_storage_wto("dsinf", &dsinf, sizeof(dsinf));
-  // zut_dump_storage_wto("after get rplprbar", &rplp->rplrbar, 8);
-  // unsigned short request = 0xFF01;
-  // memcpy(&rplp->rplaixpc, &request, 2);
-  // memcpy(&rplp->rplrbar.rplrbarx, &dsinf.dsinstke, 6); // truncate to 6 bytes??
-  // memcpy(&rplp->rplaixpc, &dsinf.dsinstke, 8);         // @TEST
-
-  // zut_dump_storage_wto("after point rplprbar", &rplp->rplrbar, 8);
-  // zwto_debug("dsinf.dsinstke is: %llx and opt is: %x", dsinf.dsinstke, rplp->rplopt4);
-  // POINT(rplp, rc);
-  // if (0 != rc)
-  // {
-  //   diag->detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
-  //   strcpy(diag->service_name, "POINT");
-  //   diag->e_msg_len = sprintf(diag->e_msg, "Failed to POINT rc was: %d", rc);
-  //   diag->service_rc = rc;
-  //   return rc;
-  // }
-  // GET(rplp, rc);
-  // if (0 != rc)
-  // {
-  //   diag->detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
-  //   strcpy(diag->service_name, "GET");
-  //   diag->e_msg_len = sprintf(diag->e_msg, "Failed to GET rc was: %d", rc);
-  //   diag->service_rc = rc;
-  //   return rc;
-  // }
-  // zut_dump_storage("after get RPLFDBK", &rplp->rplfdbwd.rplfdbk, sizeof(rplp->rplfdbwd.rplfdbk));
-  // // zut_dump_storage_wto("second buffer", ioc->buffer, ioc->buffer_size);
-  // zwto_debug("second buffer: %.*s", ioc->buffer_size, ioc->buffer);
 
   return rc;
 }
@@ -551,7 +376,7 @@ int read_input_vsam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc, char *PTR32 buffer, i
 int close_input_vsam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
 {
   int rc = 0;
-  zwto_debug("@TEST close acb zam.c");
+
   rc = close_acb(&ioc->ifgacb);
   if (0 != rc)
   {
@@ -562,12 +387,17 @@ int close_input_vsam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
     return RTNCD_FAILURE;
   }
 
+  if (ioc->buffer)
+  {
+    storage_release(ioc->buffer_size, ioc->buffer);
+    ioc->buffer = NULL;
+    ioc->buffer_size = 0;
+  }
+
   if (ioc)
   {
     storage_release(sizeof(IO_CTRL), ioc);
   }
-
-  zwto_debug("@TEST close acb zam.c success");
 
   return rc;
 }
@@ -1397,7 +1227,6 @@ int open_input_acb(IFGACB *acb)
 int close_acb(IFGACB *acb)
 {
   int rc = 0;
-  zwto_debug("@TEST close vsam zam.c address: %p", acb);
   CLOSE_PL cpl = {0};
   cpl.option = OPTION_BYTE;
 
