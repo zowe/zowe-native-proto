@@ -166,7 +166,7 @@ int handle_system_view_syslog(InvocationContext &context)
     return RTNCD_FAILURE;
   }
 
-  context.output_stream() << response << endl;
+  context.output_stream() << response;
   return RTNCD_SUCCESS;
 }
 
