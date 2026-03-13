@@ -364,7 +364,6 @@ int read_input_vsam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
 #define rpleoder 0x04
     if (rplp->rplerreg == rplloger && rplp->rplfdb3 == rpleoder)
     {
-      zwto_debug("@TEST reach eof");
       ioc->eof = 1;
       return RTNCD_WARNING;
     }
