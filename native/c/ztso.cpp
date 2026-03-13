@@ -34,9 +34,11 @@
 // - Load TMP directly, untested, but potentially useful if we read/write SYSTSIN/SYSTSPRT
 int ztso_issue(const std::string &command, std::string &response)
 {
-  // NOTE(Kelosky): for now we combined stderr and stdout as `popen` doesnt
-  // appear to allow access to stderr and tsocmd always writes the input parameters
-  // to stderr
-  std::string tso_cmd = "tsocmd \"" + command + "\" 2>&1"; // combine stderr
-  return zut_run_shell_command(tso_cmd, response);
+  int rc = zut_run_program("tsocmd", {command}, response);
+  // discard first line - tsocmd prints the args to stderr
+  int split_pos = response.find_first_of('\n');
+  if (split_pos != std::string::npos) {
+    response.erase(0, split_pos + 1); // erase up to and including the newline
+  }
+  return rc;
 }
