@@ -15,6 +15,7 @@
 
 using namespace ztst;
 
+#pragma runopts("TRAP(ON,NOSPIE)")
 int main(int argc, char *argv[])
 {
   return tests(

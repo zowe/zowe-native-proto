@@ -42,7 +42,7 @@ $(TARGET): $(TEST_OBJECTS)
 	$(CXX) $(BND_FLAGS) -o $@ $^
 
 test: all
-	_CEE_RUNOPTS="TRAP(ON,NOSPIE)" ./$(TARGET)
+	./$(TARGET)
 
 clean:
 	rm -rf $(OUT_DIR)

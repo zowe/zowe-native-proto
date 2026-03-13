@@ -269,7 +269,7 @@ build-out/zjsonm.o: build-out/zjsonm.s
 test:
 	$(MAKE) -DZLOG_ENABLE=1 build-out build-out/ztest_runner
 	chmod +x test.sh
-	_CEE_RUNOPTS="TRAP(ON,NOSPIE)" ./build-out/ztest_runner
+	./build-out/ztest_runner
 
 clean:
 	rm -f *.o
