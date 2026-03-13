@@ -9,12 +9,7 @@
  *
  */
 
-#ifndef ZSSI31_H
-#define ZSSI31_H
-
-#include "zmetal.h"
-#include "zssitype.h"
-
-int iefssreq(SSOB * PTR32 * PTR32) ATTRIBUTE(amode31);
-
+#ifndef ZOWEX_SYSTEM_TEST_HPP
+#define ZOWEX_SYSTEM_TEST_HPP
+void zowex_system_tests();
 #endif
