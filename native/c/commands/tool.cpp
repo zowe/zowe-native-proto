@@ -152,7 +152,8 @@ int handle_tool_search(InvocationContext &context)
 
   // Read output from super c
   std::string output;
-  rc = zds_read_from_dd(&zds, "outdd", output);
+  strcpy(zds.ddname, "OUTDD");
+  rc = zds_read(&zds, "", output);
   if (0 != rc)
   {
     context.error_stream() << "Error: could not read from dd: '" << "outdd" << "' rc: '" << rc << "'" << std::endl;
@@ -215,7 +216,8 @@ int handle_tool_amblist(InvocationContext &context)
 
   // Read output from amblist
   std::string output;
-  rc = zds_read_from_dd(&zds, "sysprint", output);
+  strcpy(zds.ddname, "SYSPRINT");
+  rc = zds_read(&zds, dsn, output);
   if (0 != rc)
   {
     context.error_stream() << "Error: could not read from dd: '" << "sysprint" << "' rc: '" << rc << "'" << std::endl;

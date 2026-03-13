@@ -105,7 +105,8 @@ std::string get_random_string(const int length, const bool allNumbers)
 
 std::string get_basename(const std::string &fspath)
 {
-  if (fspath.empty()) return "";
+  if (fspath.empty())
+    return "";
 
   auto lastSlash = fspath.find_last_of("/\\");
 

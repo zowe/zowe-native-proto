@@ -87,7 +87,7 @@ std::string read_data_set(std::string dsn, std::string codepage)
 
   a2e_inplace(dsn);
   std::string response;
-  int rc = zds_read_from_dsn(&zds, dsn, response);
+  int rc = zds_read(&zds, dsn, response);
 
   if (rc != 0)
   {
