@@ -159,13 +159,13 @@ void register_commands(parser::Command &root_command)
 
   // List-subsystems subcommand
   auto system_list_subsystems_cmd = command_ptr(new Command("list-subsystems", "list subsystems"));
-  system_list_subsystems_cmd->set_handler(handle_system_list_subsystems); // TODO(Kelosky): move these
+  system_list_subsystems_cmd->set_handler(handle_system_list_subsystems);
   system_list_subsystems_cmd->add_keyword_arg("filter", make_aliases("--filter", "-f"), "filter subsystems", ArgType_Single, false);
   system_cmd->add_command(system_list_subsystems_cmd);
 
   // View-syslog subcommand
   auto system_view_syslog_cmd = command_ptr(new Command("view-syslog", "view syslog"));
-  system_view_syslog_cmd->set_handler(handle_system_view_syslog); // TODO(Kelosky): move these
+  system_view_syslog_cmd->set_handler(handle_system_view_syslog);
   system_cmd->add_command(system_view_syslog_cmd);
 
   root_command.add_command(system_cmd);
