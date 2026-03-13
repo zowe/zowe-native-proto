@@ -13,30 +13,29 @@
 | Operation                | z/OSMF          | FTP | Backend         | Middleware | SDK | CLI | VSCE |
 | ------------------------ | --------------- | --- | --------------- | ---------- | --- | --- | ---- |
 | _List data sets_         | ✅              | ✅  | ✅              | ✅         | ✅  | ✅  | ✅   |
-| _List data set members_  | ✅              | ✅  | 🚧 <sup>1</sup> | ✅         | ✅  | ✅  | ✅   |
+| _List data set members_  | ✅              | ✅  | ✅              | ✅         | ✅  | ✅  | ✅   |
 | _Read data set_          | ✅              | ✅  | ✅              | ✅         | ✅  | ✅  | ✅   |
 | _Read data set member_   | ✅              | ✅  | ✅              | ✅         | ✅  | ✅  | ✅   |
-| _Write data set_         | ✅              | ✅  | 🚧 <sup>2</sup> | ✅         | ✅  | ✅  | ✅   |
-| _Write data set member_  | ✅              | ✅  | 🚧 <sup>2</sup> | ✅         | ✅  | ✅  | ✅   |
+| _Write data set_         | ✅              | ✅  | 🚧 <sup>1</sup> | ✅         | ✅  | ✅  | ✅   |
+| _Write data set member_  | ✅              | ✅  | 🚧 <sup>1</sup> | ✅         | ✅  | ✅  | ✅   |
 | _Create data set_        | ✅              | ✅  | ✅              | ✅         | ✅  | ✅  | ✅   |
-| _Create data set member_ | ✅              | ✅  | 🚧 <sup>3</sup> | ✅         | ✅  | ✅  | ✅   |
+| _Create data set member_ | ✅              | ✅  | 🚧 <sup>2</sup> | ✅         | ✅  | ✅  | ✅   |
 | _Delete data set_        | ✅              | ✅  | ✅              | ✅         | ✅  | ✅  | ✅   |
 | _Delete data set member_ | ✅              | ✅  | ✅              | ✅         | ✅  | ✅  | ✅   |
-| Recall data set          | 🚧 <sup>4</sup> | ❌  | ✅              | ✅         | ✅  | ✅  | ✅   |
+| Recall data set          | 🚧 <sup>3</sup> | ❌  | ✅              | ✅         | ✅  | ✅  | ✅   |
 | Migrate data set         | ✅              | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
 | Delete migrated data set | ✅              | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
 | Rename data set          | ✅              | ✅  | ✅              | ✅         | ✅  | ✅  | ✅   |
 | Rename data set member   | ✅              | ✅  | ✅              | ✅         | ✅  | ✅  | ✅   |
 | Copy data set            | ✅              | ❌  | ✅              | ✅         | ❌  | ❌  | ❌   |
 | Compress data set        | ➖              | ❌  | ✅              | ❌         | ❌  | ❌  | ❌   |
-| Search data sets         | 🚧 <sup>5</sup> | ❌  | 🚧 <sup>5</sup> | ❌         | ✅  | ❌  | ❌   |
+| Search data sets         | 🚧 <sup>4</sup> | ❌  | 🚧 <sup>4</sup> | ❌         | ✅  | ❌  | ❌   |
 | Invoke AMS (VSAM)        | ✅              | ❌  | ❌              | ❌         | ❌  | ❌  | ➖   |
 
-1. Not all attributes are retrieved.
-2. RECFM=U (undefined record format) data sets are read-only; write attempts return an error.
-3. If the member already exists, this operation causes member contents to be overwritten.
-4. Does not support some migration utilities like CA Disk.
-5. Limited options compared to ISPF `srchfor`.
+1. RECFM=U (undefined record format) data sets are read-only; write attempts return an error.
+2. If the member already exists, this operation causes member contents to be overwritten.
+3. Does not support some migration utilities like CA Disk.
+4. Limited options compared to ISPF `srchfor`.
 
 ## USS Files
 
