@@ -29,6 +29,8 @@
 #include "zjbtype.h"
 #include "zdstype.h"
 #include "zdyn.h"
+#include "ihapsa.h"
+#include "cvt.h"
 
 typedef struct iazbtokp IAZBTOKP;
 
@@ -288,13 +290,19 @@ static int zjb_free_job_dynamic_allocation(ZJB *zjb, std::string ddname)
   return rc;
 }
 
-int zjb_read_job_content_by_dsn(ZJB *zjb, const std::string &jobdsn, std::string &response)
+int zjb_read_syslog(ZJB *zjb, std::string &response)
 {
   int rc = 0;
   std::string ddname;
   ZDS zds = {};
 
-  rc = zjb_read_job_dynamic_allocation(zjb, jobdsn, ddname);
+  struct psa *psa = (struct psa *)0;
+  struct cvt *cvt = (struct cvt *)psa->flccvt;
+  char *sysname_char = (char *)cvt->cvtsname;
+  std::string sysname_str = std::string(sysname_char, sizeof(cvt->cvtsname));
+  std::string dsn = zut_rtrim(sysname_str) + ".SYSLOG" + ".SYSTEM"; // https://www.ibm.com/docs/en/zos/3.1.0?topic=allocation-specifying-data-set-name-daldsnam
+
+  rc = zjb_read_job_dynamic_allocation(zjb, dsn, ddname);
   if (0 != rc)
   {
     return rc;
@@ -303,19 +311,35 @@ int zjb_read_job_content_by_dsn(ZJB *zjb, const std::string &jobdsn, std::string
   zds.encoding_opts.data_type = zjb->encoding_opts.data_type;
   memcpy((void *)&zds.encoding_opts.codepage, (const void *)&zjb->encoding_opts.codepage, sizeof(zjb->encoding_opts.codepage));
 
-  if (zjb->flags & ACB_RBL_PROCESS)
+  rc = zds_read_vsam(&zds, ddname, response);
+  memcpy(&zjb->diag, &zds.diag, sizeof(ZDIAG));
+
+  int newrc = zjb_free_job_dynamic_allocation(zjb, ddname);
+  if (0 != newrc && 0 == rc)
   {
-    rc = zds_read_vsam(&zds, ddname, response);
-  }
-  else
-  {
-    rc = zds_read_from_dd(&zds, ddname, response);
+    return newrc;
   }
 
+  return rc;
+}
+
+int zjb_read_job_content_by_dsn(ZJB *zjb, const std::string &dsn, std::string &response)
+{
+  int rc = 0;
+  std::string ddname;
+  ZDS zds = {};
+
+  rc = zjb_read_job_dynamic_allocation(zjb, dsn, ddname);
   if (0 != rc)
   {
-    memcpy(&zjb->diag, &zds.diag, sizeof(ZDIAG));
+    return rc;
   }
+
+  zds.encoding_opts.data_type = zjb->encoding_opts.data_type;
+  memcpy((void *)&zds.encoding_opts.codepage, (const void *)&zjb->encoding_opts.codepage, sizeof(zjb->encoding_opts.codepage));
+
+  rc = zds_read_from_dd(&zds, ddname, response);
+  memcpy(&zjb->diag, &zds.diag, sizeof(ZDIAG));
 
   int newrc = zjb_free_job_dynamic_allocation(zjb, ddname);
   if (0 != newrc && 0 == rc)

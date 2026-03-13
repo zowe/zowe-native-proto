@@ -14,8 +14,6 @@
 #include "../zut.hpp"
 #include "../zjb.hpp"
 #include "../zjb.hpp"
-#include "../chdsect/ihapsa.h"
-#include "../chdsect/cvt.h"
 #include <unistd.h>
 
 using namespace parser;
@@ -115,17 +113,13 @@ int handle_system_view_syslog(InvocationContext &context)
 {
   int rc = 0;
 
-  struct psa *psa = (struct psa *)0;
-  struct cvt *cvt = (struct cvt *)psa->flccvt;
-  char *sysname_char = (char *)cvt->cvtsname;
-  std::string sysname_str = std::string(sysname_char, sizeof(cvt->cvtsname));
-  string dsn = zut_rtrim(sysname_str) + ".SYSLOG" + ".SYSTEM"; // https://www.ibm.com/docs/en/zos/3.1.0?topic=allocation-specifying-data-set-name-daldsnam
+  string time_stamp = context.get<std::string>("time-stamp", "");
+  string date = context.get<std::string>("date", "");
 
   string response;
   ZJB zjb = {};
-  zjb.flags = ACB_RBL_PROCESS; // use VSAM
 
-  rc = zjb_read_job_content_by_dsn(&zjb, dsn, response);
+  rc = zjb_read_syslog(&zjb, response);
   if (0 != rc)
   {
     context.error_stream() << "Error: could not view syslog, rc: '" << rc << "'" << endl;
@@ -166,6 +160,8 @@ void register_commands(parser::Command &root_command)
   // View-syslog subcommand
   auto system_view_syslog_cmd = command_ptr(new Command("view-syslog", "view syslog"));
   system_view_syslog_cmd->set_handler(handle_system_view_syslog);
+  system_list_subsystems_cmd->add_keyword_arg("time-stamp", make_aliases("--time-stamp", "-ts"), "specify timestamp, e.g. --ts 10:41:00.15", ArgType_Single, false);
+  system_list_subsystems_cmd->add_keyword_arg("date", make_aliases("--date", "-d"), "specify date yyyy-mm-dd, e.g. --date 2026-03-13", ArgType_Single, false);
   system_cmd->add_command(system_view_syslog_cmd);
 
   root_command.add_command(system_cmd);
