@@ -115,7 +115,7 @@ int handle_system_view_syslog(InvocationContext &context)
 
   string time_stamp = context.get<std::string>("timestamp", "");
   string date = context.get<std::string>("date", "");
-  int max_lines = context.get<int>("max-lines", 5);
+  auto max_lines = context.get<long long>("max-lines", 5);
 
   time_t now = time(nullptr);
   struct tm *tm_now = localtime(&now);
