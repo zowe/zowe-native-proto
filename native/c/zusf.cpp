@@ -852,9 +852,15 @@ std::string zusf_build_mode_string(mode_t mode)
 int zusf_copy_file_or_dir(ZUSF *zusf, const std::string &source_path, const std::string &destination_path, const CopyOptions &options)
 {
 
+  if (!zusf_is_valid_path(source_path) || !zusf_is_valid_path(destination_path))
+  {
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Source or target path is empty or too long");
+    return RTNCD_FAILURE;
+  }
+
   if (options.follow_symlinks && !options.recursive)
   {
-    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Error: follow symlinks option requires setting the recursive flag");
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "follow symlinks option requires setting the recursive flag");
     return RTNCD_FAILURE;
   }
   struct stat buf;
@@ -862,7 +868,7 @@ int zusf_copy_file_or_dir(ZUSF *zusf, const std::string &source_path, const std:
   {
     if (S_ISFIFO(buf.st_mode))
     {
-      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Error: we do not support copying from named pipes");
+      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "we do not support copying from named pipes");
       return RTNCD_FAILURE;
     }
   }
@@ -871,34 +877,38 @@ int zusf_copy_file_or_dir(ZUSF *zusf, const std::string &source_path, const std:
   {
     if (S_ISFIFO(buf.st_mode))
     {
-      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Error: we do not support copying to named pipes");
+      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "we do not support copying to named pipes");
       return RTNCD_FAILURE;
     }
   }
 
-  std::string command_flags;
+  std::vector<std::string> command_parameters;
+  command_parameters.reserve(6);
+
   if (options.recursive)
   {
-    command_flags += "-R ";
+    command_parameters.emplace_back("-R");
   }
   if (options.follow_symlinks)
   {
-    command_flags += "-L ";
+    command_parameters.emplace_back("-L");
   }
   if (options.preserve_attributes)
   {
-    command_flags += "-p ";
+    command_parameters.emplace_back("-p");
   }
   if (options.force)
   {
-    command_flags += "-f ";
+    command_parameters.emplace_back("-f");
   }
-  std::string cp_command = "cp " + command_flags + " \"" + source_path + "\" \"" + destination_path + "\" 2>&1";
-  std::string response;
-  int rc = zut_run_shell_command(cp_command, response);
+  command_parameters.emplace_back(source_path);
+  command_parameters.emplace_back(destination_path);
+
+  std::string stdout_resp, stderr_resp;
+  int rc = zut_run_program("cp", command_parameters, stdout_resp, stderr_resp);
   if (rc > 0)
   {
-    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Error: %s\n\t return code: %d", response.c_str(), rc);
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to copy %s to %s, errno: %d\nstderr: %s", source_path.c_str(), destination_path.c_str(), rc, stderr_resp.c_str());
     return RTNCD_FAILURE;
   }
   return rc;
@@ -1055,9 +1065,8 @@ int zusf_move_uss_file_or_dir(ZUSF *zusf, const std::string &source, const std::
   }
 
   // TODO(zFernand0): Use std::filesystem::rename instead of rename when C++17 is available
-  std::string mv_command = "mv \"" + source + "\" \"" + target + "\" 2>&1";
-  std::string response;
-  int rc = zut_run_shell_command(mv_command, response);
+  std::string stdout_resp, stderr_resp;
+  int rc = zut_run_program("mv", {source, target}, stdout_resp, stderr_resp);
   if (rc != 0)
   {
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to move file or directory from '%s' to '%s', errno: %d", truncated_source.c_str(), truncated_target.c_str(), rc);

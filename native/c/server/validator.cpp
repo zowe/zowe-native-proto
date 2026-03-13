@@ -10,7 +10,7 @@
  */
 
 #include "validator.hpp"
-#include "../c/zjson.hpp"
+#include "../zjson.hpp"
 #include <unordered_set>
 
 using std::string;

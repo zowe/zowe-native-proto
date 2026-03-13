@@ -202,6 +202,7 @@ void register_commands(parser::Command &root_command)
   system_view_syslog_cmd->add_keyword_arg("timestamp", make_aliases("--timestamp", "-ts"), "specify timestamp, e.g. --ts 10:41:00.15", ArgType_Single, false);
   system_view_syslog_cmd->add_keyword_arg("date", make_aliases("--date", "-d"), "specify date yyyy-mm-dd, e.g. --date 2026-03-13", ArgType_Single, false);
   system_view_syslog_cmd->add_keyword_arg("max-lines", make_aliases("--max-lines", "-ml"), "specify maximum number of lines to display, e.g. --max-lines 100", ArgType_Single, false);
+  system_view_syslog_cmd->add_example("View syslog for a specifc date and timestamp", "zowex system view-syslog --date 2026-03-13 --timestamp 10:41:00.15");
   system_cmd->add_command(system_view_syslog_cmd);
 
   root_command.add_command(system_cmd);

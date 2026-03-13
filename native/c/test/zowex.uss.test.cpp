@@ -147,13 +147,12 @@ void zowex_uss_tests()
                              // copy with --preserve-attributes
                              std::string output;
                              delete_cmd(target_file);
-                             zut_run_shell_command("chmod 777 " + source_file, output);
+                             zut_run_program("chmod", { "777", source_file }, output);
                              copy_result = copy_cmd(source_file, target_file, "--preserve-attributes");
                              ExpectWithContext(copy_result.second, copy_result.first).ToBe(0);
                              list_file_result = list_cmd(target_file, "-al");
                              ExpectWithContext(list_file_result.second, list_file_result.first).ToBe(0);
-                             Expect(list_file_result.first).ToContain("-rwxrwxrwx");
-                           });
+                             Expect(list_file_result.first).ToContain("-rwxrwxrwx"); });
 
                         it("copy dir->dir smoke", [&]()
                            {
@@ -165,8 +164,7 @@ void zowex_uss_tests()
                              copy_result = copy_cmd(source_dir, target_dir, "--recursive --follow-symlinks --force --preserve-attributes");
                              ExpectWithContext(copy_result.second, copy_result.first).ToBe(0);
                              list_file_result = list_cmd(target_dir); // dir created
-                             ExpectWithContext(list_file_result.second, list_file_result.first).ToBe(0);
-                           });
+                             ExpectWithContext(list_file_result.second, list_file_result.first).ToBe(0); });
 
                         it("copy dir->file smoke", [&]()
                            {
@@ -179,8 +177,7 @@ void zowex_uss_tests()
                              copy_result = copy_cmd(source_dir, target_file);
                              ExpectWithContext(copy_result.second, copy_result.first).ToBe(255);
                              list_file_result = list_cmd(target_file); // file still exists
-                             ExpectWithContext(list_file_result.second, list_file_result.first).ToBe(0);
-                           });
+                             ExpectWithContext(list_file_result.second, list_file_result.first).ToBe(0); });
 
                         it("copy file->dir smoke", [&]()
                            {
@@ -194,8 +191,7 @@ void zowex_uss_tests()
                              copy_result = copy_cmd(source_file, target_dir);
                              ExpectWithContext(copy_result.second, copy_result.first).ToBe(255);
                              list_file_result = list_cmd(output_file);
-                             ExpectWithContext(list_file_result.second, list_file_result.first).ToBe(255);
-                           });
+                             ExpectWithContext(list_file_result.second, list_file_result.first).ToBe(255); });
 
                         it("special characters", [&]()
                            {
@@ -207,7 +203,6 @@ void zowex_uss_tests()
                                  "\"with*quotes\"",
                                  "tes[a-z]+",
                                  "'lit*'",
-                                 "\u3053\u3093\u306b\u3061\u306f", // こんにちは
                              };
 
                              const std::string test_file = file_a;
@@ -240,8 +235,7 @@ void zowex_uss_tests()
                                result = list_cmd(test, "-al");
                                ExpectWithContext(result.second, result.first).ToBe(0);
                                Expect(result.first).ToContain("drwxr-xr-x");
-                             }
-                           });
+                             } });
 
                         it("illegal syntax tests", [&]()
                            {

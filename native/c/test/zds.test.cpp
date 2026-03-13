@@ -183,9 +183,9 @@ void zds_tests()
   describe("zds",
            [&]() -> void
            {
+             TEST_OPTIONS cleanup_opts = {false, 30};
              afterAll([&]() -> void
                       {
-                           // Cleanup created data sets
                           for (const auto &dsn : created_dsns)
                           {
                             try
@@ -195,10 +195,10 @@ void zds_tests()
                             }
                             catch (...)
                             {
-                              // Ignore cleanup errors
                             }
                           }
-                          created_dsns.clear(); });
+                          created_dsns.clear(); },
+                      cleanup_opts);
 
              describe("list",
                       []() -> void

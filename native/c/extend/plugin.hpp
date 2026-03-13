@@ -505,13 +505,13 @@ public:
     return *this;
   }
 
-  Argument(Argument &&other)
+  Argument(Argument &&other) noexcept
       : m_kind(ValueKind_None), m_is_dynamic(false)
   {
     move_from(other);
   }
 
-  Argument &operator=(Argument &&other)
+  Argument &operator=(Argument &&other) noexcept
   {
     if (this != &other)
     {
@@ -649,7 +649,7 @@ public:
   }
 
 private:
-  void clear()
+  void clear() noexcept
   {
     if (m_kind == ValueKind_String)
     {
@@ -694,7 +694,7 @@ private:
     }
   }
 
-  void move_from(Argument &other)
+  void move_from(Argument &other) noexcept
   {
     m_kind = other.m_kind;
     m_is_dynamic = other.m_is_dynamic;

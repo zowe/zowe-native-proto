@@ -27,7 +27,7 @@ C_FLAGS=$(C_FLAGS_BASE) -I./chdsect
 CPP_FLAGS=$(CPP_FLAGS_BASE)
 CXXFLAGS=$(CPP_FLAGS_BASE) -I../ -I../chdsect
 
-# make -DBuildType=DEBUG
+# make -DBuildType=DEBUG or -DBuildType=RELEASE
 .IF $(BuildType) == DEBUG
 DEBUGGER_FLAGS=-g
 CPP_BND_FLAGS=$(CPP_BND_DEBUG_FLAGS) $(DEBUGGER_FLAGS)
@@ -40,13 +40,25 @@ ASM_FLAGS+=--verbose
 CPP_LIST_FLAG=
 MTL_LIST_FLAG=-qlist=$*.mtl.lst
 ASM_LIST_FLAG=-a=$*.s.lst
+.ELIF $(BuildType) == RELEASE
+CPP_BND_FLAGS=$(CPP_BND_BASE_FLAGS) $(RELEASE_FLAGS)
+CPP_BND_FLAGS_AUTH=$(CPP_BND_BASE_FLAGS_AUTH) $(RELEASE_FLAGS)
+C_FLAGS+=$(RELEASE_FLAGS)
+DLL_BND_FLAGS=$(DLL_BND_BASE_FLAGS) $(RELEASE_FLAGS)
+CPP_FLAGS+=$(RELEASE_FLAGS)
+CXXFLAGS+=-DRELEASE_BUILD
+MTL_FLAGS+=-qNOSOURCE -qNODEBUG -qNOSHOWINC
+MTL_FLAGS64+=-qNOSOURCE -qNODEBUG -qNOSHOWINC
+ASM_FLAGS+=--noverbose
+CPP_LIST_FLAG=
+MTL_LIST_FLAG=
+ASM_LIST_FLAG=
 .ELSE
-PRODUCTION_FLAGS=-g0
-CPP_BND_FLAGS=$(CPP_BND_BASE_FLAGS) $(PRODUCTION_FLAGS)
-CPP_BND_FLAGS_AUTH=$(CPP_BND_BASE_FLAGS_AUTH) $(PRODUCTION_FLAGS)
-C_FLAGS+=$(PRODUCTION_FLAGS)
-DLL_BND_FLAGS=$(DLL_BND_BASE_FLAGS) $(PRODUCTION_FLAGS)
-CPP_FLAGS+=$(PRODUCTION_FLAGS)
+CPP_BND_FLAGS=$(CPP_BND_BASE_FLAGS) -g1
+CPP_BND_FLAGS_AUTH=$(CPP_BND_BASE_FLAGS_AUTH) -g1
+C_FLAGS+=-g1
+DLL_BND_FLAGS=$(DLL_BND_BASE_FLAGS) -g1
+CPP_FLAGS+=-g1
 MTL_FLAGS+=-qNOSOURCE -qNODEBUG -qNOSHOWINC
 MTL_FLAGS64+=-qNOSOURCE -qNODEBUG -qNOSHOWINC
 ASM_FLAGS+=--noverbose
@@ -122,7 +134,9 @@ build-out/parser.test.o \
 build-out/zlogger.test.o \
 build-out/zlogger_metal.o \
 build-out/zjson.test.o \
-build-out/zjsonm.o
+build-out/zjsonm.o \
+build-out/zowex.server.test.o \
+build-out/worker.test.o
 	$(CXX) $(CPP_BND_FLAGS) -o $@ $^
 
 build-out/zut.o:
@@ -255,6 +269,12 @@ build-out/zlogger_metal.o: build-out/zlogger_metal.s
 	$(ASM) $(ASM_FLAGS) $(ASM_LIST_FLAG) $(MACLIBS) -o $@ $^
 
 build-out/zjson.test.o: zjson.test.cpp
+	$(CXX) $(CXXFLAGS) $(CPP_LIST_FLAG) -c $^ -o $@
+
+build-out/zowex.server.test.o: zowex.server.test.cpp
+	$(CXX) $(CXXFLAGS) $(CPP_LIST_FLAG) -c $^ -o $@
+
+build-out/worker.test.o: worker.test.cpp
 	$(CXX) $(CXXFLAGS) $(CPP_LIST_FLAG) -c $^ -o $@
 
 build-out/zjsonm.s: ../zjsonm.c

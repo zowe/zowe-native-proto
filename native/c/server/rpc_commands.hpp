@@ -9,8 +9,8 @@
  *
  */
 
-#ifndef COMMANDS_HPP
-#define COMMANDS_HPP
+#ifndef RPC_COMMANDS_HPP
+#define RPC_COMMANDS_HPP
 
 // Forward declaration
 class CommandDispatcher;

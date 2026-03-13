@@ -12,8 +12,8 @@
 #ifndef RPCIO_HPP
 #define RPCIO_HPP
 
-#include "../c/extend/plugin.hpp"
-#include "../c/zjson.hpp"
+#include "../extend/plugin.hpp"
+#include "../zjson.hpp"
 #include <memory>
 #include <optional>
 #include <sstream>

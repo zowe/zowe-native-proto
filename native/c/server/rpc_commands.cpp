@@ -9,15 +9,15 @@
  *
  */
 
-#include "commands.hpp"
+#include "rpc_commands.hpp"
 #include "dispatcher.hpp"
 #include "schemas/requests.hpp"
 #include "schemas/responses.hpp"
-#include "../c/commands/ds.hpp"
-#include "../c/commands/job.hpp"
-#include "../c/commands/tso.hpp"
-#include "../c/commands/uss.hpp"
-#include "../c/commands/tool.hpp"
+#include "../commands/ds.hpp"
+#include "../commands/job.hpp"
+#include "../commands/tso.hpp"
+#include "../commands/uss.hpp"
+#include "../commands/tool.hpp"
 
 // Helper functions to create builders with common argument mappings
 static CommandBuilder create_ds_builder(CommandBuilder::CommandHandler handler)
@@ -35,9 +35,9 @@ static CommandBuilder create_uss_builder(CommandBuilder::CommandHandler handler)
   return CommandBuilder(handler).rename_arg("fspath", "file-path");
 }
 
-static CommandBuilder copy_uss_builder(CommandBuilder::CommandHandler handler) 
+static CommandBuilder copy_uss_builder(CommandBuilder::CommandHandler handler)
 {
-    return CommandBuilder(handler).rename_arg("srcFsPath", "source-path").rename_arg("dstFsPath", "destination-path");
+  return CommandBuilder(handler).rename_arg("srcFsPath", "source-path").rename_arg("dstFsPath", "destination-path");
 }
 
 void register_ds_commands(CommandDispatcher &dispatcher)
