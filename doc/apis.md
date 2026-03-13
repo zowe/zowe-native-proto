@@ -110,6 +110,15 @@
 | Receive TSO app message  | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ➖   |
 | Stop TSO address space   | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ❌   |
 
+## System
+
+| Operation        | z/OSMF | FTP | Backend | Middleware | SDK | CLI | VSCE |
+| ---------------- | ------ | --- | ------- | ---------- | --- | --- | ---- |
+| Display symbol   | ❌     | ❌  | ✅      | ❌         | ❌  | ❌  | ➖   |
+| List parmlib     | ❌     | ❌  | ✅      | ❌         | ❌  | ❌  | ➖   |
+| List proclib     | ❌     | ❌  | ✅      | ❌         | ❌  | ❌  | ➖   |
+| List subsystems  | ❌     | ❌  | ✅      | ❌         | ❌  | ❌  | ➖   |
+
 ## Other
 
 | Operation            | z/OSMF | FTP | Backend | Middleware | SDK | CLI | VSCE |
