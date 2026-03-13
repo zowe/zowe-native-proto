@@ -27,7 +27,7 @@
 | Delete migrated data set | ✅              | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
 | Rename data set          | ✅              | ✅  | ✅              | ✅         | ✅  | ✅  | ✅   |
 | Rename data set member   | ✅              | ✅  | ✅              | ✅         | ✅  | ✅  | ✅   |
-| Copy data set            | ✅              | ❌  | ✅              | ✅         | ❌  | ❌  | ❌   |
+| Copy data set            | ✅              | ❌  | ✅              | ❌         | ❌  | ❌  | ❌   |
 | Compress data set        | ➖              | ❌  | ✅              | ❌         | ❌  | ❌  | ❌   |
 | Search data sets         | 🚧 <sup>4</sup> | ❌  | 🚧 <sup>4</sup> | ❌         | ✅  | ❌  | ❌   |
 | Invoke AMS (VSAM)        | ✅              | ❌  | ❌              | ❌         | ❌  | ❌  | ➖   |
@@ -112,12 +112,12 @@
 
 ## System
 
-| Operation        | z/OSMF | FTP | Backend | Middleware | SDK | CLI | VSCE |
-| ---------------- | ------ | --- | ------- | ---------- | --- | --- | ---- |
-| Display symbol   | ❌     | ❌  | ✅      | ❌         | ❌  | ❌  | ➖   |
-| List parmlib     | ❌     | ❌  | ✅      | ❌         | ❌  | ❌  | ➖   |
-| List proclib     | ❌     | ❌  | ✅      | ❌         | ❌  | ❌  | ➖   |
-| List subsystems  | ❌     | ❌  | ✅      | ❌         | ❌  | ❌  | ➖   |
+| Operation       | z/OSMF | FTP | Backend | Middleware | SDK | CLI | VSCE |
+| --------------- | ------ | --- | ------- | ---------- | --- | --- | ---- |
+| Display symbol  | ❌     | ❌  | ✅      | ❌         | ❌  | ❌  | ➖   |
+| List parmlib    | ❌     | ❌  | ✅      | ❌         | ❌  | ❌  | ➖   |
+| List proclib    | ❌     | ❌  | ✅      | ❌         | ❌  | ❌  | ➖   |
+| List subsystems | ❌     | ❌  | ✅      | ❌         | ❌  | ❌  | ➖   |
 
 ## Other
 
