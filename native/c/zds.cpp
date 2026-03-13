@@ -589,11 +589,11 @@ int zds_read_from_dd_acb(ZDS *zds, std::string ddname, std::string &response)
     return rc;
   }
 
-  // rc = ZDSPIVSM(zds, ioc);
-  // if (rc != RTNCD_SUCCESS)
-  // {
-  //   return rc;
-  // }
+  rc = ZDSPIVSM(zds, ioc);
+  if (rc != RTNCD_SUCCESS)
+  {
+    return rc;
+  }
 
   zut_dump_storage("rplp", &ioc->rpl, sizeof(ioc->rpl));
 
