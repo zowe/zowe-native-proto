@@ -45,10 +45,7 @@ typedef struct
   unsigned char version[1]; // future use
   int32_t len;              // future use
 
-#define ACB_RBL_PROCESS 0x80
-  unsigned char flags;
-
-  unsigned char reserve_0[3];
+  unsigned char reserve_0[4];
   int32_t jobs_max;
 
   int32_t dds_max;
