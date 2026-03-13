@@ -155,9 +155,6 @@ int handle_system_view_syslog(InvocationContext &context)
     }
   }
 
-  context.output_stream() << "date: '" << date << "'" << endl;
-  context.output_stream() << "timestamp: '" << time_stamp << "'" << endl;
-
   string response;
   ZJB zjb = {};
 
