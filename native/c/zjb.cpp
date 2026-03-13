@@ -320,12 +320,9 @@ int zjb_read_syslog(ZJB *zjb, std::string &response, std::string &date, std::str
   ts_binary -= (uint32_t)tz_offset_cs;
   memcpy(&zds.ts_binary, &ts_binary, sizeof(ts_binary)); // low half is unused
 
-  unsigned char hex_date[4] = {0};
-  hex_date[0] = 0x20;
-  hex_date[1] = 0x26;
-  hex_date[2] = 0x03;
-  hex_date[3] = 0x13;
-  memcpy(&zds.date, &hex_date, sizeof(hex_date));
+  //
+  // prepare date for `pack`
+  //
   std::string date_compact;
   for (char c : date)
   {
