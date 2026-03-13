@@ -12,7 +12,7 @@
 #ifndef BUILDER_HPP
 #define BUILDER_HPP
 
-#include "../c/extend/plugin.hpp"
+#include "../extend/plugin.hpp"
 #include "validator.hpp"
 #include <string>
 #include <vector>
@@ -79,6 +79,11 @@ struct ArgTransform
       : kind(k), arg_name(arg)
   {
   }
+
+  ArgTransform(ArgTransform &&) noexcept = default;
+  ArgTransform &operator=(ArgTransform &&) noexcept = default;
+  ArgTransform(const ArgTransform &) = default;
+  ArgTransform &operator=(const ArgTransform &) = default;
 };
 
 // CommandBuilder class for fluent command registration

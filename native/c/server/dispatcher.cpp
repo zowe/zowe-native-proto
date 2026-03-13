@@ -12,7 +12,7 @@
 #include "dispatcher.hpp"
 #include "logger.hpp"
 #include "rpcio.hpp"
-#include "server.hpp"
+#include "rpc_server.hpp"
 #include <algorithm>
 #include <vector>
 

@@ -10,7 +10,7 @@
  */
 
 #include "rpcio.hpp"
-#include "server.hpp"
+#include "rpc_server.hpp"
 #include <sstream>
 
 using std::string;

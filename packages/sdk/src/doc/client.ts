@@ -53,7 +53,7 @@ export interface ClientOptions {
     serverPath?: string;
 
     /**
-     * Enable verbose logging from zowed server
+     * Enable verbose logging from the server
      * (default: false)
      */
     verbose?: boolean;

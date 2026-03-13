@@ -12,8 +12,8 @@
 #ifndef DISPATCHER_HPP
 #define DISPATCHER_HPP
 
-#include "../c/extend/plugin.hpp"
-#include "../c/singleton.hpp"
+#include "../extend/plugin.hpp"
+#include "../singleton.hpp"
 #include "builder.hpp"
 #include <string>
 #include <vector>

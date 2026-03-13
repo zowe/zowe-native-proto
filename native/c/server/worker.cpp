@@ -10,7 +10,7 @@
  */
 
 #include "worker.hpp"
-#include "server.hpp"
+#include "rpc_server.hpp"
 #include "logger.hpp"
 #include <thread>
 #include <chrono>
@@ -191,14 +191,6 @@ void Worker::worker_loop()
     LOG_DEBUG("Worker %d state -> %s (exception)", id, worker_state_to_string(WorkerState::Faulted));
     stop_requested.store(true, std::memory_order_release);
     LOG_ERROR("Worker %d encountered fatal error: %s", id, e.what());
-  }
-  catch (...)
-  {
-    state.store(WorkerState::Faulted, std::memory_order_release);
-    update_heartbeat();
-    LOG_DEBUG("Worker %d state -> %s (unknown exception)", id, worker_state_to_string(WorkerState::Faulted));
-    stop_requested.store(true, std::memory_order_release);
-    LOG_ERROR("Worker %d encountered unknown fatal error", id);
   }
 
   {
@@ -487,6 +479,53 @@ void WorkerPool::shutdown()
   LOG_DEBUG("Worker pool shutdown complete");
 }
 
+void WorkerPool::monitor_worker_at(size_t i)
+{
+  Worker *worker = nullptr;
+
+  {
+    std::lock_guard<std::mutex> lock(ready_mutex);
+
+    if (i < next_replacement_allowed.size() &&
+        std::chrono::steady_clock::now() < next_replacement_allowed[i])
+      return;
+
+    if (i < workers.size())
+      worker = workers[i].get();
+  }
+
+  if (worker == nullptr)
+    return;
+
+  const auto worker_state = worker->get_state();
+  if (worker_state == WorkerState::Faulted)
+  {
+    replace_worker(i, "fault");
+    return;
+  }
+
+  if (worker_state == WorkerState::Exited && !worker->is_stop_requested())
+  {
+    replace_worker(i, "unexpected exit");
+    return;
+  }
+
+  if (worker_state == WorkerState::Running && request_timeout.count() > 0)
+  {
+    const auto last_heartbeat = worker->get_last_heartbeat();
+    const auto now = std::chrono::steady_clock::now();
+    if (last_heartbeat == std::chrono::steady_clock::time_point::min() || now <= last_heartbeat)
+      return;
+
+    const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - last_heartbeat);
+    if (elapsed > request_timeout)
+    {
+      LOG_WARN("Worker %zu exceeded request timeout (%lld ms > %lld ms); scheduling replacement", i, static_cast<long long>(elapsed.count()), static_cast<long long>(request_timeout.count()));
+      replace_worker(i, "heartbeat timeout", true);
+    }
+  }
+}
+
 void WorkerPool::monitor_workers()
 {
   // Scan over the workers periodically to check their heartbeat (worker state)
@@ -497,55 +536,7 @@ void WorkerPool::monitor_workers()
       if (!supervisor_running || is_shutting_down)
         break;
 
-      Worker *worker = nullptr;
-      bool skip_due_to_backoff = false;
-
-      {
-        std::lock_guard<std::mutex> lock(ready_mutex);
-
-        if (i < next_replacement_allowed.size() &&
-            std::chrono::steady_clock::now() < next_replacement_allowed[i])
-        {
-          // Worker is already being replaced, skip monitoring
-          skip_due_to_backoff = true;
-        }
-        else if (i < workers.size())
-        {
-          worker = workers[i].get();
-        }
-      }
-
-      if (skip_due_to_backoff || worker == nullptr)
-        continue;
-
-      // If this worker has faulted, replace it
-      const auto worker_state = worker->get_state();
-      if (worker_state == WorkerState::Faulted)
-      {
-        replace_worker(i, "fault");
-        continue;
-      }
-
-      // If the worker has already crashed/exited, replace it
-      if (worker_state == WorkerState::Exited && !worker->is_stop_requested())
-      {
-        replace_worker(i, "unexpected exit");
-      }
-      else if (worker_state == WorkerState::Running && request_timeout.count() > 0)
-      {
-        const auto last_heartbeat = worker->get_last_heartbeat();
-        const auto now = std::chrono::steady_clock::now();
-        if (last_heartbeat != std::chrono::steady_clock::time_point::min() && now > last_heartbeat)
-        {
-          const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - last_heartbeat);
-          if (elapsed > request_timeout)
-          {
-            LOG_WARN("Worker %zu exceeded request timeout (%lld ms > %lld ms); scheduling replacement", i, static_cast<long long>(elapsed.count()), static_cast<long long>(request_timeout.count()));
-            replace_worker(i, "heartbeat timeout", true);
-            continue;
-          }
-        }
-      }
+      monitor_worker_at(i);
     }
 
     // Sleep loop to avoid busy waiting on CPU

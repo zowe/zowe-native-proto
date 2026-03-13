@@ -9,13 +9,13 @@
  *
  */
 
-#ifndef SERVER_HPP
-#define SERVER_HPP
+#ifndef RPC_SERVER_HPP
+#define RPC_SERVER_HPP
 
 #include <string>
 #include <mutex>
-#include "../c/extend/plugin.hpp"
-#include "../c/singleton.hpp"
+#include "../extend/plugin.hpp"
+#include "../singleton.hpp"
 
 // Forward declarations
 namespace zjson

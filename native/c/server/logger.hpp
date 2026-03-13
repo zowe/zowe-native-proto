@@ -25,13 +25,8 @@
 #include <unistd.h>
 #include <iostream>
 
-namespace zowed
+namespace server
 {
-
-/**
- * Simple logger class for zowed middleware
- * This is a header-only implementation that provides logging functionality
- */
 class Logger
 {
 private:
@@ -165,7 +160,7 @@ public:
       }
 
       // Set log file path
-      log_file_path = logs_dir + "/zowed.log";
+      log_file_path = logs_dir + "/zowex_server.log";
 
       // Open log file
       auto mode = std::ios::out;
@@ -322,13 +317,13 @@ public:
   }
 };
 
-} // namespace zowed
+} // namespace server
 
 // Convenience macros for easier usage
-#define LOG_DEBUG(...) zowed::Logger::log_debug(__VA_ARGS__)
-#define LOG_INFO(...) zowed::Logger::log_info(__VA_ARGS__)
-#define LOG_WARN(...) zowed::Logger::log_warn(__VA_ARGS__)
-#define LOG_ERROR(...) zowed::Logger::log_error(__VA_ARGS__)
-#define LOG_FATAL(...) zowed::Logger::log_fatal(__VA_ARGS__)
+#define LOG_DEBUG(...) server::Logger::log_debug(__VA_ARGS__)
+#define LOG_INFO(...) server::Logger::log_info(__VA_ARGS__)
+#define LOG_WARN(...) server::Logger::log_warn(__VA_ARGS__)
+#define LOG_ERROR(...) server::Logger::log_error(__VA_ARGS__)
+#define LOG_FATAL(...) server::Logger::log_fatal(__VA_ARGS__)
 
 #endif // LOGGER_HPP
