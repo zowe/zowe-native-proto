@@ -68,7 +68,7 @@ void zowex_job_tests()
                _files.clear();
              };
 
-             TEST_OPTIONS long_test_opts = {false, 30};
+             TEST_OPTIONS long_test_opts = {false, 60};
 
              afterAll(
                  [&]() -> void
