@@ -8,8 +8,8 @@ This guide walks you through creating a new command for the Zowe Native Protocol
 
 1. [Adding a Command to the Native CLI (zowex)](#1-adding-a-command-to-the-native-cli-zowex)
 2. [Testing Your CLI Command](#2-testing-your-cli-command)
-3. [Adding the Command to the Middleware (zowed)](#3-adding-the-command-to-the-middleware-zowed)
-4. [Testing Your Middleware Command](#4-testing-your-middleware-command)
+3. [Adding the Command to the Server (zowex server)](#3-adding-the-command-to-the-server-zowex-server)
+4. [Testing Your Server Command](#4-testing-your-server-command)
 
 ---
 
@@ -178,9 +178,9 @@ Once compiled, you can test the command directly on z/OS:
 
 ---
 
-## 3. Adding the Command to the Middleware (zowed)
+## 3. Adding the Command to the Server (zowex server)
 
-The middleware (`zowed`) is a C++ application that provides remote access to zowex commands via JSON-RPC over SSH. To expose your command through the middleware, you need to:
+The server (`zowex server`) is an embedded subcommand that provides remote access to zowex commands via JSON-RPC over SSH. To expose your command through the server, you need to:
 
 1. Plan your request and response structure
 2. Register the command with the C++ dispatcher using `CommandBuilder`
@@ -247,17 +247,17 @@ export * as sample from "./sample";
 Then run the type generation script to convert your TypeScript types to C++ schemas:
 
 ```bash
-npm run build:types:zowed
+npm run build:types
 ```
 
-This generates `native/zowed/schemas/requests.hpp` and `responses.hpp` with schema definitions for all RPC types.
+This generates `native/c/server/schemas/requests.hpp` and `responses.hpp` with schema definitions for all RPC types.
 
-### Step 3.3: Register the Command in zowed
+### Step 3.3: Register the Command with the Server
 
-Edit `native/zowed/commands.cpp` to register your command with the dispatcher:
+Edit `native/c/server/rpc_commands.cpp` to register your command with the dispatcher:
 
 ```cpp
-#include "commands.hpp"
+#include "rpc_commands.hpp"
 #include "dispatcher.hpp"
 #include "schemas/requests.hpp"
 #include "schemas/responses.hpp"
@@ -273,7 +273,7 @@ void register_sample_commands(CommandDispatcher &dispatcher)
   dispatcher.register_command("ping",
                               CommandBuilder(sample::handle_ping)
                                   .validate<PingRequest, PingResponse>()
-                                  .set_default("message", "hello from zowed"));
+                                  .set_default("message", "hello from zowex server"));
 }
 
 // In the main registration function, call register_sample_commands:
@@ -301,9 +301,9 @@ The `CommandBuilder` provides a fluent API for mapping RPC parameters to command
 
 ---
 
-## 4. Testing Your Middleware Command
+## 4. Testing Your Server Command
 
-### Step 4.1: Build the Middleware
+### Step 4.1: Build the Server
 
 Upload your new source code:
 
@@ -311,13 +311,13 @@ Upload your new source code:
 npm run z:upload
 ```
 
-Build the zowed C++ binary:
+Build the native binaries (including the server):
 
 ```bash
-npm run z:build:zowed
+npm run z:build
 ```
 
-**Note:** This command is equivalent to running `cd native/zowed && make` on z/OS.
+**Note:** This command is equivalent to running `cd native/c && make` on z/OS. The server is now built as part of the `zowex` binary.
 
 ### Step 4.2: Add SDK Method
 
@@ -427,7 +427,7 @@ Expected output:
 Connected to server
 
 Test 1: Default Message
-  Data: PONG: hello from zowed
+  Data: PONG: hello from zowex server
   Timestamp: Mon Oct  6 14:23:45 2025
 
 Test 2: Custom Message
@@ -451,8 +451,8 @@ You've successfully added a new command to the Zowe Native Protocol stack! Here'
 1. **Created a low-level C++ command** in `native/c/commands/` that can be invoked directly via `zowex`
 2. **Tested it locally** on z/OS using the zowex CLI
 3. **Defined RPC types** in `packages/sdk/src/doc/rpc/` as TypeScript interfaces
-4. **Generated C++ schemas** using `npm run build:types:zowed`
-5. **Registered it with zowed** using the `CommandBuilder` API in `native/zowed/commands.cpp`
+4. **Generated C++ schemas** using `npm run build:types`
+5. **Registered it with the server** using the `CommandBuilder` API in `native/c/server/rpc_commands.cpp`
 6. **Added SDK methods** in TypeScript for easy client-side access
 7. **Tested end-to-end** with a sample script
 
@@ -469,7 +469,7 @@ You've successfully added a new command to the Zowe Native Protocol stack! Here'
 For a complete working example that includes all layers (C++ native, SDK, CLI, and VS Code extension), check out the [`examples/add-new-command`](../examples/add-new-command) directory. This includes:
 
 - **C++ command** (`native/c/`) - Example command implementation for zowex
-- **C++ middleware** (`native/zowed/`) - Command registration with the dispatcher
+- **C++ server** (`native/c/server/`) - Command registration with the dispatcher
 - **SDK** (`packages/sdk/`) - TypeScript types and client methods
 - **CLI** (`packages/cli/`) - CLI command definition and handler
 - **VS Code Extension** (`packages/vsce/`) - VS Code integration with CommandApi

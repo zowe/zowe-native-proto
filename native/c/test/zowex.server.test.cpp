@@ -16,20 +16,21 @@
 #include <sys/stat.h>
 #include <fstream>
 #include <fcntl.h>
-#include "../../c/test/ztest.hpp"
-#include "../../c/ztype.h"
-#include "zowed.test.hpp"
+#include "ztest.hpp"
+#include "../ztype.h"
+#include "../commands/server.hpp"
+#include "zowex.server.test.hpp"
 
 using namespace ztst;
 
-struct DaemonHandle
+struct ServerHandle
 {
   pid_t pid;
   FILE *output_stream;
   FILE *input_stream;
 };
 
-std::string read_line_from_daemon(DaemonHandle &handle, int timeout_ms = 5000)
+std::string read_line_from_server(ServerHandle &handle, int timeout_ms = 5000)
 {
   fd_set read_fds;
   struct timeval timeout;
@@ -48,7 +49,7 @@ std::string read_line_from_daemon(DaemonHandle &handle, int timeout_ms = 5000)
   int result = select(fd + 1, &read_fds, nullptr, nullptr, &timeout);
   if (result <= 0)
   {
-    throw std::runtime_error("Timeout waiting for daemon output");
+    throw std::runtime_error("Timeout waiting for server output");
   }
 
   char buffer[512];
@@ -57,18 +58,18 @@ std::string read_line_from_daemon(DaemonHandle &handle, int timeout_ms = 5000)
     return std::string(buffer);
   }
 
-  throw std::runtime_error("Failed to read from daemon");
+  throw std::runtime_error("Failed to read from server");
 }
 
-void write_to_daemon(DaemonHandle &handle, const std::string &input)
+void write_to_server(ServerHandle &handle, const std::string &input)
 {
   if (fputs(input.c_str(), handle.input_stream) == EOF || fflush(handle.input_stream) != 0)
   {
-    throw std::runtime_error("Failed to write to daemon");
+    throw std::runtime_error("Failed to write to server");
   }
 }
 
-DaemonHandle start_daemon(const std::string &command, bool read_ready_message = false)
+ServerHandle start_server(const std::string &command, bool read_ready_message = false)
 {
   int output_pipe[2];
   int input_pipe[2];
@@ -118,16 +119,16 @@ DaemonHandle start_daemon(const std::string &command, bool read_ready_message = 
     throw std::runtime_error("Failed to open streams");
   }
 
-  auto handle = DaemonHandle{pid, output_stream, input_stream};
+  auto handle = ServerHandle{pid, output_stream, input_stream};
   if (read_ready_message)
   {
-    read_line_from_daemon(handle);
+    read_line_from_server(handle);
   }
 
   return handle;
 }
 
-void stop_daemon(DaemonHandle &handle)
+void stop_server(ServerHandle &handle)
 {
   kill(handle.pid, SIGINT);
   fclose(handle.input_stream);
@@ -135,68 +136,54 @@ void stop_daemon(DaemonHandle &handle)
   waitpid(handle.pid, nullptr, 0);
 }
 
-const std::string zowed_dir = "./../../zowed/build-out";
-const std::string zowed_command = zowed_dir + "/zowed";
+const std::string zowex_dir = "./../build-out";
+const std::string zowex_server_command = zowex_dir + "/zowex server";
 
-void zowed_tests()
+void zowex_server_tests()
 {
 
-  describe("zowed tests",
+  describe("zowex server tests",
            []() -> void
            {
              it("should print ready message on startup",
                 []() -> void
                 {
-                  DaemonHandle daemon = start_daemon(zowed_command);
-                  std::string response = read_line_from_daemon(daemon);
-                  stop_daemon(daemon);
+                  ServerHandle server = start_server(zowex_server_command);
+                  std::string response = read_line_from_server(server);
+                  stop_server(server);
 
                   Expect(response).ToContain("\"checksums\":null");
-                  Expect(response).ToContain("\"message\":\"zowed is ready to accept input\"");
+                  Expect(response).ToContain("\"message\":\"zowex server is ready to accept input\"");
                   Expect(response).ToContain("\"status\":\"ready\"");
                 });
              it("should print ready message with checksums",
                 []() -> void
                 {
-                  // Create test checksums file
-                  std::string checksums_file = zowed_dir + "/checksums.asc";
+                  std::string checksums_file = zowex_dir + "/checksums.asc";
                   unlink(checksums_file.c_str());
                   std::ofstream outfile(checksums_file);
                   outfile << "123 abc" << std::endl;
 
-                  DaemonHandle daemon = start_daemon(zowed_command);
-                  std::string response = read_line_from_daemon(daemon);
-                  stop_daemon(daemon);
+                  ServerHandle server = start_server(zowex_server_command);
+                  std::string response = read_line_from_server(server);
+                  stop_server(server);
 
                   Expect(response).ToContain("\"checksums\":{\"abc\":\"123\"}");
-                  Expect(response).ToContain("\"message\":\"zowed is ready to accept input\"");
+                  Expect(response).ToContain("\"message\":\"zowex server is ready to accept input\"");
                   Expect(response).ToContain("\"status\":\"ready\"");
 
-                  // Cleanup
                   unlink(checksums_file.c_str());
                 });
              it("should return error message for invalid JSON input",
                 []() -> void
                 {
-                  DaemonHandle daemon = start_daemon(zowed_command, true);
-                  write_to_daemon(daemon, "invalid\n");
-                  std::string response = read_line_from_daemon(daemon);
-                  stop_daemon(daemon);
+                  ServerHandle server = start_server(zowex_server_command, true);
+                  write_to_server(server, "invalid\n");
+                  std::string response = read_line_from_server(server);
+                  stop_server(server);
 
                   Expect(response).ToContain("\"code\":-32700");
                   Expect(response).ToContain("\"message\":\"Failed to parse command request\"");
-                });
-             it("should remain less than 10mb in size",
-                []() -> void
-                {
-                  struct stat st;
-                  if (stat(zowed_command.c_str(), &st) != 0)
-                  {
-                    throw std::runtime_error("Failed to stat file: " + zowed_command);
-                  }
-
-                  off_t file_size = st.st_size;
-                  Expect(file_size).ToBeLessThan(10 * 1024 * 1024);
                 });
            });
 }

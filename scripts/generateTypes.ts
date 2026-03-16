@@ -16,7 +16,7 @@ import * as ts from "typescript";
 
 // Project paths
 const SDK_TYPES_DIR = path.join(__dirname, "../packages/sdk/src/doc/rpc");
-const C_SCHEMAS_DIR = path.join(__dirname, "../native/zowed/schemas");
+const C_SCHEMAS_DIR = path.join(__dirname, "../native/c/server/schemas");
 const LICENSE_HEADER_PATH = path.join(__dirname, "../LICENSE_HEADER");
 
 // TypeScript to validator::FieldType mapping

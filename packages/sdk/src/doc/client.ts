@@ -59,7 +59,7 @@ export interface ClientOptions {
     useNativeSsh?: boolean;
 
     /**
-     * Enable verbose logging from zowed server
+     * Enable verbose logging from the server
      * (default: false)
      */
     verbose?: boolean;

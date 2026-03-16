@@ -28,7 +28,7 @@ graph TB
             ZOWEA["Gateway<br/>(-)<br/>-"]
         end
         subgraph "SSH Server Process"
-            ZOWED["zowed<br/>(Go I/O Server)<br/>JSON-RPC Middleware"]
+            ZOWED["zowex server<br/>(C++ I/O Server)<br/>JSON-RPC Middleware"]
             ZOWEP["python-bi<br/>(Python Service)<br/>REST/Flask Middleware"]
         end
 
@@ -123,7 +123,7 @@ sequenceDiagram
     participant Client as Client Application
     participant SDK as ZSshClient SDK
     participant SSH as SSH Connection
-    participant IOServer as zowed (Go Server)
+    participant IOServer as zowex server (C++ Server)
     participant Backend as zowex (C++ Binary)
     participant ZOS as z/OS Resources
 
@@ -131,7 +131,7 @@ sequenceDiagram
     SDK->>SSH: JSON-RPC Request<br/>over SSH stdin
     SSH->>IOServer: Forward JSON Request
     IOServer->>IOServer: Parse & Route Request
-    IOServer->>Backend: Execute zowex command
+    IOServer->>Backend: Execute command handler
     Backend->>ZOS: System Calls<br/>(VSAM, QSAM, etc.)
     ZOS-->>Backend: Raw Data
     Backend-->>IOServer: Formatted Response
@@ -198,7 +198,7 @@ graph TB
     end
 
     subgraph "Server Components"
-        subgraph "I/O Server (Go)"
+        subgraph "I/O Server (C++)"
             DISPATCHER["Command Dispatcher<br/>• Route by command name<br/>• JSON-RPC handling"]
             HANDLERS["Command Handlers"]
             WORKER_POOL["Worker Pool<br/>• Concurrent Processing<br/>• Request Queue"]
@@ -288,7 +288,7 @@ graph TB
 ```mermaid
 graph TB
     subgraph "Zowe Native Protocol"
-        ZNP_RESOURCE["Resource Usage<br/>• Single SSH daemon process<br/>• Shared zowed I/O server<br/>• Efficient connection reuse"]
+        ZNP_RESOURCE["Resource Usage<br/>• Single SSH daemon process<br/>• Embedded zowex server<br/>• Efficient connection reuse"]
         ZNP_SCALE["Scaling Behavior<br/>• Multiplexed requests<br/>• Worker pool management<br/>• Predictable resource usage"]
         ZNP_RESOURCE --> ZNP_SCALE
     end
@@ -312,8 +312,7 @@ flowchart TD
     subgraph "Zowe Native Protocol Path"
         ZNP_START["Client Request"] --> ZNP_SSH["SSH Transport"]
         ZNP_SSH --> ZNP_JSON["JSON-RPC Parsing"]
-        ZNP_JSON --> ZNP_GO["Go Handler"]
-        ZNP_GO --> ZNP_CPP["C++ Native Call"]
+        ZNP_JSON --> ZNP_CPP["C++ Command Handler"]
         ZNP_CPP --> ZNP_SYSTEM["Direct System APIs"]
         ZNP_SYSTEM --> ZNP_RESPONSE["Binary Response"]
         ZNP_RESPONSE --> ZNP_ENCODE["Base64 Encoding"]

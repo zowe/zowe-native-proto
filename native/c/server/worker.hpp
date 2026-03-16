@@ -50,7 +50,7 @@ struct RequestMetadata
       : retry_count(0)
   {
   }
-  RequestMetadata(const std::string &req_data, size_t retries = 0UL, const std::string &id = "")
+  explicit RequestMetadata(const std::string &req_data, size_t retries = 0UL, const std::string &id = "")
       : data(req_data), retry_count(retries), request_id(id)
   {
   }
@@ -146,6 +146,7 @@ private:
 
   void initialize_worker(int worker_id);
   void monitor_workers();
+  void monitor_worker_at(size_t i);
 
   /**
    * @brief Replace a worker at the given index with the reason for replacement

@@ -8,6 +8,7 @@
     "lint": "npx @biomejs/biome check --write src tests",
     "test": "vitest run --coverage",
     "test:ui": "vitest --ui --coverage",
+    "package": "npm pack --pack-destination=../../dist",
     "typedoc": "typedoc src/index.ts --out ../../doc/typedoc",
     "watch": "tsc -b -w"
   },

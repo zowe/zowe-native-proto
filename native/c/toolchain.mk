@@ -72,10 +72,12 @@ LOG_FLAGS=-DZLOG_ENABLE
 .END
 
 #
-# Debug/Production build handling
+# Build type handling (DEBUG, RELEASE, or default for dev)
 #
 .IF $(BuildType) == DEBUG
 LOG_FLAGS=-DZLOG_ENABLE
 DEBUGGER_FLAGS=-g
 OTHER_C_FLAGS=-H -dM
+.ELIF $(BuildType) == RELEASE
+RELEASE_FLAGS=-g0 -O2
 .END

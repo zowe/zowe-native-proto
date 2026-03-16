@@ -33,12 +33,30 @@ struct ZConvData
 };
 
 /**
- * @brief Runs a shell command
- * @param command The command to run
- * @param response Reference to a string where the result will be stored
+ * @brief Strips the last character from input if it's a newline.
+ * @param input The string to modify
+ * @returns Nothing. The input is modified if its last character is a newline.
+ */
+void zut_strip_final_newline(std::string &input);
+
+/**
+ * @brief Runs a program
+ * @param program The program to run. The program must be on PATH or a fully-qualified path to the executable
+ * @param args Arguments passed to the program
+ * @param response Reference to a string where the program's combined stdout and stderr content will be stored
  * @returns The return code from running the command, or non-zero for error submitting
  */
-int zut_run_shell_command(std::string command, std::string &response);
+int zut_run_program(const std::string &program, const std::vector<std::string> &args, std::string &response);
+
+/**
+ * @brief Runs a program
+ * @param program The program to run. The program must be on PATH or a fully-qualified path to the executable
+ * @param args Arguments passed to the program
+ * @param stdout_response Reference to a string where the program's stdout content will be stored.
+ * @param stderr_response Reference to a string where the program's stderr content will be stored.
+ * @returns The return code from running the command, or non-zero for error submitting
+ */
+int zut_run_program(const std::string &program, const std::vector<std::string> &args, std::string &stdout_response, std::string &stderr_response);
 
 /**
  * @brief Search for a specific string
