@@ -11,6 +11,7 @@
 
 #include <cstring>
 #include <iostream>
+#include <sstream>
 #include <vector>
 
 #include "ztest.hpp"
@@ -749,9 +750,9 @@ void zds_tests()
                              Expect(tgt.primary).ToBe(src.primary);
                              Expect(tgt.secondary).ToBe(src.secondary);
 
-                             ZDS zds_read = {0};
+                             ZDS zdst = {0};
                              std::string content;
-                             zds_read_from_dsn(&zds_read, tc.target_dsn, content);
+                             zds_read(&zdst, tc.target_dsn, content);
                              Expect(content.find("Test data") != std::string::npos).ToBe(true);
                            });
 
@@ -1222,6 +1223,251 @@ void zds_tests()
                              rc = zds_rename_members(&zds, ds, M1, "123");
                              Expect(rc).ToBe(RTNCD_FAILURE);
                              Expect(std::string(zds.diag.e_msg)).ToContain("Member name must start with A-Z,#,@,$ and contain only A-Z,0-9,#,@,$ (max 8 chars)");
+                           });
+                      });
+             describe("read",
+                      [&]() -> void
+                      {
+                        it("should read from a sequential data set",
+                           [&]() -> void
+                           {
+                             std::string dsn = get_random_ds(3);
+                             created_dsns.push_back(dsn);
+                             ZDS zds = {0};
+                             create_seq(&zds, dsn);
+                             write_to_dsn(dsn, "hello world");
+
+                             ZDS read_zds = {0};
+                             std::string content;
+                             int rc = zds_read(&read_zds, dsn, content);
+                             ExpectWithContext(rc, read_zds.diag.e_msg).ToBe(0);
+                             Expect(content.find("hello world") != std::string::npos).ToBe(true);
+                           });
+
+                        it("should read from a PDS member",
+                           [&]() -> void
+                           {
+                             std::string dsn = get_random_ds(3);
+                             created_dsns.push_back(dsn);
+                             ZDS zds = {0};
+                             create_pds(&zds, dsn);
+                             write_to_dsn(dsn + "(TESTMEM)", "member data");
+
+                             ZDS read_zds = {0};
+                             std::string content;
+                             int rc = zds_read(&read_zds, dsn + "(TESTMEM)", content);
+                             ExpectWithContext(rc, read_zds.diag.e_msg).ToBe(0);
+                             Expect(content.find("member data") != std::string::npos).ToBe(true);
+                           });
+
+                        it("should fail to read from a non-existent data set",
+                           []() -> void
+                           {
+                             ZDS zds = {0};
+                             std::string content;
+                             int rc = zds_read(&zds, "NONEXIST.DATASET.NAME", content);
+                             Expect(rc).Not().ToBe(0);
+                           });
+
+                        it("should read binary data from a sequential data set",
+                           [&]() -> void
+                           {
+                             std::string dsn = get_random_ds(3);
+                             created_dsns.push_back(dsn);
+                             ZDS zds = {0};
+                             create_seq(&zds, dsn);
+                             write_to_dsn(dsn, "binary test");
+
+                             ZDS read_zds = {0};
+                             read_zds.encoding_opts.data_type = eDataTypeBinary;
+                             std::string content;
+                             int rc = zds_read(&read_zds, dsn, content);
+                             ExpectWithContext(rc, read_zds.diag.e_msg).ToBe(0);
+                             Expect(content.empty()).ToBe(false);
+                           });
+
+                        it("should read with encoding (IBM-1047 to UTF-8)",
+                           [&]() -> void
+                           {
+                             std::string dsn = get_random_ds(3);
+                             created_dsns.push_back(dsn);
+                             ZDS zds = {0};
+                             create_seq(&zds, dsn);
+                             write_to_dsn(dsn, "encoded data");
+
+                             ZDS read_zds = {0};
+                             strcpy(read_zds.encoding_opts.codepage, "IBM-1047");
+                             read_zds.encoding_opts.data_type = eDataTypeText;
+                             std::string content;
+                             int rc = zds_read(&read_zds, dsn, content);
+                             ExpectWithContext(rc, read_zds.diag.e_msg).ToBe(0);
+                             Expect(content.empty()).ToBe(false);
+                           });
+
+                        it("should read with explicit source encoding (local-encoding)",
+                           [&]() -> void
+                           {
+                             std::string dsn = get_random_ds(3);
+                             created_dsns.push_back(dsn);
+                             ZDS zds = {0};
+                             create_seq(&zds, dsn);
+                             write_to_dsn(dsn, "local enc data");
+
+                             ZDS read_zds = {0};
+                             strcpy(read_zds.encoding_opts.codepage, "ISO8859-1");
+                             strcpy(read_zds.encoding_opts.source_codepage, "IBM-1047");
+                             read_zds.encoding_opts.data_type = eDataTypeText;
+                             std::string content;
+                             int rc = zds_read(&read_zds, dsn, content);
+                             ExpectWithContext(rc, read_zds.diag.e_msg).ToBe(0);
+                             Expect(content.empty()).ToBe(false);
+                           });
+
+                        it("should default source encoding to UTF-8 when source_codepage is empty",
+                           [&]() -> void
+                           {
+                             std::string dsn = get_random_ds(3);
+                             created_dsns.push_back(dsn);
+                             ZDS zds = {0};
+                             create_seq(&zds, dsn);
+                             write_to_dsn(dsn, "default enc");
+
+                             // Read with codepage=UTF-8 but no source_codepage;
+                             // defaults to UTF-8 source
+                             ZDS read_with_default = {0};
+                             strcpy(read_with_default.encoding_opts.codepage, "UTF-8");
+                             read_with_default.encoding_opts.data_type = eDataTypeText;
+                             std::string content_default;
+                             int rc = zds_read(&read_with_default, dsn, content_default);
+                             ExpectWithContext(rc, read_with_default.diag.e_msg).ToBe(0);
+
+                             // Read again with explicit source_codepage=UTF-8
+                             ZDS read_with_explicit = {0};
+                             strcpy(read_with_explicit.encoding_opts.codepage, "UTF-8");
+                             strcpy(read_with_explicit.encoding_opts.source_codepage, "UTF-8");
+                             read_with_explicit.encoding_opts.data_type = eDataTypeText;
+                             std::string content_explicit;
+                             rc = zds_read(&read_with_explicit, dsn, content_explicit);
+                             ExpectWithContext(rc, read_with_explicit.diag.e_msg).ToBe(0);
+
+                             // Both should produce the same result
+                             Expect(content_default).ToBe(content_explicit);
+                           });
+
+                        it("should read with a different local encoding (IBM-037)",
+                           [&]() -> void
+                           {
+                             std::string dsn = get_random_ds(3);
+                             created_dsns.push_back(dsn);
+                             ZDS zds = {0};
+                             create_seq(&zds, dsn);
+                             
+                             // Write data encoded as IBM-037
+                             ZDS write_zds = {0};
+                             strcpy(write_zds.encoding_opts.codepage, "IBM-037");
+                             strcpy(write_zds.encoding_opts.source_codepage, "UTF-8");
+                             write_zds.encoding_opts.data_type = eDataTypeText;
+                             std::string data = "ibm037 data";
+                             int rc = zds_write_to_dsn(&write_zds, dsn, data);
+                             ExpectWithContext(rc, write_zds.diag.e_msg).ToBe(0);
+
+                             ZDS read_zds = {0};
+                             strcpy(read_zds.encoding_opts.codepage, "UTF-8");
+                             strcpy(read_zds.encoding_opts.source_codepage, "IBM-037");
+                             read_zds.encoding_opts.data_type = eDataTypeText;
+                             std::string content;
+                             rc = zds_read(&read_zds, dsn, content);
+                             ExpectWithContext(rc, read_zds.diag.e_msg).ToBe(0);
+                             Expect(content.empty()).ToBe(false);
+                             Expect(content).ToContain("ibm037 data");
+                           });
+
+                        it("should produce a consistent etag after write and read",
+                           [&]() -> void
+                           {
+                             std::string dsn = get_random_ds(3);
+                             created_dsns.push_back(dsn);
+                             ZDS zds = {0};
+                             create_seq(&zds, dsn);
+
+                             std::string data = "etag test data";
+                             int rc = zds_write_to_dsn(&zds, dsn, data);
+                             ExpectWithContext(rc, zds.diag.e_msg).ToBe(0);
+                             std::string write_etag(zds.etag);
+                             Expect(write_etag.empty()).ToBe(false);
+
+                             // Read back and compute etag independently
+                             ZDS read_zds = {0};
+                             std::string content;
+                             rc = zds_read(&read_zds, dsn, content);
+                             ExpectWithContext(rc, read_zds.diag.e_msg).ToBe(0);
+
+                             std::stringstream etag_stream;
+                             etag_stream << std::hex << zut_calc_adler32_checksum(content);
+                             Expect(etag_stream.str()).ToBe(write_etag);
+                           });
+
+                        it("should detect etag mismatch on write (conflict resolution)",
+                           [&]() -> void
+                           {
+                             std::string dsn = get_random_ds(3);
+                             created_dsns.push_back(dsn);
+                             ZDS zds = {0};
+                             create_seq(&zds, dsn);
+
+                             std::string data = "original content";
+                             int rc = zds_write_to_dsn(&zds, dsn, data);
+                             ExpectWithContext(rc, zds.diag.e_msg).ToBe(0);
+                             std::string valid_etag(zds.etag);
+
+                             // Overwrite with new content (changes the actual etag on disk)
+                             ZDS zds2 = {0};
+                             std::string data2 = "modified content";
+                             rc = zds_write_to_dsn(&zds2, dsn, data2);
+                             ExpectWithContext(rc, zds2.diag.e_msg).ToBe(0);
+
+                             // Attempt to write using the stale (first) etag — should fail
+                             ZDS zds3 = {0};
+                             strcpy(zds3.etag, valid_etag.c_str());
+                             std::string data3 = "conflicting write";
+                             rc = zds_write_to_dsn(&zds3, dsn, data3);
+                             Expect(rc).Not().ToBe(0);
+                             Expect(std::string(zds3.diag.e_msg)).ToContain("Etag mismatch");
+                           });
+
+                        it("should read an uncataloged data set using volser (dynamic allocation)",
+                           [&]() -> void
+                           {
+                             std::string dsn = get_random_ds(3);
+                             created_dsns.push_back(dsn);
+                             ZDS zds = {0};
+                             create_seq(&zds, dsn);
+                             write_to_dsn(dsn, "volser test");
+
+                             // Look up the volser for this data set
+                             std::vector<ZDSEntry> entries;
+                             ZDS list_zds = {0};
+                             int rc = zds_list_data_sets(&list_zds, dsn, entries, true);
+                             ExpectWithContext(rc, list_zds.diag.e_msg).ToBe(0);
+                             Expect(entries.empty()).ToBe(false);
+                             std::string volser = entries[0].volser;
+                             Expect(volser.empty()).ToBe(false);
+
+                             // Dynamically allocate using volser and read via ddname
+                             std::vector<std::string> dds;
+                             dds.push_back("alloc dd(input) da('" + dsn + "') shr vol(" + volser + ")");
+                             ZDIAG diag{};
+                             rc = zut_loop_dynalloc(diag, dds);
+                             ExpectWithContext(rc, diag.e_msg).ToBe(0);
+
+                             ZDS read_zds = {0};
+                             strcpy(read_zds.ddname, "INPUT");
+                             std::string content;
+                             rc = zds_read(&read_zds, dsn, content);
+                             ExpectWithContext(rc, read_zds.diag.e_msg).ToBe(0);
+                             Expect(content.find("volser test") != std::string::npos).ToBe(true);
+
+                             zut_free_dynalloc_dds(diag, dds);
                            });
                       });
            });
