@@ -6,6 +6,8 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Recent Changes
 
+- **Breaking:** `c`: Renamed the `zds_read_from_dsn` function to `zds_read`. [#831](https://github.com/zowe/zowe-native-proto/issues/831)
+- **Breaking:** `c`: Removed the `zds_read_from_dd` function in favor of the newly-consolidated `zds_read` function. Callers should populate the `ZDS::ddname` variable before calling this function to prepare the read operation for a DD. [#831](https://github.com/zowe/zowe-native-proto/issues/831)
 - **Breaking:** `c`: Removed the standalone `zowed` binary and its entry point. The server is now exclusively an embedded subcommand of `zowex` (the z/OS backend CLI binary) via `zowex server`, eliminating the need for a separate binary and `libzowed.so` dynamic loading. [#846](https://github.com/zowe/zowe-native-proto/issues/846)
 - **Breaking:** `c`: Renamed the `ZOWED_NUM_WORKERS` environment variable to `ZOWEX_NUM_WORKERS` (controls the number of parallel worker threads the server uses to handle requests). [#846](https://github.com/zowe/zowe-native-proto/issues/846)
 - `c`: Enabled `-O2` optimization for release builds, improving runtime performance of native binaries. [#846](https://github.com/zowe/zowe-native-proto/issues/846)
