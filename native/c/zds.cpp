@@ -2941,7 +2941,8 @@ int zds_list_data_sets(ZDS *zds, std::string dsn, std::vector<ZDSEntry> &dataset
           INDEX_COMPONENT != f->type &&
           GENERATION_DATA_GROUP != f->type &&
           GENERATION_DATA_SET != f->type &&
-          ALIAS != f->type)
+          ALIAS != f->type &&
+          PATH != f->type)
       {
         free(area);
         ZDSDEL(zds);
@@ -3014,7 +3015,6 @@ int zds_list_data_sets(ZDS *zds, std::string dsn, std::vector<ZDSEntry> &dataset
           break;
         case ALTERNATE_INDEX:
         case ATL_LIBRARY_ENTRY:
-        case PATH:
         case USER_CATALOG_CONNECTOR_ENTRY:
         case ATL_VOLUME_ENTRY:
         default:
