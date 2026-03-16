@@ -14,6 +14,7 @@ import * as path from "node:path";
 import { promisify } from "node:util";
 import { type IProfile, Logger } from "@zowe/imperative";
 import { type ISshSession, SshSession } from "@zowe/zos-uss-for-zowe-sdk";
+import { isEqual } from "es-toolkit";
 import { NodeSSH, type Config as NodeSSHConfig } from "node-ssh";
 import type { ConnectConfig, SFTPWrapper } from "ssh2";
 import { PrivateKeyFailurePatterns } from "./SshErrors";
@@ -208,10 +209,7 @@ export class ZSshUtils {
             const [checksum, file] = line.split(/\s+/);
             localChecksums[file] = checksum;
         }
-        const checksumsMatch =
-            Object.entries(localChecksums).every(([file, checksum]) => remoteChecksums[file] === checksum) &&
-            Object.keys(localChecksums).length <= Object.keys(remoteChecksums).length;
-        return !checksumsMatch;
+        return !isEqual(localChecksums, remoteChecksums);
     }
 
     private static getBinDir(dir: string): string {
