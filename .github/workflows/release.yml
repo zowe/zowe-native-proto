@@ -97,9 +97,7 @@ jobs:
 
       - name: Run NPM Package
         if: ${{ env.TRAIN == 'Nightly'}}
-        run: |
-          npm run package
-          npm pack ./packages/sdk --pack-destination=dist
+        run: npm run package
 
       - name: Publish Snapshot to Artifactory
         if: ${{ !inputs.dry-run && env.TRAIN == 'Nightly' }}
