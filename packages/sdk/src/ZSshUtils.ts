@@ -210,7 +210,7 @@ export class ZSshUtils {
         }
         const checksumsMatch =
             Object.entries(localChecksums).every(([file, checksum]) => remoteChecksums[file] === checksum) &&
-            Object.keys(localChecksums).length === Object.keys(remoteChecksums).length;
+            Object.keys(localChecksums).length <= Object.keys(remoteChecksums).length;
         return !checksumsMatch;
     }
 
