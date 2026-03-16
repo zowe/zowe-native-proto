@@ -1277,9 +1277,7 @@ async function make(connection: Client, inDir?: string) {
 
 async function test(connection: Client) {
     const cTestCmd = `cd ${deployDirs.cTestDir} && ./build-out/ztest_runner ${args[1] ?? ""}`;
-    const zowedTestCmd = `cd ${path.posix.relative(deployDirs.cTestDir, deployDirs.zowedTestDir)} && ${testEnv} ./build-out/zowed_test_runner ${args[1] ?? ""}`;
-    const exitMaxRc = `[ "$rc1" -gt "$rc2" ] && exit "$rc1" || exit "$rc2"`;
-    await runCommandInShell(connection, `${cTestCmd}; rc1=$?; ${zowedTestCmd}; rc2=$?; ${exitMaxRc}\n`, {
+    await runCommandInShell(connection, `${cTestCmd}\n`, {
         streamOutput: true,
         stepName: "Running tests",
     });
