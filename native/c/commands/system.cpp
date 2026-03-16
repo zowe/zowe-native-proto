@@ -118,7 +118,13 @@ int handle_system_view_syslog(InvocationContext &context)
   auto max_lines = context.get<long long>("max-lines", 5);
 
   time_t now = time(nullptr);
-  struct tm *tm_now = localtime(&now);
+  struct tm tm_now_storage;
+  struct tm *tm_now = localtime_r(&now, &tm_now_storage);
+  if (tm_now == nullptr)
+  {
+    context.error_stream() << "Error: could not obtain local time" << endl;
+    return RTNCD_FAILURE;
+  }
   char buf[32];
 
   if (time_stamp.empty())
