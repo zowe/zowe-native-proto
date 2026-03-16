@@ -208,7 +208,10 @@ export class ZSshUtils {
             const [checksum, file] = line.split(/\s+/);
             localChecksums[file] = checksum;
         }
-        return JSON.stringify(localChecksums) !== JSON.stringify(remoteChecksums);
+        const checksumsMatch =
+            Object.entries(localChecksums).every(([file, checksum]) => remoteChecksums[file] === checksum) &&
+            Object.keys(localChecksums).length === Object.keys(remoteChecksums).length;
+        return !checksumsMatch;
     }
 
     private static getBinDir(dir: string): string {
