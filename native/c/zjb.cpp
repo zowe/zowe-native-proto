@@ -154,7 +154,7 @@ static int zjb_read_job_dynamic_allocation(ZJB *zjb, std::string jobdsn, std::st
   memcpy(iazbtokp->btokid, "BTOK", sizeof(iazbtokp->btokid));
   len = sizeof(iazbtokp->btokver);
   memcpy(iazbtokp->btokpl2, &len, sizeof(len));
-  iazbtokp->btoktype = btokbrws; // btokstkn;
+  iazbtokp->btoktype = btokbrws; // alternative type: btokstkn
   iazbtokp->btokvers = btokvrnm;
   len = sizeof(iazbtokp->btokiotp);
   memcpy(iazbtokp->btokpl3, &len, sizeof(len));
