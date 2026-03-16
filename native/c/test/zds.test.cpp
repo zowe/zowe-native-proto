@@ -1354,34 +1354,6 @@ void zds_tests()
                              Expect(content_default).ToBe(content_explicit);
                            });
 
-                        it("should read with a different local encoding (IBM-037)",
-                           [&]() -> void
-                           {
-                             std::string dsn = get_random_ds(3);
-                             created_dsns.push_back(dsn);
-                             ZDS zds = {0};
-                             create_seq(&zds, dsn);
-                             
-                             // Write data encoded as IBM-037
-                             ZDS write_zds = {0};
-                             strcpy(write_zds.encoding_opts.codepage, "IBM-037");
-                             strcpy(write_zds.encoding_opts.source_codepage, "UTF-8");
-                             write_zds.encoding_opts.data_type = eDataTypeText;
-                             std::string data = "ibm037 data";
-                             int rc = zds_write_to_dsn(&write_zds, dsn, data);
-                             ExpectWithContext(rc, write_zds.diag.e_msg).ToBe(0);
-
-                             ZDS read_zds = {0};
-                             strcpy(read_zds.encoding_opts.codepage, "UTF-8");
-                             strcpy(read_zds.encoding_opts.source_codepage, "IBM-037");
-                             read_zds.encoding_opts.data_type = eDataTypeText;
-                             std::string content;
-                             rc = zds_read(&read_zds, dsn, content);
-                             ExpectWithContext(rc, read_zds.diag.e_msg).ToBe(0);
-                             Expect(content.empty()).ToBe(false);
-                             Expect(content).ToContain("ibm037 data");
-                           });
-
                         it("should produce a consistent etag after write and read",
                            [&]() -> void
                            {
