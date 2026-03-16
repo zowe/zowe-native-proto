@@ -30,6 +30,7 @@
 
 using namespace ztst;
 
+#pragma runopts("TRAP(ON,NOSPIE)")
 int main(int argc, char *argv[])
 {
   int rc = tests(

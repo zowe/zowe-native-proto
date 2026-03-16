@@ -442,8 +442,7 @@ class WatchUtils {
                 stream.write("echo\n");
                 await new Promise<void>((resolve) => stream.once("data", resolve));
 
-                const testEnv = '_CEE_RUNOPTS="TRAP(ON,NOSPIE) TERMTHDACT(UADUMP)"';
-                const cmd = `cd ${testDir}\n${testEnv} ./build-out/${runner}\nexit $?\n`;
+                const cmd = `cd ${testDir}\n./build-out/${runner}\nexit $?\n`;
                 stream.write(cmd);
 
                 let outText = "";
@@ -1277,9 +1276,10 @@ async function make(connection: Client, inDir?: string) {
 }
 
 async function test(connection: Client) {
-    const testEnv = '_CEE_RUNOPTS="TRAP(ON,NOSPIE) TERMTHDACT(UADUMP)"';
-    const cTestCmd = `cd ${deployDirs.cTestDir} && ${testEnv} ./build-out/ztest_runner ${args[1] ?? ""}`;
-    await runCommandInShell(connection, `${cTestCmd}\n`, {
+    const cTestCmd = `cd ${deployDirs.cTestDir} && ./build-out/ztest_runner ${args[1] ?? ""}`;
+    const zowedTestCmd = `cd ${path.posix.relative(deployDirs.cTestDir, deployDirs.zowedTestDir)} && ${testEnv} ./build-out/zowed_test_runner ${args[1] ?? ""}`;
+    const exitMaxRc = `[ "$rc1" -gt "$rc2" ] && exit "$rc1" || exit "$rc2"`;
+    await runCommandInShell(connection, `${cTestCmd}; rc1=$?; ${zowedTestCmd}; rc2=$?; ${exitMaxRc}\n`, {
         streamOutput: true,
         stepName: "Running tests",
     });
