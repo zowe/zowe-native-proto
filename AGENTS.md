@@ -164,6 +164,18 @@ Controls automatic EBCDIC conversion for tagged files on z/OS USS:
 - `ON` — converts tagged files during I/O
 - `ALL` — converts all files including untagged ones
 
+### Native binary: build vs. run z/OS level
+
+The native `zowex` binary is built with **Open XL C/C++** (`ibm-clang++64`, C++17) and links against the C++ runtime (e.g. CRTEQCXE) on the **build** system. If the binary is built on a newer z/OS (e.g. CA32) and run on an older level (e.g. R152 / z/OS 2.5), the loader may fail with **CEE3561S** (e.g. `External function _ZNSt5__1_e13__hash_memoryEPKvm was not found in DLL CRTEQCXE`) because the older Language Environment runtime does not export that symbol.
+
+**Ways to make it work with older releases while still building on CA32:**
+
+1. **Build on the minimum supported z/OS** — Produce the shipped binary (or a “compatibility” build) on a system that matches the oldest supported level (e.g. R152). The link step will then only reference symbols present in that LE runtime. No compiler flag; the build host’s LE determines what gets linked.
+2. **Link against older LE on CA32** — If R152-level Language Environment libraries (e.g. CEE.SCEELIB from that level) are available on CA32, point the linker at them when building the “portable” binary (e.g. via `LDFLAGS` / library path / environment used by `ld`). Requires access to those datasets and the exact mechanism (LIBPATH, `-L`, or batch DD overrides) depends on your setup.
+3. **Upgrade runtime on the older system** — Apply the latest PTFs for Language Environment and Open XL C/C++ runtime on R152 (e.g. PH45536 and any CRTE updates). Newer runtimes may add the missing symbol so the existing CA32-built binary runs without a rebuild.
+
+There is no single documented Open XL option (e.g. “target z/OS 2.5”) that forces the binary to use only older runtime symbols; compatibility is achieved by build environment or runtime level on the target.
+
 ### Expired password detection
 
 When an SSH session connects with an expired password, z/OS emits `FOTS1668`/`FOTS1669` on stderr. This can masquerade as SFTP failures or generic command errors. `ZSshUtils` checks for these codes after every `execCommand` call and throws an `ImperativeError` with `errorCode: "EPASSWD_EXPIRED"` so the client gets a clear, actionable message instead of a cryptic failure.

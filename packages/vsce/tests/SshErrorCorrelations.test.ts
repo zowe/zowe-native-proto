@@ -69,8 +69,8 @@ describe("SshErrorCorrelations", () => {
             expect(mockZoweExplorerApi.getExplorerExtenderApi).toHaveBeenCalled();
             expect(mockExtenderApi.getErrorCorrelator).toHaveBeenCalled();
 
-            // Should register multiple correlations (connection failures, memory failures, filesystem errors)
-            expect(mockErrorCorrelator.addCorrelation).toHaveBeenCalledTimes(16); // 1 request timeout + 5 connection + 4 memory + 6 filesystem
+            // Should register multiple correlations (connection failures, memory failures, filesystem errors, expired password)
+            expect(mockErrorCorrelator.addCorrelation).toHaveBeenCalledTimes(17); // 1 request timeout + 6 connection (incl. FOTS1668) + 4 memory + 6 filesystem
         });
 
         it("should handle missing Zowe Explorer API gracefully", () => {
