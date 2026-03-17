@@ -109,14 +109,23 @@ int handle_system_list_subsystems(InvocationContext &context)
   return RTNCD_SUCCESS;
 }
 
+#define MAX_LINES 10000
 int handle_system_view_syslog(InvocationContext &context)
 {
   int rc = 0;
 
-  string time_stamp = context.get<std::string>("timestamp", "");
-  string date = context.get<std::string>("date", "");
-  auto max_lines = context.get<long long>("max-lines", 5);
+  string time_value = context.get<std::string>("time", "");
+  string date_value = context.get<std::string>("date", "");
+  auto max_lines = context.get<long long>("max-lines", 10);
 
+  // validate max-lines
+  if (max_lines < 1 || max_lines > MAX_LINES)
+  {
+    context.error_stream() << "Error: invalid max-lines '" << max_lines << "', expected 1-" << MAX_LINES << endl;
+    return RTNCD_FAILURE;
+  }
+
+  // get default time if not provided and validate input time format
   time_t now = time(nullptr);
   struct tm tm_now_storage;
   struct tm *tm_now = localtime_r(&now, &tm_now_storage);
@@ -127,36 +136,40 @@ int handle_system_view_syslog(InvocationContext &context)
   }
   char buf[32];
 
-  if (time_stamp.empty())
+  if (time_value.empty())
   {
+    std::cout << "time is empty, using local time" << std::endl;
     strftime(buf, sizeof(buf), "%H:%M:%S.00", tm_now);
-    time_stamp = buf;
+    time_value = buf;
   }
   else
   {
     int hh = -1, mm = -1, ss = -1, cs = -1;
-    int parsed = sscanf(time_stamp.c_str(), "%d:%d:%d.%d", &hh, &mm, &ss, &cs);
+    int parsed = sscanf(time_value.c_str(), "%d:%d:%d.%d", &hh, &mm, &ss, &cs);
+
+    // NOTE(Kelosky): require at least hh:mm:ss, optionally with "cs"
     if (parsed < 3 || hh < 0 || hh > 23 || mm < 0 || mm > 59 || ss < 0 || ss > 59 || (parsed == 4 && (cs < 0 || cs > 99)))
     {
-      context.error_stream() << "Error: invalid timestamp '" << time_stamp << "', expected hh:mm:ss.cs e.g. 12:01:30.03" << endl;
+      context.error_stream() << "Error: invalid time '" << time_value << "', expected hh:mm:ss.cs e.g. 12:01:30.03" << endl;
       return RTNCD_FAILURE;
     }
     if (parsed == 3)
-      time_stamp += ".00";
+      time_value += ".00";
   }
 
-  if (date.empty())
+  // get default date if not provided and validate input date format
+  if (date_value.empty())
   {
     strftime(buf, sizeof(buf), "%Y-%m-%d", tm_now);
-    date = buf;
+    date_value = buf;
   }
   else
   {
     int yyyy = -1, mm = -1, dd = -1;
-    int parsed = sscanf(date.c_str(), "%d-%d-%d", &yyyy, &mm, &dd);
+    int parsed = sscanf(date_value.c_str(), "%d-%d-%d", &yyyy, &mm, &dd);
     if (parsed != 3 || yyyy < 1900 || yyyy > 2185 || mm < 1 || mm > 12 || dd < 1 || dd > 31)
     {
-      context.error_stream() << "Error: invalid date '" << date << "', expected yyyy-mm-dd e.g. 2026-03-13" << endl;
+      context.error_stream() << "Error: invalid date '" << date_value << "', expected yyyy-mm-dd e.g. 2026-03-13" << endl;
       return RTNCD_FAILURE;
     }
   }
@@ -164,7 +177,7 @@ int handle_system_view_syslog(InvocationContext &context)
   string response;
   ZJB zjb = {};
 
-  rc = zjb_read_syslog(&zjb, response, date, time_stamp, max_lines);
+  rc = zjb_read_syslog(&zjb, response, date_value, time_value, max_lines);
   if (0 != rc)
   {
     context.error_stream() << "Error: could not view syslog, rc: '" << rc << "'" << endl;
@@ -205,10 +218,10 @@ void register_commands(parser::Command &root_command)
   // View-syslog subcommand
   auto system_view_syslog_cmd = command_ptr(new Command("view-syslog", "view syslog"));
   system_view_syslog_cmd->set_handler(handle_system_view_syslog);
-  system_view_syslog_cmd->add_keyword_arg("timestamp", make_aliases("--timestamp", "-ts"), "specify timestamp, e.g. --ts 10:41:00.15", ArgType_Single, false);
+  system_view_syslog_cmd->add_keyword_arg("time", make_aliases("--time", "-ts"), "specify time, e.g. --ts 10:41:00.15", ArgType_Single, false);
   system_view_syslog_cmd->add_keyword_arg("date", make_aliases("--date", "-d"), "specify date yyyy-mm-dd, e.g. --date 2026-03-13", ArgType_Single, false);
   system_view_syslog_cmd->add_keyword_arg("max-lines", make_aliases("--max-lines", "-ml"), "specify maximum number of lines to display, e.g. --max-lines 100", ArgType_Single, false);
-  system_view_syslog_cmd->add_example("View syslog for a specifc date and timestamp", "zowex system view-syslog --date 2026-03-13 --timestamp 10:41:00.15");
+  system_view_syslog_cmd->add_example("View syslog for a specific date and time", "zowex system view-syslog --date 2026-03-13 --time 10:41:00.15");
   system_cmd->add_command(system_view_syslog_cmd);
 
   root_command.add_command(system_cmd);
