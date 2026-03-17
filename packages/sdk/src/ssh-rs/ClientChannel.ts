@@ -105,7 +105,9 @@ export class ClientChannel extends EventEmitter {
         });
 
         const eofSub = this.inner.eof$.subscribe(() => {
-            this.debug(`russh: [ch ${this.inner.id}] remote EOF (stdout ${this.stdoutBytes} bytes, stderr ${this.stderrBytes} bytes)`);
+            this.debug(
+                `russh: [ch ${this.inner.id}] remote EOF (stdout ${this.stdoutBytes} bytes, stderr ${this.stderrBytes} bytes)`,
+            );
             this.cleanup();
         });
 
