@@ -161,7 +161,7 @@ struct ZDSReadOpts
  * @param response data read
  * @return int 0 for success; non zero otherwise
  */
-int zds_read(ZDSReadOpts &opts, std::string &response);
+int zds_read(const ZDSReadOpts &opts, std::string &response);
 
 /**
  * @brief Write data to a z/OS data set name
@@ -327,7 +327,7 @@ int zdsReadDynalloc(const std::string &, const std::string &, const std::string 
  * @param content_len pointer where the length of the data set contents will be stored
  * @return int 0 for success; non zero otherwise
  */
-int zds_read_streamed(ZDSReadOpts &opts, const std::string &pipe, size_t *content_len);
+int zds_read_streamed(const ZDSReadOpts &opts, const std::string &pipe, size_t *content_len);
 
 /**
  * @brief Write data to a z/OS data set in streaming mode

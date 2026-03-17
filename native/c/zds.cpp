@@ -636,7 +636,7 @@ static DscbAttributes zds_resolve_dscb(const ZDSReadOpts &opts)
   return opts.dsname.empty() ? DscbAttributes{} : zds_get_dscb_attributes(opts.dsname);
 }
 
-int zds_read(ZDSReadOpts &opts, std::string &response)
+int zds_read(const ZDSReadOpts &opts, std::string &response)
 {
   if (opts.zds == nullptr)
   {
@@ -3049,10 +3049,21 @@ int zds_list_data_sets(ZDS *zds, std::string dsn, std::vector<ZDSEntry> &dataset
  *
  * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
  */
-int zds_read_streamed(ZDSReadOpts &opts, const std::string &pipe, size_t *content_len)
+int zds_read_streamed(const ZDSReadOpts &opts, const std::string &pipe, size_t *content_len)
 {
+  if (opts.zds == nullptr)
+  {
+    throw std::invalid_argument("zds_read_streamed: valid ZDS pointer is required in ZDSReadOpts.zds");
+  }
+
   ZDS *zds = opts.zds;
   const std::string &dsn = opts.dsname;
+
+  if (dsn.empty() && opts.ddname.empty())
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Either a dsname or ddname must be provided");
+    return RTNCD_FAILURE;
+  }
 
   if (content_len == nullptr)
   {
@@ -3061,6 +3072,7 @@ int zds_read_streamed(ZDSReadOpts &opts, const std::string &pipe, size_t *conten
   }
 
   const std::string dsname = zds_resolve_dsname(opts);
+  const auto is_dd = !opts.ddname.empty();
 
   // Check if ASA format - use record I/O to preserve ASA control characters
   const DscbAttributes attrs = zds_resolve_dscb(opts);
@@ -3084,7 +3096,7 @@ int zds_read_streamed(ZDSReadOpts &opts, const std::string &pipe, size_t *conten
   FileGuard fin(dsname.c_str(), fopen_flags.c_str());
   if (!fin)
   {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open dsn '%s'", dsn.c_str());
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open handle to %s '%s'", is_dd ? "DD" : "data set", dsname.c_str());
     return RTNCD_FAILURE;
   }
 
