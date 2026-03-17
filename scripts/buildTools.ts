@@ -1120,6 +1120,7 @@ async function artifacts(connection: Client, packageAll: boolean) {
 interface RunCommandOpts {
     streamOutput?: boolean;
     stepName?: string;
+    suppressError?: boolean;
 }
 
 async function runCommandInShell(connection: Client, command: string, opts?: RunCommandOpts) {
@@ -1168,7 +1169,11 @@ async function runCommandInShell(connection: Client, command: string, opts?: Run
                     const fullError = `${error || data}`.trim();
                     if (spinner) stopSpinner(spinner, `\x1b[31m${opts?.stepName ?? "Command"} failed\x1b[0m`);
                     process.exitCode = exitCode;
-                    reject(new Error(fullError));
+                    if (!opts?.suppressError) {
+                        reject(new Error(fullError));
+                    } else {
+                        resolve(data);
+                    }
                 }
             });
             stream.end(`${command}\nexit $?\n`);
@@ -1255,11 +1260,9 @@ async function upload(connection: Client, sshProfile: IProfile) {
 }
 
 async function build(connection: Client) {
-    const response = await runCommandInShell(
-        connection,
-        `cd ${deployDirs.cDir} && make ${BUILD_TYPE_FLAG()}\n`,
-        { stepName: "Building native/c" },
-    );
+    const response = await runCommandInShell(connection, `cd ${deployDirs.cDir} && make ${BUILD_TYPE_FLAG()}\n`, {
+        stepName: "Building native/c",
+    });
     DEBUG_MODE() && console.log(response);
     console.log("Build complete!");
 }
@@ -1267,11 +1270,9 @@ async function build(connection: Client) {
 async function make(connection: Client, inDir?: string) {
     const pwd = inDir ?? deployDirs.cDir;
     const targets = args.filter((arg, idx) => idx > 0 && !arg.startsWith("--")).join(" ");
-    const response = await runCommandInShell(
-        connection,
-        `cd ${pwd} && make ${targets} ${BUILD_TYPE_FLAG()}\n`,
-        { stepName: `Running make ${targets || "all"}` },
-    );
+    const response = await runCommandInShell(connection, `cd ${pwd} && make ${targets} ${BUILD_TYPE_FLAG()}\n`, {
+        stepName: `Running make ${targets || "all"}`,
+    });
     console.log(response);
 }
 
@@ -1280,6 +1281,7 @@ async function test(connection: Client) {
     await runCommandInShell(connection, `${cTestCmd}\n`, {
         streamOutput: true,
         stepName: "Running tests",
+        suppressError: true,
     });
     console.log("\nTesting complete!");
     await retrieve(connection, [`c/test/test-results.xml`], "native", false, true);
