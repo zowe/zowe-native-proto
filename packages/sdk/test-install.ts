@@ -38,7 +38,7 @@ console.log(`User:       ${user}`);
 console.log(`ServerPath: ${targetPath}`);
 console.log();
 
-(async () => {
+async function run(): Promise<void> {
     console.log("--- Step: Uninstall (clean slate) ---");
     try {
         await ZSshUtils.uninstallServer(session, targetPath);
@@ -76,16 +76,23 @@ console.log();
         using client = await ZSshClient.create(session, { serverPath: targetPath });
         const resp = await client.uss.listFiles({ fspath: "/tmp" });
         console.log(`Connected OK — /tmp has ${resp.items.length} entries`);
-    } catch (err: any) {
-        console.error(`Connection failed: ${err.message ?? err}`);
-        if (err.additionalDetails) {
-            console.error(`Details:\n${err.additionalDetails}`);
+    } catch (err: unknown) {
+        const e = err as { message?: string; additionalDetails?: string };
+        console.error(`Connection failed: ${e.message ?? err}`);
+        if (e.additionalDetails) {
+            console.error(`Details:\n${e.additionalDetails}`);
         }
         process.exit(1);
     }
 
     console.log("\n=== ALL PASSED ===\n");
-})().catch((err) => {
-    console.error(`\nFATAL: ${err}`);
-    process.exit(1);
-});
+}
+
+void (async () => {
+    try {
+        await run();
+    } catch (err) {
+        console.error(`\nFATAL: ${err}`);
+        process.exit(1);
+    }
+})();
