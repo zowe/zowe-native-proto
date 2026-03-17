@@ -46,6 +46,14 @@ npm run build        # build SDK, CLI, and extension
 npm run test         # run SDK/CLI/extension tests (vitest)
 ```
 
+### SDK packaging
+
+The SDK package (`packages/sdk/`) contains both TypeScript client code and the native z/OS server binary (`bin/server.pax.Z`). How to rebuild depends on what changed:
+
+- **TypeScript only**: `npm run build --workspace=packages/sdk` (runs `tsc -b`)
+- **Native only** (testing via `serverPath`): `npm run z:rebuild` — no SDK repackage needed, just point your SSH profile's `serverPath` to the remote `<deployDir>/c/build-out`
+- **Full SDK package** (`.tgz` with bundled binaries): `npm run z:rebuild && npm run z:artifacts && npm run build --workspace=packages/sdk && mkdir -p dist && npm run package --workspace=packages/sdk`
+
 ### Native code (remote z/OS)
 
 All `npm run z:*` commands target the z/OS system in `config.yaml`:
