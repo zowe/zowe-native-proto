@@ -622,19 +622,30 @@ static void scan_for_truncated_lines(const std::string &data, int max_len,
   truncation.flush_range();
 }
 
+static std::string zds_resolve_dsname(const ZDSReadOpts &opts)
+{
+  if (!opts.ddname.empty())
+  {
+    return "//DD:" + opts.ddname;
+  }
+  return "//'" + opts.dsname + "'";
+}
+
+static DscbAttributes zds_resolve_dscb(const ZDSReadOpts &opts)
+{
+  return opts.dsname.empty() ? DscbAttributes{} : zds_get_dscb_attributes(opts.dsname);
+}
+
 int zds_read(ZDSReadOpts &opts, std::string &response)
 {
   ZDS *zds = opts.zds;
   const std::string &dsn = opts.dsname;
 
-  std::string dsname = "//'" + dsn + "'";
-  if (!opts.ddname.empty())
-  {
-    dsname = "//DD:" + opts.ddname;
-  }
+  const std::string dsname = zds_resolve_dsname(opts);
+  const auto is_dd = !opts.ddname.empty();
 
   // Check if ASA format - use record I/O to preserve ASA control characters
-  const DscbAttributes attrs = dsn.empty() ? DscbAttributes{} : zds_get_dscb_attributes(dsn);
+  const DscbAttributes attrs = zds_resolve_dscb(opts);
   const bool is_asa = attrs.is_asa && zds->encoding_opts.data_type != eDataTypeBinary;
 
   std::string fopen_flags;
@@ -652,10 +663,10 @@ int zds_read(ZDSReadOpts &opts, std::string &response)
     fopen_flags = "r";
   }
 
-  FILE *fp = fopen(dsname.c_str(), fopen_flags.c_str());
+  FileGuard fp(dsname.c_str(), fopen_flags.c_str());
   if (!fp)
   {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open dsn '%s'", dsn.c_str());
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open handle to %s '%s'", is_dd ? "DD" : "data set", dsn.c_str());
     return RTNCD_FAILURE;
   }
 
@@ -707,7 +718,6 @@ int zds_read(ZDSReadOpts &opts, std::string &response)
       response.append(buffer, bytes_read);
     }
   }
-  fclose(fp);
 
   const auto encoding_provided = zds_use_codepage(zds);
 
@@ -3022,8 +3032,7 @@ int zds_list_data_sets(ZDS *zds, std::string dsn, std::vector<ZDSEntry> &dataset
 /**
  * Reads data from a data set in streaming mode.
  *
- * @param zds pointer to a ZDS object
- * @param dsn name of the data set
+ * @param opts read options containing ZDS state and either a dsname or ddname
  * @param pipe name of the output pipe
  * @param content_len pointer where the length of the data set contents will be stored
  *
@@ -3040,14 +3049,10 @@ int zds_read_streamed(ZDSReadOpts &opts, const std::string &pipe, size_t *conten
     return RTNCD_FAILURE;
   }
 
-  std::string dsname = "//'" + dsn + "'";
-  if (!opts.ddname.empty())
-  {
-    dsname = "//DD:" + opts.ddname;
-  }
+  const std::string dsname = zds_resolve_dsname(opts);
 
   // Check if ASA format - use record I/O to preserve ASA control characters
-  const DscbAttributes attrs = zds_get_dscb_attributes(dsn);
+  const DscbAttributes attrs = zds_resolve_dscb(opts);
   const bool is_asa = attrs.is_asa && zds->encoding_opts.data_type != eDataTypeBinary;
 
   std::string fopen_flags;

@@ -153,11 +153,11 @@ int handle_tool_search(InvocationContext &context)
   // Read output from super c
   std::string output;
   ZDS superc_zds{};
-  ZDSReadOpts superc_read_opts{ .zds = &superc_zds, .ddname = "OUTDD" };
+  ZDSReadOpts superc_read_opts{.zds = &superc_zds, .ddname = "OUTDD"};
   rc = zds_read(superc_read_opts, output);
   if (0 != rc)
   {
-    context.error_stream() << "Error: could not read from dd: '" << "outdd" << "' rc: '" << rc << "'" << std::endl;
+    context.error_stream() << "Error: could not read from dd: '" << "OUTDD" << "' rc: '" << rc << "'" << std::endl;
     context.error_stream() << "  Details: " << superc_zds.diag.e_msg << std::endl;
     zut_free_dynalloc_dds(diag, dds);
     return RTNCD_FAILURE;
@@ -218,11 +218,11 @@ int handle_tool_amblist(InvocationContext &context)
   // Read output from amblist
   std::string output;
   ZDS amblist_zds{};
-  ZDSReadOpts amblist_read_opts{ .zds = &amblist_zds, .ddname = "SYSPRINT", .dsname = dsn };
+  ZDSReadOpts amblist_read_opts{.zds = &amblist_zds, .ddname = "SYSPRINT", .dsname = dsn};
   rc = zds_read(amblist_read_opts, output);
   if (0 != rc)
   {
-    context.error_stream() << "Error: could not read from dd: '" << "sysprint" << "' rc: '" << rc << "'" << std::endl;
+    context.error_stream() << "Error: could not read from dd: '" << "SYSPRINT" << "' rc: '" << rc << "'" << std::endl;
     context.error_stream() << "  Details: " << amblist_zds.diag.e_msg << std::endl;
     zut_free_dynalloc_dds(diag, dds);
     return RTNCD_FAILURE;
