@@ -648,7 +648,7 @@ void register_commands(parser::Command &root_command)
   uss_group->add_command(uss_chtag_cmd);
 
   // Issue subcommand
-  auto uss_issue_cmd = command_ptr(new Command("issue", "issue a UNIX command"));
+  auto uss_issue_cmd = std::make_shared<Command>("issue", "issue a UNIX command");
   uss_issue_cmd->add_positional_arg("command", "command to issue", ArgType_Single, true);
   uss_issue_cmd->set_handler(handle_uss_issue_cmd);
   uss_group->add_command(uss_issue_cmd);
