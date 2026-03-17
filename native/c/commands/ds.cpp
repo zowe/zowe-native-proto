@@ -370,13 +370,12 @@ int handle_data_set_view(InvocationContext &context)
   std::string pipe_path = context.get<std::string>("pipe-path", "");
   const auto result = obj();
 
-  ZDSReadOpts read_opts{.zds = zds, .ddname = ddname, .dsname = dsn};
+  ZDSReadOpts read_opts{.zds = &zds, .ddname = ddname, .dsname = dsn};
 
   if (has_pipe_path && !pipe_path.empty())
   {
     size_t content_len = 0;
     rc = zds_read_streamed(read_opts, pipe_path, &content_len);
-    zds = read_opts.zds;
 
     if (context.get<bool>("return-etag", false))
     {
@@ -405,7 +404,6 @@ int handle_data_set_view(InvocationContext &context)
   {
     std::string response;
     rc = zds_read(read_opts, response);
-    zds = read_opts.zds;
     if (0 != rc)
     {
       context.error_stream() << "Error: could not read data set: '" << dsn << "' rc: '" << rc << "'" << std::endl;
@@ -936,9 +934,8 @@ int handle_data_set_compress(InvocationContext &context)
 
   // read output from iebcopy
   std::string output;
-  ZDSReadOpts iebcopy_read_opts{.zds = zds, .ddname = "SYSPRINT", .dsname = dsn};
+  ZDSReadOpts iebcopy_read_opts{.zds = &zds, .ddname = "SYSPRINT", .dsname = dsn};
   rc = zds_read(iebcopy_read_opts, output);
-  zds = iebcopy_read_opts.zds;
   if (0 != rc)
   {
     context.error_stream() << "Error: could not read from dd: '" << "SYSPRINT" << "' rc: '" << rc << "'" << std::endl;

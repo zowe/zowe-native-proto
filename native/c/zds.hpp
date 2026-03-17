@@ -149,7 +149,7 @@ bool zds_dataset_exists(const std::string &dsn);
  */
 struct ZDSReadOpts
 {
-  ZDS zds{};
+  ZDS *zds = nullptr;
   std::string ddname;
   std::string dsname;
 };

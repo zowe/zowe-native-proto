@@ -77,22 +77,22 @@ std::vector<ZDSEntry> list_data_sets(std::string dsn)
 
 std::string read_data_set(std::string dsn, std::string codepage)
 {
-  ZDSReadOpts read_opts{};
+  ZDS zds{};
 
   if (!codepage.empty())
   {
-    read_opts.zds.encoding_opts.data_type = codepage == "binary" ? eDataTypeBinary : eDataTypeText;
-    strncpy(read_opts.zds.encoding_opts.codepage, codepage.c_str(), sizeof(read_opts.zds.encoding_opts.codepage) - 1);
+    zds.encoding_opts.data_type = codepage == "binary" ? eDataTypeBinary : eDataTypeText;
+    strncpy(zds.encoding_opts.codepage, codepage.c_str(), sizeof(zds.encoding_opts.codepage) - 1);
   }
 
   a2e_inplace(dsn);
-  read_opts.dsname = dsn;
+  ZDSReadOpts read_opts{ .zds = &zds, .dsname = dsn };
   std::string response;
   int rc = zds_read(read_opts, response);
 
   if (rc != 0)
   {
-    std::string diag(read_opts.zds.diag.e_msg, read_opts.zds.diag.e_msg_len);
+    std::string diag(zds.diag.e_msg, zds.diag.e_msg_len);
     diag.push_back('\0');
     e2a_inplace(diag);
     diag.pop_back();

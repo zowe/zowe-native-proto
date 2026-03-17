@@ -624,7 +624,7 @@ static void scan_for_truncated_lines(const std::string &data, int max_len,
 
 int zds_read(ZDSReadOpts &opts, std::string &response)
 {
-  ZDS *zds = &opts.zds;
+  ZDS *zds = opts.zds;
   const std::string &dsn = opts.dsname;
 
   std::string dsname = "//'" + dsn + "'";
@@ -1280,18 +1280,18 @@ static bool zds_write_recfm_unsupported(const std::string &recfm, const bool inc
 
 int zds_validate_etag(ZDS *zds, const std::string &dsn, bool has_encoding)
 {
-  ZDSReadOpts read_opts{.dsname = dsn};
-  std::string current_contents = "";
+  ZDS read_zds{};
   if (has_encoding)
   {
-    memcpy(&read_opts.zds.encoding_opts, &zds->encoding_opts, sizeof(ZEncode));
+    memcpy(&read_zds.encoding_opts, &zds->encoding_opts, sizeof(ZEncode));
   }
+  ZDSReadOpts read_opts{.zds = &read_zds, .dsname = dsn};
+  std::string current_contents = "";
   const auto read_rc = zds_read(read_opts, current_contents);
   if (0 != read_rc)
   {
-    // Truncate detail message to avoid buffer overflow
     char truncated_detail[128];
-    strncpy(truncated_detail, read_opts.zds.diag.e_msg, sizeof(truncated_detail) - 1);
+    strncpy(truncated_detail, read_zds.diag.e_msg, sizeof(truncated_detail) - 1);
     truncated_detail[sizeof(truncated_detail) - 1] = '\0';
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg,
                                   "Failed to read contents of data set for e-tag comparison: %s", truncated_detail);
@@ -1363,7 +1363,7 @@ int zds_write_to_dsn(ZDS *zds, const std::string &dsn, std::string &data)
 
   // Print new e-tag to stdout as response
   std::string saved_contents = "";
-  ZDSReadOpts read_opts{.zds = *zds, .dsname = dsn};
+  ZDSReadOpts read_opts{.zds = zds, .dsname = dsn};
   const auto read_rc = zds_read(read_opts, saved_contents);
   if (0 != read_rc)
   {
@@ -3031,7 +3031,7 @@ int zds_list_data_sets(ZDS *zds, std::string dsn, std::vector<ZDSEntry> &dataset
  */
 int zds_read_streamed(ZDSReadOpts &opts, const std::string &pipe, size_t *content_len)
 {
-  ZDS *zds = &opts.zds;
+  ZDS *zds = opts.zds;
   const std::string &dsn = opts.dsname;
 
   if (content_len == nullptr)
@@ -3798,7 +3798,7 @@ int zds_write_to_dsn_streamed(ZDS *zds, const std::string &dsn, const std::strin
 
   // Update the etag
   std::string saved_contents = "";
-  ZDSReadOpts read_opts{.zds = *zds, .dsname = dsn};
+  ZDSReadOpts read_opts{.zds = zds, .dsname = dsn};
   const auto read_rc = zds_read(read_opts, saved_contents);
   if (0 != read_rc)
   {
