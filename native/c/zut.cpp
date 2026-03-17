@@ -306,6 +306,7 @@ static void zut_private_drain_pipes(std::array<struct pollfd, 2> &fds,
 
 static std::vector<const char *> zut_private_build_env()
 {
+  extern char **environ; // NOSONAR: POSIX-mandated global, cannot be const
   std::vector<const char *> env_vec;
   bool has_bpx_shareas = false;
   for (char **ep = environ; ep != nullptr && *ep != nullptr; ++ep)
