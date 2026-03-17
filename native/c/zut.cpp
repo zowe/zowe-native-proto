@@ -28,6 +28,7 @@
 #include <ios>
 #include "zuttype.h"
 #include <vector>
+#include <spawn.h>
 #include <sys/wait.h>
 #include <poll.h>
 #include <_Nascii.h>
@@ -245,6 +246,129 @@ int zut_run_program(const std::string &program, const std::vector<std::string> &
 {
   std::string dummy;
   return zut_private_run_program(program, args, response, dummy, true);
+}
+
+int zut_spawn_shell_command(const std::string &command, std::string &stdout_response, std::string &stderr_response)
+{
+  stdout_response.clear();
+  stderr_response.clear();
+
+  if (command.empty())
+  {
+    stderr_response = "Error: You must specify a command to run.";
+    return RTNCD_FAILURE;
+  }
+
+  int stdout_pipe[2];
+  int stderr_pipe[2];
+  if (-1 == pipe(stdout_pipe))
+  {
+    return RTNCD_FAILURE;
+  }
+  if (-1 == pipe(stderr_pipe))
+  {
+    close(stdout_pipe[0]);
+    close(stdout_pipe[1]);
+    return RTNCD_FAILURE;
+  }
+
+  // fd_map: child fd 0 = stdin (unchanged), fd 1 = stdout pipe write end, fd 2 = stderr pipe write end
+  int fd_map[3] = {STDIN_FILENO, stdout_pipe[1], stderr_pipe[1]};
+
+  struct inheritance inherit = {};
+
+  const char *argv[] = {"/bin/sh", "-c", command.c_str(), nullptr};
+
+  // Pass _BPX_SHAREAS=YES so the child runs as a new TCB in the same address space
+  const char *envp[] = {"_BPX_SHAREAS=YES", nullptr};
+
+  pid_t pid = spawn("/bin/sh", 3, fd_map, &inherit, argv, envp);
+
+  if (-1 == pid)
+  {
+    close(stdout_pipe[0]);
+    close(stdout_pipe[1]);
+    close(stderr_pipe[0]);
+    close(stderr_pipe[1]);
+    return RTNCD_FAILURE;
+  }
+
+  // Parent: close write ends
+  close(stdout_pipe[1]);
+  close(stderr_pipe[1]);
+
+  struct pollfd fds[2];
+  fds[0].fd = stdout_pipe[0];
+  fds[0].events = POLLIN;
+  fds[1].fd = stderr_pipe[0];
+  fds[1].events = POLLIN;
+
+  char buffer[4096];
+  ssize_t bytes_read;
+
+  while (fds[0].fd != -1 || fds[1].fd != -1)
+  {
+    if (-1 == poll(fds, 2, -1))
+    {
+      if (EINTR != errno)
+      {
+        kill(pid, SIGKILL);
+        break;
+      }
+      else
+      {
+        continue;
+      }
+    }
+
+    for (int i = 0; i < 2; i++)
+    {
+      if (fds[i].fd != -1)
+      {
+        std::string &output = ((0 == i) ? stdout_response : stderr_response);
+        if (fds[i].revents & POLLIN)
+        {
+          bytes_read = read(fds[i].fd, buffer, sizeof(buffer));
+          if (bytes_read > 0)
+          {
+            output.append(buffer, bytes_read);
+          }
+          else if (0 == bytes_read)
+          {
+            fds[i].fd = -1;
+          }
+          else if (-1 == bytes_read && EINTR != errno)
+          {
+            kill(pid, SIGKILL);
+            fds[i].fd = -1;
+          }
+        }
+        else if (fds[i].revents & (POLLHUP | POLLERR))
+        {
+          fds[i].fd = -1;
+        }
+      }
+    }
+  }
+
+  zut_strip_final_newline(stdout_response);
+  zut_strip_final_newline(stderr_response);
+
+  close(stdout_pipe[0]);
+  close(stderr_pipe[0]);
+
+  int status;
+  if (-1 == waitpid(pid, &status, 0))
+  {
+    return RTNCD_FAILURE;
+  }
+
+  if (WIFEXITED(status))
+  {
+    return WEXITSTATUS(status);
+  }
+
+  return RTNCD_FAILURE;
 }
 
 int zut_search(const std::string &parms)
