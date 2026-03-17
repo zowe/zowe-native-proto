@@ -12,6 +12,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - Added support for copying USS files in the `RpcClientApi` class. [#379](https://github.com/zowe/zowe-native-proto/issues/379)
 - Added support for USS Move operations. [#789](https://github.com/zowe/zowe-native-proto/pull/789)
 - Fixed `user` property not defined as secure when new team configuration profile is created. [#845](https://github.com/zowe/zowe-native-proto/pull/845)
+- Fixed check for outdated server always returning true which could trigger unnecessary re-deploy. [#862](https://github.com/zowe/zowe-native-proto/pull/862)
 
 ## `0.3.0`
 
