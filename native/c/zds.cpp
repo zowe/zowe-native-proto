@@ -638,8 +638,19 @@ static DscbAttributes zds_resolve_dscb(const ZDSReadOpts &opts)
 
 int zds_read(ZDSReadOpts &opts, std::string &response)
 {
+  if (opts.zds == nullptr)
+  {
+    throw std::invalid_argument("zds_read: valid ZDS pointer is required in ZDSReadOpts.zds");
+  }
+
   ZDS *zds = opts.zds;
   const std::string &dsn = opts.dsname;
+
+  if (dsn.empty() && opts.ddname.empty())
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Either a dsname or ddname must be provided");
+    return RTNCD_FAILURE;
+  }
 
   const std::string dsname = zds_resolve_dsname(opts);
   const auto is_dd = !opts.ddname.empty();
@@ -666,7 +677,7 @@ int zds_read(ZDSReadOpts &opts, std::string &response)
   FileGuard fp(dsname.c_str(), fopen_flags.c_str());
   if (!fp)
   {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open handle to %s '%s'", is_dd ? "DD" : "data set", dsn.c_str());
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open handle to %s '%s'", is_dd ? "DD" : "data set", dsname.c_str());
     return RTNCD_FAILURE;
   }
 

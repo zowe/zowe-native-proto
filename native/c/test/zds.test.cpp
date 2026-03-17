@@ -12,6 +12,7 @@
 #include <cstring>
 #include <iostream>
 #include <sstream>
+#include <stdexcept>
 #include <vector>
 
 #include "ztest.hpp"
@@ -1271,6 +1272,35 @@ void zds_tests()
                              std::string content;
                              int rc = zds_read(read_opts, content);
                              Expect(rc).Not().ToBe(0);
+                           });
+
+                        it("should fail when neither dsname nor ddname is provided",
+                           []() -> void
+                           {
+                             ZDS read_zds{};
+                             ZDSReadOpts read_opts{ .zds = &read_zds };
+                             std::string content;
+                             int rc = zds_read(read_opts, content);
+                             Expect(rc).ToBe(RTNCD_FAILURE);
+                             Expect(std::string(read_zds.diag.e_msg)).ToContain("Either a dsname or ddname must be provided");
+                           });
+
+                        it("should throw invalid_argument when ZDS pointer is null",
+                           []() -> void
+                           {
+                             ZDSReadOpts read_opts{ .zds = nullptr, .dsname = "SOME.DSN" };
+                             std::string content;
+                             bool caught = false;
+                             try
+                             {
+                               zds_read(read_opts, content);
+                             }
+                             catch (const std::invalid_argument &e)
+                             {
+                               caught = true;
+                               Expect(std::string(e.what())).ToContain("zds_read: valid ZDS pointer is required in ZDSReadOpts.zds");
+                             }
+                             Expect(caught).ToBe(true);
                            });
 
                         it("should read binary data from a sequential data set",
