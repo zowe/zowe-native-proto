@@ -9,6 +9,8 @@ On z/OS USS, `fork()` creates a **new address space** — expensive and slow. Pr
 - Use `zut_spawn_shell_command()` for shell commands (uses `spawn()` + `_BPX_SHAREAS=YES`)
 - `zut_run_program()` exists but uses `fork()`/`execvp()` — avoid for new command execution paths
 
+**Identity-changing commands (newgrp, su, sg):** Commands that change real/effective UID or GID are not supported in a shared address space ([IBM newgrp doc](https://www.ibm.com/docs/en/zos/3.2.0?topic=descriptions-newgrp-change-new-group)). `zut_spawn_shell_command()` detects when the user's command is one of `newgrp`, `su`, or `sg` (by parsing the first token) and in that case does **not** pass `_BPX_SHAREAS=YES` to the child, so the child runs in its own address space. To support additional such commands, add the command basename to `ZUT_NOSHAREAS_COMMANDS` in `zut.cpp`.
+
 ## Adding a New Native Command
 
 1. **Handler**: Implement in `c/commands/<domain>.cpp`, declare in the matching `.hpp`
