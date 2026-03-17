@@ -634,7 +634,7 @@ int zds_read(ZDSReadOpts &opts, std::string &response)
   }
 
   // Check if ASA format - use record I/O to preserve ASA control characters
-  const DscbAttributes attrs = zds_get_dscb_attributes(dsn);
+  const DscbAttributes attrs = dsn.empty() ? DscbAttributes{} : zds_get_dscb_attributes(dsn);
   const bool is_asa = attrs.is_asa && zds->encoding_opts.data_type != eDataTypeBinary;
 
   std::string fopen_flags;
@@ -1280,7 +1280,7 @@ static bool zds_write_recfm_unsupported(const std::string &recfm, const bool inc
 
 int zds_validate_etag(ZDS *zds, const std::string &dsn, bool has_encoding)
 {
-  ZDSReadOpts read_opts{ .dsname = dsn };
+  ZDSReadOpts read_opts{.dsname = dsn};
   std::string current_contents = "";
   if (has_encoding)
   {
@@ -1363,7 +1363,7 @@ int zds_write_to_dsn(ZDS *zds, const std::string &dsn, std::string &data)
 
   // Print new e-tag to stdout as response
   std::string saved_contents = "";
-  ZDSReadOpts read_opts{ .zds = *zds, .dsname = dsn };
+  ZDSReadOpts read_opts{.zds = *zds, .dsname = dsn};
   const auto read_rc = zds_read(read_opts, saved_contents);
   if (0 != read_rc)
   {
@@ -3798,7 +3798,7 @@ int zds_write_to_dsn_streamed(ZDS *zds, const std::string &dsn, const std::strin
 
   // Update the etag
   std::string saved_contents = "";
-  ZDSReadOpts read_opts{ .zds = *zds, .dsname = dsn };
+  ZDSReadOpts read_opts{.zds = *zds, .dsname = dsn};
   const auto read_rc = zds_read(read_opts, saved_contents);
   if (0 != read_rc)
   {

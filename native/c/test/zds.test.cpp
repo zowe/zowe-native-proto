@@ -1407,39 +1407,63 @@ void zds_tests()
                              Expect(std::string(zds3.diag.e_msg)).ToContain("Etag mismatch");
                            });
 
-                        it("should read an uncataloged data set using volser (dynamic allocation)",
-                           [&]() -> void
-                           {
-                             std::string dsn = get_random_ds(3);
-                             created_dsns.push_back(dsn);
-                             ZDS zds = {0};
-                             create_seq(&zds, dsn);
-                             write_to_dsn(dsn, "volser test");
+                       it("should read an uncataloged data set using volser (dynamic allocation)",
+                          [&]() -> void
+                          {
+                            std::string dsn = get_random_ds(3);
+                            created_dsns.push_back(dsn);
+                            ZDS zds = {0};
+                            create_seq(&zds, dsn);
+                            write_to_dsn(dsn, "volser test");
 
-                             // Look up the volser for this data set
-                             std::vector<ZDSEntry> entries;
-                             ZDS list_zds = {0};
-                             int rc = zds_list_data_sets(&list_zds, dsn, entries, true);
-                             ExpectWithContext(rc, list_zds.diag.e_msg).ToBe(0);
-                             Expect(entries.empty()).ToBe(false);
-                             std::string volser = entries[0].volser;
-                             Expect(volser.empty()).ToBe(false);
+                            // Look up the volser for this data set
+                            std::vector<ZDSEntry> entries;
+                            ZDS list_zds = {0};
+                            int rc = zds_list_data_sets(&list_zds, dsn, entries, true);
+                            ExpectWithContext(rc, list_zds.diag.e_msg).ToBe(0);
+                            Expect(entries.empty()).ToBe(false);
+                            std::string volser = entries[0].volser;
+                            Expect(volser.empty()).ToBe(false);
 
-                             // Dynamically allocate using volser and read via ddname
-                             std::vector<std::string> dds;
-                             dds.push_back("alloc dd(input) da('" + dsn + "') shr vol(" + volser + ")");
-                             ZDIAG diag{};
-                             rc = zut_loop_dynalloc(diag, dds);
-                             ExpectWithContext(rc, diag.e_msg).ToBe(0);
+                            // Dynamically allocate using volser and read via ddname
+                            std::vector<std::string> dds;
+                            dds.push_back("alloc dd(input) da('" + dsn + "') shr vol(" + volser + ")");
+                            ZDIAG diag{};
+                            rc = zut_loop_dynalloc(diag, dds);
+                            ExpectWithContext(rc, diag.e_msg).ToBe(0);
 
-                             ZDSReadOpts read_opts{ .ddname = "INPUT", .dsname = dsn };
-                             std::string content;
-                             rc = zds_read(read_opts, content);
-                             ExpectWithContext(rc, read_opts.zds.diag.e_msg).ToBe(0);
-                             Expect(content.find("volser test") != std::string::npos).ToBe(true);
+                            ZDSReadOpts read_opts{ .ddname = "INPUT", .dsname = dsn };
+                            std::string content;
+                            rc = zds_read(read_opts, content);
+                            ExpectWithContext(rc, read_opts.zds.diag.e_msg).ToBe(0);
+                            Expect(content.find("volser test") != std::string::npos).ToBe(true);
 
-                             zut_free_dynalloc_dds(diag, dds);
-                           });
+                            zut_free_dynalloc_dds(diag, dds);
+                          });
+
+                       it("should read from a dynamically allocated DD without a dsname",
+                          [&]() -> void
+                          {
+                            std::string dsn = get_random_ds(3);
+                            created_dsns.push_back(dsn);
+                            ZDS zds = {0};
+                            create_seq(&zds, dsn);
+                            write_to_dsn(dsn, "dd only read test");
+
+                            std::vector<std::string> dds;
+                            dds.push_back("alloc dd(OUTDD) da('" + dsn + "') shr");
+                            ZDIAG diag{};
+                            int rc = zut_loop_dynalloc(diag, dds);
+                            ExpectWithContext(rc, diag.e_msg).ToBe(0);
+
+                            ZDSReadOpts read_opts{ .ddname = "OUTDD" };
+                            std::string content;
+                            rc = zds_read(read_opts, content);
+                            ExpectWithContext(rc, read_opts.zds.diag.e_msg).ToBe(0);
+                            Expect(content.find("dd only read test") != std::string::npos).ToBe(true);
+
+                            zut_free_dynalloc_dds(diag, dds);
+                          });
                       });
            });
 }

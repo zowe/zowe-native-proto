@@ -370,7 +370,7 @@ int handle_data_set_view(InvocationContext &context)
   std::string pipe_path = context.get<std::string>("pipe-path", "");
   const auto result = obj();
 
-  ZDSReadOpts read_opts{ .zds = zds, .ddname = ddname, .dsname = dsn };
+  ZDSReadOpts read_opts{.zds = zds, .ddname = ddname, .dsname = dsn};
 
   if (has_pipe_path && !pipe_path.empty())
   {
@@ -936,12 +936,12 @@ int handle_data_set_compress(InvocationContext &context)
 
   // read output from iebcopy
   std::string output;
-  ZDSReadOpts iebcopy_read_opts{ .zds = zds, .ddname = "SYSPRINT", .dsname = dsn };
+  ZDSReadOpts iebcopy_read_opts{.zds = zds, .ddname = "SYSPRINT", .dsname = dsn};
   rc = zds_read(iebcopy_read_opts, output);
   zds = iebcopy_read_opts.zds;
   if (0 != rc)
   {
-    context.error_stream() << "Error: could not read from dd: '" << "sysprint" << "' rc: '" << rc << "'" << std::endl;
+    context.error_stream() << "Error: could not read from dd: '" << "SYSPRINT" << "' rc: '" << rc << "'" << std::endl;
     context.error_stream() << "  Details: " << zds.diag.e_msg << std::endl;
     context.error_stream() << output << std::endl;
     zut_free_dynalloc_dds(diag, dds);
