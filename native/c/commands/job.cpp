@@ -388,13 +388,13 @@ int handle_job_submit(InvocationContext &context)
   std::string dsn = context.get<std::string>("dsn", "");
   std::string jobid;
 
-  ZDS zds{};
+  ZDSReadOpts read_opts{ .dsname = dsn };
   std::string contents;
-  rc = zds_read(&zds, dsn, contents);
+  rc = zds_read(read_opts, contents);
   if (0 != rc)
   {
     context.error_stream() << "Error: could not read data set: '" << dsn << "' rc: '" << rc << "'" << std::endl;
-    context.error_stream() << "  Details: " << zds.diag.e_msg << std::endl;
+    context.error_stream() << "  Details: " << read_opts.zds.diag.e_msg << std::endl;
     return RTNCD_FAILURE;
   }
 

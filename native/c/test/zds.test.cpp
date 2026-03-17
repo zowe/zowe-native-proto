@@ -750,9 +750,9 @@ void zds_tests()
                              Expect(tgt.primary).ToBe(src.primary);
                              Expect(tgt.secondary).ToBe(src.secondary);
 
-                             ZDS zdst = {0};
+                             ZDSReadOpts read_opts{ .dsname = tc.target_dsn };
                              std::string content;
-                             zds_read(&zdst, tc.target_dsn, content);
+                             zds_read(read_opts, content);
                              Expect(content.find("Test data") != std::string::npos).ToBe(true);
                            });
 
@@ -1237,10 +1237,10 @@ void zds_tests()
                              create_seq(&zds, dsn);
                              write_to_dsn(dsn, "hello world");
 
-                             ZDS read_zds = {0};
+                             ZDSReadOpts read_opts{ .dsname = dsn };
                              std::string content;
-                             int rc = zds_read(&read_zds, dsn, content);
-                             ExpectWithContext(rc, read_zds.diag.e_msg).ToBe(0);
+                             int rc = zds_read(read_opts, content);
+                             ExpectWithContext(rc, read_opts.zds.diag.e_msg).ToBe(0);
                              Expect(content.find("hello world") != std::string::npos).ToBe(true);
                            });
 
@@ -1253,19 +1253,19 @@ void zds_tests()
                              create_pds(&zds, dsn);
                              write_to_dsn(dsn + "(TESTMEM)", "member data");
 
-                             ZDS read_zds = {0};
+                             ZDSReadOpts read_opts{ .dsname = dsn + "(TESTMEM)" };
                              std::string content;
-                             int rc = zds_read(&read_zds, dsn + "(TESTMEM)", content);
-                             ExpectWithContext(rc, read_zds.diag.e_msg).ToBe(0);
+                             int rc = zds_read(read_opts, content);
+                             ExpectWithContext(rc, read_opts.zds.diag.e_msg).ToBe(0);
                              Expect(content.find("member data") != std::string::npos).ToBe(true);
                            });
 
                         it("should fail to read from a non-existent data set",
                            []() -> void
                            {
-                             ZDS zds = {0};
+                             ZDSReadOpts read_opts{ .dsname = "NONEXIST.DATASET.NAME" };
                              std::string content;
-                             int rc = zds_read(&zds, "NONEXIST.DATASET.NAME", content);
+                             int rc = zds_read(read_opts, content);
                              Expect(rc).Not().ToBe(0);
                            });
 
@@ -1278,11 +1278,11 @@ void zds_tests()
                              create_seq(&zds, dsn);
                              write_to_dsn(dsn, "binary test");
 
-                             ZDS read_zds = {0};
-                             read_zds.encoding_opts.data_type = eDataTypeBinary;
+                             ZDSReadOpts read_opts{ .dsname = dsn };
+                             read_opts.zds.encoding_opts.data_type = eDataTypeBinary;
                              std::string content;
-                             int rc = zds_read(&read_zds, dsn, content);
-                             ExpectWithContext(rc, read_zds.diag.e_msg).ToBe(0);
+                             int rc = zds_read(read_opts, content);
+                             ExpectWithContext(rc, read_opts.zds.diag.e_msg).ToBe(0);
                              Expect(content.empty()).ToBe(false);
                            });
 
@@ -1295,12 +1295,12 @@ void zds_tests()
                              create_seq(&zds, dsn);
                              write_to_dsn(dsn, "encoded data");
 
-                             ZDS read_zds = {0};
-                             strcpy(read_zds.encoding_opts.codepage, "IBM-1047");
-                             read_zds.encoding_opts.data_type = eDataTypeText;
+                             ZDSReadOpts read_opts{ .dsname = dsn };
+                             strcpy(read_opts.zds.encoding_opts.codepage, "IBM-1047");
+                             read_opts.zds.encoding_opts.data_type = eDataTypeText;
                              std::string content;
-                             int rc = zds_read(&read_zds, dsn, content);
-                             ExpectWithContext(rc, read_zds.diag.e_msg).ToBe(0);
+                             int rc = zds_read(read_opts, content);
+                             ExpectWithContext(rc, read_opts.zds.diag.e_msg).ToBe(0);
                              Expect(content.empty()).ToBe(false);
                            });
 
@@ -1313,13 +1313,13 @@ void zds_tests()
                              create_seq(&zds, dsn);
                              write_to_dsn(dsn, "local enc data");
 
-                             ZDS read_zds = {0};
-                             strcpy(read_zds.encoding_opts.codepage, "ISO8859-1");
-                             strcpy(read_zds.encoding_opts.source_codepage, "IBM-1047");
-                             read_zds.encoding_opts.data_type = eDataTypeText;
+                             ZDSReadOpts read_opts{ .dsname = dsn };
+                             strcpy(read_opts.zds.encoding_opts.codepage, "ISO8859-1");
+                             strcpy(read_opts.zds.encoding_opts.source_codepage, "IBM-1047");
+                             read_opts.zds.encoding_opts.data_type = eDataTypeText;
                              std::string content;
-                             int rc = zds_read(&read_zds, dsn, content);
-                             ExpectWithContext(rc, read_zds.diag.e_msg).ToBe(0);
+                             int rc = zds_read(read_opts, content);
+                             ExpectWithContext(rc, read_opts.zds.diag.e_msg).ToBe(0);
                              Expect(content.empty()).ToBe(false);
                            });
 
@@ -1334,21 +1334,21 @@ void zds_tests()
 
                              // Read with codepage=UTF-8 but no source_codepage;
                              // defaults to UTF-8 source
-                             ZDS read_with_default = {0};
-                             strcpy(read_with_default.encoding_opts.codepage, "UTF-8");
-                             read_with_default.encoding_opts.data_type = eDataTypeText;
+                             ZDSReadOpts read_default_opts{ .dsname = dsn };
+                             strcpy(read_default_opts.zds.encoding_opts.codepage, "UTF-8");
+                             read_default_opts.zds.encoding_opts.data_type = eDataTypeText;
                              std::string content_default;
-                             int rc = zds_read(&read_with_default, dsn, content_default);
-                             ExpectWithContext(rc, read_with_default.diag.e_msg).ToBe(0);
+                             int rc = zds_read(read_default_opts, content_default);
+                             ExpectWithContext(rc, read_default_opts.zds.diag.e_msg).ToBe(0);
 
                              // Read again with explicit source_codepage=UTF-8
-                             ZDS read_with_explicit = {0};
-                             strcpy(read_with_explicit.encoding_opts.codepage, "UTF-8");
-                             strcpy(read_with_explicit.encoding_opts.source_codepage, "UTF-8");
-                             read_with_explicit.encoding_opts.data_type = eDataTypeText;
+                             ZDSReadOpts read_explicit_opts{ .dsname = dsn };
+                             strcpy(read_explicit_opts.zds.encoding_opts.codepage, "UTF-8");
+                             strcpy(read_explicit_opts.zds.encoding_opts.source_codepage, "UTF-8");
+                             read_explicit_opts.zds.encoding_opts.data_type = eDataTypeText;
                              std::string content_explicit;
-                             rc = zds_read(&read_with_explicit, dsn, content_explicit);
-                             ExpectWithContext(rc, read_with_explicit.diag.e_msg).ToBe(0);
+                             rc = zds_read(read_explicit_opts, content_explicit);
+                             ExpectWithContext(rc, read_explicit_opts.zds.diag.e_msg).ToBe(0);
 
                              // Both should produce the same result
                              Expect(content_default).ToBe(content_explicit);
@@ -1369,10 +1369,10 @@ void zds_tests()
                              Expect(write_etag.empty()).ToBe(false);
 
                              // Read back and compute etag independently
-                             ZDS read_zds = {0};
+                             ZDSReadOpts read_opts{ .dsname = dsn };
                              std::string content;
-                             rc = zds_read(&read_zds, dsn, content);
-                             ExpectWithContext(rc, read_zds.diag.e_msg).ToBe(0);
+                             rc = zds_read(read_opts, content);
+                             ExpectWithContext(rc, read_opts.zds.diag.e_msg).ToBe(0);
 
                              std::stringstream etag_stream;
                              etag_stream << std::hex << zut_calc_adler32_checksum(content);
@@ -1432,11 +1432,10 @@ void zds_tests()
                              rc = zut_loop_dynalloc(diag, dds);
                              ExpectWithContext(rc, diag.e_msg).ToBe(0);
 
-                             ZDS read_zds = {0};
-                             strcpy(read_zds.ddname, "INPUT");
+                             ZDSReadOpts read_opts{ .ddname = "INPUT", .dsname = dsn };
                              std::string content;
-                             rc = zds_read(&read_zds, dsn, content);
-                             ExpectWithContext(rc, read_zds.diag.e_msg).ToBe(0);
+                             rc = zds_read(read_opts, content);
+                             ExpectWithContext(rc, read_opts.zds.diag.e_msg).ToBe(0);
                              Expect(content.find("volser test") != std::string::npos).ToBe(true);
 
                              zut_free_dynalloc_dds(diag, dds);

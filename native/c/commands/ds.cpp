@@ -333,6 +333,7 @@ int handle_data_set_view(InvocationContext &context)
 {
   int rc = 0;
   std::string dsn = context.get<std::string>("dsn", "");
+  std::string ddname;
   ZDS zds{};
   std::vector<std::string> dds;
 
@@ -361,7 +362,7 @@ int handle_data_set_view(InvocationContext &context)
         context.error_stream() << diag.e_msg << std::endl;
         return RTNCD_FAILURE;
       }
-      strcpy(zds.ddname, "INPUT");
+      ddname = "INPUT";
     }
   }
 
@@ -369,15 +370,18 @@ int handle_data_set_view(InvocationContext &context)
   std::string pipe_path = context.get<std::string>("pipe-path", "");
   const auto result = obj();
 
+  ZDSReadOpts read_opts{ .zds = zds, .ddname = ddname, .dsname = dsn };
+
   if (has_pipe_path && !pipe_path.empty())
   {
     size_t content_len = 0;
-    rc = zds_read_streamed(&zds, dsn, pipe_path, &content_len);
+    rc = zds_read_streamed(read_opts, pipe_path, &content_len);
+    zds = read_opts.zds;
 
     if (context.get<bool>("return-etag", false))
     {
       std::string temp_content;
-      auto read_rc = zds_read(&zds, dsn, temp_content);
+      auto read_rc = zds_read(read_opts, temp_content);
       if (read_rc == 0)
       {
         const auto etag = zut_calc_adler32_checksum(temp_content);
@@ -400,7 +404,8 @@ int handle_data_set_view(InvocationContext &context)
   else
   {
     std::string response;
-    rc = zds_read(&zds, dsn, response);
+    rc = zds_read(read_opts, response);
+    zds = read_opts.zds;
     if (0 != rc)
     {
       context.error_stream() << "Error: could not read data set: '" << dsn << "' rc: '" << rc << "'" << std::endl;
@@ -931,8 +936,9 @@ int handle_data_set_compress(InvocationContext &context)
 
   // read output from iebcopy
   std::string output;
-  strcpy(zds.ddname, "SYSPRINT");
-  rc = zds_read(&zds, dsn, output);
+  ZDSReadOpts iebcopy_read_opts{ .zds = zds, .ddname = "SYSPRINT", .dsname = dsn };
+  rc = zds_read(iebcopy_read_opts, output);
+  zds = iebcopy_read_opts.zds;
   if (0 != rc)
   {
     context.error_stream() << "Error: could not read from dd: '" << "sysprint" << "' rc: '" << rc << "'" << std::endl;
