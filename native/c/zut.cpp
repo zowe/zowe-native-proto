@@ -28,6 +28,7 @@
 #include <ios>
 #include "zuttype.h"
 #include <vector>
+#include <array>
 #include <spawn.h>
 #include <sys/wait.h>
 #include <poll.h>
@@ -248,6 +249,61 @@ int zut_run_program(const std::string &program, const std::vector<std::string> &
   return zut_private_run_program(program, args, response, dummy, true);
 }
 
+static void zut_private_drain_fd(struct pollfd &pfd, std::string &output, pid_t pid)
+{
+  if (pfd.fd == -1)
+  {
+    return;
+  }
+
+  if (pfd.revents & POLLIN)
+  {
+    std::array<char, 4096> buf;
+    ssize_t n = read(pfd.fd, buf.data(), buf.size());
+    if (n > 0)
+    {
+      output.append(buf.data(), n);
+    }
+    else if (0 == n)
+    {
+      pfd.fd = -1;
+    }
+    else if (-1 == n && EINTR != errno)
+    {
+      kill(pid, SIGKILL);
+      pfd.fd = -1;
+    }
+    return;
+  }
+
+  if (pfd.revents & (POLLHUP | POLLERR))
+  {
+    pfd.fd = -1;
+  }
+}
+
+static void zut_private_drain_pipes(std::array<struct pollfd, 2> &fds,
+                                    std::string &stdout_response,
+                                    std::string &stderr_response,
+                                    pid_t pid)
+{
+  while (fds[0].fd != -1 || fds[1].fd != -1)
+  {
+    if (-1 == poll(fds.data(), fds.size(), -1))
+    {
+      if (EINTR != errno)
+      {
+        kill(pid, SIGKILL);
+        break;
+      }
+      continue;
+    }
+
+    zut_private_drain_fd(fds[0], stdout_response, pid);
+    zut_private_drain_fd(fds[1], stderr_response, pid);
+  }
+}
+
 int zut_spawn_shell_command(const std::string &command, std::string &stdout_response, std::string &stderr_response)
 {
   stdout_response.clear();
@@ -259,30 +315,43 @@ int zut_spawn_shell_command(const std::string &command, std::string &stdout_resp
     return RTNCD_FAILURE;
   }
 
-  int stdout_pipe[2];
-  int stderr_pipe[2];
-  if (-1 == pipe(stdout_pipe))
+  std::array<int, 2> stdout_pipe;
+  std::array<int, 2> stderr_pipe;
+  if (-1 == pipe(stdout_pipe.data()))
   {
     return RTNCD_FAILURE;
   }
-  if (-1 == pipe(stderr_pipe))
+  if (-1 == pipe(stderr_pipe.data()))
   {
     close(stdout_pipe[0]);
     close(stdout_pipe[1]);
     return RTNCD_FAILURE;
   }
 
-  // fd_map: child fd 0 = stdin (unchanged), fd 1 = stdout pipe write end, fd 2 = stderr pipe write end
-  int fd_map[3] = {STDIN_FILENO, stdout_pipe[1], stderr_pipe[1]};
-
+  std::array<int, 3> fd_map = {STDIN_FILENO, stdout_pipe[1], stderr_pipe[1]};
   struct inheritance inherit = {};
+  const std::array<const char *, 4> argv = {"/bin/sh", "-c", command.c_str(), nullptr};
 
-  const char *argv[] = {"/bin/sh", "-c", command.c_str(), nullptr};
+  extern char **environ;
+  std::vector<const char *> env_vec;
+  bool has_bpx_shareas = false;
+  for (char **ep = environ; ep && *ep; ++ep)
+  {
+    if (0 == strncmp(*ep, "_BPX_SHAREAS=", 13))
+    {
+      has_bpx_shareas = true;
+    }
+    env_vec.push_back(*ep);
+  }
+  if (!has_bpx_shareas)
+  {
+    env_vec.push_back("_BPX_SHAREAS=YES");
+  }
+  env_vec.push_back(nullptr);
 
-  // Pass _BPX_SHAREAS=YES so the child runs as a new TCB in the same address space
-  const char *envp[] = {"_BPX_SHAREAS=YES", nullptr};
-
-  pid_t pid = spawn("/bin/sh", 3, fd_map, &inherit, argv, envp);
+  pid_t pid = spawn("/bin/sh", 3, fd_map.data(), &inherit,
+                    const_cast<char *const *>(argv.data()),
+                    const_cast<char *const *>(env_vec.data()));
 
   if (-1 == pid)
   {
@@ -293,63 +362,11 @@ int zut_spawn_shell_command(const std::string &command, std::string &stdout_resp
     return RTNCD_FAILURE;
   }
 
-  // Parent: close write ends
   close(stdout_pipe[1]);
   close(stderr_pipe[1]);
 
-  struct pollfd fds[2];
-  fds[0].fd = stdout_pipe[0];
-  fds[0].events = POLLIN;
-  fds[1].fd = stderr_pipe[0];
-  fds[1].events = POLLIN;
-
-  char buffer[4096];
-  ssize_t bytes_read;
-
-  while (fds[0].fd != -1 || fds[1].fd != -1)
-  {
-    if (-1 == poll(fds, 2, -1))
-    {
-      if (EINTR != errno)
-      {
-        kill(pid, SIGKILL);
-        break;
-      }
-      else
-      {
-        continue;
-      }
-    }
-
-    for (int i = 0; i < 2; i++)
-    {
-      if (fds[i].fd != -1)
-      {
-        std::string &output = ((0 == i) ? stdout_response : stderr_response);
-        if (fds[i].revents & POLLIN)
-        {
-          bytes_read = read(fds[i].fd, buffer, sizeof(buffer));
-          if (bytes_read > 0)
-          {
-            output.append(buffer, bytes_read);
-          }
-          else if (0 == bytes_read)
-          {
-            fds[i].fd = -1;
-          }
-          else if (-1 == bytes_read && EINTR != errno)
-          {
-            kill(pid, SIGKILL);
-            fds[i].fd = -1;
-          }
-        }
-        else if (fds[i].revents & (POLLHUP | POLLERR))
-        {
-          fds[i].fd = -1;
-        }
-      }
-    }
-  }
+  std::array<struct pollfd, 2> fds = {{{stdout_pipe[0], POLLIN, 0}, {stderr_pipe[0], POLLIN, 0}}};
+  zut_private_drain_pipes(fds, stdout_response, stderr_response, pid);
 
   zut_strip_final_newline(stdout_response);
   zut_strip_final_newline(stderr_response);
