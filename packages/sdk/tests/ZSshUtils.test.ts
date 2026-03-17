@@ -62,6 +62,18 @@ describe("ZSshUtils", () => {
             password: "pass",
         };
 
+        function setupSftpMocks(sftpMock: object, sshMock: { execCommand: ReturnType<typeof vi.fn> }, options?: { mockGetBinDir?: boolean; mockExistsSync?: boolean }): void {
+            vi.spyOn(ZSshUtils as any, "sftp").mockImplementation(
+                async (_session: any, callback: (sftp: any, ssh: any) => Promise<any>) => callback(sftpMock, sshMock),
+            );
+            if (options?.mockGetBinDir !== false) {
+                vi.spyOn(ZSshUtils as any, "getBinDir").mockReturnValue("/fake/bin");
+            }
+            if (options?.mockExistsSync !== false) {
+                vi.spyOn(fs, "existsSync").mockReturnValue(true);
+            }
+        }
+
         beforeEach(() => {
             vi.spyOn(Logger, "getAppLogger").mockReturnValue({
                 debug: vi.fn(),
@@ -76,15 +88,8 @@ describe("ZSshUtils", () => {
             const fastPutMock = vi.fn((_local: string, _remote: string, _opts: any, cb: (err?: Error) => void) => cb());
             const unlinkMock = vi.fn((_path: string, cb: (err?: Error) => void) => cb());
             const sftpMock = { fastPut: fastPutMock, unlink: unlinkMock };
-            const sshMock = {
-                execCommand: vi.fn().mockResolvedValue({ code: 0, stdout: "", stderr: "" }),
-            };
-
-            vi.spyOn(ZSshUtils as any, "sftp").mockImplementation(
-                async (_session: any, callback: (sftp: any, ssh: any) => Promise<any>) => callback(sftpMock, sshMock),
-            );
-            vi.spyOn(ZSshUtils as any, "getBinDir").mockReturnValue("/fake/bin");
-            vi.spyOn(fs, "existsSync").mockReturnValue(true);
+            const sshMock = { execCommand: vi.fn().mockResolvedValue({ code: 0, stdout: "", stderr: "" }) };
+            setupSftpMocks(sftpMock, sshMock);
 
             const result = await ZSshUtils.installServer(new SshSession(fakeSession), "~/.zowe-server");
             expect(result).toBe(true);
@@ -102,15 +107,8 @@ describe("ZSshUtils", () => {
             });
             const unlinkMock = vi.fn((_path: string, cb: (err?: Error) => void) => cb());
             const sftpMock = { fastPut: fastPutMock, unlink: unlinkMock };
-            const sshMock = {
-                execCommand: vi.fn().mockResolvedValue({ code: 0, stdout: "", stderr: "" }),
-            };
-
-            vi.spyOn(ZSshUtils as any, "sftp").mockImplementation(
-                async (_session: any, callback: (sftp: any, ssh: any) => Promise<any>) => callback(sftpMock, sshMock),
-            );
-            vi.spyOn(ZSshUtils as any, "getBinDir").mockReturnValue("/fake/bin");
-            vi.spyOn(fs, "existsSync").mockReturnValue(true);
+            const sshMock = { execCommand: vi.fn().mockResolvedValue({ code: 0, stdout: "", stderr: "" }) };
+            setupSftpMocks(sftpMock, sshMock);
 
             const progressMock = vi.fn();
             const result = await ZSshUtils.installServer(new SshSession(fakeSession), "~/.zowe-server", {
@@ -127,15 +125,8 @@ describe("ZSshUtils", () => {
                 cb(new Error("upload failed")),
             );
             const sftpMock = { fastPut: fastPutMock };
-            const sshMock = {
-                execCommand: vi.fn().mockResolvedValue({ code: 0, stdout: "", stderr: "" }),
-            };
-
-            vi.spyOn(ZSshUtils as any, "sftp").mockImplementation(
-                async (_session: any, callback: (sftp: any, ssh: any) => Promise<any>) => callback(sftpMock, sshMock),
-            );
-            vi.spyOn(ZSshUtils as any, "getBinDir").mockReturnValue("/fake/bin");
-            vi.spyOn(fs, "existsSync").mockReturnValue(true);
+            const sshMock = { execCommand: vi.fn().mockResolvedValue({ code: 0, stdout: "", stderr: "" }) };
+            setupSftpMocks(sftpMock, sshMock);
 
             const result = await ZSshUtils.installServer(new SshSession(fakeSession), "~/.zowe-server");
             expect(result).toBe(false);
@@ -144,15 +135,8 @@ describe("ZSshUtils", () => {
         it("should throw ImperativeError when password is expired (FOTS1668)", async () => {
             const expiredStderr = "FOTS1668 WARNING: Your password has expired.\nFOTS1669 Password change required but no TTY available.";
             const sftpMock = { fastPut: vi.fn() };
-            const sshMock = {
-                execCommand: vi.fn().mockResolvedValue({ code: 1, stderr: expiredStderr, stdout: "" }),
-            };
-
-            vi.spyOn(ZSshUtils as any, "sftp").mockImplementation(
-                async (_session: any, callback: (sftp: any, ssh: any) => Promise<any>) => callback(sftpMock, sshMock),
-            );
-            vi.spyOn(ZSshUtils as any, "getBinDir").mockReturnValue("/fake/bin");
-            vi.spyOn(fs, "existsSync").mockReturnValue(true);
+            const sshMock = { execCommand: vi.fn().mockResolvedValue({ code: 1, stderr: expiredStderr, stdout: "" }) };
+            setupSftpMocks(sftpMock, sshMock);
 
             await expect(ZSshUtils.installServer(new SshSession(fakeSession), "~/.zowe-server")).rejects.toMatchObject({
                 message: expect.stringContaining("Password expired"),
@@ -163,13 +147,8 @@ describe("ZSshUtils", () => {
         it("should throw ImperativeError on uninstall when password is expired", async () => {
             const expiredStderr = "FOTS1668 WARNING: Your password has expired.\nFOTS1669 Password change required but no TTY available.";
             const sftpMock = {};
-            const sshMock = {
-                execCommand: vi.fn().mockResolvedValue({ code: 1, stderr: expiredStderr, stdout: "" }),
-            };
-
-            vi.spyOn(ZSshUtils as any, "sftp").mockImplementation(
-                async (_session: any, callback: (sftp: any, ssh: any) => Promise<any>) => callback(sftpMock, sshMock),
-            );
+            const sshMock = { execCommand: vi.fn().mockResolvedValue({ code: 1, stderr: expiredStderr, stdout: "" }) };
+            setupSftpMocks(sftpMock, sshMock, { mockGetBinDir: false, mockExistsSync: false });
 
             await expect(ZSshUtils.uninstallServer(new SshSession(fakeSession), "~/.zowe-server")).rejects.toMatchObject({
                 message: expect.stringContaining("Password expired"),
