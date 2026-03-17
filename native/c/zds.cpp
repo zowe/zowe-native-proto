@@ -636,22 +636,37 @@ static DscbAttributes zds_resolve_dscb(const ZDSReadOpts &opts)
   return opts.dsname.empty() ? DscbAttributes{} : zds_get_dscb_attributes(opts.dsname);
 }
 
-int zds_read(const ZDSReadOpts &opts, std::string &response)
+/**
+ * Validates the read options and returns an error code if the options are invalid.
+ *
+ * @param opts read options to validate
+ * @param caller name of the caller function
+ * @throw std::invalid_argument if the opts.zds pointer is nullptr
+ * @return RTNCD_SUCCESS if the options are valid, RTNCD_FAILURE otherwise
+ */
+static int zds_validate_read_opts(const ZDSReadOpts &opts, const char *caller)
 {
   if (opts.zds == nullptr)
   {
-    throw std::invalid_argument("zds_read: valid ZDS pointer is required in ZDSReadOpts.zds");
+    throw std::invalid_argument(std::string(caller) + ": valid ZDS pointer is required in ZDSReadOpts.zds");
+  }
+  if (opts.dsname.empty() && opts.ddname.empty())
+  {
+    opts.zds->diag.e_msg_len = sprintf(opts.zds->diag.e_msg, "Either a dsname or ddname must be provided");
+    return RTNCD_FAILURE;
+  }
+  return RTNCD_SUCCESS;
+}
+
+int zds_read(const ZDSReadOpts &opts, std::string &response)
+{
+  const int vrc = zds_validate_read_opts(opts, "zds_read");
+  if (vrc != RTNCD_SUCCESS)
+  {
+    return vrc;
   }
 
   ZDS *zds = opts.zds;
-  const std::string &dsn = opts.dsname;
-
-  if (dsn.empty() && opts.ddname.empty())
-  {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Either a dsname or ddname must be provided");
-    return RTNCD_FAILURE;
-  }
-
   const std::string dsname = zds_resolve_dsname(opts);
   const auto is_dd = !opts.ddname.empty();
 
@@ -3051,19 +3066,13 @@ int zds_list_data_sets(ZDS *zds, std::string dsn, std::vector<ZDSEntry> &dataset
  */
 int zds_read_streamed(const ZDSReadOpts &opts, const std::string &pipe, size_t *content_len)
 {
-  if (opts.zds == nullptr)
+  const int vrc = zds_validate_read_opts(opts, "zds_read_streamed");
+  if (vrc != RTNCD_SUCCESS)
   {
-    throw std::invalid_argument("zds_read_streamed: valid ZDS pointer is required in ZDSReadOpts.zds");
+    return vrc;
   }
 
   ZDS *zds = opts.zds;
-  const std::string &dsn = opts.dsname;
-
-  if (dsn.empty() && opts.ddname.empty())
-  {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Either a dsname or ddname must be provided");
-    return RTNCD_FAILURE;
-  }
 
   if (content_len == nullptr)
   {
