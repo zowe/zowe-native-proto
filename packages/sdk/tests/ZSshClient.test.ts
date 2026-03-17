@@ -412,6 +412,30 @@ describe("ZSshClient", () => {
         });
     });
 
+    describe("uss.issueCmd", () => {
+        it("should send unixCommand request and return command output", async () => {
+            const writeMock = vi.fn();
+            const client: ZSshClient = new (ZSshClient as any)();
+            (client as any).mSshStream = { stdin: { write: writeMock } };
+
+            const response = client.uss.issueCmd({ commandText: "whoami" });
+            const rpcResponse: RpcResponse = {
+                jsonrpc: "2.0",
+                result: { success: true, data: "admin" },
+                id: 1,
+            };
+            (client as any).processResponses(`${JSON.stringify(rpcResponse)}\n`);
+
+            const result = await response;
+            expect(result.success).toBe(true);
+            expect(result.data).toBe("admin");
+
+            const sentRequest = JSON.parse(writeMock.mock.calls[0][0]);
+            expect(sentRequest.method).toBe("unixCommand");
+            expect(sentRequest.params.commandText).toBe("whoami");
+        });
+    });
+
     describe("request with stream", () => {
         it("should register stream when request contains stream", async () => {
             const mockStream = new Readable({ read() {} });
