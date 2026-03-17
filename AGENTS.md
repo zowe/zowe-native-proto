@@ -145,6 +145,29 @@ After creating or pushing to a pull request, check SonarCloud for issues:
 
 Version bumps across `package.json` files are handled by a separate CI step (`Bump version to x.y.z [ci skip]`). Do not manually change `version` fields in `package.json` unless explicitly asked.
 
+## z/OS SSH File Transfer & Encoding
+
+The SDK deploys the server binary (`server.pax.Z`) to z/OS over SFTP (`sftp.fastPut`), which transfers binary data without EBCDIC conversion.
+
+### SFTP vs SCP on z/OS
+
+| Method | Binary-safe by default? | Notes |
+|--------|------------------------|-------|
+| **SFTP** (`sftp.fastPut`) | Yes | Transfers binary by default. Supports progress callbacks. Used by `installServer`. |
+| **SCP** | **No** | Performs automatic EBCDIC-to-ASCII conversion on z/OS. Will corrupt binary files like `.pax.Z`. Never use for binary transfers. |
+
+### `_BPXK_AUTOCVT` environment variable
+
+Controls automatic EBCDIC conversion for tagged files on z/OS USS:
+
+- `OFF` — no automatic conversion (safe for binary)
+- `ON` — converts tagged files during I/O
+- `ALL` — converts all files including untagged ones
+
+### Expired password detection
+
+When an SSH session connects with an expired password, z/OS emits `FOTS1668`/`FOTS1669` on stderr. This can masquerade as SFTP failures or generic command errors. `ZSshUtils` checks for these codes after every `execCommand` call and throws an `ImperativeError` with `errorCode: "EPASSWD_EXPIRED"` so the client gets a clear, actionable message instead of a cryptic failure.
+
 ## DSLEVEL Pattern (List Data Sets)
 
 The dataset list pattern is called DSLEVEL. It is not the same as grep regex or Windows filename masks; qualifiers are separated by dots and wildcards apply per qualifier or across qualifiers.
@@ -159,3 +182,14 @@ Wildcards:
 - `%` — any single character in that position (e.g. `USER.T%ST` matches `USER.TEST`).
 - `*` — any characters within that one qualifier only (e.g. `USER.J*.OLD` matches `USER.JCL.OLD` but not `USER.JCL.VERY.OLD`).
 - `**` — any characters across any number of qualifiers (e.g. `USER.**.OLD` matches both `USER.JCL.OLD` and `USER.JCL.VERY.OLD`).
+
+## Maintaining This Guide
+
+When making changes that involve **important learnings or architectural decisions**, update this `AGENTS.md` (or the relevant sub-project `AGENTS.md` such as `native/AGENTS.md`) as part of the same change. Examples of what to capture:
+
+- Platform-specific gotchas (e.g. z/OS encoding, SSH subsystem availability)
+- Architectural patterns and their rationale (e.g. fallback strategies, retry logic)
+- Non-obvious constraints discovered during implementation
+- API quirks in dependencies (e.g. `node-ssh` exposing `connection` as a public property)
+
+Keep entries concise and factual. Group related knowledge under a descriptive `##` heading. This guide is consumed by AI agents and human developers alike — accuracy matters more than prose.
