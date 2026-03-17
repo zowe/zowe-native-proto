@@ -47,11 +47,11 @@ export class ClientChannel extends EventEmitter {
             write: (chunk: Buffer | string, _encoding, callback) => {
                 const data = typeof chunk === "string" ? Buffer.from(chunk) : chunk;
                 this.stdinBytes += data.length;
-                this.debug(`russh: stdin write ${data.length} bytes (total ${this.stdinBytes})`);
+                this.debug(`russh: [ch ${this.inner.id}] stdin write ${data.length} bytes (total ${this.stdinBytes})`);
                 inner.write(new Uint8Array(data)).then(() => callback(), callback);
             },
             final: (callback) => {
-                this.debug(`russh: stdin EOF sent (total written ${this.stdinBytes} bytes)`);
+                this.debug(`russh: [ch ${this.inner.id}] stdin EOF sent (total written ${this.stdinBytes} bytes)`);
                 inner.eof().then(() => callback(), callback);
             },
         });
@@ -72,7 +72,7 @@ export class ClientChannel extends EventEmitter {
      * Close the channel and clean up subscriptions.
      */
     public close(): void {
-        this.debug("russh: channel close requested");
+        this.debug(`russh: [ch ${this.inner.id}] close requested`);
         this.cleanup();
         this.inner.close().catch(() => {});
     }
@@ -85,7 +85,7 @@ export class ClientChannel extends EventEmitter {
             },
             complete: () => this.cleanup(),
             error: (err) => {
-                this.debug(`russh: stdout stream error: ${err.message}`);
+                this.debug(`russh: [ch ${this.inner.id}] stdout stream error: ${err.message}`);
                 this.stdout.destroy(err);
             },
         });
@@ -99,18 +99,18 @@ export class ClientChannel extends EventEmitter {
             },
             complete: () => this.cleanup(),
             error: (err) => {
-                this.debug(`russh: stderr stream error: ${err.message}`);
+                this.debug(`russh: [ch ${this.inner.id}] stderr stream error: ${err.message}`);
                 this.stderr.destroy(err);
             },
         });
 
         const eofSub = this.inner.eof$.subscribe(() => {
-            this.debug(`russh: remote EOF (stdout ${this.stdoutBytes} bytes, stderr ${this.stderrBytes} bytes)`);
+            this.debug(`russh: [ch ${this.inner.id}] remote EOF (stdout ${this.stdoutBytes} bytes, stderr ${this.stderrBytes} bytes)`);
             this.cleanup();
         });
 
         const closeSub = this.inner.closed$.subscribe(() => {
-            this.debug("russh: channel closed by remote");
+            this.debug(`russh: [ch ${this.inner.id}] closed by remote`);
             this.cleanup();
             this.emit("close");
         });

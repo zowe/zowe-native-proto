@@ -71,9 +71,7 @@ module.exports = (_env, argv) => {
     plugins: [
       new TsCheckerRspackPlugin(),
       new rspack.CopyRspackPlugin({
-        patterns: [
-          { from: '../sdk/bin', to: '../bin', noErrorOnMissing: !isProd, force: true },
-        ],
+        patterns: [{ from: '../sdk/bin', to: '../bin', noErrorOnMissing: !isProd, force: true }],
       }),
     ],
     stats: {

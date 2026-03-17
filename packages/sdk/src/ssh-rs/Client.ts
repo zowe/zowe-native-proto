@@ -158,7 +158,7 @@ export class Client extends EventEmitter {
         const newCh = await this.sshClient!.openSessionChannel();
         const channel = await this.sshClient!.activateChannel(newCh);
         await channel.requestExec(command);
-        this.debug("russh: exec channel opened");
+        this.debug(`russh: [ch ${channel.id}] exec channel opened`);
         return new ClientChannel(channel, this.debug);
     }
 }
