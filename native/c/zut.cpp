@@ -35,6 +35,8 @@
 #include <_Nascii.h>
 #include "iefjsqry.h"
 
+extern char **environ;
+
 void zut_strip_final_newline(std::string &input)
 {
   if (!input.empty() && input.back() == '\n')
@@ -330,12 +332,11 @@ int zut_spawn_shell_command(const std::string &command, std::string &stdout_resp
 
   std::array<int, 3> fd_map = {STDIN_FILENO, stdout_pipe[1], stderr_pipe[1]};
   struct inheritance inherit = {};
-  const std::array<const char *, 4> argv = {"/bin/sh", "-c", command.c_str(), nullptr};
+  const char *argv[] = {"/bin/sh", "-c", command.c_str(), nullptr};
 
-  extern char **environ;
   std::vector<const char *> env_vec;
   bool has_bpx_shareas = false;
-  for (char **ep = environ; ep && *ep; ++ep)
+  for (char **ep = environ; ep != nullptr && *ep != nullptr; ++ep)
   {
     if (0 == strncmp(*ep, "_BPX_SHAREAS=", 13))
     {
@@ -349,9 +350,7 @@ int zut_spawn_shell_command(const std::string &command, std::string &stdout_resp
   }
   env_vec.push_back(nullptr);
 
-  pid_t pid = spawn("/bin/sh", 3, fd_map.data(), &inherit,
-                    const_cast<char *const *>(argv.data()),
-                    const_cast<char *const *>(env_vec.data()));
+  pid_t pid = spawn("/bin/sh", 3, fd_map.data(), &inherit, argv, env_vec.data());
 
   if (-1 == pid)
   {
