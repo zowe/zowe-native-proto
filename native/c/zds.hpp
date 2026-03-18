@@ -155,9 +155,9 @@ struct ZDSReadOpts
 };
 
 /**
- * @brief Read data from a z/OS data set or DD
+ * @brief Read data from a z/OS data set or DD.
  *
- * @param opts read options containing ZDS state and either a dsname or ddname
+ * @param opts read options containing ZDS state and either a dsname or ddname. If both ddname and dsname are provided, ddname takes precedence.
  * @param response data read
  * @return int 0 for success; non zero otherwise
  */
@@ -320,9 +320,9 @@ int zds_delete_dsn(ZDS *zds, std::string dsn);
 int zdsReadDynalloc(const std::string &, const std::string &, const std::string &, std::string &); // NOTE(Kelosky): testing only
 
 /**
- * @brief Read data from a z/OS data set in streaming mode
+ * @brief Read data from a z/OS data set in streaming mode.
  *
- * @param opts read options containing ZDS state and either a dsname or ddname
+ * @param opts read options containing ZDS state and either a dsname or ddname. If both ddname and dsname are provided, ddname takes precedence.
  * @param pipe name of the output pipe
  * @param content_len pointer where the length of the data set contents will be stored
  * @return int 0 for success; non zero otherwise
