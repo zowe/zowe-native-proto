@@ -1537,8 +1537,17 @@ inline void escape_xml(std::string &data)
     case '>':
       result += "&gt;";
       break;
+    case '\t':
+      result += "&#9;";
+      break;
+    case '\n':
+      result += "&#10;";
+      break;
+    case '\r':
+      result += "&#13;";
+      break;
     default:
-      if (std::iscntrl(ch) && ch != '\t' && ch != '\n' && ch != '\r')
+      if (std::iscntrl(ch))
       {
         char esc[9];
         std::snprintf(esc, sizeof(esc), "&#x%02X;", ch);
