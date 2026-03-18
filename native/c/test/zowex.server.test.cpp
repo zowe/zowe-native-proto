@@ -1,0 +1,189 @@
+/**
+ * This program and the accompanying materials are made available under the terms of the
+ * Eclipse Public License v2.0 which accompanies this distribution, and is available at
+ * https://www.eclipse.org/legal/epl-v20.html
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ *
+ * Copyright Contributors to the Zowe Project.
+ *
+ */
+
+#include <stdexcept>
+#include <csignal>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <sys/stat.h>
+#include <fstream>
+#include <fcntl.h>
+#include "ztest.hpp"
+#include "../ztype.h"
+#include "../commands/server.hpp"
+#include "zowex.server.test.hpp"
+
+using namespace ztst;
+
+struct ServerHandle
+{
+  pid_t pid;
+  FILE *output_stream;
+  FILE *input_stream;
+};
+
+std::string read_line_from_server(ServerHandle &handle, int timeout_ms = 5000)
+{
+  fd_set read_fds;
+  struct timeval timeout;
+  int fd = fileno(handle.output_stream);
+  if (fd == -1)
+  {
+    throw std::runtime_error("Failed to get file descriptor");
+  }
+
+  FD_ZERO(&read_fds);
+  FD_SET(fd, &read_fds);
+
+  timeout.tv_sec = timeout_ms / 1000;
+  timeout.tv_usec = (timeout_ms % 1000) * 1000;
+
+  int result = select(fd + 1, &read_fds, nullptr, nullptr, &timeout);
+  if (result <= 0)
+  {
+    throw std::runtime_error("Timeout waiting for server output");
+  }
+
+  char buffer[512];
+  if (fgets(buffer, sizeof(buffer), handle.output_stream))
+  {
+    return std::string(buffer);
+  }
+
+  throw std::runtime_error("Failed to read from server");
+}
+
+void write_to_server(ServerHandle &handle, const std::string &input)
+{
+  if (fputs(input.c_str(), handle.input_stream) == EOF || fflush(handle.input_stream) != 0)
+  {
+    throw std::runtime_error("Failed to write to server");
+  }
+}
+
+ServerHandle start_server(const std::string &command, bool read_ready_message = false)
+{
+  int output_pipe[2];
+  int input_pipe[2];
+
+  if (pipe(output_pipe) == -1 || pipe(input_pipe) == -1)
+  {
+    throw std::runtime_error("Failed to create pipes");
+  }
+
+  pid_t pid = fork();
+  if (pid == -1)
+  {
+    throw std::runtime_error("Failed to fork process");
+  }
+
+  if (pid == 0)
+  {
+    close(output_pipe[0]);
+    close(input_pipe[1]);
+
+    dup2(input_pipe[0], STDIN_FILENO);
+    dup2(output_pipe[1], STDOUT_FILENO);
+    dup2(output_pipe[1], STDERR_FILENO);
+
+    close(input_pipe[0]);
+    close(output_pipe[1]);
+
+    const char *shell = getenv("SHELL") ? getenv("SHELL") : "/bin/sh";
+    execl(shell, shell, "-c", command.c_str(), (char *)nullptr);
+    _exit(127);
+  }
+
+  close(output_pipe[1]);
+  close(input_pipe[0]);
+
+  FILE *output_stream = fdopen(output_pipe[0], "r");
+  FILE *input_stream = fdopen(input_pipe[1], "w");
+
+  if (!output_stream || !input_stream)
+  {
+    if (output_stream)
+      fclose(output_stream);
+    if (input_stream)
+      fclose(input_stream);
+    kill(pid, SIGKILL);
+    waitpid(pid, nullptr, 0);
+    throw std::runtime_error("Failed to open streams");
+  }
+
+  auto handle = ServerHandle{pid, output_stream, input_stream};
+  if (read_ready_message)
+  {
+    read_line_from_server(handle);
+  }
+
+  return handle;
+}
+
+void stop_server(ServerHandle &handle)
+{
+  kill(handle.pid, SIGINT);
+  fclose(handle.input_stream);
+  fclose(handle.output_stream);
+  waitpid(handle.pid, nullptr, 0);
+}
+
+const std::string zowex_dir = "./../build-out";
+const std::string zowex_server_command = zowex_dir + "/zowex server";
+
+void zowex_server_tests()
+{
+
+  describe("zowex server tests",
+           []() -> void
+           {
+             it("should print ready message on startup",
+                []() -> void
+                {
+                  ServerHandle server = start_server(zowex_server_command);
+                  std::string response = read_line_from_server(server);
+                  stop_server(server);
+
+                  Expect(response).ToContain("\"checksums\":null");
+                  Expect(response).ToContain("\"message\":\"zowex server is ready to accept input\"");
+                  Expect(response).ToContain("\"status\":\"ready\"");
+                });
+             it("should print ready message with checksums",
+                []() -> void
+                {
+                  std::string checksums_file = zowex_dir + "/checksums.asc";
+                  unlink(checksums_file.c_str());
+                  std::ofstream outfile(checksums_file);
+                  outfile << "123 abc" << std::endl;
+
+                  ServerHandle server = start_server(zowex_server_command);
+                  std::string response = read_line_from_server(server);
+                  stop_server(server);
+
+                  Expect(response).ToContain("\"checksums\":{\"abc\":\"123\"}");
+                  Expect(response).ToContain("\"message\":\"zowex server is ready to accept input\"");
+                  Expect(response).ToContain("\"status\":\"ready\"");
+
+                  unlink(checksums_file.c_str());
+                });
+             it("should return error message for invalid JSON input",
+                []() -> void
+                {
+                  ServerHandle server = start_server(zowex_server_command, true);
+                  write_to_server(server, "invalid\n");
+                  std::string response = read_line_from_server(server);
+                  stop_server(server);
+
+                  Expect(response).ToContain("\"code\":-32700");
+                  Expect(response).ToContain("\"message\":\"Failed to parse command request\"");
+                });
+           });
+}

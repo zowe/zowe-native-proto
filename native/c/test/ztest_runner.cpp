@@ -24,31 +24,36 @@
 #include "parser.test.hpp"
 #include "zstd.test.hpp"
 #include "zjson.test.hpp"
+#include "zowex.server.test.hpp"
+#include "worker.test.hpp"
 #include "ztest.hpp"
 
 using namespace ztst;
 
+#pragma runopts("TRAP(ON,NOSPIE)")
 int main(int argc, char *argv[])
 {
   int rc = tests(
       argc, argv,
       []() -> void
       {
-      zowex_uss_tests();
-      zut_tests();
-      zjb_tests();
-      zds_tests();
-      zcn_tests();
-      zstorage_tests();
-      zrecovery_tests();
-      zmetal_tests();
-      zusf_tests();
-      zbase64_tests();
-      zowex_tests();
-      zlogger_tests();
-      parser_tests();
-      zstd_tests();
-      zjson_tests();
+        zowex_uss_tests();
+        zut_tests();
+        zjb_tests();
+        zds_tests();
+        zcn_tests();
+        zstorage_tests();
+        zrecovery_tests();
+        zmetal_tests();
+        zusf_tests();
+        zbase64_tests();
+        zowex_tests();
+        zlogger_tests();
+        parser_tests();
+        zstd_tests();
+        zjson_tests();
+        zowex_server_tests();
+        worker_tests();
       });
 
   return rc;

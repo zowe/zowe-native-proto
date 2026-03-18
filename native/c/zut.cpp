@@ -15,61 +15,236 @@
 
 #define _OPEN_SYS_EXT
 #include <sys/ps.h>
+#include <cerrno>
 #include <cstdio>
 #include <cstring>
-#include <fstream>
+#include <csignal>
 #include <iostream>
-#include <iterator>
-#include <sstream>
 #include <string>
-#include <iomanip>
 #include <algorithm>
 #include <unistd.h>
 #include "zut.hpp"
 #include "zutm.h"
-#include "zutm31.h"
 #include <ios>
-#include "zdyn.h"
 #include "zuttype.h"
+#include <vector>
+#include <sys/wait.h>
+#include <poll.h>
 #include <_Nascii.h>
+#include "iefjsqry.h"
 
-int zut_run_shell_command(std::string command, std::string &response)
+void zut_strip_final_newline(std::string &input)
 {
-  int rc = 0;
-  std::string response_raw;
-  FILE *cmd = popen(command.c_str(), "r");
-  if (nullptr == cmd)
+  if (!input.empty() && input.back() == '\n')
+  {
+    input.pop_back();
+  }
+}
+
+int zut_private_run_program(const std::string &program, const std::vector<std::string> &args, std::string &stdout_response, std::string &stderr_response, bool merge_streams)
+{
+
+  stdout_response.clear();
+  stderr_response.clear();
+
+  if (0 == program.size())
+  {
+    if (merge_streams)
+    {
+      stdout_response = "Error: You must specify a program to run.";
+    }
+    else
+    {
+      stderr_response = "Error: You must specify a program to run.";
+    }
+    return RTNCD_FAILURE;
+  }
+
+  // pipefd[0] is for reading, pipefd[1] is for writing
+  int stdout_pipe[2];
+  int stderr_pipe[2];
+  if (-1 == pipe(stdout_pipe))
   {
     return RTNCD_FAILURE;
   }
 
-  char buffer[256] = {0};
-  while (fgets(buffer, sizeof(buffer), cmd) != nullptr)
+  if (-1 == pipe(stderr_pipe))
   {
-    response_raw += std::string(buffer);
+    close(stdout_pipe[0]);
+    close(stdout_pipe[1]);
+    return RTNCD_FAILURE;
   }
 
-  std::stringstream response_ss(response_raw);
+  // execvp replaces the current process in-place. so we fork and run execvp in the child process
+  pid_t pid = fork();
 
-  std::string line;
-  auto index = 0;
-
-  while (std::getline(response_ss, line))
+  // Fork failed
+  if (-1 == pid)
   {
-    index++;
-    if (index > 1)
+    close(stdout_pipe[0]);
+    close(stdout_pipe[1]);
+    close(stderr_pipe[0]);
+    close(stderr_pipe[1]);
+    return RTNCD_FAILURE;
+  }
+
+  if (0 == pid)
+  {
+    // --- CHILD PROCESS ---
+    // doesn't read from pipes
+    close(stdout_pipe[0]);
+    close(stderr_pipe[0]);
+
+    if (merge_streams)
     {
-      response += line + '\n';
+      // both stdout and stderr go to stdout pipe
+      if (-1 == dup2(stdout_pipe[1], STDOUT_FILENO))
+      {
+        exit(127);
+      }
+      if (-1 == dup2(stdout_pipe[1], STDERR_FILENO))
+      {
+        exit(127);
+      }
     }
-  }
+    else
+    {
+      if (-1 == dup2(stdout_pipe[1], STDOUT_FILENO))
+      {
+        exit(127);
+      }
+      if (-1 == dup2(stderr_pipe[1], STDERR_FILENO))
+      {
+        exit(127);
+      }
+    }
 
-  rc = pclose(cmd);
-  if (0 != rc)
+    close(stderr_pipe[1]);
+    close(stdout_pipe[1]);
+
+    // convert std::vector<std::string> to char* array for execvp
+    std::vector<char *> c_args;
+    c_args.reserve(args.size() + 2); // 2 = program + ending nullptr
+    c_args.push_back(const_cast<char *>(program.c_str()));
+    for (const auto &arg : args)
+    {
+      c_args.push_back(const_cast<char *>(arg.c_str()));
+    }
+    c_args.push_back(nullptr); // Must be null-terminated
+
+    execvp(program.c_str(), c_args.data());
+
+    // If execvp returns, the program didn't run
+    const std::string error = "zut_run_program: error executing " + program;
+    perror(error.c_str());
+    exit(RTNCD_FAILURE);
+  }
+  else
   {
-    return WEXITSTATUS(rc);
-  }
+    // --- PARENT PROCESS ---
+    close(stdout_pipe[1]);
+    close(stderr_pipe[1]);
 
-  return rc;
+    struct pollfd fds[2];
+    fds[0].fd = stdout_pipe[0];
+    fds[0].events = POLLIN;
+
+    // only watch stderr pipe if we're not merging streams, otherwise set to -1
+    if (!merge_streams)
+    {
+      fds[1].fd = stderr_pipe[0];
+      fds[1].events = POLLIN;
+    }
+    else
+    {
+      fds[1].fd = -1;
+    }
+
+    char buffer[4096];
+    ssize_t bytes_read;
+
+    // while pipes still open
+    while (fds[0].fd != -1 || fds[1].fd != -1)
+    {
+      // blocks until there's data or an error
+      if (-1 == poll(fds, 2, -1))
+      {
+        if (EINTR != errno)
+        {
+          // critical problem, cleanup child process and exit loop
+          kill(pid, SIGKILL);
+          break;        
+        } else {
+          // transient problem, run another iteration of loop
+          continue;
+        }
+      }
+
+      for (int i = 0; i < 2; i++)
+      {
+        if (fds[i].fd != -1)
+        {
+
+          std::string &output = ((0 == i) ? stdout_response : stderr_response);
+          // close pipe if there's a hangup or error, otherwise read
+          if (fds[i].revents & POLLIN)
+          {
+            bytes_read = read(fds[i].fd, buffer, sizeof(buffer));
+            if (bytes_read > 0)
+            {
+              output.append(buffer, bytes_read);
+            }
+            else if (0 == bytes_read)
+            {
+              fds[i].fd = -1; // EOF
+            }
+            else if (-1 == bytes_read && EINTR != errno)
+            {
+              // critical error, cleanup child process and stop watching fd
+              kill(pid, SIGKILL);
+              fds[i].fd = -1;
+            }
+          }
+          else if (fds[i].revents & (POLLHUP | POLLERR))
+          {
+            fds[i].fd = -1;
+          }
+        }
+      }
+    }
+
+    zut_strip_final_newline(stdout_response);
+    zut_strip_final_newline(stderr_response);
+
+    close(stdout_pipe[0]);
+    close(stderr_pipe[0]);
+
+    // wait for the child process to finish and get its exit status
+    int status;
+    if (-1 == waitpid(pid, &status, 0))
+    {
+      return RTNCD_FAILURE;
+    }
+
+    // Evaluate the exit status
+    if (WIFEXITED(status))
+    {
+      return WEXITSTATUS(status);
+    }
+
+    return RTNCD_FAILURE;
+  }
+}
+
+int zut_run_program(const std::string &program, const std::vector<std::string> &args, std::string &stdout_response, std::string &stderr_response)
+{
+  return zut_private_run_program(program, args, stdout_response, stderr_response, false);
+}
+
+int zut_run_program(const std::string &program, const std::vector<std::string> &args, std::string &response)
+{
+  std::string dummy;
+  return zut_private_run_program(program, args, response, dummy, true);
 }
 
 int zut_search(const std::string &parms)
@@ -239,6 +414,52 @@ int zut_hello(const std::string &name)
   // #endif
 
   return 0;
+}
+
+int zut_list_subsystems(ZDIAG &diag, std::vector<std::string> &subsystems, std::string filter)
+{
+  int rc = 0;
+  JQRY_HEADER *area = nullptr;
+
+  rc = ZUTSSIQ(&diag, &area, filter.c_str());
+
+  if (0 != rc)
+  {
+    return rc;
+  }
+
+  JQRY_SUBSYS_ENTRY *subsys_entry = nullptr;
+  subsys_entry = (JQRY_SUBSYS_ENTRY *)((unsigned char *)area + sizeof(JQRY_HEADER));
+  int next_entry = sizeof(JQRY_HEADER) + sizeof(JQRY_VT_ENTRY) * 2; // NOTE(Kelosky): 2 is the number of vector tables
+
+  for (int i = 0; i < area->jqry___num___subsys; i++)
+  {
+    const unsigned char *name = subsys_entry->jqry___subsys___name;
+    bool printable = true;
+    for (size_t j = 0; j < sizeof(subsys_entry->jqry___subsys___name); j++)
+    {
+      if (!isprint(name[j]))
+      {
+        printable = false;
+        break;
+      }
+    }
+    if (printable)
+    {
+      subsystems.push_back(std::string(reinterpret_cast<const char *>(name), sizeof(subsys_entry->jqry___subsys___name)));
+    }
+    else
+    {
+      char hex[13];
+      snprintf(hex, sizeof(hex), "x'%02X%02X%02X%02X'", name[0], name[1], name[2], name[3]);
+      subsystems.push_back(std::string(hex));
+    }
+    subsys_entry = (JQRY_SUBSYS_ENTRY *)((unsigned char *)subsys_entry + next_entry);
+  }
+
+  ZUTMSREL(&area->jqrylen, area);
+
+  return rc;
 }
 
 int zut_list_parmlib(ZDIAG &diag, std::vector<std::string> &parmlibs)

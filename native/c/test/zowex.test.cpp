@@ -18,6 +18,7 @@
 #include "zowex.ds.test.hpp"
 #include "zowex.uss.test.hpp"
 #include "zowex.job.test.hpp"
+#include "zowex.system.test.hpp"
 #include "zoweax.console.test.hpp"
 #include "zowex.tso.test.hpp"
 
@@ -39,7 +40,11 @@ void zowex_tests()
                   Expect(response).ToContain("zowex");
                   Expect(response).ToContain("Version");
                 });
+#ifdef RELEASE_BUILD
              it("should remain less than 10mb in size",
+#else
+             xit("should remain less than 10mb in size",
+#endif
                 []() -> void
                 {
                   std::string response;
@@ -50,6 +55,7 @@ void zowex_tests()
              zowex_ds_tests();
              zowex_uss_tests();
              zowex_job_tests();
+             zowex_system_tests();
              zowex_tso_tests();
            });
 

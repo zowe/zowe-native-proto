@@ -195,6 +195,8 @@ struct TEST_SUITE
   std::vector<HOOK_WITH_OPTIONS> after_all_hooks;
   bool before_all_executed = false;
   bool skipped = false;
+  bool hook_failed = false;
+  std::string hook_error;
 };
 
 struct EXPECT_CONTEXT
@@ -464,25 +466,22 @@ public:
     }
   }
 
-  // Execute a vector of hooks, catching and reporting any errors
-  void execute_hooks(const std::vector<HOOK_WITH_OPTIONS> &hooks, const std::string &hook_type, std::string &error_message)
+  // Execute a vector of hooks, returning false on failure.
+  // On failure, error_message is populated with the details.
+  bool execute_hooks(const std::vector<HOOK_WITH_OPTIONS> &hooks, const std::string &hook_type, std::string &error_message)
   {
     for (const auto &hook : hooks)
     {
-      // Use hook's timeout if specified (non-zero), otherwise use default
       unsigned int timeout_seconds = hook.options.timeout_sec > 0 ? hook.options.timeout_sec : DEFAULT_TEST_TIMEOUT_SECONDS;
 
       bool abend = false;
       bool timeout = false;
       struct sigaction sa, timeout_sa, old_timeout_sa;
 
-      // Initialize timeout flag before setjmp
       timeout_occurred = false;
 
-      // Call setjmp FIRST before setting up any signal handlers
       if (0 != setjmp(get_jmp_buf()))
       {
-        // Jumped back from signal handler
         if (timeout_occurred)
         {
           timeout = true;
@@ -493,13 +492,11 @@ public:
         }
       }
 
-      // Setup signal handlers AFTER setjmp to avoid race condition
       if (!hook.options.remove_signal_handling)
       {
         setup_signal_handlers(sa);
       }
 
-      // Setup timeout handler (always active)
       setup_timeout_handler(timeout_sa, old_timeout_sa);
 
       if (!abend && !timeout)
@@ -519,7 +516,7 @@ public:
             reset_signal_handlers(sa);
           }
           error_message = hook_type + " hook failed: " + std::string(e.what());
-          throw std::runtime_error(error_message);
+          return false;
         }
         catch (...)
         {
@@ -530,13 +527,12 @@ public:
             reset_signal_handlers(sa);
           }
           error_message = hook_type + " hook failed with unknown error";
-          throw std::runtime_error(error_message);
+          return false;
         }
 
         alarm(0);
       }
 
-      // Reset handlers
       reset_timeout_handler(old_timeout_sa);
       if (!hook.options.remove_signal_handling)
       {
@@ -546,14 +542,15 @@ public:
       if (timeout)
       {
         error_message = hook_type + " hook timed out after " + std::to_string(timeout_seconds) + " seconds";
-        throw std::runtime_error(error_message);
+        return false;
       }
       else if (abend)
       {
         error_message = hook_type + " hook failed with ABEND";
-        throw std::runtime_error(error_message);
+        return false;
       }
     }
+    return true;
   }
 
   // Collect beforeEach hooks from current suite and all parent suites (parent -> child order)
@@ -627,9 +624,18 @@ public:
 
     int suite_idx = get_suite_index();
 
+    // Check if the current suite already has a hook failure (skip remaining tests)
+    if (suite_idx >= 0 && suite_idx < static_cast<int>(suites.size()) && suites[suite_idx].hook_failed)
+    {
+      tc.success = false;
+      tc.fail_message = suites[suite_idx].hook_error;
+      auto status = format_test_status(tc, false);
+      print_test_output(tc, description, current_nesting, status.first, status.second);
+      suites[suite_idx].tests.push_back(tc);
+      return;
+    }
+
     // Execute beforeAll hooks for the current suite stack (parent -> child order)
-    bool before_all_failed = false;
-    std::string before_all_error;
     for (const auto &idx : suite_stack)
     {
       if (idx < 0 || idx >= static_cast<int>(suites.size()))
@@ -638,34 +644,32 @@ public:
       }
 
       TEST_SUITE &suite = suites[idx];
+      if (suite.hook_failed)
+      {
+        tc.success = false;
+        tc.fail_message = suite.hook_error;
+        auto status = format_test_status(tc, false);
+        print_test_output(tc, description, current_nesting, status.first, status.second);
+        suites[suite_idx].tests.push_back(tc);
+        return;
+      }
+
       if (!suite.before_all_executed && !suite.before_all_hooks.empty())
       {
         suite.before_all_executed = true;
         std::string error_message;
-        try
+        if (!execute_hooks(suite.before_all_hooks, "beforeAll", error_message))
         {
-          execute_hooks(suite.before_all_hooks, "beforeAll", error_message);
-        }
-        catch (const std::exception &)
-        {
-          before_all_failed = true;
-          before_all_error = error_message;
-          break;
+          suite.hook_failed = true;
+          suite.hook_error = error_message;
+          tc.success = false;
+          tc.fail_message = error_message;
+          auto status = format_test_status(tc, false);
+          print_test_output(tc, description, current_nesting, status.first, status.second);
+          suites[suite_idx].tests.push_back(tc);
+          return;
         }
       }
-    }
-
-    if (before_all_failed)
-    {
-      tc.success = false;
-      tc.fail_message = before_all_error;
-      auto status = format_test_status(tc, false);
-      print_test_output(tc, description, current_nesting, status.first, status.second);
-      if (suite_idx >= 0 && suite_idx < static_cast<int>(suites.size()))
-      {
-        suites[suite_idx].tests.push_back(tc);
-      }
-      return;
     }
 
     // Collect and execute beforeEach hooks
@@ -673,27 +677,25 @@ public:
     if (!before_each_hooks.empty())
     {
       std::string error_message;
-      try
-      {
-        execute_hooks(before_each_hooks, "beforeEach", error_message);
-      }
-      catch (const std::exception &)
+      if (!execute_hooks(before_each_hooks, "beforeEach", error_message))
       {
         tc.success = false;
         tc.fail_message = error_message;
+
+        // Mark suite as failed so remaining tests are skipped
+        if (suite_idx >= 0 && suite_idx < static_cast<int>(suites.size()))
+        {
+          suites[suite_idx].hook_failed = true;
+          suites[suite_idx].hook_error = error_message;
+        }
 
         // Still run afterEach hooks even if beforeEach failed
         std::vector<HOOK_WITH_OPTIONS> after_each_hooks = collect_after_each_hooks();
         if (!after_each_hooks.empty())
         {
           std::string after_error;
-          try
+          if (!execute_hooks(after_each_hooks, "afterEach", after_error))
           {
-            execute_hooks(after_each_hooks, "afterEach", after_error);
-          }
-          catch (const std::exception &)
-          {
-            // Append afterEach error to beforeEach error
             tc.fail_message += " (afterEach also failed: " + after_error + ")";
           }
         }
@@ -770,13 +772,15 @@ public:
     if (!after_each_hooks.empty())
     {
       std::string error_message;
-      try
+      if (!execute_hooks(after_each_hooks, "afterEach", error_message))
       {
-        execute_hooks(after_each_hooks, "afterEach", error_message);
-      }
-      catch (const std::exception &)
-      {
-        // If test was successful but afterEach failed, mark test as failed
+        // Mark suite as failed so remaining tests are skipped
+        if (suite_idx >= 0 && suite_idx < static_cast<int>(suites.size()))
+        {
+          suites[suite_idx].hook_failed = true;
+          suites[suite_idx].hook_error = error_message;
+        }
+
         if (tc.success)
         {
           tc.success = false;
@@ -784,7 +788,6 @@ public:
         }
         else
         {
-          // Test already failed, append afterEach error
           tc.fail_message += " (afterEach also failed: " + error_message + ")";
         }
       }
@@ -1128,13 +1131,8 @@ void describe(const std::string &description, Callable suite)
     if (!after_all_hooks.empty())
     {
       std::string error_message;
-      try
+      if (!g.execute_hooks(after_all_hooks, "afterAll", error_message))
       {
-        g.execute_hooks(after_all_hooks, "afterAll", error_message);
-      }
-      catch (const std::exception &)
-      {
-        // Report afterAll hook failure
         g.pad_nesting(g.get_nesting());
         std::cout << colors.red << colors.cross << " " << error_message << colors.reset << std::endl;
       }

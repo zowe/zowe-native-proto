@@ -838,7 +838,7 @@ void zowex_ds_tests()
 
                              _create_ds(ds, "--dsorg PO --dirblk 2");
 
-                             std::string response;
+                             std::string response{};
 
                              execute_command_with_output(
                                  zowex_command + " data-set create-member '" + ds + "(STAT1)'",

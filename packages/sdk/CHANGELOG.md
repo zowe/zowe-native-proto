@@ -7,11 +7,13 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 ## Recent Changes
 
 - Added `copyDataset` to `RpcClientApi.ds` for copying data sets and members with optional `replace` and `deleteTargetMembers` options. [#778](https://github.com/zowe/zowe-native-proto/pull/778)
+- **Breaking:** `ZSshClient` (the SSH-based client for communicating with the z/OS server) now connects to `zowex server` (the embedded server subcommand of the `zowex` z/OS backend binary) instead of the standalone `zowed` binary. Users must re-deploy the server to update the binaries at their `serverPath` (the z/OS path where server binaries are deployed). [#846](https://github.com/zowe/zowe-native-proto/issues/846)
 - Added support for listing member attributes to `DsMember` type [#630](https://github.com/zowe/zowe-native-proto/issues/630)
-- Added support for invoking the tool search group.
+- Added support for invoking the `toolSearch` server command, which allows the client SDK to search for data sets.
 - Added support for copying USS files in the `RpcClientApi` class. [#379](https://github.com/zowe/zowe-native-proto/issues/379)
 - Added support for USS Move operations. [#789](https://github.com/zowe/zowe-native-proto/pull/789)
 - Fixed `user` property not defined as secure when new team configuration profile is created. [#845](https://github.com/zowe/zowe-native-proto/pull/845)
+- Fixed check for outdated server always returning true which could trigger unnecessary re-deploy. [#862](https://github.com/zowe/zowe-native-proto/pull/862)
 
 ## `0.3.0`
 
