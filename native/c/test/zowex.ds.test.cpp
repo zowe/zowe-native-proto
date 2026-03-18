@@ -1268,13 +1268,15 @@ void zowex_ds_tests()
                              int write_rc = zusf_write_to_uss_file(&zusf, temp_file, write_content);
                              Expect(write_rc).ToBe(RTNCD_SUCCESS);
 
-                             std::string get_uss_file_command = zowex_command + " uss view '" + temp_file + "'";
-                             std::string command = get_uss_file_command + " | " + zowex_command + " data-set write " + ds;
+                             // View the USS file as binary to avoid BPXK_AUTOCVT interference in the pipe,
+                             // then write the raw bytes into the data set (also as binary).
+                             std::string get_uss_file_command = zowex_command + " uss view '" + temp_file + "' --ec binary";
+                             std::string command = get_uss_file_command + " | " + zowex_command + " data-set write " + ds + " --ec binary";
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain("Wrote data to '" + ds + "'");
 
-                             command = zowex_command + " data-set view " + ds;
+                             command = zowex_command + " data-set view " + ds + " --ec binary";
                              rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain(content);
