@@ -117,7 +117,8 @@ export class ZSshClient extends RpcClientApi implements Disposable {
             };
             timeoutId = setTimeout(() => {
                 this.mPromiseMap.delete(rpcRequest.id);
-                reject(new ImperativeError({ msg: "Request timed out", errorCode: "ETIMEDOUT" }));
+                this.mErrHandler(new Error("Request timed out"));
+                reject(new ImperativeError({ msg: "Request timed out", errorCode: "ETIMEDOUT" })); // TODO: should we leave this with the error handler and resolve instead?
             }, this.mResponseTimeout);
             if ("stream" in request && request.stream instanceof Stream) {
                 this.mStreamMgr.registerStream(

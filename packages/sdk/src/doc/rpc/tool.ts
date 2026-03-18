@@ -10,6 +10,13 @@
  */
 
 import type * as common from "./common";
+
+export interface AbortCommandRequest extends common.CommandRequest<"toolAbort"> {
+    text?: string;
+}
+
+export interface AbortCommandResponse extends common.CommandResponse {}
+
 export interface ToolSearchRequest extends common.CommandRequest<"toolSearch"> {
     /**
      * Data set name to search

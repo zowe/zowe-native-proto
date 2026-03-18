@@ -52,6 +52,7 @@ export abstract class RpcClientApi implements IRpcClient {
     };
 
     public tool = {
+        abort: this.rpc<tool.AbortCommandRequest, CommandResponse>("toolAbort"),
         search: this.rpc<tool.ToolSearchRequest, tool.ToolSearchResponse>("toolSearch"),
     };
 

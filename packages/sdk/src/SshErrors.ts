@@ -20,12 +20,13 @@ export const SshErrors: Record<string, ISshErrorDefinition> = {
     // Request Timeout
     REQUEST_TIMEOUT: {
         summary: "The request exceeded the timeout limit and was terminated by the server.",
-        matches: ["Request timed out", /Request timed out after \d+ ms/],
+        matches: [/.*Request timed out$/, "Request timed out", /Request timed out after \d+ ms/],
         tips: [
             "The operation took longer than the configured timeout period.",
             "Try increasing the request timeout in your client configuration.",
             "Check if the mainframe system is under heavy load or experiencing performance issues.",
             "For long-running operations, consider breaking them into smaller tasks.",
+            "Try reloading your connection to the server using the VSCode Command Palette: Zowe-SSH: Restart Zowe Server on Host...",
             "Contact your system administrator if timeouts persist.",
         ],
     },

@@ -22,6 +22,14 @@ using namespace commands::common;
 namespace tool
 {
 
+int handle_tool_abend(InvocationContext &context) 
+{
+//  throw std::runtime_error("some error");
+  int* ptr = nullptr;
+  *ptr = 42;
+  return 0;
+}
+
 int handle_tool_convert_dsect(InvocationContext &context)
 {
   int rc = 0;
@@ -389,6 +397,10 @@ int handle_tool_run(InvocationContext &context)
 void register_commands(parser::Command &root_command)
 {
   auto tool_cmd = command_ptr(new Command("tool", "tool operations"));
+
+  auto tool_force_abend_cmd = command_ptr(new Command("abort", "force zowex to abend"));
+  tool_force_abend_cmd->set_handler(handle_tool_abend);
+  tool_cmd->add_command(tool_force_abend_cmd);
 
   // Convert DSECT subcommand
   auto tool_convert_dsect_cmd = command_ptr(new Command("ccnedsct", "convert dsect to c struct"));
