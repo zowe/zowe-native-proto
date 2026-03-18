@@ -160,6 +160,50 @@ typedef struct
   unsigned char z;
 } NOTE_RESPONSE;
 
+// https://www.ibm.com/docs/en/zos/2.5.0?topic=routines-dcb-abend-exit
+typedef struct
+{
+  unsigned short system_completion_code; // offset 0: system completion code in first 12 bits
+  unsigned char return_code;             // offset 2: return code associated with the completion code
+  unsigned char option_mask;             // offset 3: input=available options, output=chosen action
+  void *PTR32 dcb;                       // offset 4: address of DCB
+  unsigned int diag_use;                 // offset 8: system diagnostic use
+  void *PTR32 recovery_work_area;        // offset 12: must be below 16 MB
+} DCB_ABEND_PARMS;
+
+// Option mask bits (input to exit)
+#define DCB_ABEND_OK_RECOVER 0x08 // bit 4: okay to recover
+#define DCB_ABEND_OK_IGNORE  0x04 // bit 5: okay to ignore
+#define DCB_ABEND_OK_DELAY   0x02 // bit 6: okay to delay
+
+// Option values (output from exit)
+#define DCB_ABEND_ACT_ABEND   0  // immediate abend
+#define DCB_ABEND_ACT_IGNORE  4  // ignore the abend (write message)
+#define DCB_ABEND_ACT_DELAY   8  // delay abend until other DCBs processed
+#define DCB_ABEND_ACT_RECOVER 12 // attempt recovery
+#define DCB_ABEND_ACT_IGNORE_QUIET 16 // ignore without writing a message
+
+// https://www.ibm.com/docs/en/zos/2.5.0?topic=exit-recovery-requirements
+typedef struct
+{
+  unsigned short length;        // offset 0: length of this work area
+  unsigned char option;         // offset 2: bit 0=free work area, bit 1=volume serials provided
+  unsigned char subpool;        // offset 3: subpool number (if free bit is set)
+  unsigned char num_volumes;    // offset 4: number of volume serial numbers that follow
+} DCB_ABEND_RECOVERY_AREA;
+
+// Internal tracking for DCB ABEND exit state, allocated below 16 MB
+typedef struct
+{
+  unsigned short abend_code;      // system completion code from the abend
+  unsigned char abend_rc;         // return code associated with the abend
+  unsigned char abend_handled;    // 1 = exit handled the abend
+  unsigned char action_taken;     // option value used (DCB_ABEND_ACT_*)
+  unsigned char recovery_attempted; // 1 = recovery was already attempted (only one allowed)
+  unsigned char reserved[2];
+  DCB_ABEND_RECOVERY_AREA recovery_area; // properly formatted work area for the system
+} DCB_ABEND_INFO;
+
 #define NUM_EXLIST_ENTRIES 2 // dcbabend and jfcb
 typedef struct
 {
@@ -179,6 +223,7 @@ typedef struct
   unsigned int ucb;
   void *PTR32 zam24;
   int zam24_len;
+  DCB_ABEND_INFO *PTR32 abend_info; // populated by DCB ABEND exit, allocated below 16 MB
   int lines_written;
   char *PTR32 free_location;
   int bytes_in_buffer;

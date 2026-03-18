@@ -50,6 +50,33 @@ typedef struct
   short int unused;
 } RDW;
 
+static int check_dcb_abend(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc, const char *PTR32 operation)
+{
+  if (!ioc->abend_info || !ioc->abend_info->abend_handled)
+    return 0;
+
+  if (0 == diag->e_msg_len)
+  {
+    strcpy(diag->service_name, operation);
+    diag->e_msg_len = sprintf(diag->e_msg,
+                              "DCB ABEND during %s for %8.8s: abend code=%03X, rc=%02X, action=%d",
+                              operation, ioc->ddname,
+                              ioc->abend_info->abend_code,
+                              ioc->abend_info->abend_rc,
+                              ioc->abend_info->action_taken);
+    diag->service_rc = ioc->abend_info->abend_code;
+    diag->detail_rc = ZDS_RTNCD_ABEND_ERROR;
+  }
+
+  return RTNCD_FAILURE;
+}
+
+static void reset_dcb_abend_info(IO_CTRL *PTR32 ioc)
+{
+  if (ioc->abend_info)
+    memset(ioc->abend_info, 0, sizeof(DCB_ABEND_INFO));
+}
+
 static int validate_jfcb_attributes(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
 {
   int rc = 0;
@@ -157,9 +184,13 @@ static int reserve_data_set(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
 static int open_data_set(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
 {
   int rc = 0;
+  reset_dcb_abend_info(ioc);
   rc = open_output(&ioc->dcb);
   if (0 != rc)
   {
+    if (check_dcb_abend(diag, ioc, "OPEN"))
+      return RTNCD_FAILURE;
+
     diag->service_rc = rc;
     strcpy(diag->service_name, "OPEN");
     diag->e_msg_len = sprintf(diag->e_msg, "Failed to open ddname: %8.8s for data set: %44.44s rc was: %d", ioc->dcb.dcbddnam, ioc->jfcb.jfcbdsnm, rc);
@@ -169,6 +200,9 @@ static int open_data_set(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
 
   if (!(ioc->dcb.dcboflgs & dcbofopn))
   {
+    if (check_dcb_abend(diag, ioc, "OPEN"))
+      return RTNCD_FAILURE;
+
     diag->e_msg_len = sprintf(diag->e_msg, "Data set is not open: %44.44s", ioc->jfcb.jfcbdsnm);
     diag->detail_rc = ZDS_RTNCD_NOT_OPEN_ERROR;
     return RTNCD_FAILURE;
@@ -362,9 +396,13 @@ static int handle_fixed_record(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc, const char
 
   if (ioc->bytes_in_buffer >= blocksize)
   {
+    reset_dcb_abend_info(ioc);
     rc = write_sync(ioc, ioc->buffer);
     if (0 != rc)
     {
+      if (check_dcb_abend(diag, ioc, "WRITE"))
+        return RTNCD_FAILURE;
+
       diag->e_msg_len = sprintf(diag->e_msg, "Failed to write record rc was: %d", rc);
       diag->detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
       diag->service_rc = rc;
@@ -372,7 +410,6 @@ static int handle_fixed_record(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc, const char
     }
     ioc->bytes_in_buffer = 0;
     ioc->free_location = ioc->buffer;
-    // memset(ioc->buffer, ' ', ioc->buffer_size);
   }
 
   return rc;
@@ -401,17 +438,22 @@ static int write_variable_record(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc, const ch
   bdw_ptr->len = ioc->bytes_in_buffer;
 
   // write the record and reinit
+  reset_dcb_abend_info(ioc);
   ioc->dcb.dcbblksi = ioc->bytes_in_buffer; // temporary update block size before writing
 
   rc = write_sync(ioc, ioc->buffer);
+  ioc->dcb.dcbblksi = blocksize; // always restore original block size
+
   if (0 != rc)
   {
+    if (check_dcb_abend(diag, ioc, "WRITE"))
+      return RTNCD_FAILURE;
+
     diag->e_msg_len = sprintf(diag->e_msg, "Failed to write record rc was: %d", rc);
     diag->detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
     diag->service_rc = rc;
     return RTNCD_FAILURE;
   }
-  ioc->dcb.dcbblksi = blocksize;
 
   ioc->free_location = ioc->buffer;
   ioc->free_location += sizeof(BDW);
@@ -523,16 +565,21 @@ static int write_flush(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
         bdw_ptr->len = ioc->bytes_in_buffer;
       }
 
+      reset_dcb_abend_info(ioc);
       ioc->dcb.dcbblksi = ioc->bytes_in_buffer; // temporary update block size before writing
-      rc = write_sync(ioc, ioc->buffer);        // TODO(Kelosky): if we abend, we MUST restore the original block size before CLOSE
+      rc = write_sync(ioc, ioc->buffer);
+      ioc->dcb.dcbblksi = blocksize; // always restore original block size before CLOSE
+
       if (0 != rc)
       {
+        if (check_dcb_abend(diag, ioc, "WRITE"))
+          return RTNCD_FAILURE;
+
         diag->e_msg_len = sprintf(diag->e_msg, "Failed to write record rc was: %d", rc);
         diag->detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
         diag->service_rc = rc;
         return RTNCD_FAILURE;
       }
-      ioc->dcb.dcbblksi = blocksize;
 
       ioc->bytes_in_buffer = 0;
       ioc->free_location = ioc->buffer;
@@ -706,10 +753,13 @@ static int stow_data_set(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
   int rsn = 0;
   if (ioc->dcb.dcboflgs & dcbofopn)
   {
-
+    reset_dcb_abend_info(ioc);
     rc = stow(ioc, &rsn);
     if (0 != rc)
     {
+      if (check_dcb_abend(diag, ioc, "STOW"))
+        return RTNCD_FAILURE;
+
       if (0 == diag->e_msg_len)
       {
         diag->service_rc = rc;
@@ -727,9 +777,13 @@ static int close_data_set(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
   int rc = 0;
   if (ioc->dcb.dcboflgs & dcbofopn)
   {
+    reset_dcb_abend_info(ioc);
     rc = close_dcb(&ioc->dcb);
     if (0 != rc)
     {
+      if (check_dcb_abend(diag, ioc, "CLOSE"))
+        return RTNCD_FAILURE;
+
       if (0 == diag->e_msg_len) // only set error if no error message was already set
       {
         diag->service_rc = rc;
@@ -871,6 +925,20 @@ int close_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
       first_rc = rc;
   }
 
+  //
+  // Release DCB ABEND exit resources
+  //
+  if (ioc->abend_info)
+  {
+    storage_release(sizeof(DCB_ABEND_INFO), ioc->abend_info);
+    ioc->abend_info = NULL;
+  }
+  if (ioc->zam24)
+  {
+    storage_release(ioc->zam24_len, ioc->zam24);
+    ioc->zam24 = NULL;
+  }
+
   storage_release(sizeof(IO_CTRL), ioc);
 
   return first_rc;
@@ -931,12 +999,16 @@ void close_assert(IO_CTRL *ioc)
     }
   }
 
-  // if (ioc->zam24)
-  // {
-  //   zwto_debug("@TEST close_assert: releasing zam24: %p", ioc->zam24);
-  //   storage_release(ioc->zam24_len, ioc->zam24);
-  //   ioc->zam24 = NULL;
-  // }
+  if (ioc->abend_info)
+  {
+    storage_release(sizeof(DCB_ABEND_INFO), ioc->abend_info);
+    ioc->abend_info = NULL;
+  }
+  if (ioc->zam24)
+  {
+    storage_release(ioc->zam24_len, ioc->zam24);
+    ioc->zam24 = NULL;
+  }
 
   storage_release(sizeof(IO_CTRL), ioc);
 }
@@ -977,21 +1049,60 @@ int note(IO_CTRL *ioc, NOTE_RESPONSE *PTR32 note_response, int *rsn)
   return rc;
 }
 
+int ZAMDA31(DCB_ABEND_PARMS *PTR32 parms);
+
+// AMODE 24 DCB ABEND exit stub (machine code).
+// This tiny routine saves/restores caller regs, masks R1 to 24 bits,
+// loads the ZAMDA31 address from an inline constant, and calls it.
+//
+//   STM   R14,R12,12(R13)   90EC D00C
+//   LR    R12,R15           18CF
+//   LA    R1,0(,R1)         4110 1000
+//   L     R15,18(,R12)      58F0 C012
+//   BALR  R14,R15           05EF
+//   LM    R14,R12,12(R13)   98EC D00C
+//   BR    R14               07FE
+//   DC    A(0)              00000000  <- ZAMDA31 addr, patched at runtime
+//
+// Offset 18 (0x12) is where the A-con lives (18 bytes of code precede it).
+#define ZAM24_STUB_SIZE     22
+#define ZAM24_STUB_ACON_OFF 18
+
+static const unsigned char zam24_stub[ZAM24_STUB_SIZE] = {
+  0x90, 0xEC, 0xD0, 0x0C,  /* STM  R14,R12,12(R13) */
+  0x18, 0xCF,              /* LR   R12,R15          */
+  0x41, 0x10, 0x10, 0x00,  /* LA   R1,0(,R1)        */
+  0x58, 0xF0, 0xC0, 0x12,  /* L    R15,18(,R12)     */
+  0x05, 0xEF,              /* BALR R14,R15           */
+  0x98, 0xEC, 0xD0, 0x0C,  /* LM   R14,R12,12(R13) */
+  0x07, 0xFE               /* BR   R14              */
+};
+
+static void setup_dcb_abend_exit(IO_CTRL *ioc)
+{
+  ioc->zam24_len = ZAM24_STUB_SIZE + 4;
+  ioc->zam24 = storage_obtain24(ioc->zam24_len);
+  memcpy(ioc->zam24, zam24_stub, ZAM24_STUB_SIZE);
+
+  // Patch the A-con at the end of the stub with the address of ZAMDA31
+  unsigned int zamda31_addr = (unsigned int)ZAMDA31;
+  memcpy((char *)ioc->zam24 + ZAM24_STUB_ACON_OFF, &zamda31_addr, 4);
+
+  ioc->abend_info = (DCB_ABEND_INFO *)storage_obtain24(sizeof(DCB_ABEND_INFO));
+  memset(ioc->abend_info, 0, sizeof(DCB_ABEND_INFO));
+
+  ioc->exlst[0].exlentrb = (unsigned int)ioc->zam24;
+  ioc->exlst[0].exlcodes = exldcbab;
+  ioc->exlst[1].exlentrb = (unsigned int)&ioc->jfcb;
+  ioc->exlst[1].exlcodes = exllaste + exlrjfcb;
+}
+
 // TODO(Kelosky): common logic for both read_input_jfcb and read_output_jfcb should be combined
 int read_input_jfcb(IO_CTRL *ioc)
 {
   int rc = 0;
 
-  // int zam24_len = ZAM24Q();
-  // zwto_debug("@TEST zam24_len: %d", zam24_len);
-  // ioc->zam24_len = zam24_len;
-  // ioc->zam24 = storage_obtain24(zam24_len);
-  // memcpy(ioc->zam24, (void *PTR32)ZAM24, zam24_len);
-
-  // ioc->exlst[0].exlentrb = (unsigned int)ioc->zam24; uncommend to enable DCBABEND
-  // ioc->exlst[0].exlcodes = exldcbab;
-  ioc->exlst[0].exlentrb = (unsigned int)&ioc->jfcb;
-  ioc->exlst[0].exlcodes = exllaste + exlrjfcb;
+  setup_dcb_abend_exit(ioc);
   memcpy(&ioc->rpl, &rdfjfcb_model, sizeof(RDJFCB_PL));
 
   unsigned char recfm = ioc->dcb.dcbrecfm; // save the recfm
@@ -1007,16 +1118,7 @@ int read_output_jfcb(IO_CTRL *ioc)
 {
   int rc = 0;
 
-  // int zam24_len = ZAM24Q();
-  // zwto_debug("@TEST zam24_len: %d", zam24_len);
-  // ioc->zam24_len = zam24_len;
-  // ioc->zam24 = storage_obtain24(zam24_len);
-  // memcpy(ioc->zam24, (void *PTR32)ZAM24, zam24_len);
-
-  // ioc->exlst[0].exlentrb = (unsigned int)ioc->zam24; uncommend to enable DCBABEND
-  // ioc->exlst[0].exlcodes = exldcbab;
-  ioc->exlst[0].exlentrb = (unsigned int)&ioc->jfcb;
-  ioc->exlst[0].exlcodes = exllaste + exlrjfcb;
+  setup_dcb_abend_exit(ioc);
   memcpy(&ioc->rpl, &rdfjfcb_model, sizeof(RDJFCB_PL));
 
   unsigned char recfm = ioc->dcb.dcbrecfm; // save the recfm
@@ -1179,9 +1281,65 @@ void eodad()
   fc->eod = 1;
 }
 
-#pragma prolog(ZAMDA31, " ZWEPROLG NEWDSA=(YES,8),SAVE=BAKR ") // TODO(Kelosky): BSM=NO?
+#pragma prolog(ZAMDA31, " ZWEPROLG NEWDSA=(YES,8),SAVE=BAKR ")
 #pragma epilog(ZAMDA31, " ZWEEPILG ")
-int ZAMDA31()
+int ZAMDA31(DCB_ABEND_PARMS *PTR32 parms)
 {
+  if (!parms)
+    return 0;
+
+  // The DCB is the first field in IO_CTRL, so we can derive IO_CTRL from the DCB address
+  IO_CTRL *PTR32 ioc = (IO_CTRL * PTR32) parms->dcb;
+  DCB_ABEND_INFO *PTR32 info = ioc ? ioc->abend_info : (DCB_ABEND_INFO * PTR32) 0;
+  unsigned char mask = parms->option_mask;
+
+  if (info)
+  {
+    info->abend_code = parms->system_completion_code;
+    info->abend_rc = parms->return_code;
+  }
+
+  // Only one recovery attempt is permitted per data set during OPEN/CLOSE/EOV.
+  // If recovery was already attempted, fall through to ignore or delay.
+  int can_recover = (mask & DCB_ABEND_OK_RECOVER) && (!info || !info->recovery_attempted);
+
+  if (can_recover)
+  {
+    parms->option_mask = DCB_ABEND_ACT_RECOVER;
+    if (info)
+    {
+      info->abend_handled = 1;
+      info->action_taken = DCB_ABEND_ACT_RECOVER;
+      info->recovery_attempted = 1;
+
+      // Supply a properly formatted (empty) recovery work area so the system
+      // attempts recovery with existing volumes (no new volume serials).
+      info->recovery_area.length = sizeof(DCB_ABEND_RECOVERY_AREA);
+      info->recovery_area.option = 0;
+      info->recovery_area.subpool = 0;
+      info->recovery_area.num_volumes = 0;
+      parms->recovery_work_area = &info->recovery_area;
+    }
+  }
+  else if (mask & DCB_ABEND_OK_IGNORE)
+  {
+    parms->option_mask = DCB_ABEND_ACT_IGNORE_QUIET;
+    if (info)
+    {
+      info->abend_handled = 1;
+      info->action_taken = DCB_ABEND_ACT_IGNORE_QUIET;
+    }
+  }
+  else if (mask & DCB_ABEND_OK_DELAY)
+  {
+    parms->option_mask = DCB_ABEND_ACT_DELAY;
+    if (info)
+    {
+      info->abend_handled = 1;
+      info->action_taken = DCB_ABEND_ACT_DELAY;
+    }
+  }
+  // else: no options available, leave option_mask as 0 (immediate abend)
+
   return 0;
 }

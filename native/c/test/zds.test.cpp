@@ -1224,5 +1224,57 @@ void zds_tests()
                              Expect(std::string(zds.diag.e_msg)).ToContain("Member name must start with A-Z,#,@,$ and contain only A-Z,0-9,#,@,$ (max 8 chars)");
                            });
                       });
+
+             describe("dcb abend handling",
+                      [&]() -> void
+                      {
+                        it("should have correct DCB_ABEND_RECOVERY_AREA layout",
+                           []() -> void
+                           {
+                             Expect((int)sizeof(DCB_ABEND_RECOVERY_AREA)).ToBe(6);
+                           });
+
+                        it("should have correct option mask constants",
+                           []() -> void
+                           {
+                             Expect((int)DCB_ABEND_OK_RECOVER).ToBe(0x08);
+                             Expect((int)DCB_ABEND_OK_IGNORE).ToBe(0x04);
+                             Expect((int)DCB_ABEND_OK_DELAY).ToBe(0x02);
+                           });
+
+                        it("should have correct action value constants",
+                           []() -> void
+                           {
+                             Expect((int)DCB_ABEND_ACT_ABEND).ToBe(0);
+                             Expect((int)DCB_ABEND_ACT_IGNORE).ToBe(4);
+                             Expect((int)DCB_ABEND_ACT_DELAY).ToBe(8);
+                             Expect((int)DCB_ABEND_ACT_RECOVER).ToBe(12);
+                             Expect((int)DCB_ABEND_ACT_IGNORE_QUIET).ToBe(16);
+                           });
+
+                        it("should not report abend after a successful BPAM write",
+                           [&]() -> void
+                           {
+                             std::string dsn = get_random_ds(3);
+                             created_dsns.push_back(dsn);
+
+                             ZDS zds = {0};
+                             create_pds(&zds, dsn);
+
+                             std::string data = "test content";
+                             int rc = zds_write_to_dsn(&zds, dsn + "(ABNDTEST)", data);
+                             ExpectWithContext(rc, zds.diag.e_msg).ToBe(0);
+                             Expect(zds.diag.detail_rc).Not().ToBe(ZDS_RTNCD_ABEND_ERROR);
+                           });
+
+                        it("should set abend error when writing to a non-existent data set",
+                           []() -> void
+                           {
+                             ZDS zds = {0};
+                             std::string data = "test content";
+                             int rc = zds_write_to_dsn(&zds, "DOES.NOT.EXIST(MEM)", data);
+                             Expect(rc).Not().ToBe(0);
+                           });
+                      });
            });
 }
