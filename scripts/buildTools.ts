@@ -79,9 +79,10 @@ const asciiToEbcdicMap =
 
 class AsciiToEbcdicTransform extends Transform {
     _transform(chunk: Buffer, _encoding: BufferEncoding, callback: TransformCallback) {
-        const output = Buffer.allocUnsafe(chunk.length);
-        for (let i = 0; i < chunk.length; i++) {
-            output[i] = asciiToEbcdicMap[chunk[i]];
+        const latin1 = Buffer.from(chunk.toString("utf8"), "latin1");
+        const output = Buffer.allocUnsafe(latin1.length);
+        for (let i = 0; i < latin1.length; i++) {
+            output[i] = asciiToEbcdicMap[latin1[i]];
         }
         callback(null, output);
     }
