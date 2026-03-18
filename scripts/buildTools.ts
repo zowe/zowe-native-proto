@@ -1170,10 +1170,10 @@ async function runCommandInShell(connection: Client, command: string, opts?: Run
                     const fullError = `${error || data}`.trim();
                     if (spinner) stopSpinner(spinner, `\x1b[31m${opts?.stepName ?? "Command"} failed\x1b[0m`);
                     process.exitCode = exitCode;
-                    if (!opts?.suppressError) {
-                        reject(new Error(fullError));
-                    } else {
+                    if (opts?.suppressError) {
                         resolve(data);
+                    } else {
+                        reject(new Error(fullError));
                     }
                 }
             });

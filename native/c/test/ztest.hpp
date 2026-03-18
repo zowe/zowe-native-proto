@@ -1517,9 +1517,9 @@ inline void escape_xml(std::string &data)
   std::string result;
   result.reserve(data.size());
 
-  for (std::string::size_type i = 0; i < data.size(); ++i)
+  for (auto byte : data)
   {
-    unsigned char ch = static_cast<unsigned char>(data[i]);
+    auto ch = static_cast<unsigned char>(byte);
     switch (ch)
     {
     case '\"':
@@ -1549,13 +1549,13 @@ inline void escape_xml(std::string &data)
     default:
       if (std::iscntrl(ch))
       {
-        char esc[9];
-        std::snprintf(esc, sizeof(esc), "&#x%02X;", ch);
-        result += esc;
+        std::ostringstream oss;
+        oss << "&#x" << std::uppercase << std::hex << static_cast<int>(ch) << ";";
+        result += oss.str();
       }
       else
       {
-        result += static_cast<char>(ch);
+        result += byte;
       }
       break;
     }
