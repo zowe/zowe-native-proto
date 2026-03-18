@@ -115,7 +115,7 @@ class EbcdicToAsciiTransform extends Transform {
         for (let i = 0; i < chunk.length; i++) {
             output[i] = ebcdicToAsciiMap[chunk[i]];
         }
-        callback(null, output);
+        callback(null, Buffer.from(output.toString("latin1"), "utf8"));
     }
 }
 

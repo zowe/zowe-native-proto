@@ -1206,9 +1206,12 @@ template <typename Callable,
 void itif(const std::string &description, Callable test, bool should_run)
 {
   TEST_OPTIONS opts = {false, 0};
-  if (should_run) {
+  if (should_run)
+  {
     it(description, test, opts);
-  } else {
+  }
+  else
+  {
     xit(description, test);
   }
 }
@@ -1218,9 +1221,12 @@ template <typename Callable,
               std::is_same<void, decltype(std::declval<Callable>()())>::value>::type>
 void itif(const std::string &description, Callable test, TEST_OPTIONS &opts, bool should_run)
 {
-  if (should_run) {
+  if (should_run)
+  {
     it(description, test, opts);
-  } else {
+  }
+  else
+  {
     xit(description, test);
   }
 }
@@ -1508,38 +1514,45 @@ inline int report()
 
 inline void escape_xml(std::string &data)
 {
-  std::string::size_type pos = 0;
-  for (;;)
-  {
-    pos = data.find_first_of("\"&'<>", pos);
-    if (pos == std::string::npos)
-      break;
+  std::string result;
+  result.reserve(data.size());
 
-    std::string replacement;
-    switch (data[pos])
+  for (std::string::size_type i = 0; i < data.size(); ++i)
+  {
+    unsigned char ch = static_cast<unsigned char>(data[i]);
+    switch (ch)
     {
     case '\"':
-      replacement = "&quot;";
+      result += "&quot;";
       break;
     case '&':
-      replacement = "&amp;";
+      result += "&amp;";
       break;
     case '\'':
-      replacement = "&apos;";
+      result += "&apos;";
       break;
     case '<':
-      replacement = "&lt;";
+      result += "&lt;";
       break;
     case '>':
-      replacement = "&gt;";
+      result += "&gt;";
       break;
     default:
+      if (std::iscntrl(ch) && ch != '\t' && ch != '\n' && ch != '\r')
+      {
+        char esc[9];
+        std::snprintf(esc, sizeof(esc), "&#x%02X;", ch);
+        result += esc;
+      }
+      else
+      {
+        result += static_cast<char>(ch);
+      }
       break;
     }
-
-    data.replace(pos, 1, replacement);
-    pos += replacement.length();
   }
+
+  data = std::move(result);
 }
 
 inline void report_xml(const std::string &filename = "test-results.xml")
