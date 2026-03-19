@@ -55,7 +55,7 @@
 #define ZDS_DEFAULT_MAX_MEMBER_ENTRIES 5000
 
 #define ZDS_VOLSER_VSAM "*VSAM*"
-#define ZDS_VOLSER_AIX "*AIX*"
+#define ZDS_VOLSER_AIX "*AIX *"
 #define ZDS_VOLSER_PATH "*PATH*"
 #define ZDS_VOLSER_ALIAS "*ALIAS"
 #define ZDS_VOLSER_GDG "??????"
