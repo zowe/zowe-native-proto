@@ -18,20 +18,18 @@
 
 using namespace parser;
 
-// Version information
-#ifndef PACKAGE_VERSION
-#define PACKAGE_VERSION "unknown"
-#endif
-
-#define BUILD_DATE __DATE__
-#define BUILD_TIME __TIME__
-
 namespace core
 {
 std::shared_ptr<ArgumentParser> g_arg_parser;
 namespace
 {
+std::string g_version("unknown");
 plugin::PluginManager *g_plugin_manager = nullptr;
+} // namespace
+
+void set_version(const std::string &version)
+{
+  g_version = version;
 }
 
 void set_plugin_manager(plugin::PluginManager *manager)
@@ -90,8 +88,16 @@ int interactive_mode(const plugin::InvocationContext &context)
 int handle_version(plugin::InvocationContext &context)
 {
   context.output_stream() << "Zowe Native Protocol CLI (zowex)" << std::endl;
-  context.output_stream() << "Version: " << PACKAGE_VERSION << std::endl;
-  context.output_stream() << "Build Date: " << BUILD_DATE << " " << BUILD_TIME << std::endl;
+  const auto plus_pos = g_version.find('+');
+  if (plus_pos != std::string::npos)
+  {
+    context.output_stream() << "Version: " << g_version.substr(0, plus_pos) << std::endl;
+    context.output_stream() << "Build: " << g_version.substr(plus_pos + 1) << std::endl;
+  }
+  else
+  {
+    context.output_stream() << "Version: " << g_version << std::endl;
+  }
   context.output_stream() << "Copyright Contributors to the Zowe Project." << std::endl;
   return 0;
 }
