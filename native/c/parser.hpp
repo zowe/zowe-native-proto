@@ -106,6 +106,7 @@ struct ArgTemplate
   ArgValue default_value;
   std::vector<std::string> conflicts_with;
   bool hidden;
+  bool coerce_as_string;
 };
 
 struct ArgumentDef
@@ -118,6 +119,7 @@ struct ArgumentDef
   bool positional;
   bool required;          // is this argument mandatory?
   bool hidden;            // is this argument meant to be hidden / for developers only?
+  bool coerce_as_string;  // treat numeric-looking values as strings when parsing
   ArgValue default_value; // default value if argument is not provided
   bool is_help_flag;      // internal flag to identify the help argument
   std::vector<std::string>
@@ -128,7 +130,8 @@ struct ArgumentDef
               ArgType t = ArgType_Flag, bool pos = false, bool req = false,
               ArgValue def_val = ArgValue(), bool help_flag = false)
       : name(n), aliases(als), help(h), type(t), positional(pos), required(req),
-        hidden(false), default_value(def_val), is_help_flag(help_flag)
+        hidden(false), coerce_as_string(false), default_value(def_val),
+        is_help_flag(help_flag)
   {
   }
 
@@ -137,7 +140,8 @@ struct ArgumentDef
               ArgType t = ArgType_Flag, bool pos = false, bool req = false,
               ArgValue def_val = ArgValue(), bool help_flag = false)
       : name(n), help(h), type(t), positional(pos), required(req),
-        hidden(false), default_value(def_val), is_help_flag(help_flag)
+        hidden(false), coerce_as_string(false), default_value(def_val),
+        is_help_flag(help_flag)
   {
     if (!alias.empty())
     {
@@ -148,7 +152,7 @@ struct ArgumentDef
   // Default constructor
   ArgumentDef()
       : type(ArgType_Flag), positional(false), required(false),
-        hidden(false), is_help_flag(false)
+        hidden(false), coerce_as_string(false), is_help_flag(false)
   {
   }
 
@@ -208,6 +212,7 @@ public:
                     tpl.help, tpl.type, positional, tpl.required,
                     tpl.default_value);
     arg.hidden = tpl.hidden;
+    arg.coerce_as_string = tpl.coerce_as_string;
     arg.conflicts_with = tpl.conflicts_with;
     return arg;
   }
@@ -270,6 +275,12 @@ public:
     return *this;
   }
 
+  ArgumentBuilder &coerce_as_string(bool val = true)
+  {
+    m_arg_def.coerce_as_string = val;
+    return *this;
+  }
+
   ArgumentBuilder &default_value(const ArgValue &val)
   {
     m_arg_def.default_value = val;
@@ -329,10 +340,12 @@ public:
   Command &add_arg(std::string name, const std::vector<std::string> &aliases,
                    std::string help, ArgType type = ArgType_Flag,
                    bool positional = false, bool required = false,
-                   ArgValue default_value = ArgValue(), bool hidden = false)
+                   ArgValue default_value = ArgValue(), bool hidden = false,
+                   bool coerce_as_string = false)
   {
     ArgumentDef arg(name, aliases, help, type, positional, required, default_value);
     arg.hidden = hidden;
+    arg.coerce_as_string = coerce_as_string;
     register_argument(arg);
     return *this;
   }
@@ -396,23 +409,26 @@ public:
                            const std::vector<std::string> &aliases,
                            std::string help, ArgType type = ArgType_Flag,
                            bool required = false,
-                           ArgValue default_value = ArgValue())
+                           ArgValue default_value = ArgValue(),
+                           bool coerce_as_string = false)
   {
-    return add_arg(name, aliases, help, type, false, required, default_value);
+    return add_arg(name, aliases, help, type, false, required, default_value,
+                   false, coerce_as_string);
   }
 
   // add a positional argument (defined by order)
   Command &add_positional_arg(std::string name, std::string help,
                               ArgType type = ArgType_Single,
                               bool required = true,
-                              ArgValue default_value = ArgValue())
+                              ArgValue default_value = ArgValue(),
+                              bool coerce_as_string = false)
   {
     if (type == ArgType_Flag)
     {
       throw std::invalid_argument("positional arguments cannot be flags.");
     }
     return add_arg(name, std::vector<std::string>(), help, type, true, required,
-                   default_value);
+                   default_value, false, coerce_as_string);
   }
 
   Command &add_keyword_arg(const ArgTemplate &tpl)
@@ -830,8 +846,16 @@ private:
 
   // helper to parse a single token into an ArgValue based on expected type
   // returns ArgValue (which manages memory for string/vector)
+  std::string stringify_token_value(const lexer::Token &token) const
+  {
+    std::ostringstream ss;
+    token.print(ss);
+    return ss.str();
+  }
+
   ArgValue parse_token_value(const lexer::Token &token,
-                             ArgType expected_type) const
+                             ArgType expected_type,
+                             bool coerce_as_string = false) const
   {
     lexer::TokenKind kind = token.get_kind();
 
@@ -846,20 +870,21 @@ private:
     // allow broader range of tokens to be interpreted as strings if expected
     bool expect_string =
         (expected_type == ArgType_Single || expected_type == ArgType_Multiple);
+    bool prefer_string = (expected_type == ArgType_Multiple) || coerce_as_string;
 
     switch (kind)
     {
     case lexer::TokIntLit:
-      if (expected_type == ArgType_Single)
+      if (expect_string && prefer_string)
+        return ArgValue(stringify_token_value(token));
+      else if (expected_type == ArgType_Single)
         return ArgValue(token.get_int_value());
-      else if (expect_string) // allow int literal as string if needed
-        return ArgValue(token.get_str_lit_value());
       break;
     case lexer::TokFloatLit:
-      if (expected_type == ArgType_Single)
+      if (expect_string && prefer_string)
+        return ArgValue(stringify_token_value(token));
+      else if (expected_type == ArgType_Single)
         return ArgValue(token.get_float_value());
-      else if (expect_string) // allow float literal as string if needed
-        return ArgValue(token.get_str_lit_value());
       break;
     case lexer::TokTrue:
       if (expect_string)
@@ -1494,7 +1519,8 @@ Command::parse(const std::vector<lexer::Token> &tokens,
 
         const lexer::Token &value_token = tokens[current_token_index];
         ArgValue parsed_value =
-            parse_token_value(value_token, matched_arg->type);
+            parse_token_value(value_token, matched_arg->type,
+                              matched_arg->coerce_as_string);
         if (parsed_value.is_none())
         {
           result.status = ParseResult::ParserStatus_ParseError;
@@ -1556,7 +1582,8 @@ Command::parse(const std::vector<lexer::Token> &tokens,
               const lexer::Token &next_value_token =
                   tokens[current_token_index];
               ArgValue next_parsed_value =
-                  parse_token_value(next_value_token, ArgType_Single);
+                  parse_token_value(next_value_token, ArgType_Multiple,
+                                    matched_arg->coerce_as_string);
               const std::string *next_val_str_ptr =
                   next_parsed_value.get_string();
               if (next_val_str_ptr)
@@ -1689,7 +1716,8 @@ Command::parse(const std::vector<lexer::Token> &tokens,
       const ArgumentDef &pos_arg_def = pos_args[current_positional_arg_index];
       ZLOG_TRACE("Processing positional argument[%zu]: '%s'",
                  current_positional_arg_index, pos_arg_def.name.c_str());
-      ArgValue parsed_value = parse_token_value(token, pos_arg_def.type);
+      ArgValue parsed_value = parse_token_value(token, pos_arg_def.type,
+                                               pos_arg_def.coerce_as_string);
 
       if (parsed_value.is_none())
       {
@@ -1741,7 +1769,8 @@ Command::parse(const std::vector<lexer::Token> &tokens,
           const lexer::Token &next_value_token = tokens[current_token_index];
           // parse subsequent as strings
           ArgValue next_parsed_value =
-              parse_token_value(next_value_token, ArgType_Single);
+              parse_token_value(next_value_token, ArgType_Multiple,
+                                pos_arg_def.coerce_as_string);
           const std::string *next_val_str_ptr = next_parsed_value.get_string();
           if (next_val_str_ptr)
           {
