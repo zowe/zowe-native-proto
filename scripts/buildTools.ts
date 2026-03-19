@@ -9,9 +9,10 @@
  *
  */
 
+import * as childProcess from "node:child_process";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { PassThrough, pipeline, Transform, type TransformCallback } from "node:stream";
+import { PassThrough, pipeline, Readable, Transform, type TransformCallback } from "node:stream";
 import { promisify } from "node:util";
 import { DeferredPromise, DeferredPromiseStatus, type IProfile, ProfileInfo } from "@zowe/imperative";
 import * as chokidar from "chokidar";
@@ -1241,8 +1242,17 @@ async function upload(connection: Client, sshProfile: IProfile) {
             const pendingUploads = [];
             const watcher = new WatchUtils(connection, sshProfile);
             if (args[1] == null) {
+                const packageJson = JSON.parse(fs.readFileSync(path.resolve(__dirname, "../package.json"), "utf-8"));
+                try {
+                    const gitHash = childProcess.execSync("git rev-parse --short HEAD").toString().trim();
+                    packageJson.version += `+${gitHash}`;
+                } catch {}
                 pendingUploads.push(
-                    uploadFile(sftpcon, path.resolve(__dirname, "../package.json"), `${deployDirs.root}/package.json`),
+                    uploadFile(
+                        sftpcon,
+                        Buffer.from(JSON.stringify(packageJson, null, 2), "utf-8"),
+                        `${deployDirs.root}/package.json`,
+                    ),
                 );
             }
             for (let i = 0; i < files.length; i++) {
@@ -1394,11 +1404,11 @@ async function watchTest(connection: Client, sshProfile: IProfile) {
     return new Promise<void>((resolve) => connection.on("close", () => resolve()));
 }
 
-async function uploadFile(sftpcon: SFTPWrapper, from: string, to: string, convertEbcdic = true) {
+async function uploadFile(sftpcon: SFTPWrapper, from: string | Buffer, to: string, convertEbcdic = true) {
     await new Promise<void>((finish) => {
         DEBUG_MODE() && console.log(`Uploading '${from}' to ${to}`);
         pipeline(
-            fs.createReadStream(from),
+            typeof from === "string" ? fs.createReadStream(from) : Readable.from(from),
             convertEbcdic ? new AsciiToEbcdicTransform() : new PassThrough(),
             sftpcon.createWriteStream(to),
             (err) => {

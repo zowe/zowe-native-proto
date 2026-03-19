@@ -26,6 +26,11 @@
 #include "commands/uss.hpp"
 #include "extend/plugin.hpp"
 
+// Version information
+#ifndef PACKAGE_VERSION
+#define PACKAGE_VERSION "unknown"
+#endif
+
 static std::string get_executable_dir(const char *argv0)
 {
   std::string full_path(argv0);
@@ -42,6 +47,7 @@ int main(int argc, char *argv[])
   try
   {
     auto &root_cmd = core::setup_root_command(argv);
+    core::set_version(PACKAGE_VERSION);
 
     plugin::PluginManager pm;
     core::set_plugin_manager(&pm);

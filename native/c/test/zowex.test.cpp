@@ -39,6 +39,7 @@ void zowex_tests()
                   ExpectWithContext(rc, response).ToBe(0);
                   Expect(response).ToContain("zowex");
                   Expect(response).ToContain("Version");
+                  Expect(response).Not().ToContain("unknown");
                 });
 #ifdef RELEASE_BUILD
              it("should remain less than 10mb in size",
