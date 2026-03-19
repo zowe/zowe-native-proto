@@ -1549,9 +1549,9 @@ inline void escape_xml(std::string &data)
     default:
       if (std::iscntrl(ch))
       {
-        std::ostringstream oss;
-        oss << "&#x" << std::uppercase << std::hex << static_cast<int>(ch) << ";";
-        result += oss.str();
+        char esc[9];
+        std::snprintf(esc, sizeof(esc), "&#x%02X;", ch);
+        result += esc;
       }
       else
       {
