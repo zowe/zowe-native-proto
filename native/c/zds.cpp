@@ -3005,10 +3005,14 @@ int zds_list_data_sets(ZDS *zds, std::string dsn, std::vector<ZDSEntry> &dataset
         case CLUSTER:
         case DATA_COMPONENT:
         case INDEX_COMPONENT:
-        case ALTERNATE_INDEX:
-        case PATH:
           entry.dsorg = ZDS_DSORG_VSAM;
           entry.volser = ZDS_VOLSER_VSAM;
+          break;
+        case ALTERNATE_INDEX:
+          entry.volser = ZDS_VOLSER_AIX;
+          break;
+        case PATH:
+          entry.volser = ZDS_VOLSER_PATH;
           break;
         case GENERATION_DATA_SET:
           break;
