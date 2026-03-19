@@ -1231,7 +1231,7 @@ void zds_tests()
                            });
                       });
 
-             describe("list VSAM with AIX and PATH",
+             describe("list VSAM",
                       [&]() -> void
                       {
                         std::string user = get_user();
@@ -1270,7 +1270,6 @@ void zds_tests()
                                       }
                                     }
 
-                                    // Submit JCL to create KSDS, load a record, define AIX, BLDINDEX, define PATH
                                     std::string jcl =
                                         "//VSAMSET$ JOB IZUACCT\n"
                                         "//STEP1    EXEC PGM=IDCAMS\n"
@@ -1283,17 +1282,6 @@ void zds_tests()
                                         "    RECORDSIZE(80 80) -\n"
                                         "    TRACKS(5 5) -\n"
                                         "    SHAREOPTIONS(2 3) )\n"
-                                        "/*\n"
-                                        "//STEP2    EXEC PGM=IDCAMS\n"
-                                        "//SYSPRINT DD SYSOUT=*\n"
-                                        "//INDD     DD *\n"
-                                        "RECORD01DATA IS HERE FOR BLDINDEX  ALTKEY01REST OF THE RECORD DATA PADDING MORE\n"
-                                        "//SYSIN    DD *\n"
-                                        "  REPRO INFILE(INDD) OUTDATASET(" + ksds_dsn + ")\n"
-                                        "/*\n"
-                                        "//STEP3    EXEC PGM=IDCAMS\n"
-                                        "//SYSPRINT DD SYSOUT=*\n"
-                                        "//SYSIN    DD *\n"
                                         "  DEFINE AIX ( -\n"
                                         "    NAME(" + aix_dsn + ") -\n"
                                         "    RELATE(" + ksds_dsn + ") -\n"
@@ -1302,17 +1290,6 @@ void zds_tests()
                                         "    TRACKS(5 5) -\n"
                                         "    SHAREOPTIONS(2 3) -\n"
                                         "    UPGRADE )\n"
-                                        "/*\n"
-                                        "//STEP4    EXEC PGM=IDCAMS\n"
-                                        "//SYSPRINT DD SYSOUT=*\n"
-                                        "//SYSIN    DD *\n"
-                                        "  BLDINDEX -\n"
-                                        "    INDATASET(" + ksds_dsn + ") -\n"
-                                        "    OUTDATASET(" + aix_dsn + ")\n"
-                                        "/*\n"
-                                        "//STEP5    EXEC PGM=IDCAMS\n"
-                                        "//SYSPRINT DD SYSOUT=*\n"
-                                        "//SYSIN    DD *\n"
                                         "  DEFINE PATH ( -\n"
                                         "    NAME(" + path_dsn + ") -\n"
                                         "    PATHENTRY(" + aix_dsn + ") -\n"
@@ -1336,8 +1313,7 @@ void zds_tests()
                                       if (zjob.full_status != "INPUT" && zjob.full_status != "ACTIVE")
                                         break;
                                       std::this_thread::sleep_for(std::chrono::milliseconds(100));
-                                    }
-                                  },
+                                    } },
                                   vsam_opts);
 
                         afterAll([&]() -> void
@@ -1365,8 +1341,7 @@ void zds_tests()
                                          break;
                                        std::this_thread::sleep_for(std::chrono::milliseconds(100));
                                      }
-                                   }
-                                 },
+                                   } },
                                  vsam_opts);
 
                         it("should report VS dsorg and *VSAM* volser for KSDS cluster",
@@ -1719,32 +1694,32 @@ void zds_tests()
                              Expect(content.find("dd only read test") != std::string::npos).ToBe(true);
 
                              zut_free_dynalloc_dds(diag, dds);
-                          });
+                           });
 
-                       it("should read from a SYSPRINT-style DD (FB lrecl=80)",
-                          [&]() -> void
-                          {
-                            std::string expected = "SYSPRINT DD read test";
+                        it("should read from a SYSPRINT-style DD (FB lrecl=80)",
+                           [&]() -> void
+                           {
+                             std::string expected = "SYSPRINT DD read test";
 
-                            std::vector<std::string> dds;
-                            dds.push_back("alloc dd(SYSPRINT) lrecl(80) recfm(f,b) blksize(80)");
-                            ZDIAG diag{};
-                            int rc = zut_loop_dynalloc(diag, dds);
-                            ExpectWithContext(rc, diag.e_msg).ToBe(0);
+                             std::vector<std::string> dds;
+                             dds.push_back("alloc dd(SYSPRINT) lrecl(80) recfm(f,b) blksize(80)");
+                             ZDIAG diag{};
+                             int rc = zut_loop_dynalloc(diag, dds);
+                             ExpectWithContext(rc, diag.e_msg).ToBe(0);
 
-                            ZDS write_zds{};
-                            rc = zds_write_to_dd(&write_zds, "SYSPRINT", expected);
-                            ExpectWithContext(rc, write_zds.diag.e_msg).ToBe(0);
+                             ZDS write_zds{};
+                             rc = zds_write_to_dd(&write_zds, "SYSPRINT", expected);
+                             ExpectWithContext(rc, write_zds.diag.e_msg).ToBe(0);
 
-                            ZDS read_zds{};
-                            ZDSReadOpts read_opts{.zds = &read_zds, .ddname = "SYSPRINT"};
-                            std::string output;
-                            rc = zds_read(read_opts, output);
-                            ExpectWithContext(rc, read_zds.diag.e_msg).ToBe(0);
-                            Expect(output.find(expected) != std::string::npos).ToBe(true);
+                             ZDS read_zds{};
+                             ZDSReadOpts read_opts{.zds = &read_zds, .ddname = "SYSPRINT"};
+                             std::string output;
+                             rc = zds_read(read_opts, output);
+                             ExpectWithContext(rc, read_zds.diag.e_msg).ToBe(0);
+                             Expect(output.find(expected) != std::string::npos).ToBe(true);
 
-                            zut_free_dynalloc_dds(diag, dds);
-                          });
+                             zut_free_dynalloc_dds(diag, dds);
+                           });
                       });
            });
 }
