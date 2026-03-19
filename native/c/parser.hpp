@@ -117,11 +117,11 @@ struct ArgumentDef
   std::string help; // help text description
   ArgType type;     // type of argument (flag, single, etc.)
   bool positional;
-  bool required;          // is this argument mandatory?
-  bool hidden = false;            // is this argument meant to be hidden / for developers only?
-  bool coerce_as_string = false;  // treat numeric-looking values as strings when parsing
-  ArgValue default_value; // default value if argument is not provided
-  bool is_help_flag;      // internal flag to identify the help argument
+  bool required;                 // is this argument mandatory?
+  bool hidden = false;           // is this argument meant to be hidden / for developers only?
+  bool coerce_as_string = false; // treat numeric-looking values as strings when parsing
+  ArgValue default_value;        // default value if argument is not provided
+  bool is_help_flag;             // internal flag to identify the help argument
   std::vector<std::string>
       conflicts_with; // names of other arguments this one conflicts with
 
@@ -854,8 +854,8 @@ private:
   // Returns the numeric literal token as a string or its native type,
   // depending on whether string coercion is preferred.
   template <typename T>
-  ArgValue coerce_numeric(const lexer::Token &token, T native_val,
-                          bool prefer_string) const
+  ArgValue coerce_numeric_to_str(const lexer::Token &token, T native_val,
+                                 bool prefer_string) const
   {
     if (prefer_string)
       return ArgValue(stringify_token_value(token));
@@ -885,11 +885,11 @@ private:
     {
     case lexer::TokIntLit:
       if (expect_string)
-        return coerce_numeric(token, token.get_int_value(), prefer_string);
+        return coerce_numeric_to_str(token, token.get_int_value(), prefer_string);
       break;
     case lexer::TokFloatLit:
       if (expect_string)
-        return coerce_numeric(token, token.get_float_value(), prefer_string);
+        return coerce_numeric_to_str(token, token.get_float_value(), prefer_string);
       break;
     case lexer::TokTrue:
       return expect_string ? ArgValue("true") : ArgValue(true);
@@ -1714,7 +1714,7 @@ Command::parse(const std::vector<lexer::Token> &tokens,
       ZLOG_TRACE("Processing positional argument[%zu]: '%s'",
                  current_positional_arg_index, pos_arg_def.name.c_str());
       ArgValue parsed_value = parse_token_value(token, pos_arg_def.type,
-                                               pos_arg_def.coerce_as_string);
+                                                pos_arg_def.coerce_as_string);
 
       if (parsed_value.is_none())
       {
