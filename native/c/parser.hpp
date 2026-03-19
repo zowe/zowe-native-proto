@@ -118,8 +118,8 @@ struct ArgumentDef
   ArgType type;     // type of argument (flag, single, etc.)
   bool positional;
   bool required;          // is this argument mandatory?
-  bool hidden;            // is this argument meant to be hidden / for developers only?
-  bool coerce_as_string;  // treat numeric-looking values as strings when parsing
+  bool hidden = false;            // is this argument meant to be hidden / for developers only?
+  bool coerce_as_string = false;  // treat numeric-looking values as strings when parsing
   ArgValue default_value; // default value if argument is not provided
   bool is_help_flag;      // internal flag to identify the help argument
   std::vector<std::string>
@@ -130,8 +130,7 @@ struct ArgumentDef
               ArgType t = ArgType_Flag, bool pos = false, bool req = false,
               ArgValue def_val = ArgValue(), bool help_flag = false)
       : name(n), aliases(als), help(h), type(t), positional(pos), required(req),
-        hidden(false), coerce_as_string(false), default_value(def_val),
-        is_help_flag(help_flag)
+        default_value(def_val), is_help_flag(help_flag)
   {
   }
 
@@ -140,8 +139,7 @@ struct ArgumentDef
               ArgType t = ArgType_Flag, bool pos = false, bool req = false,
               ArgValue def_val = ArgValue(), bool help_flag = false)
       : name(n), help(h), type(t), positional(pos), required(req),
-        hidden(false), coerce_as_string(false), default_value(def_val),
-        is_help_flag(help_flag)
+        default_value(def_val), is_help_flag(help_flag)
   {
     if (!alias.empty())
     {
@@ -152,7 +150,7 @@ struct ArgumentDef
   // Default constructor
   ArgumentDef()
       : type(ArgType_Flag), positional(false), required(false),
-        hidden(false), coerce_as_string(false), is_help_flag(false)
+        is_help_flag(false)
   {
   }
 
@@ -853,6 +851,17 @@ private:
     return ss.str();
   }
 
+  // Returns the numeric literal token as a string or its native type,
+  // depending on whether string coercion is preferred.
+  template <typename T>
+  ArgValue coerce_numeric(const lexer::Token &token, T native_val,
+                          bool prefer_string) const
+  {
+    if (prefer_string)
+      return ArgValue(stringify_token_value(token));
+    return ArgValue(native_val);
+  }
+
   ArgValue parse_token_value(const lexer::Token &token,
                              ArgType expected_type,
                              bool coerce_as_string = false) const
@@ -875,29 +884,17 @@ private:
     switch (kind)
     {
     case lexer::TokIntLit:
-      if (expect_string && prefer_string)
-        return ArgValue(stringify_token_value(token));
-      else if (expected_type == ArgType_Single)
-        return ArgValue(token.get_int_value());
+      if (expect_string)
+        return coerce_numeric(token, token.get_int_value(), prefer_string);
       break;
     case lexer::TokFloatLit:
-      if (expect_string && prefer_string)
-        return ArgValue(stringify_token_value(token));
-      else if (expected_type == ArgType_Single)
-        return ArgValue(token.get_float_value());
+      if (expect_string)
+        return coerce_numeric(token, token.get_float_value(), prefer_string);
       break;
     case lexer::TokTrue:
-      if (expect_string)
-        return ArgValue("true");
-      else
-        return ArgValue(true);
-      break;
+      return expect_string ? ArgValue("true") : ArgValue(true);
     case lexer::TokFalse:
-      if (expect_string)
-        return ArgValue("false");
-      else
-        return ArgValue(false);
-      break;
+      return expect_string ? ArgValue("false") : ArgValue(false);
     case lexer::TokStrLit:
       if (expect_string)
         return ArgValue(token.get_str_lit_value());
