@@ -389,8 +389,9 @@ int handle_job_submit(InvocationContext &context)
   std::string jobid;
 
   ZDS zds{};
+  ZDSReadOpts read_opts{ .zds = &zds, .dsname = dsn };
   std::string contents;
-  rc = zds_read_from_dsn(&zds, dsn, contents);
+  rc = zds_read(read_opts, contents);
   if (0 != rc)
   {
     context.error_stream() << "Error: could not read data set: '" << dsn << "' rc: '" << rc << "'" << std::endl;
