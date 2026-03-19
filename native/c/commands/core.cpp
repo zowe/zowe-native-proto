@@ -18,6 +18,9 @@
 
 using namespace parser;
 
+#define BUILD_DATE __DATE__
+#define BUILD_TIME __TIME__
+
 namespace core
 {
 std::shared_ptr<ArgumentParser> g_arg_parser;
@@ -88,16 +91,8 @@ int interactive_mode(const plugin::InvocationContext &context)
 int handle_version(plugin::InvocationContext &context)
 {
   context.output_stream() << "Zowe Native Protocol CLI (zowex)" << std::endl;
-  const auto plus_pos = g_version.find('+');
-  if (plus_pos != std::string::npos)
-  {
-    context.output_stream() << "Version: " << g_version.substr(0, plus_pos) << std::endl;
-    context.output_stream() << "Commit: " << g_version.substr(plus_pos + 1) << std::endl;
-  }
-  else
-  {
-    context.output_stream() << "Version: " << g_version << std::endl;
-  }
+  context.output_stream() << "Version: " << g_version << std::endl;
+  context.output_stream() << "Build Date: " << BUILD_DATE << " " << BUILD_TIME << std::endl;
   context.output_stream() << "Copyright Contributors to the Zowe Project." << std::endl;
   return 0;
 }

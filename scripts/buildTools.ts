@@ -1237,7 +1237,7 @@ async function upload(connection: Client, sshProfile: IProfile) {
             const watcher = new WatchUtils(connection, sshProfile);
             if (args[1] == null) {
                 const packageJson = JSON.parse(fs.readFileSync(path.resolve(__dirname, "../package.json"), "utf-8"));
-                packageJson.version += `+${git.short()}.${git.date().toISOString().split("T")[0]}`;
+                packageJson.version += `+${git.short()}`;
                 pendingUploads.push(
                     uploadFile(
                         sftpcon,
