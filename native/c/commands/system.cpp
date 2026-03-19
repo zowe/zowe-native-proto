@@ -138,7 +138,6 @@ int handle_system_view_syslog(InvocationContext &context)
 
   if (time_value.empty())
   {
-    std::cout << "time is empty, using local time" << std::endl;
     strftime(buf, sizeof(buf), "%H:%M:%S.00", tm_now);
     time_value = buf;
   }
