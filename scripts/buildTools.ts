@@ -9,13 +9,13 @@
  *
  */
 
+import * as childProcess from "node:child_process";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { PassThrough, pipeline, Readable, Transform, type TransformCallback } from "node:stream";
 import { promisify } from "node:util";
 import { DeferredPromise, DeferredPromiseStatus, type IProfile, ProfileInfo } from "@zowe/imperative";
 import * as chokidar from "chokidar";
-import * as git from "git-rev-sync";
 import * as yaml from "js-yaml";
 import { Client, type ClientCallback, type SFTPWrapper } from "ssh2";
 
@@ -1237,7 +1237,10 @@ async function upload(connection: Client, sshProfile: IProfile) {
             const watcher = new WatchUtils(connection, sshProfile);
             if (args[1] == null) {
                 const packageJson = JSON.parse(fs.readFileSync(path.resolve(__dirname, "../package.json"), "utf-8"));
-                packageJson.version += `+${git.short()}`;
+                try {
+                    const gitHash = childProcess.execSync("git rev-parse --short HEAD").toString().trim();
+                    packageJson.version += `+${gitHash}`;
+                } catch {}
                 pendingUploads.push(
                     uploadFile(
                         sftpcon,
