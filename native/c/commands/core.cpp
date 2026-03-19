@@ -92,7 +92,7 @@ int handle_version(plugin::InvocationContext &context)
   if (plus_pos != std::string::npos)
   {
     context.output_stream() << "Version: " << g_version.substr(0, plus_pos) << std::endl;
-    context.output_stream() << "Build: " << g_version.substr(plus_pos + 1) << std::endl;
+    context.output_stream() << "Commit: " << g_version.substr(plus_pos + 1) << std::endl;
   }
   else
   {
