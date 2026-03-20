@@ -2,14 +2,15 @@
 
 Demonstrates z/OS SSH communication with EBCDIC to ASCII conversion.
 
-## Server
+## Deploy & Build
 
-- Upload: `zowe files upload ftu server.cpp <ussDir>/server.cpp --binary`
-- Build on z/OS: `g++ -std=c++17 -o pong-server server.cpp`
+```bash
+npx tsx examples/deploy.ts <ssh-profile> <deploy-dir> pong-server
+```
 
 ## Client
 
-- `cd examples/pong-server && npm install` (once)
-- `npx tsx client.ts ibmuser@<zosHost> <serverCmd>`
-  - `zosHost` - hostname of z/OS server
-  - `serverCmd` - command to run the compiled binary
+```bash
+cd examples/pong-server && npm install
+npx tsx client.ts <user>@<host> <deploy-dir>/examples/pong-server/server
+```

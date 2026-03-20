@@ -2,19 +2,20 @@
 
 Demonstrates bidirectional transfer of raw bytes over a z/OS SSH connection.
 
-## Server
+## Deploy & Build
 
-- Upload: `zowe files upload dtu examples/binary-ssh <ussDir> --binary`
-- Build on z/OS: `make` or `g++ -std=c++17 -o server server.cpp`
+```bash
+npx tsx examples/deploy.ts <ssh-profile> <deploy-dir> binary-ssh
+```
 
 ## Client
 
-- `cd examples/binary-ssh && npm install` (once)
-- `npx tsx client.ts ibmuser@<zosHost> <serverCmd>`
-  - `zosHost` - hostname of z/OS server
-  - `serverCmd` - command to run the compiled binary
+```bash
+cd examples/binary-ssh && npm install
+npx tsx client.ts <user>@<host> <deploy-dir>/examples/binary-ssh/server
+```
 
 ## Transfer Benchmarks
 
 The `tests/` directory contains base64, base85, and raw binary transfer test binaries.
-See `tests/setup.sh` to deploy and build them on z/OS.
+See `tests/setup.sh` to generate test resources and configure the benchmarks.

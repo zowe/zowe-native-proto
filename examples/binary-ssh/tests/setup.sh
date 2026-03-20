@@ -25,7 +25,7 @@ zosmfProfile=$(jq -r .zosmfProfile config.json)
 npx zowe files upload ftu testb64.cpp ${ussDir}/testb64.cpp --binary --zosmf-p $zosmfProfile
 npx zowe files upload ftu testb85.cpp ${ussDir}/testb85.cpp --binary --zosmf-p $zosmfProfile
 npx zowe files upload ftu testraw.cpp ${ussDir}/testraw.cpp --binary --zosmf-p $zosmfProfile
-sshCmd="cd ${ussDir}; for f in testb64 testb85 testraw; do g++ -std=c++17 -o \$f \$f.cpp; done"
+sshCmd="cd ${ussDir}; for f in testb64 testb85 testraw; do ibm-clang++64 -std=c++17 -o \$f \$f.cpp; done"
 sshProfile=$(jq -r .sshProfile config.json)
 if [ "$sshProfile" != "null" ]; then
   npx zowe uss issue ssh "$sshCmd" --ssh-p $sshProfile

@@ -11,14 +11,18 @@ sequenceDiagram
   Server--)Client: Response 1
 ```
 
-## Server
+## Deploy & Build
 
-- Upload: `zowe files upload ftu server.cpp <ussDir>/server.cpp --binary`
-- Build on z/OS: `g++ -std=c++17 -I../../native/c -o jsonrpc-server server.cpp`
+Requires the native backend to be deployed first (the `zjson.hpp` headers must
+exist at `<deploy-dir>/c/`).
+
+```bash
+npx tsx examples/deploy.ts <ssh-profile> <deploy-dir> jsonrpc-ssh
+```
 
 ## Client
 
-- `cd examples/jsonrpc-ssh && npm install` (once)
-- `npx tsx client.ts ibmuser@<zosHost> <serverCmd>`
-  - `zosHost` - hostname of z/OS server
-  - `serverCmd` - command to run the compiled binary
+```bash
+cd examples/jsonrpc-ssh && npm install
+npx tsx client.ts <user>@<host> <deploy-dir>/examples/jsonrpc-ssh/server
+```

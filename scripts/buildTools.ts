@@ -76,7 +76,7 @@ const asciiToEbcdicMap =
     /* F */ 0x97, 0x98, 0x99, 0xa2, 0xa3, 0xa4, 0xa5, 0xa6, 0xa7, 0xa8, 0xa9, 0xc0, 0x4f, 0xd0, 0xa1, 0x07,
     ];
 
-class AsciiToEbcdicTransform extends Transform {
+export class AsciiToEbcdicTransform extends Transform {
     _transform(chunk: Buffer, _encoding: BufferEncoding, callback: TransformCallback) {
         const output = Buffer.allocUnsafe(chunk.length);
         for (let i = 0; i < chunk.length; i++) {
@@ -1576,11 +1576,12 @@ async function main() {
     }
 }
 
-main().catch((err) => {
-    // Print error message without the Error object wrapper
-    const errorMessage = err instanceof Error ? err.message : String(err);
-    if (errorMessage) {
-        console.error(`\n${errorMessage}`);
-    }
-    process.exit(process.exitCode ?? 1);
-});
+if (path.resolve(process.argv[1]) === path.resolve(__filename)) {
+    main().catch((err) => {
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        if (errorMessage) {
+            console.error(`\n${errorMessage}`);
+        }
+        process.exit(process.exitCode ?? 1);
+    });
+}

@@ -1,4 +1,4 @@
-CXX=g++
+CXX=ibm-clang++64
 CXXFLAGS=-std=c++17
 
 all: server tests/testb64 tests/testb85 tests/testraw
