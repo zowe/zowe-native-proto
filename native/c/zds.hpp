@@ -259,6 +259,16 @@ int zds_list_data_sets(ZDS *zds, std::string dsn, std::vector<ZDSEntry> &dataset
 #endif
 
 /**
+ * @brief Read data from a DDNAME using ACB/RPL mode (for VSAM data sets)
+ *
+ * @param zds data set returned attributes and error information
+ * @param ddname ddname from which to read
+ * @param response data read
+ * @return int 0 for success; non zero otherwise
+ */
+int zds_read_vsam(ZDS *zds, std::string ddname, std::string &response);
+
+/**
  * @brief Write data to a DDNAME
  *
  * @param zds data set returned attributes and error information
