@@ -217,9 +217,9 @@ void register_commands(parser::Command &root_command)
   // View-syslog subcommand
   auto system_view_syslog_cmd = command_ptr(new Command("view-syslog", "view syslog"));
   system_view_syslog_cmd->set_handler(handle_system_view_syslog);
-  system_view_syslog_cmd->add_keyword_arg("time", make_aliases("--time", "-ts"), "specify time, e.g. --ts 10:41:00.15", ArgType_Single, false);
+  system_view_syslog_cmd->add_keyword_arg("time", make_aliases("--time", "-t"), "specify time, e.g. -t 10:41:00.15", ArgType_Single, false);
   system_view_syslog_cmd->add_keyword_arg("date", make_aliases("--date", "-d"), "specify date yyyy-mm-dd, e.g. --date 2026-01-20", ArgType_Single, false, ArgValue(""), true);
-  system_view_syslog_cmd->add_keyword_arg("max-lines", make_aliases("--max-lines", "-ml"), "specify maximum number of lines to display, e.g. --max-lines 100", ArgType_Single, false);
+  system_view_syslog_cmd->add_keyword_arg("max-lines", make_aliases("--max-lines", "--ml"), "specify maximum number of lines to display, e.g. --max-lines 100", ArgType_Single, false);
   system_view_syslog_cmd->add_example("View syslog for a specific date and time", "zowex system view-syslog --date 2026-03-13 --time 10:41:00.15");
   system_cmd->add_command(system_view_syslog_cmd);
 
