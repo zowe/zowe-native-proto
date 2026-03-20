@@ -1338,7 +1338,7 @@ inline void print_failed_tests()
   {
     for (const auto &test : suite.tests)
     {
-      if (!test.success)
+      if (!test.success && !test.skipped)
       {
         has_failures = true;
         break;
