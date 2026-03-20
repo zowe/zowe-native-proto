@@ -312,18 +312,71 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
     }
 
     public async allocateLikeDataSet(
-        _dataSetName: string,
-        _likeDataSetName: string,
+        dataSetName: string,
+        likeDataSetName: string,
     ): Promise<zosfiles.IZosFilesResponse> {
-        throw new Error("Not yet implemented");
+        const listResponse = await (await this.client).ds.listDatasets({
+            pattern: likeDataSetName,
+            attributes: true,
+        });
+        const sourceDs = listResponse.items[0];
+        if (!sourceDs) {
+            return this.buildZosFilesResponse(
+                { success: false },
+                false,
+                `Source data set "${likeDataSetName}" not found`,
+            );
+        }
+        const attributes: DatasetAttributes = {
+            dsname: dataSetName,
+            primary: sourceDs.primary ?? 1,
+            lrecl: sourceDs.lrecl ?? 80,
+            blksize: sourceDs.blksize,
+            recfm: sourceDs.recfm,
+            dsorg: sourceDs.dsorg,
+            dsntype: sourceDs.dsntype,
+            dirblk: sourceDs.dsorg === "PO" ? 5 : undefined,
+            alcunit: sourceDs.spacu,
+            secondary: sourceDs.secondary,
+            storclass: sourceDs.storclass,
+            dataclass: sourceDs.dataclass,
+            mgntclass: sourceDs.mgmtclass,
+        };
+        const response = await (await this.client).ds.createDataset({
+            dsname: dataSetName,
+            attributes,
+        });
+        return this.buildZosFilesResponse(response, response.success);
     }
 
     public async copyDataSetMember(
-        { dsn: _fromDataSetName, member: _fromMemberName }: zosfiles.IDataSet,
-        { dsn: _toDataSetName, member: _toMemberName }: zosfiles.IDataSet,
-        _options?: { replace?: boolean },
+        { dsn: fromDataSetName, member: fromMemberName }: zosfiles.IDataSet,
+        { dsn: toDataSetName, member: toMemberName }: zosfiles.IDataSet,
+        options?: { replace?: boolean; deleteTargetMembers?: boolean },
     ): Promise<zosfiles.IZosFilesResponse> {
-        throw new Error("Not yet implemented");
+        const fromDataset = fromMemberName ? `${fromDataSetName}(${fromMemberName})` : fromDataSetName;
+        const toDataset = toMemberName ? `${toDataSetName}(${toMemberName})` : toDataSetName;
+        const response = await (await this.client).ds.copyDataset({
+            fromDataset,
+            toDataset,
+            replace: options?.replace ?? false,
+            deleteTargetMembers: options?.deleteTargetMembers ?? false,
+        });
+        return this.buildZosFilesResponse(response, response.success);
+    }
+
+    public async copyDataSet(
+        fromDataSetName: string,
+        toDataSetName: string,
+        _enq?: string,
+        replace?: boolean,
+    ): Promise<zosfiles.IZosFilesResponse> {
+        const response = await (await this.client).ds.copyDataset({
+            fromDataset: fromDataSetName,
+            toDataset: toDataSetName,
+            replace: replace ?? false,
+        });
+        return this.buildZosFilesResponse(response, response.success);
     }
 
     public async renameDataSet(
