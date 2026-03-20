@@ -13,6 +13,7 @@
 #include "common_args.hpp"
 #include "../zut.hpp"
 #include "../zjb.hpp"
+#include "../zlogger.hpp"
 #include <unistd.h>
 #include <ctime>
 
@@ -110,13 +111,14 @@ int handle_system_list_subsystems(InvocationContext &context)
 }
 
 #define MAX_LINES 10000
+#define DEFAULT_VIEW_SYSLOG_MAX_LINES 10
 int handle_system_view_syslog(InvocationContext &context)
 {
   int rc = 0;
 
   string time_value = context.get<std::string>("time", "");
   string date_value = context.get<std::string>("date", "");
-  auto max_lines = context.get<long long>("max-lines", 10);
+  auto max_lines = context.get<long long>("max-lines", DEFAULT_VIEW_SYSLOG_MAX_LINES);
 
   // validate max-lines
   if (max_lines < 1 || max_lines > MAX_LINES)
@@ -172,6 +174,9 @@ int handle_system_view_syslog(InvocationContext &context)
       return RTNCD_FAILURE;
     }
   }
+
+  ZLOG_DEBUG("view-syslog options in effect: date='%s', time='%s', max_lines=%lld",
+             date_value.c_str(), time_value.c_str(), static_cast<long long>(max_lines));
 
   string response;
   ZJB zjb = {};
