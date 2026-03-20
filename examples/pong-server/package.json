@@ -1,0 +1,14 @@
+{
+  "name": "pong-server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Pong server demo with EBCDIC conversion over SSH",
+  "dependencies": {
+    "ssh2": "^1.16.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.12.0",
+    "@types/ssh2": "^1.15.4",
+    "tsx": "^4.19.2"
+  }
+}
