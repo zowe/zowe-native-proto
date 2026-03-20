@@ -14,6 +14,7 @@
 namespace tool
 {
 using namespace plugin;
+int handle_tool_abend(InvocationContext &result);
 int handle_tool_convert_dsect(InvocationContext &result);
 int handle_tool_dynalloc(InvocationContext &result);
 int handle_tool_search(InvocationContext &result);

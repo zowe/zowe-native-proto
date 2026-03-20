@@ -193,6 +193,9 @@ void register_tso_commands(CommandDispatcher &dispatcher)
 
 void register_tool_commands(CommandDispatcher &dispatcher)
 {
+  dispatcher.register_command("toolAbort",
+                              create_ds_builder(tool::handle_tool_abend)
+                                .validate<AbortCommandRequest, AbortCommandResponse>());
   dispatcher.register_command("toolSearch",
                               create_ds_builder(tool::handle_tool_search)
                                   .validate<ToolSearchRequest, ToolSearchResponse>()
