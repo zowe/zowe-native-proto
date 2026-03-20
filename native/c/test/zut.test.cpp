@@ -9,6 +9,7 @@
  *
  */
 
+#include <cstdio>
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
@@ -161,9 +162,13 @@ void zut_tests()
              describe("zut_bpxwdyn",
                       []() -> void
                       {
+                        std::fprintf(stderr, "zut.test: describe zut_bpxwdyn\n");
+                        std::fflush(stderr);
                         it("should allocate a sysout data set and get the DS name",
                            []() -> void
                            {
+                             std::fprintf(stderr, "zut.test: it allocate sysout\n");
+                             std::fflush(stderr);
                              std::string cmd = "ALLOC SYSOUT";
                              unsigned int code = 0;
                              std::string dsname = "";
@@ -172,11 +177,15 @@ void zut_tests()
                              expect(rc).ToBe(0);
                              expect(dsname.size()).ToBeGreaterThan(0);
                              expect(code).ToBe(0);
+                             std::fprintf(stderr, "zut.test: it allocate sysout done\n");
+                             std::fflush(stderr);
                            });
 
                         it("should allocate a data set, get the DD name, and free it",
                            []() -> void
                            {
+                             std::fprintf(stderr, "zut.test: it alloc DA SYS1.MACLIB\n");
+                             std::fflush(stderr);
                              std::string cmd = "ALLOC DA('SYS1.MACLIB') SHR";
                              unsigned int code = 0;
                              std::string ddname = "";

@@ -522,6 +522,28 @@ int handle_uss_chtag(InvocationContext &context)
   return rc;
 }
 
+int handle_uss_issue_cmd(InvocationContext &context)
+{
+  std::string command = context.get<std::string>("command", "");
+  std::string stdout_response;
+  std::string stderr_response;
+
+  int rc = zut_spawn_shell_command(command, stdout_response, stderr_response);
+
+  if (0 != rc)
+  {
+    context.error_stream() << "Error running command, rc '" << rc << "'" << std::endl;
+    if (!stderr_response.empty())
+    {
+      context.error_stream() << "  Details: " << stderr_response << std::endl;
+    }
+  }
+
+  context.output_stream() << stdout_response;
+
+  return rc;
+}
+
 void register_commands(parser::Command &root_command)
 {
   // USS command group
@@ -624,6 +646,12 @@ void register_commands(parser::Command &root_command)
   uss_chtag_cmd->add_keyword_arg(RECURSIVE);
   uss_chtag_cmd->set_handler(handle_uss_chtag);
   uss_group->add_command(uss_chtag_cmd);
+
+  // Issue subcommand
+  auto uss_issue_cmd = std::make_shared<Command>("issue", "issue a UNIX command");
+  uss_issue_cmd->add_positional_arg("command", "command to issue", ArgType_Single, true);
+  uss_issue_cmd->set_handler(handle_uss_issue_cmd);
+  uss_group->add_command(uss_issue_cmd);
 
   root_command.add_command(uss_group);
 }

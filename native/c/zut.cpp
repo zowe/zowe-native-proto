@@ -28,6 +28,8 @@
 #include <ios>
 #include "zuttype.h"
 #include <vector>
+#include <array>
+#include <spawn.h>
 #include <sys/wait.h>
 #include <poll.h>
 #include <_Nascii.h>
@@ -245,6 +247,204 @@ int zut_run_program(const std::string &program, const std::vector<std::string> &
 {
   std::string dummy;
   return zut_private_run_program(program, args, response, dummy, true);
+}
+
+static void zut_private_drain_fd(struct pollfd &pfd, std::string &output, pid_t pid)
+{
+  if (pfd.fd == -1)
+  {
+    return;
+  }
+
+  if (pfd.revents & POLLIN)
+  {
+    std::array<char, 4096> buf;
+    ssize_t n = read(pfd.fd, buf.data(), buf.size());
+    if (n > 0)
+    {
+      output.append(buf.data(), n);
+    }
+    else if (0 == n)
+    {
+      pfd.fd = -1;
+    }
+    else if (-1 == n && EINTR != errno)
+    {
+      kill(pid, SIGKILL);
+      pfd.fd = -1;
+    }
+    return;
+  }
+
+  if (pfd.revents & (POLLHUP | POLLERR))
+  {
+    pfd.fd = -1;
+  }
+}
+
+static void zut_private_drain_pipes(std::array<struct pollfd, 2> &fds,
+                                    std::string &stdout_response,
+                                    std::string &stderr_response,
+                                    pid_t pid)
+{
+  while (fds[0].fd != -1 || fds[1].fd != -1)
+  {
+    if (-1 == poll(fds.data(), fds.size(), -1))
+    {
+      if (EINTR != errno)
+      {
+        kill(pid, SIGKILL);
+        break;
+      }
+      continue;
+    }
+
+    zut_private_drain_fd(fds[0], stdout_response, pid);
+    zut_private_drain_fd(fds[1], stderr_response, pid);
+  }
+}
+
+/**
+ * Commands that change process identity (UID/GID) and are not supported
+ * when _BPX_SHAREAS=YES (shared address space). See e.g. IBM doc for newgrp.
+ * When the user runs one of these, we must not pass _BPX_SHAREAS=YES to the child.
+ */
+static const char *const ZUT_NOSHAREAS_COMMANDS[] = {"newgrp", "su", "sg", nullptr};
+
+static bool zut_private_command_requires_noshareas(const std::string &command)
+{
+  std::string s = command;
+  const std::string whitespace(" \t\n");
+  size_t pos = s.find_first_not_of(whitespace);
+  if (pos == std::string::npos)
+  {
+    return false;
+  }
+  while (pos < s.size())
+  {
+    size_t end = pos;
+    while (end < s.size() && s[end] != ' ' && s[end] != '\t' && s[end] != '\n')
+    {
+      ++end;
+    }
+    std::string token = s.substr(pos, end - pos);
+    pos = (end < s.size()) ? s.find_first_not_of(whitespace, end) : s.size();
+
+    if (token.empty())
+    {
+      continue;
+    }
+    size_t eq = token.find('=');
+    if (eq != std::string::npos && eq > 0)
+    {
+      continue; // env assignment (e.g. FOO=bar), skip
+    }
+    size_t last_slash = token.rfind('/');
+    std::string basename = (last_slash != std::string::npos) ? token.substr(last_slash + 1) : token;
+    for (const char *const *p = ZUT_NOSHAREAS_COMMANDS; *p != nullptr; ++p)
+    {
+      if (basename == *p)
+      {
+        return true;
+      }
+    }
+    return false;
+  }
+  return false;
+}
+
+static std::vector<const char *> zut_private_build_env(const std::string &command)
+{
+  extern char **environ; // NOSONAR: POSIX-mandated global, cannot be const
+  std::vector<const char *> env_vec;
+  bool has_bpx_shareas = false;
+  const bool use_noshareas = zut_private_command_requires_noshareas(command);
+
+  for (char **ep = environ; ep != nullptr && *ep != nullptr; ++ep)
+  {
+    if (0 == strncmp(*ep, "_BPX_SHAREAS=", 13))
+    {
+      has_bpx_shareas = true;
+      if (use_noshareas)
+      {
+        continue; // do not pass _BPX_SHAREAS to child for identity-changing commands
+      }
+    }
+    env_vec.push_back(*ep);
+  }
+  if (!use_noshareas && !has_bpx_shareas)
+  {
+    env_vec.push_back("_BPX_SHAREAS=YES");
+  }
+  env_vec.push_back(nullptr);
+  return env_vec;
+}
+
+int zut_spawn_shell_command(const std::string &command, std::string &stdout_response, std::string &stderr_response)
+{
+  stdout_response.clear();
+  stderr_response.clear();
+
+  if (command.empty())
+  {
+    stderr_response = "Error: You must specify a command to run.";
+    return RTNCD_FAILURE;
+  }
+
+  std::array<int, 2> stdout_pipe;
+  std::array<int, 2> stderr_pipe;
+  if (-1 == pipe(stdout_pipe.data()))
+  {
+    return RTNCD_FAILURE;
+  }
+  if (-1 == pipe(stderr_pipe.data()))
+  {
+    close(stdout_pipe[0]);
+    close(stdout_pipe[1]);
+    return RTNCD_FAILURE;
+  }
+
+  std::array<int, 3> fd_map = {STDIN_FILENO, stdout_pipe[1], stderr_pipe[1]};
+  struct inheritance inherit = {};
+  std::vector<const char *> argv_vec = {"/bin/sh", "-c", command.c_str(), nullptr};
+
+  std::vector<const char *> env_vec = zut_private_build_env(command);
+
+  pid_t pid = spawn("/bin/sh", 3, fd_map.data(), &inherit, argv_vec.data(), env_vec.data());
+
+  if (-1 == pid)
+  {
+    close(stdout_pipe[0]);
+    close(stdout_pipe[1]);
+    close(stderr_pipe[0]);
+    close(stderr_pipe[1]);
+    return RTNCD_FAILURE;
+  }
+
+  close(stdout_pipe[1]);
+  close(stderr_pipe[1]);
+
+  std::array<struct pollfd, 2> fds = {{{stdout_pipe[0], POLLIN, 0}, {stderr_pipe[0], POLLIN, 0}}};
+  zut_private_drain_pipes(fds, stdout_response, stderr_response, pid);
+
+  zut_strip_final_newline(stdout_response);
+  zut_strip_final_newline(stderr_response);
+
+  close(stdout_pipe[0]);
+  close(stderr_pipe[0]);
+
+  int status;
+  if (-1 == waitpid(pid, &status, 0))
+  {
+    return RTNCD_FAILURE;
+  }
+
+  if (WIFEXITED(status))
+  {
+    return WEXITSTATUS(status);
+  }
+
+  return RTNCD_FAILURE;
 }
 
 int zut_search(const std::string &parms)
@@ -468,13 +668,24 @@ int zut_list_parmlib(ZDIAG &diag, std::vector<std::string> &parmlibs)
   PARMLIB_DSNS dsns = {0};
   int num_dsns = 0;
 
+  std::fprintf(stderr, "zut_list_parmlib: calling ZUTMLPLB\n");
+  std::fflush(stderr);
   rc = ZUTMLPLB(&diag, &num_dsns, &dsns);
+  std::fprintf(stderr, "zut_list_parmlib: ZUTMLPLB returned rc=%d num_dsns=%d (positive=%d)\n", rc, num_dsns, num_dsns > 0 ? 1 : 0);
+  std::fflush(stderr);
   if (0 != rc)
   {
     return rc;
   }
 
-  parmlibs.reserve(num_dsns);
+  if (num_dsns < 0 || num_dsns > MAX_PARMLIB_DSNS)
+  {
+    std::fprintf(stderr, "zut_list_parmlib: clamping num_dsns from %d to [0,%d]\n", num_dsns, MAX_PARMLIB_DSNS);
+    std::fflush(stderr);
+    num_dsns = num_dsns < 0 ? 0 : MAX_PARMLIB_DSNS;
+  }
+
+  parmlibs.reserve(static_cast<size_t>(num_dsns));
   for (int i = 0; i < num_dsns; i++)
   {
     parmlibs.emplace_back(std::string(dsns.dsn[i].val, sizeof(dsns.dsn[i].val)));
