@@ -12,6 +12,7 @@
 
 #ifndef _OPEN_SYS_ITOA_EXT
 #define _OPEN_SYS_ITOA_EXT
+#include "zdbg.h"
 #include "ztype.h"
 #include <cctype>
 #endif
@@ -768,6 +769,59 @@ int zds_read(const ZDSReadOpts &opts, std::string &response)
   }
 
   return 0;
+}
+
+int zds_read_vsam(ZDS *zds, std::string ddname, std::string &response)
+{
+  int rc = 0;
+
+  IO_CTRL *ioc = new IO_CTRL();
+
+  rc = ZDSOIVSM(zds, &ioc, ddname.c_str());
+  if (rc != RTNCD_SUCCESS)
+  {
+    return rc;
+  }
+
+  rc = ZDSPIVSM(zds, ioc);
+  if (rc != RTNCD_SUCCESS)
+  {
+    ZDSCIVSM(zds, ioc);
+    return rc;
+  }
+
+  int lines_read = 0;
+  while (true)
+  {
+    rc = ZDSRIVSM(zds, ioc);
+    if (rc == RTNCD_SUCCESS)
+    {
+      response.append(ioc->buffer, ioc->ifgacb.acblrecl);
+      response.append(1, '\n');
+      lines_read++;
+    }
+    else if (rc == RTNCD_WARNING)
+    {
+      break;
+    }
+    else
+    {
+      ZDSCIVSM(zds, ioc);
+      return rc;
+    }
+    if (lines_read >= zds->max_lines)
+    {
+      break;
+    }
+  }
+
+  rc = ZDSCIVSM(zds, ioc);
+  if (rc != RTNCD_SUCCESS)
+  {
+    return rc;
+  }
+
+  return RTNCD_SUCCESS;
 }
 
 int zds_write_to_dd(ZDS *zds, std::string ddname, const std::string &data)

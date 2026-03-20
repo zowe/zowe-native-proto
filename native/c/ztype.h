@@ -18,19 +18,20 @@
 #define RTNCD_SUCCESS 0
 #define RTNCD_FAILURE -1
 
-#if defined(__IBM_METAL__)
-
-#define ATTRIBUTE(...) __attribute__((__VA_ARGS__)) // ATTRIBUTE(amode31)
+#if defined(__IBM_METAL__) || defined(__open_xl__)
 #define PTR32 __ptr32
+#else
+#define PTR32
+#endif
+
+#if defined(__IBM_METAL__)
 #define PTR64 __ptr64
+#define ATTRIBUTE(...) __attribute__((__VA_ARGS__)) // ATTRIBUTE(amode31)
 #define FAR __far
 #define ASMREG(register) __asm(register)
-
 #else
-
-#define ATTRIBUTE(...)
-#define PTR32
 #define PTR64
+#define ATTRIBUTE(...)
 #define FAR
 #define ASMREG(register)
 // #define __malloc31(len) malloc(len)

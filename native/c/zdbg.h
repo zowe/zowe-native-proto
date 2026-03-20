@@ -138,17 +138,20 @@ static void zut_dump_storage_common(const char *title, const void *data, int siz
 // example usage: zut_dump_storage_common("jprhdr", jprhdr, sizeof(JPRHDR), 16, 0, zut_print_debug);
 static void zut_print_debug(const char *fmt)
 {
+#if defined(__IBM_METAL__)
   zwto_debug(fmt);
+#else
+  fprintf(stderr, "%s", fmt);
+#endif
 }
 
-static void zut_dump_storage_wto(const char *title, const void *data, int size)
+static void zut_dump_storage(const char *title, const void *data, int size)
 {
+#if defined(__IBM_METAL__)
   zut_dump_storage_common(title, data, size, 16, 0, zut_print_debug);
-}
-
-static void zut_dump_storage(const char *title, const void *data, int size, zut_print_func cb_print)
-{
-  zut_dump_storage_common(title, data, size, 32, 1, cb_print);
+#else
+  zut_dump_storage_common(title, data, size, 32, 1, zut_print_debug);
+#endif
 }
 
 #endif
