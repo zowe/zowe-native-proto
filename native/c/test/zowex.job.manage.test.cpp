@@ -606,7 +606,7 @@ void zowex_job_manage_tests(std::vector<std::string> &_jobs, std::vector<std::st
                   Expect(response.length()).ToBeGreaterThan(0);
 
                   std::string duplicate_response;
-                  rc = execute_command_with_output(zowex_command + " job view-file " + dsn, duplicate_response);
+                  rc = execute_command_with_output(zowex_command + " job view-file " + dsn + " --encoding binary", duplicate_response);
                   ExpectWithContext(rc, duplicate_response).ToBe(0);
                   Expect(duplicate_response.length()).ToBe(response.length());
                 });

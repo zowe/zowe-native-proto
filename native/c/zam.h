@@ -15,7 +15,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
 #include "zmetal.h"
 #include "dcbd.h"
 #include "ihaecb.h"
@@ -25,296 +24,14 @@
 #include "jfcb.h"
 #include "ihaexlst.h"
 #include "zamtypes.h"
+#include "ztime.h"
 
-// https://www.ibm.com/docs/en/SSLTBW_3.1.0/pdf/idad500_v3r1.pdf
-// see Non-VSAM macro instructions
-
-// IO_CTRL *sysprintIoc = openOutputAssert("SYSPRINT", 132, 132, dcbrecf + dcbrecbr);
-// IO_CTRL *snapIoc = openOutputAssert("SNAP", 125, 1632, dcbrecv + dcbrecbr + dcbrecca);
-// IO_CTRL *inIoc = openInputAssert("IN", 80, 80, dcbrecf);
-
-// SNAP_HEADER header = {23, "Important Control Block"};
-
-// snap(&snapIoc->dcb, &header, &someCtrl, sizeof(someCtrl));
-
-// while (0 == read_sync(inIoc, inbuff))
-// {
-//     memset(writeBuf, ' ', 132);
-//     memcpy(writeBuf, inbuff, 80);
-//     write_sync(sysprintIoc, writeBuf);
-// }
-
-// "DCBE=*-*,"                                             \
-// TODO(KELOSKY): DCBE?
-#if defined(__IBM_METAL__)
-#define DCB_WRITE_MODEL(dcbwm)                                \
-  __asm(                                                      \
-      "*                                                  \n" \
-      " DCB DDNAME=*-*,"                                      \
-      "DSORG=PS,"                                             \
-      "MACRF=W                                            \n" \
-      "*                                                    " \
-      : "DS"(dcbwm));
-#else
-#define DCB_WRITE_MODEL(dcbwm)
-#endif
-
-DCB_WRITE_MODEL(open_write_model);
-
-#if defined(__IBM_METAL__)
-#define DCB_READ_MODEL(dcbrm)                                 \
-  __asm(                                                      \
-      "*                                                  \n" \
-      " DCB DDNAME=*-*,"                                      \
-      "DSORG=PS,"                                             \
-      "DCBE=*-*,"                                             \
-      "MACRF=R                                            \n" \
-      "*                                                    " \
-      : "DS"(dcbrm));
-#else
-#define DCB_READ_MODEL(dcbrm)
-#endif
-
-DCB_READ_MODEL(open_read_model);
-
-#if defined(__IBM_METAL__)
-#define OPEN(dcb, plist, rc, mode)                            \
-  __asm(                                                      \
-      "*                                                  \n" \
-      " OPEN (%0,(" #mode ")),"                               \
-      "MODE=31,"                                              \
-      "MF=(E,%2)                                          \n" \
-      "*                                                  \n" \
-      " ST    15,%1     Save RC                           \n" \
-      "*                                                    " \
-      : "+m"(dcb),                                            \
-        "=m"(rc)                                              \
-      : "m"(plist)                                            \
-      : "r0", "r1", "r14", "r15");
-#else
-#define OPEN(dcb, plist, rc, mode)
-#endif
-
-#if defined(__IBM_METAL__)
-#define SYNADRLS()                                            \
-  __asm(                                                      \
-      "*                                                  \n" \
-      " SYNADRLS                                          \n" \
-      "*                                                  \n" \
-      "*                                                    " \
-      :                                                       \
-      :                                                       \
-      : "r0", "r1", "r14", "r15");
-#else
-#define SYNADRLS()
-#endif
-
-#if defined(__IBM_METAL__)
-#define RDJFCB(dcb, plist, rc, mode)                          \
-  __asm(                                                      \
-      "*                                                  \n" \
-      " RDJFCB (%0,(" #mode ")),"                             \
-      "MF=(E,%2)                                          \n" \
-      "*                                                  \n" \
-      " ST    15,%1     Save RC                           \n" \
-      "*                                                    " \
-      : "+m"(dcb),                                            \
-        "=m"(rc)                                              \
-      : "m"(plist)                                            \
-      : "r0", "r1", "r14", "r15");
-#else
-#define RDJFCB(dcb, plist, rc, mode)
-#endif
-
-#if defined(__IBM_METAL__)
-#define FIND(dcb, member, rc, rsn)                            \
-  __asm(                                                      \
-      "*                                                  \n" \
-      " FIND %0,"                                             \
-      "%3,"                                                   \
-      "D                                                  \n" \
-      "*                                                  \n" \
-      " ST    15,%1     Save RC                           \n" \
-      " ST    0,%2     Save RSN                           \n" \
-      "*                                                    " \
-      : "+m"(dcb),                                            \
-        "=m"(rc),                                             \
-        "=m"(rsn)                                             \
-      : "m"(member)                                           \
-      : "r0", "r1", "r14", "r15");
-#else
-#define FIND(dcb, plist, rc, rsn)
-#endif
-
-// PDSE member is not connected
-#if defined(__IBM_METAL__)
-#define BLDL(dcb, list, rc, rsn)                              \
-  __asm(                                                      \
-      "*                                                  \n" \
-      " BLDL %3,"                                             \
-      "%0,"                                                   \
-      "BYPASSLLA,"                                            \
-      "NOCONNECT                                          \n" \
-      "*                                                  \n" \
-      " ST    15,%1     Save RC                           \n" \
-      " ST    0,%2     Save RSN                           \n" \
-      "*                                                    " \
-      : "+m"(list),                                           \
-        "=m"(rc),                                             \
-        "=m"(rsn)                                             \
-      : "m"(dcb)                                              \
-      : "r0", "r1", "r14", "r15");
-#else
-#define BLDL(dcb, list, rc, rsn)
-#endif
-
-#if defined(__IBM_METAL__)
-#define STOW(dcb, list, rc, rsn)                              \
-  __asm(                                                      \
-      "*                                                  \n" \
-      " STOW %2,"                                             \
-      "%3,"                                                   \
-      "R                                                  \n" \
-      "*                                                  \n" \
-      " ST    15,%1     Save RC                           \n" \
-      " ST    0,%2     Save RSN                           \n" \
-      "*                                                    " \
-      : "=m"(rc),                                             \
-        "=m"(rsn)                                             \
-      : "m"(dcb),                                             \
-        "m"(list)                                             \
-      : "r0", "r1", "r14", "r15");
-#else
-#define STOW(dcb, list, rc, rsn)
-#endif
-
-#if defined(__IBM_METAL__)
-#define NOTE(dcb, listaddr, rc, rsn)                          \
-  __asm(                                                      \
-      "*                                                  \n" \
-      " NOTE %3,"                                             \
-      "REL                                                \n" \
-      "*                                                  \n" \
-      " ST    1,%0     Save result                        \n" \
-      " ST    15,%1    Save RC                            \n" \
-      " ST    0,%2     Save RSN                           \n" \
-      "*                                                    " \
-      : "=m"(listaddr),                                       \
-        "=m"(rc),                                             \
-        "=m"(rsn)                                             \
-      : "m"(dcb)                                              \
-      : "r0", "r1", "r14", "r15");
-#else
-#define NOTE(dcb, listaddr, rc, rsn)
-#endif
-
-#if defined(__IBM_METAL__)
-#define CLOSE(dcb, plist, rc)                                 \
-  __asm(                                                      \
-      "*                                                  \n" \
-      " CLOSE (%0),"                                          \
-      "MODE=31,"                                              \
-      "MF=(E,%2)                                          \n" \
-      "*                                                  \n" \
-      " ST    15,%1     Save RC                           \n" \
-      "*                                                    " \
-      : "+m"(dcb),                                            \
-        "=m"(rc)                                              \
-      : "m"(plist)                                            \
-      : "r0", "r1", "r14", "r15");
-#else
-#define CLOSE(dcb, plist, rc)
-#endif
-
-#if defined(__IBM_METAL__)
-#define WRITE(dcb, ecb, buf, rc)                              \
-  __asm(                                                      \
-      "*                                                  \n" \
-      " WRITE %0,"                                            \
-      "SF,"                                                   \
-      "%2,"                                                   \
-      "%3,"                                                   \
-      "MF=E                                               \n" \
-      "*                                                  \n" \
-      " ST    15,%1     Save RC                           \n" \
-      "*                                                    " \
-      : "+m"(ecb),                                            \
-        "=m"(*rc)                                             \
-      : "m"(dcb),                                             \
-        "m"(buf)                                              \
-      : "r0", "r1", "r14", "r15");
-#else
-#define WRITE(dcb, ecb, buf, rc)
-#endif
-
-#if defined(__IBM_METAL__)
-#define READ(dcb, ecb, buf, rc)                               \
-  __asm(                                                      \
-      "*                                                  \n" \
-      " READ %0,"                                             \
-      "SF,"                                                   \
-      "%2,"                                                   \
-      "%3,"                                                   \
-      "'S',"                                                  \
-      "MF=E                                               \n" \
-      "*                                                  \n" \
-      " ST    15,%1     Save RC                           \n" \
-      "*                                                    " \
-      : "+m"(ecb),                                            \
-        "=m"(rc)                                              \
-      : "m"(dcb),                                             \
-        "m"(buf)                                              \
-      : "r0", "r1", "r14", "r15");
-#else
-#define READ(dcb, ecb, buf, rc)
-#endif
-
-#if defined(__IBM_METAL__)
-#define SNAP(dcb, header, start, end, plist, rc)              \
-  __asm(                                                      \
-      "*                                                  \n" \
-      " SNAP DCB=%1,"                                         \
-      "ID=1,"                                                 \
-      "STORAGE=(%2,%3),"                                      \
-      "STRHDR=%4,"                                            \
-      "MF=(E,%5)                                          \n" \
-      "*                                                  \n" \
-      " ST    15,%0     Save RC                           \n" \
-      "*                                                    " \
-      : "=m"(rc)                                              \
-      : "m"(dcb),                                             \
-        "m"(start),                                           \
-        "m"(end),                                             \
-        "m"(header),                                          \
-        "m"(plist)                                            \
-      : "r0", "r1", "r14", "r15");
-#else
-#define SNAP(dcb, header, start, end, plist, rc)
-#endif
-
-#if defined(__IBM_METAL__)
-#define CHECK(ecb, rc)                                        \
-  __asm(                                                      \
-      "*                                                  \n" \
-      " CHECK %1                                          \n" \
-      "*                                                  \n" \
-      " ST    15,%0     Save RC                           \n" \
-      "*                                                    " \
-      : "=m"(rc)                                              \
-      : "m"(ecb)                                              \
-      : "r0", "r1", "r14", "r15");
-#else
-#define CHECK(ecb, rc)
-#endif
-
-// 8-char entry points for z
 #if defined(__IBM_METAL__)
 #pragma map(open_output_assert, "opnoasrt")
 #pragma map(open_input_assert, "opniasrt")
 #pragma map(close_assert, "closasrt")
 #endif
 
-// API methods
 IO_CTRL *PTR32 open_output_assert(char *, int, int, unsigned char) ATTRIBUTE(amode31);
 IO_CTRL *PTR32 open_input_assert(char *, int, int, unsigned char) ATTRIBUTE(amode31);
 void close_assert(IO_CTRL *) ATTRIBUTE(amode31);
@@ -323,17 +40,24 @@ int write_sync(IO_CTRL *, char *) ATTRIBUTE(amode31);
 int read_sync(IO_CTRL *, char *) ATTRIBUTE(amode31);
 
 #if defined(__IBM_METAL__)
-#pragma map(open_output, "openout")
-#pragma map(open_input, "openin")
+#pragma map(open_input_dcb, "OPNIDCB")
+#pragma map(open_output_dcb, "OPNODCB")
+#pragma map(open_input_acb, "OPNIACB")
 #endif
 
-// individual api methods
-int open_output(IHADCB *) ATTRIBUTE(amode31);
-int open_update(IHADCB *) ATTRIBUTE(amode31);
-int open_input(IHADCB *) ATTRIBUTE(amode31);
+int open_input_dcb(IHADCB *) ATTRIBUTE(amode31);
+int open_output_dcb(IHADCB *) ATTRIBUTE(amode31);
+int open_input_acb(IFGACB *) ATTRIBUTE(amode31);
+
+#ifdef __IBM_METAL__
+#pragma map(close_acb, "CLOSACB")
+#pragma map(close_dcb, "CLOSEDCB")
+#endif
+
+int close_acb(IFGACB *) ATTRIBUTE(amode31);
+int close_dcb(IHADCB *) ATTRIBUTE(amode31);
 
 #if defined(__IBM_METAL__)
-#pragma map(close_dcb, "CLOSEDCB")
 #pragma map(write_dcb, "WRITEDCB")
 #pragma map(read_dcb, "READDCB")
 #endif
@@ -343,13 +67,24 @@ void read_dcb(IHADCB *, READ_PL *, char *) ATTRIBUTE(amode31);
 
 #if defined(__IBM_METAL__)
 #pragma map(open_output_bpam, "OPNOBPAM")
-#pragma map(close_output_bpam, "CLOSBPAM")
-#pragma map(write_output_bpam, "WRITBPAM")
+#pragma map(close_output_bpam, "CLSOBPAM")
+#pragma map(write_output_bpam, "WRTOBPAM")
 #endif
 
 int open_output_bpam(ZDIAG *PTR32, IO_CTRL *PTR32 *PTR32, const char *PTR32) ATTRIBUTE(amode31);
 int write_output_bpam(ZDIAG *PTR32, IO_CTRL *PTR32, const char *PTR32, int length) ATTRIBUTE(amode31);
 int close_output_bpam(ZDIAG *PTR32, IO_CTRL *PTR32) ATTRIBUTE(amode31);
+
+#if defined(__IBM_METAL__)
+#pragma map(open_input_vsam, "OPNIVSAM")
+#pragma map(read_input_vsam, "RDIVSAM")
+#pragma map(point_input_vsam, "PTNIVSAM")
+#pragma map(close_input_vsam, "CLSIVSAM")
+#endif
+int open_input_vsam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 *PTR32, const char *PTR32) ATTRIBUTE(amode31);
+int read_input_vsam(ZDIAG *PTR32 diag, IO_CTRL *PTR32) ATTRIBUTE(amode31);
+int point_input_vsam(ZDIAG *PTR32 diag, IO_CTRL *PTR32, TIME_STRUCT *time_struct) ATTRIBUTE(amode31);
+int close_input_vsam(ZDIAG *PTR32, IO_CTRL *PTR32) ATTRIBUTE(amode31);
 
 #if defined(__IBM_METAL__)
 #pragma map(read_input_jfcb, "RIJFCB")
@@ -363,8 +98,6 @@ int bldl(IO_CTRL *, BLDL_PL *, int *rsn) ATTRIBUTE(amode31);
 int stow(IO_CTRL *, int *rsn) ATTRIBUTE(amode31);
 int note(IO_CTRL *, NOTE_RESPONSE *PTR32 note_response, int *rsn) ATTRIBUTE(amode31);
 int find_member(IO_CTRL *ioc, int *rsn) ATTRIBUTE(amode31);
-
-int close_dcb(IHADCB *) ATTRIBUTE(amode31);
 
 int check(DECB *ecb) ATTRIBUTE(amode31);
 
@@ -432,24 +165,6 @@ static void set_eod(IHADCB *PTR32 dcb, EODAD eodad)
   FILE_CTRL *fc = dcb->dcbdcbe;
   // retain access to DCB / file control
   fc->dcbe.dcbeeoda = (void *PTR32)eodad;
-}
-
-static IO_CTRL *PTR32 new_write_io_ctrl(char *PTR32 ddname, int lrecl, int blkSize, unsigned char recfm)
-{
-  IO_CTRL *PTR32 ioc = new_io_ctrl();
-  IHADCB *dcb = &ioc->dcb;
-  memcpy(dcb, &open_write_model, sizeof(IHADCB));
-  set_dcb_info(dcb, ddname, lrecl, blkSize, recfm);
-  return ioc;
-}
-
-static IO_CTRL *PTR32 new_read_io_ctrl(char *PTR32 ddname, int lrecl, int blkSize, unsigned char recfm)
-{
-  IO_CTRL *ioc = new_io_ctrl();
-  IHADCB *dcb = &ioc->dcb;
-  memcpy(dcb, &open_read_model, sizeof(IHADCB));
-  set_dcb_info(dcb, ddname, lrecl, blkSize, recfm);
-  return ioc;
 }
 
 #endif

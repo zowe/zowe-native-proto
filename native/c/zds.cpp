@@ -12,6 +12,7 @@
 
 #ifndef _OPEN_SYS_ITOA_EXT
 #define _OPEN_SYS_ITOA_EXT
+#include "zdbg.h"
 #include "ztype.h"
 #include <cctype>
 #endif
@@ -524,58 +525,6 @@ bool zds_is_valid_member_name(const std::string &name)
   return true;
 }
 
-int zds_read_from_dd(ZDS *zds, std::string ddname, std::string &response)
-{
-  ddname = "DD:" + ddname;
-
-  std::ifstream in(ddname.c_str());
-  if (!in.is_open())
-  {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open file '%s'", ddname.c_str());
-    return RTNCD_FAILURE;
-  }
-
-  int index = 0;
-
-  std::string line;
-  while (std::getline(in, line))
-  {
-    if (index > 0 || line.size() > 0)
-    {
-      if (index > 0)
-      {
-        response.push_back('\n');
-      }
-      response += line;
-      index++;
-    }
-  }
-  in.close();
-
-  const size_t size = response.size() + 1;
-  if (size > 0 && std::strlen(zds->encoding_opts.codepage) > 0)
-  {
-    std::string temp = response;
-    const auto source_encoding = std::strlen(zds->encoding_opts.source_codepage) > 0 ? std::string(zds->encoding_opts.source_codepage) : "UTF-8";
-    try
-    {
-      const auto bytes_with_encoding = zut_encode(temp, std::string(zds->encoding_opts.codepage), source_encoding, zds->diag);
-      temp = bytes_with_encoding;
-    }
-    catch (std::exception &e)
-    {
-      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from %s to %s", source_encoding.c_str(), zds->encoding_opts.codepage);
-      return RTNCD_FAILURE;
-    }
-    if (!temp.empty())
-    {
-      response = temp;
-    }
-  }
-
-  return 0;
-}
-
 /**
  * Helper function to get data set attributes (RECFM, LRECL) from DSCB.
  * Returns a DscbAttributes struct with recfm, lrecl, and is_asa flag.
@@ -674,16 +623,56 @@ static void scan_for_truncated_lines(const std::string &data, int max_len,
   truncation.flush_range();
 }
 
-int zds_read_from_dsn(ZDS *zds, const std::string &dsn, std::string &response)
+static std::string zds_resolve_dsname(const ZDSReadOpts &opts)
 {
-  std::string dsname = "//'" + dsn + "'";
-  if (std::strlen(zds->ddname) > 0)
+  if (!opts.ddname.empty())
   {
-    dsname = "//DD:" + std::string(zds->ddname);
+    return "//DD:" + opts.ddname;
+  }
+  return "//'" + opts.dsname + "'";
+}
+
+static DscbAttributes zds_resolve_dscb(const ZDSReadOpts &opts)
+{
+  return opts.dsname.empty() ? DscbAttributes{} : zds_get_dscb_attributes(opts.dsname);
+}
+
+/**
+ * Validates the read options and returns an error code if the options are invalid.
+ *
+ * @param opts read options to validate
+ * @param caller name of the caller function
+ * @throw std::invalid_argument if the opts.zds pointer is nullptr
+ * @return RTNCD_SUCCESS if the options are valid, RTNCD_FAILURE otherwise
+ */
+static int zds_validate_read_opts(const ZDSReadOpts &opts, const char *caller)
+{
+  if (opts.zds == nullptr)
+  {
+    throw std::invalid_argument(std::string(caller) + ": valid ZDS pointer is required in ZDSReadOpts.zds");
+  }
+  if (opts.dsname.empty() && opts.ddname.empty())
+  {
+    opts.zds->diag.e_msg_len = sprintf(opts.zds->diag.e_msg, "Either a dsname or ddname must be provided");
+    return RTNCD_FAILURE;
+  }
+  return RTNCD_SUCCESS;
+}
+
+int zds_read(const ZDSReadOpts &opts, std::string &response)
+{
+  const int vrc = zds_validate_read_opts(opts, "zds_read");
+  if (vrc != RTNCD_SUCCESS)
+  {
+    return vrc;
   }
 
+  ZDS *zds = opts.zds;
+  const std::string dsname = zds_resolve_dsname(opts);
+  const auto is_dd = !opts.ddname.empty();
+
   // Check if ASA format - use record I/O to preserve ASA control characters
-  const DscbAttributes attrs = zds_get_dscb_attributes(dsn);
+  const DscbAttributes attrs = zds_resolve_dscb(opts);
   const bool is_asa = attrs.is_asa && zds->encoding_opts.data_type != eDataTypeBinary;
 
   std::string fopen_flags;
@@ -701,10 +690,10 @@ int zds_read_from_dsn(ZDS *zds, const std::string &dsn, std::string &response)
     fopen_flags = "r";
   }
 
-  FILE *fp = fopen(dsname.c_str(), fopen_flags.c_str());
+  FileGuard fp(dsname.c_str(), fopen_flags.c_str());
   if (!fp)
   {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open dsn '%s'", dsn.c_str());
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open handle to %s '%s'", is_dd ? "DD" : "data set", dsname.c_str());
     return RTNCD_FAILURE;
   }
 
@@ -756,7 +745,6 @@ int zds_read_from_dsn(ZDS *zds, const std::string &dsn, std::string &response)
       response.append(buffer, bytes_read);
     }
   }
-  fclose(fp);
 
   const auto encoding_provided = zds_use_codepage(zds);
 
@@ -781,6 +769,59 @@ int zds_read_from_dsn(ZDS *zds, const std::string &dsn, std::string &response)
   }
 
   return 0;
+}
+
+int zds_read_vsam(ZDS *zds, std::string ddname, std::string &response)
+{
+  int rc = 0;
+
+  IO_CTRL *ioc = new IO_CTRL();
+
+  rc = ZDSOIVSM(zds, &ioc, ddname.c_str());
+  if (rc != RTNCD_SUCCESS)
+  {
+    return rc;
+  }
+
+  rc = ZDSPIVSM(zds, ioc);
+  if (rc != RTNCD_SUCCESS)
+  {
+    ZDSCIVSM(zds, ioc);
+    return rc;
+  }
+
+  int lines_read = 0;
+  while (true)
+  {
+    rc = ZDSRIVSM(zds, ioc);
+    if (rc == RTNCD_SUCCESS)
+    {
+      response.append(ioc->buffer, ioc->ifgacb.acblrecl);
+      response.append(1, '\n');
+      lines_read++;
+    }
+    else if (rc == RTNCD_WARNING)
+    {
+      break;
+    }
+    else
+    {
+      ZDSCIVSM(zds, ioc);
+      return rc;
+    }
+    if (lines_read >= zds->max_lines)
+    {
+      break;
+    }
+  }
+
+  rc = ZDSCIVSM(zds, ioc);
+  if (rc != RTNCD_SUCCESS)
+  {
+    return rc;
+  }
+
+  return RTNCD_SUCCESS;
 }
 
 int zds_write_to_dd(ZDS *zds, std::string ddname, const std::string &data)
@@ -1329,18 +1370,18 @@ static bool zds_write_recfm_unsupported(const std::string &recfm, const bool inc
 
 int zds_validate_etag(ZDS *zds, const std::string &dsn, bool has_encoding)
 {
-  ZDS read_ds{};
-  std::string current_contents = "";
+  ZDS read_zds{};
   if (has_encoding)
   {
-    memcpy(&read_ds.encoding_opts, &zds->encoding_opts, sizeof(ZEncode));
+    memcpy(&read_zds.encoding_opts, &zds->encoding_opts, sizeof(ZEncode));
   }
-  const auto read_rc = zds_read_from_dsn(&read_ds, dsn, current_contents);
+  ZDSReadOpts read_opts{.zds = &read_zds, .dsname = dsn};
+  std::string current_contents = "";
+  const auto read_rc = zds_read(read_opts, current_contents);
   if (0 != read_rc)
   {
-    // Truncate detail message to avoid buffer overflow
     char truncated_detail[128];
-    strncpy(truncated_detail, read_ds.diag.e_msg, sizeof(truncated_detail) - 1);
+    strncpy(truncated_detail, read_zds.diag.e_msg, sizeof(truncated_detail) - 1);
     truncated_detail[sizeof(truncated_detail) - 1] = '\0';
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg,
                                   "Failed to read contents of data set for e-tag comparison: %s", truncated_detail);
@@ -1412,7 +1453,8 @@ int zds_write_to_dsn(ZDS *zds, const std::string &dsn, std::string &data)
 
   // Print new e-tag to stdout as response
   std::string saved_contents = "";
-  const auto read_rc = zds_read_from_dsn(zds, dsn, saved_contents);
+  ZDSReadOpts read_opts{.zds = zds, .dsname = dsn};
+  const auto read_rc = zds_read(read_opts, saved_contents);
   if (0 != read_rc)
   {
     return RTNCD_FAILURE;
@@ -3070,29 +3112,33 @@ int zds_list_data_sets(ZDS *zds, std::string dsn, std::vector<ZDSEntry> &dataset
 /**
  * Reads data from a data set in streaming mode.
  *
- * @param zds pointer to a ZDS object
- * @param dsn name of the data set
+ * @param opts read options containing ZDS state and either a dsname or ddname
  * @param pipe name of the output pipe
  * @param content_len pointer where the length of the data set contents will be stored
  *
  * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
  */
-int zds_read_from_dsn_streamed(ZDS *zds, const std::string &dsn, const std::string &pipe, size_t *content_len)
+int zds_read_streamed(const ZDSReadOpts &opts, const std::string &pipe, size_t *content_len)
 {
+  const int vrc = zds_validate_read_opts(opts, "zds_read_streamed");
+  if (vrc != RTNCD_SUCCESS)
+  {
+    return vrc;
+  }
+
+  ZDS *zds = opts.zds;
+
   if (content_len == nullptr)
   {
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "content_len must be a valid size_t pointer");
     return RTNCD_FAILURE;
   }
 
-  std::string dsname = "//'" + dsn + "'";
-  if (std::strlen(zds->ddname) > 0)
-  {
-    dsname = "//DD:" + std::string(zds->ddname);
-  }
+  const std::string dsname = zds_resolve_dsname(opts);
+  const auto is_dd = !opts.ddname.empty();
 
   // Check if ASA format - use record I/O to preserve ASA control characters
-  const DscbAttributes attrs = zds_get_dscb_attributes(dsn);
+  const DscbAttributes attrs = zds_resolve_dscb(opts);
   const bool is_asa = attrs.is_asa && zds->encoding_opts.data_type != eDataTypeBinary;
 
   std::string fopen_flags;
@@ -3113,7 +3159,7 @@ int zds_read_from_dsn_streamed(ZDS *zds, const std::string &dsn, const std::stri
   FileGuard fin(dsname.c_str(), fopen_flags.c_str());
   if (!fin)
   {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open dsn '%s'", dsn.c_str());
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open handle to %s '%s'", is_dd ? "DD" : "data set", dsname.c_str());
     return RTNCD_FAILURE;
   }
 
@@ -3843,7 +3889,8 @@ int zds_write_to_dsn_streamed(ZDS *zds, const std::string &dsn, const std::strin
 
   // Update the etag
   std::string saved_contents = "";
-  const auto read_rc = zds_read_from_dsn(zds, dsn, saved_contents);
+  ZDSReadOpts read_opts{.zds = zds, .dsname = dsn};
+  const auto read_rc = zds_read(read_opts, saved_contents);
   if (0 != read_rc)
   {
     return RTNCD_FAILURE;
