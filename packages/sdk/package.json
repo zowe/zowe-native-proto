@@ -23,7 +23,6 @@
   "publishConfig": {
     "registry": "https://zowe.jfrog.io/zowe/api/npm/npm-local-release/"
   },
-  "bundleDependencies": true,
   "dependencies": {
     "base64-stream": "^1.0.0",
     "es-toolkit": "^1.39.10",
