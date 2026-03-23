@@ -36,6 +36,8 @@
 
 #define ZJB_UNKNOWN_RC ""
 
+#define ZJB_OPT_STRIP_CRLF 0x01
+
 ZNP_PACK_ON
 
 // NOTE(Kelosky): struct is padded to nearest double word boundary; ensure proper alignment for fields
@@ -63,6 +65,8 @@ typedef struct
   ZEncode encoding_opts; // User-specified, desired encoding options for spool contents
 
   ZDIAG diag;
+
+  uint32_t submit_flag;
 
 } ZJB;
 

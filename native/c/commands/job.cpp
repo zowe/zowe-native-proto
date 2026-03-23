@@ -389,7 +389,7 @@ int handle_job_submit(InvocationContext &context)
   std::string jobid;
 
   ZDS zds{};
-  ZDSReadOpts read_opts{ .zds = &zds, .dsname = dsn };
+  ZDSReadOpts read_opts{.zds = &zds, .dsname = dsn};
   std::string contents;
   rc = zds_read(read_opts, contents);
   if (0 != rc)
@@ -448,7 +448,7 @@ int handle_job_submit_jcl(InvocationContext &context)
     data = zut_encode(data, source_encoding, std::string(encoding_opts.codepage), zjb.diag);
   }
 
-  return job_submit_common(context, data, jobid, "JCL");
+  return job_submit_common(context, data, jobid, "JCL", true);
 }
 
 int handle_job_delete(InvocationContext &context)
@@ -697,10 +697,16 @@ int handle_job_release(InvocationContext &context)
   return RTNCD_SUCCESS;
 }
 
-int job_submit_common(InvocationContext &context, const std::string &jcl, std::string &jobid, const std::string &identifier)
+int job_submit_common(InvocationContext &context, const std::string &jcl, std::string &jobid, const std::string &identifier, bool strip_crlf)
 {
   int rc = 0;
   ZJB zjb{};
+
+  if (strip_crlf)
+  {
+    zjb.submit_flag |= ZJB_OPT_STRIP_CRLF;
+  }
+
   rc = zjb_submit(&zjb, jcl, jobid);
 
   if (0 != rc)

@@ -35,6 +35,8 @@
 
 typedef struct iazbtokp IAZBTOKP;
 
+const char CR_CHAR = '\x0D';
+
 void zjb_build_job_response(ZJB_JOB_INFO *PTR64, int, std::vector<ZJob> &);
 
 #define BTOKLEN (293 - 254) // 293 is the full length, minus the max optional buffer area for logs (less 254)
@@ -368,7 +370,7 @@ int zjb_read_job_content_by_dsn(ZJB *zjb, const std::string &dsn, std::string &r
   zds.encoding_opts.data_type = zjb->encoding_opts.data_type;
   memcpy((void *)&zds.encoding_opts.codepage, (const void *)&zjb->encoding_opts.codepage, sizeof(zjb->encoding_opts.codepage));
 
-  ZDSReadOpts read_opts{ .zds = &zds, .ddname = ddname, .dsname = dsn };
+  ZDSReadOpts read_opts{.zds = &zds, .ddname = ddname, .dsname = dsn};
   rc = zds_read(read_opts, response);
   memcpy(&zjb->diag, &zds.diag, sizeof(ZDIAG));
 
@@ -449,7 +451,7 @@ int zjb_release(ZJB *zjb, const std::string &jobid)
 int zjb_submit_dsn(ZJB *zjb, const std::string &dsn, std::string &jobid)
 {
   ZDS zds{};
-  ZDSReadOpts read_opts{ .zds = &zds, .dsname = dsn };
+  ZDSReadOpts read_opts{.zds = &zds, .dsname = dsn};
   std::string contents;
   const auto rc = zds_read(read_opts, contents);
   if (0 != rc)
@@ -497,7 +499,28 @@ int zjb_submit(ZJB *zjb, const std::string &contents, std::string &jobid)
     return RTNCD_FAILURE;
   }
 
-  rc = zds_write_to_dd(&zds, ddname, contents);
+  std::string new_contents;
+
+  if (zjb->submit_flag & ZJB_OPT_STRIP_CRLF)
+  {
+    std::stringstream ss(contents);
+    std::string line;
+    while (std::getline(ss, line))
+    {
+      if (!line.empty() && line[line.size() - 1] == CR_CHAR)
+      {
+        line.erase(line.size() - 1);
+      }
+      line.resize(80, ' ');
+      new_contents += line;
+    }
+  }
+  else
+  {
+    new_contents = contents;
+  }
+
+  rc = zds_write_to_dd(&zds, ddname, new_contents);
   if (0 != rc)
   {
     memcpy(&zjb->diag, &zds.diag, sizeof(ZDIAG));
