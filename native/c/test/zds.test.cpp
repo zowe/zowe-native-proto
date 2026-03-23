@@ -1235,42 +1235,68 @@ void zds_tests()
                       [&]() -> void
                       {
                         std::string user = get_user();
-                        std::string ksds_dsn = user + ".ZNP#TEST.VSAM.KSDS";
-                        std::string aix_dsn = user + ".ZNP#TEST.VSAM.AIX";
-                        std::string path_dsn = user + ".ZNP#TEST.VSAM.PATH";
+                        std::string base = user + ".ZNPTEST";
+                        std::string ksds_dsn = base + ".VSAM.KSDS";
+                        std::string ksds_aix_dsn = base + ".VSAM.KAIX";
+                        std::string ksds_path_dsn = base + ".VSAM.KPTH";
+                        std::string esds_dsn = base + ".VSAM.ESDS";
+                        std::string esds_aix_dsn = base + ".VSAM.EAIX";
+                        std::string esds_path_dsn = base + ".VSAM.EPTH";
+
+                        auto submit_and_wait = [](const std::string &jcl, int max_polls = 600, bool check_rc = false)
+                        {
+                          ZJB zjb = {0};
+                          std::string jobid;
+                          int rc = zjb_submit(&zjb, jcl, jobid);
+                          if (rc != 0)
+                            throw std::runtime_error("Failed to submit JCL: " + std::string(zjb.diag.e_msg));
+                          TestLog("Submitted job " + jobid + " (" + std::to_string(jcl.size()) + " bytes)");
+                          std::string correlator(zjb.correlator, sizeof(zjb.correlator));
+                          ZJob final_job = {};
+                          for (int i = 0; i < max_polls; ++i)
+                          {
+                            ZJB zjb_v = {0};
+                            final_job = {};
+                            int vrc = zjb_view(&zjb_v, correlator, final_job);
+                            if (vrc != 0)
+                              throw std::runtime_error("Failed to view job: " + std::string(zjb_v.diag.e_msg));
+                            if (!final_job.retcode.empty())
+                              break;
+                            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                          }
+                          TestLog("Job " + jobid + " retcode='" + final_job.retcode + "'");
+                          if (check_rc && final_job.retcode.find("CC 0000") == std::string::npos)
+                            throw std::runtime_error("Job " + jobid + " failed: retcode='" + final_job.retcode + "'");
+                        };
+
+                        auto find_entry = [](std::vector<ZDSEntry> &entries, const std::string &dsn) -> ZDSEntry *
+                        {
+                          for (auto &e : entries)
+                          {
+                            std::string trimmed = e.name;
+                            zut_rtrim(trimmed);
+                            if (trimmed == dsn)
+                              return &e;
+                          }
+                          return nullptr;
+                        };
 
                         TEST_OPTIONS vsam_opts = {false, 60};
 
                         beforeAll([&]() -> void
                                   {
-                                    // Clean up any leftover data sets from a previous run
                                     std::string cleanup_jcl =
                                         "//CLEANUP$ JOB IZUACCT\n"
                                         "//STEP1    EXEC PGM=IDCAMS\n"
                                         "//SYSPRINT DD SYSOUT=*\n"
                                         "//SYSIN    DD *\n"
                                         "  DELETE " + ksds_dsn + " CLUSTER PURGE\n"
+                                        "  DELETE " + esds_dsn + " CLUSTER PURGE\n"
                                         "  SET MAXCC = 0\n"
                                         "/*\n";
+                                    submit_and_wait(cleanup_jcl, 200);
 
-                                    ZJB zjb_cleanup = {0};
-                                    std::string cleanup_jobid;
-                                    zjb_submit(&zjb_cleanup, cleanup_jcl, cleanup_jobid);
-                                    if (!cleanup_jobid.empty())
-                                    {
-                                      std::string correlator(zjb_cleanup.correlator, sizeof(zjb_cleanup.correlator));
-                                      for (int i = 0; i < 200; ++i)
-                                      {
-                                        ZJB zjb_v = {0};
-                                        ZJob zjob = {};
-                                        zjb_view(&zjb_v, correlator, zjob);
-                                        if (zjob.full_status != "INPUT" && zjob.full_status != "ACTIVE")
-                                          break;
-                                        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-                                      }
-                                    }
-
-                                    std::string jcl =
+                                    std::string setup_jcl =
                                         "//VSAMSET$ JOB IZUACCT\n"
                                         "//STEP1    EXEC PGM=IDCAMS\n"
                                         "//SYSPRINT DD SYSOUT=*\n"
@@ -1283,7 +1309,7 @@ void zds_tests()
                                         "    TRACKS(5 5) -\n"
                                         "    SHAREOPTIONS(2 3) )\n"
                                         "  DEFINE AIX ( -\n"
-                                        "    NAME(" + aix_dsn + ") -\n"
+                                        "    NAME(" + ksds_aix_dsn + ") -\n"
                                         "    RELATE(" + ksds_dsn + ") -\n"
                                         "    KEYS(8 32) -\n"
                                         "    RECORDSIZE(80 80) -\n"
@@ -1291,57 +1317,43 @@ void zds_tests()
                                         "    SHAREOPTIONS(2 3) -\n"
                                         "    UPGRADE )\n"
                                         "  DEFINE PATH ( -\n"
-                                        "    NAME(" + path_dsn + ") -\n"
-                                        "    PATHENTRY(" + aix_dsn + ") -\n"
+                                        "    NAME(" + ksds_path_dsn + ") -\n"
+                                        "    PATHENTRY(" + ksds_aix_dsn + ") -\n"
+                                        "    UPDATE )\n"
+                                        "  DEFINE CLUSTER ( -\n"
+                                        "    NAME(" + esds_dsn + ") -\n"
+                                        "    NONINDEXED -\n"
+                                        "    RECORDSIZE(80 80) -\n"
+                                        "    TRACKS(5 5) -\n"
+                                        "    SHAREOPTIONS(2 3) )\n"
+                                        "  DEFINE AIX ( -\n"
+                                        "    NAME(" + esds_aix_dsn + ") -\n"
+                                        "    RELATE(" + esds_dsn + ") -\n"
+                                        "    KEYS(8 0) -\n"
+                                        "    RECORDSIZE(80 80) -\n"
+                                        "    TRACKS(5 5) -\n"
+                                        "    SHAREOPTIONS(2 3) -\n"
+                                        "    UPGRADE )\n"
+                                        "  DEFINE PATH ( -\n"
+                                        "    NAME(" + esds_path_dsn + ") -\n"
+                                        "    PATHENTRY(" + esds_aix_dsn + ") -\n"
                                         "    UPDATE )\n"
                                         "/*\n";
-
-                                    ZJB zjb = {0};
-                                    std::string jobid;
-                                    int rc = zjb_submit(&zjb, jcl, jobid);
-                                    if (rc != 0)
-                                      throw std::runtime_error("Failed to submit VSAM setup JCL: " + std::string(zjb.diag.e_msg));
-
-                                    std::string correlator(zjb.correlator, sizeof(zjb.correlator));
-                                    for (int i = 0; i < 600; ++i)
-                                    {
-                                      ZJB zjb_v = {0};
-                                      ZJob zjob = {};
-                                      int vrc = zjb_view(&zjb_v, correlator, zjob);
-                                      if (vrc != 0)
-                                        throw std::runtime_error("Failed to view VSAM setup job: " + std::string(zjb_v.diag.e_msg));
-                                      if (zjob.full_status != "INPUT" && zjob.full_status != "ACTIVE")
-                                        break;
-                                      std::this_thread::sleep_for(std::chrono::milliseconds(100));
-                                    } },
+                                    submit_and_wait(setup_jcl, 600, true); },
                                   vsam_opts);
 
                         afterAll([&]() -> void
                                  {
-                                   std::string jcl =
+                                   std::string del_jcl =
                                        "//VSAMDEL$ JOB IZUACCT\n"
                                        "//STEP1    EXEC PGM=IDCAMS\n"
                                        "//SYSPRINT DD SYSOUT=*\n"
                                        "//SYSIN    DD *\n"
                                        "  DELETE " + ksds_dsn + " CLUSTER PURGE\n"
+                                       "  DELETE " + esds_dsn + " CLUSTER PURGE\n"
+                                       "  SET MAXCC = 0\n"
                                        "/*\n";
-
-                                   ZJB zjb = {0};
-                                   std::string jobid;
-                                   zjb_submit(&zjb, jcl, jobid);
-                                   if (!jobid.empty())
-                                   {
-                                     std::string correlator(zjb.correlator, sizeof(zjb.correlator));
-                                     for (int i = 0; i < 200; ++i)
-                                     {
-                                       ZJB zjb_v = {0};
-                                       ZJob zjob = {};
-                                       zjb_view(&zjb_v, correlator, zjob);
-                                       if (zjob.full_status != "INPUT" && zjob.full_status != "ACTIVE")
-                                         break;
-                                       std::this_thread::sleep_for(std::chrono::milliseconds(100));
-                                     }
-                                   } },
+                                   submit_and_wait(del_jcl, 200); },
                                  vsam_opts);
 
                         it("should report VS dsorg and *VSAM* volser for KSDS cluster",
@@ -1351,66 +1363,72 @@ void zds_tests()
                              std::vector<ZDSEntry> entries;
                              int rc = zds_list_data_sets(&zds, ksds_dsn, entries, true);
                              ExpectWithContext(rc, zds.diag.e_msg).ToBe(0);
-
-                             ZDSEntry *found = nullptr;
-                             for (auto &e : entries)
-                             {
-                               std::string trimmed = e.name;
-                               zut_rtrim(trimmed);
-                               if (trimmed == ksds_dsn)
-                               {
-                                 found = &e;
-                                 break;
-                               }
-                             }
+                             ZDSEntry *found = find_entry(entries, ksds_dsn);
                              Expect(found != nullptr).ToBe(true);
                              Expect(found->dsorg).ToBe(std::string(ZDS_DSORG_VSAM));
                              Expect(found->volser).ToBe(std::string(ZDS_VOLSER_VSAM));
                            });
 
-                        it("should report empty dsorg and *AIX* volser for alternate index",
+                        it("should report empty dsorg and *AIX* volser for KSDS alternate index",
                            [&]() -> void
                            {
                              ZDS zds = {0};
                              std::vector<ZDSEntry> entries;
-                             int rc = zds_list_data_sets(&zds, aix_dsn, entries, true);
+                             int rc = zds_list_data_sets(&zds, ksds_aix_dsn, entries, true);
                              ExpectWithContext(rc, zds.diag.e_msg).ToBe(0);
-
-                             ZDSEntry *found = nullptr;
-                             for (auto &e : entries)
-                             {
-                               std::string trimmed = e.name;
-                               zut_rtrim(trimmed);
-                               if (trimmed == aix_dsn)
-                               {
-                                 found = &e;
-                                 break;
-                               }
-                             }
+                             ZDSEntry *found = find_entry(entries, ksds_aix_dsn);
                              Expect(found != nullptr).ToBe(true);
                              Expect(found->dsorg).ToBe(std::string(""));
                              Expect(found->volser).ToBe(std::string(ZDS_VOLSER_AIX));
                            });
 
-                        it("should report empty dsorg and *PATH* volser for path",
+                        it("should report empty dsorg and *PATH* volser for KSDS path",
                            [&]() -> void
                            {
                              ZDS zds = {0};
                              std::vector<ZDSEntry> entries;
-                             int rc = zds_list_data_sets(&zds, path_dsn, entries, true);
+                             int rc = zds_list_data_sets(&zds, ksds_path_dsn, entries, true);
                              ExpectWithContext(rc, zds.diag.e_msg).ToBe(0);
+                             ZDSEntry *found = find_entry(entries, ksds_path_dsn);
+                             Expect(found != nullptr).ToBe(true);
+                             Expect(found->dsorg).ToBe(std::string(""));
+                             Expect(found->volser).ToBe(std::string(ZDS_VOLSER_PATH));
+                           });
 
-                             ZDSEntry *found = nullptr;
-                             for (auto &e : entries)
-                             {
-                               std::string trimmed = e.name;
-                               zut_rtrim(trimmed);
-                               if (trimmed == path_dsn)
-                               {
-                                 found = &e;
-                                 break;
-                               }
-                             }
+                        it("should report VS dsorg and *VSAM* volser for ESDS cluster",
+                           [&]() -> void
+                           {
+                             ZDS zds = {0};
+                             std::vector<ZDSEntry> entries;
+                             int rc = zds_list_data_sets(&zds, esds_dsn, entries, true);
+                             ExpectWithContext(rc, zds.diag.e_msg).ToBe(0);
+                             ZDSEntry *found = find_entry(entries, esds_dsn);
+                             Expect(found != nullptr).ToBe(true);
+                             Expect(found->dsorg).ToBe(std::string(ZDS_DSORG_VSAM));
+                             Expect(found->volser).ToBe(std::string(ZDS_VOLSER_VSAM));
+                           });
+
+                        it("should report empty dsorg and *AIX* volser for ESDS alternate index",
+                           [&]() -> void
+                           {
+                             ZDS zds = {0};
+                             std::vector<ZDSEntry> entries;
+                             int rc = zds_list_data_sets(&zds, esds_aix_dsn, entries, true);
+                             ExpectWithContext(rc, zds.diag.e_msg).ToBe(0);
+                             ZDSEntry *found = find_entry(entries, esds_aix_dsn);
+                             Expect(found != nullptr).ToBe(true);
+                             Expect(found->dsorg).ToBe(std::string(""));
+                             Expect(found->volser).ToBe(std::string(ZDS_VOLSER_AIX));
+                           });
+
+                        it("should report empty dsorg and *PATH* volser for ESDS path",
+                           [&]() -> void
+                           {
+                             ZDS zds = {0};
+                             std::vector<ZDSEntry> entries;
+                             int rc = zds_list_data_sets(&zds, esds_path_dsn, entries, true);
+                             ExpectWithContext(rc, zds.diag.e_msg).ToBe(0);
+                             ZDSEntry *found = find_entry(entries, esds_path_dsn);
                              Expect(found != nullptr).ToBe(true);
                              Expect(found->dsorg).ToBe(std::string(""));
                              Expect(found->volser).ToBe(std::string(ZDS_VOLSER_PATH));
