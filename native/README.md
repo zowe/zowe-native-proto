@@ -285,11 +285,9 @@ To dump storage in LE, use:
 
   int data = 3;
 
-  zut_dump_storage(title, &data, sizeof(data), zut_debug_message);
+  zut_dump_storage(title, &data, sizeof(data));
 
 ```
-
-By default, output is printed to `STDERR` when using `zut_debug_message()`; however, you may provide alternative callback functions via a function pointer in place of the default `zut_debug_message`.
 
 ### Metal C
 

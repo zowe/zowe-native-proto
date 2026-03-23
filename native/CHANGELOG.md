@@ -7,6 +7,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 ## Recent Changes
 
 - `c`: Fixed an issue where listing data sets would fail with an "unsupported entry type" error if the pattern matched a VSAM PATH or alternate index (AIX). Now, matching VSAM PATH or AIX data sets are returned in the list results. [#841](https://github.com/zowe/zowe-native-proto/issues/841)
+- `c`: Added `zowex system view-syslog` command. [#829](https://github.com/zowe/zowe-native-proto/issues/829)
 - `c`: Added an option for command handler arguments to coerce all input values into a string, allowing developers to have more control over expected formatting and type constraints. [#875](https://github.com/zowe/zowe-native-proto/pull/875)
 - **Breaking:** `c`: Renamed the `zds_read_from_dsn` function to `zds_read`. [#831](https://github.com/zowe/zowe-native-proto/issues/831)
 - **Breaking:** `c`: Removed the `zds_read_from_dd` function in favor of the newly-consolidated `zds_read` function. [#831](https://github.com/zowe/zowe-native-proto/issues/831)
