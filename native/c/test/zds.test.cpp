@@ -1287,75 +1287,82 @@ void zds_tests()
                           return nullptr;
                         };
 
-                        auto idcams_jcl = [](const std::string &jobname, const std::string &sysin)
-                        {
-                          return "//" + jobname + " JOB IZUACCT\n"
-                                                  "//STEP1    EXEC PGM=IDCAMS\n"
-                                                  "//SYSPRINT DD SYSOUT=*\n"
-                                                  "//SYSIN    DD *\n" +
-                                 sysin +
-                                 "/*\n";
-                        };
-
                         TEST_OPTIONS vsam_opts = {false, 60};
 
                         beforeAll([&]() -> void
                                   {
-                                    submit_and_wait(idcams_jcl("CLEANUP$",
-                                      "  DELETE " + ksds_path_dsn + " PURGE\n"
-                                      "  DELETE " + ksds_aix_dsn + " PURGE\n"
-                                      "  DELETE " + ksds_dsn + " CLUSTER PURGE\n"
-                                      "  DELETE " + esds_path_dsn + " PURGE\n"
-                                      "  DELETE " + esds_aix_dsn + " PURGE\n"
-                                      "  DELETE " + esds_dsn + " CLUSTER PURGE\n"
-                                      "  SET MAXCC = 0\n"), 200);
+                                    std::string cleanup_jcl;
+                                    cleanup_jcl += "//CLEANUP$ JOB IZUACCT\n";
+                                    cleanup_jcl += "//STEP1    EXEC PGM=IDCAMS\n";
+                                    cleanup_jcl += "//SYSPRINT DD SYSOUT=*\n";
+                                    cleanup_jcl += "//SYSIN    DD *\n";
+                                    cleanup_jcl += "  DELETE " + ksds_path_dsn + " PURGE\n";
+                                    cleanup_jcl += "  DELETE " + ksds_aix_dsn + " PURGE\n";
+                                    cleanup_jcl += "  DELETE " + ksds_dsn + " CLUSTER PURGE\n";
+                                    cleanup_jcl += "  DELETE " + esds_path_dsn + " PURGE\n";
+                                    cleanup_jcl += "  DELETE " + esds_aix_dsn + " PURGE\n";
+                                    cleanup_jcl += "  DELETE " + esds_dsn + " CLUSTER PURGE\n";
+                                    cleanup_jcl += "  SET MAXCC = 0\n";
+                                    cleanup_jcl += "/*\n";
+                                    submit_and_wait(cleanup_jcl, 200);
 
-                                    submit_and_wait(idcams_jcl("VSAMSET$",
-                                      "  DEFINE CLUSTER ( -\n"
-                                      "    NAME(" + ksds_dsn + ") -\n"
-                                      "    INDEXED -\n"
-                                      "    KEYS(8 0) -\n"
-                                      "    RECORDSIZE(80 80) -\n"
-                                      "    TRACKS(5 5) -\n"
-                                      "    SHAREOPTIONS(2 3) )\n"
-                                      "  DEFINE AIX ( -\n"
-                                      "    NAME(" + ksds_aix_dsn + ") -\n"
-                                      "    RELATE(" + ksds_dsn + ") -\n"
-                                      "    KEYS(8 32) -\n"
-                                      "    RECORDSIZE(80 80) -\n"
-                                      "    TRACKS(5 5) -\n"
-                                      "    SHAREOPTIONS(2 3) -\n"
-                                      "    UPGRADE )\n"
-                                      "  DEFINE PATH ( -\n"
-                                      "    NAME(" + ksds_path_dsn + ") -\n"
-                                      "    PATHENTRY(" + ksds_aix_dsn + ") -\n"
-                                      "    UPDATE )\n"
-                                      "  DEFINE CLUSTER ( -\n"
-                                      "    NAME(" + esds_dsn + ") -\n"
-                                      "    NONINDEXED -\n"
-                                      "    RECORDSIZE(80 80) -\n"
-                                      "    TRACKS(5 5) -\n"
-                                      "    SHAREOPTIONS(2 3) )\n"
-                                      "  DEFINE AIX ( -\n"
-                                      "    NAME(" + esds_aix_dsn + ") -\n"
-                                      "    RELATE(" + esds_dsn + ") -\n"
-                                      "    KEYS(8 0) -\n"
-                                      "    RECORDSIZE(80 80) -\n"
-                                      "    TRACKS(5 5) -\n"
-                                      "    SHAREOPTIONS(2 3) -\n"
-                                      "    UPGRADE )\n"
-                                      "  DEFINE PATH ( -\n"
-                                      "    NAME(" + esds_path_dsn + ") -\n"
-                                      "    PATHENTRY(" + esds_aix_dsn + ") -\n"
-                                      "    UPDATE )\n"), 600, true); },
+                                    std::string setup_jcl;
+                                    setup_jcl += "//VSAMSET$ JOB IZUACCT\n";
+                                    setup_jcl += "//STEP1    EXEC PGM=IDCAMS\n";
+                                    setup_jcl += "//SYSPRINT DD SYSOUT=*\n";
+                                    setup_jcl += "//SYSIN    DD *\n";
+                                    setup_jcl += "  DEFINE CLUSTER ( -\n";
+                                    setup_jcl += "    NAME(" + ksds_dsn + ") -\n";
+                                    setup_jcl += "    INDEXED -\n";
+                                    setup_jcl += "    KEYS(8 0) -\n";
+                                    setup_jcl += "    RECORDSIZE(80 80) -\n";
+                                    setup_jcl += "    TRACKS(5 5) -\n";
+                                    setup_jcl += "    SHAREOPTIONS(2 3) )\n";
+                                    setup_jcl += "  DEFINE AIX ( -\n";
+                                    setup_jcl += "    NAME(" + ksds_aix_dsn + ") -\n";
+                                    setup_jcl += "    RELATE(" + ksds_dsn + ") -\n";
+                                    setup_jcl += "    KEYS(8 32) -\n";
+                                    setup_jcl += "    RECORDSIZE(80 80) -\n";
+                                    setup_jcl += "    TRACKS(5 5) -\n";
+                                    setup_jcl += "    SHAREOPTIONS(2 3) -\n";
+                                    setup_jcl += "    UPGRADE )\n";
+                                    setup_jcl += "  DEFINE PATH ( -\n";
+                                    setup_jcl += "    NAME(" + ksds_path_dsn + ") -\n";
+                                    setup_jcl += "    PATHENTRY(" + ksds_aix_dsn + ") -\n";
+                                    setup_jcl += "    UPDATE )\n";
+                                    setup_jcl += "  DEFINE CLUSTER ( -\n";
+                                    setup_jcl += "    NAME(" + esds_dsn + ") -\n";
+                                    setup_jcl += "    NONINDEXED -\n";
+                                    setup_jcl += "    RECORDSIZE(80 80) -\n";
+                                    setup_jcl += "    TRACKS(5 5) -\n";
+                                    setup_jcl += "    SHAREOPTIONS(2 3) )\n";
+                                    setup_jcl += "  DEFINE AIX ( -\n";
+                                    setup_jcl += "    NAME(" + esds_aix_dsn + ") -\n";
+                                    setup_jcl += "    RELATE(" + esds_dsn + ") -\n";
+                                    setup_jcl += "    KEYS(8 0) -\n";
+                                    setup_jcl += "    RECORDSIZE(80 80) -\n";
+                                    setup_jcl += "    TRACKS(5 5) -\n";
+                                    setup_jcl += "    SHAREOPTIONS(2 3) -\n";
+                                    setup_jcl += "    UPGRADE )\n";
+                                    setup_jcl += "  DEFINE PATH ( -\n";
+                                    setup_jcl += "    NAME(" + esds_path_dsn + ") -\n";
+                                    setup_jcl += "    PATHENTRY(" + esds_aix_dsn + ") -\n";
+                                    setup_jcl += "    UPDATE )\n";
+                                    setup_jcl += "/*\n";
+                                    submit_and_wait(setup_jcl, 600, true); },
                                   vsam_opts);
 
-                        afterAll([&]() -> void
-                                 { submit_and_wait(idcams_jcl("VSAMDEL$",
-                                                              "  DELETE " + ksds_dsn + " CLUSTER PURGE\n"
-                                                                                       "  DELETE " +
-                                                                  esds_dsn + " CLUSTER PURGE\n"),
-                                                   200); },
+                        afterAll([ksds_dsn, esds_dsn, &submit_and_wait]() -> void
+                                 {
+                                   std::string del_jcl;
+                                   del_jcl += "//VSAMDEL$ JOB IZUACCT\n";
+                                   del_jcl += "//STEP1    EXEC PGM=IDCAMS\n";
+                                   del_jcl += "//SYSPRINT DD SYSOUT=*\n";
+                                   del_jcl += "//SYSIN    DD *\n";
+                                   del_jcl += "  DELETE " + ksds_dsn + " CLUSTER PURGE\n";
+                                   del_jcl += "  DELETE " + esds_dsn + " CLUSTER PURGE\n";
+                                   del_jcl += "/*\n";
+                                   submit_and_wait(del_jcl, 200); },
                                  vsam_opts);
 
                         it("should report VS dsorg and *VSAM* volser for KSDS cluster",
