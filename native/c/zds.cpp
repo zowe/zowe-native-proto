@@ -3057,10 +3057,12 @@ int zds_list_data_sets(ZDS *zds, std::string dsn, std::vector<ZDSEntry> &dataset
           entry.volser = ZDS_VOLSER_GDG;
           break;
         case CLUSTER:
+          entry.dsorg = ZDS_DSORG_VSAM;
+          entry.volser = ZDS_VOLSER_VSAM;
+          break;
         case DATA_COMPONENT:
         case INDEX_COMPONENT:
           entry.dsorg = ZDS_DSORG_VSAM;
-          entry.volser = ZDS_VOLSER_VSAM;
           break;
         case ALTERNATE_INDEX:
           entry.volser = ZDS_VOLSER_AIX;
