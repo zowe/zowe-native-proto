@@ -12,6 +12,16 @@ labels: bug
 
 <!-- A clear and concise description of the bug or error. -->
 
+**To Reproduce**
+
+<!--
+Steps to reproduce the behavior:
+1. Go to '...'
+2. Click on '....'
+3. Scroll down to '....'
+4. See error
+-->
+
 **Expected and actual results**
 
 <!--
@@ -20,8 +30,8 @@ Details about the behavior:
 2. Expected results:
 3. Actual results:
 4. Applicable log files:
-
 -->
+
 **Describe your environment**
 
 <!--
