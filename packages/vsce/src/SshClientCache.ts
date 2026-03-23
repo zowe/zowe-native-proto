@@ -10,9 +10,9 @@
  */
 
 import type { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
-import { imperative } from "@zowe/zowe-explorer-api";
+import { imperative, ZoweVsCodeExtension } from "@zowe/zowe-explorer-api";
 import * as vscode from "vscode";
-import { type ClientOptions, ZSshClient, ZSshUtils } from "zowe-native-proto-sdk";
+import { type ClientOptions, ZSshClient, ExistingClientRequest, ZSshUtils } from "zowe-native-proto-sdk";
 import { ConfigUtils } from "./ConfigUtils";
 import { deployWithProgress, getVsceConfig } from "./Utilities";
 
@@ -27,29 +27,38 @@ class AsyncMutex extends imperative.DeferredPromise<void> implements Disposable 
     }
 }
 
+type ZSshRestartOptions = {
+    restart: boolean;
+    retryRequests: boolean;
+};
+
 type ZSshClientSessions = {
     client: ZSshClient;
     profile: imperative.IProfileLoaded;
     status: ServerStatus;
     startTime: number;
-    requestTimeout: number;
+    responseTimeoutMillis: number;
 };
 
 enum ServerStatus {
     UP,
     DOWN,
+    RESTARTING,
 }
 
 export class SshClientCache extends vscode.Disposable {
+    private static mNoRestart: ZSshRestartOptions = { restart: false, retryRequests: false };
     private static mInstance: SshClientCache;
     private mClientSessionMap: Map<string, ZSshClientSessions> = new Map();
     private mMutexMap: Map<string, AsyncMutex> = new Map();
     private static readonly ERROR_SNIPPETS = {
         FATAL: ["CEE5207E", "CEE3204S", "at compile unit offset", "Fatal error encountered in zowex"],
+        UNSUPPORTED: ["CEE3561S"],
         TIMEOUT: ["Request timed out"],
     };
     private static readonly ACTIONS = {
         RELOAD: "Reload ZRS",
+        RELOAD_RETRY: "Reload ZRS and Retry Requests",
         CLOSE: "Close",
     };
 
@@ -57,9 +66,9 @@ export class SshClientCache extends vscode.Disposable {
         super(() => this.dispose());
     }
 
-    public dispose(): void {
+    public dispose(opts?: ZSshRestartOptions): void {
         for (const session of this.mClientSessionMap.values()) {
-            session.client.dispose();
+            session.client.dispose(opts?.restart, !opts?.retryRequests);
         }
     }
 
@@ -70,11 +79,19 @@ export class SshClientCache extends vscode.Disposable {
         return SshClientCache.mInstance;
     }
 
-    public async connect(profile: imperative.IProfileLoaded, restart = false): Promise<ZSshClient> {
+    public async connect(
+        profile: imperative.IProfileLoaded,
+        opts: ZSshRestartOptions = SshClientCache.mNoRestart,
+    ): Promise<ZSshClient> {
         const clientId = this.getClientId(profile);
+        let replayRequests: Set<ExistingClientRequest> = new Set();
         await this.mMutexMap.get(clientId)?.promise;
-        if (restart) {
-            this.end(clientId);
+        if (opts.restart) {
+            if (opts.retryRequests) {
+                const existingClient = this.mClientSessionMap.get(clientId)!.client;
+                replayRequests = existingClient.collectAllRequests(opts.retryRequests); // client must exist if we're restarting it
+            }
+            this.end(clientId, opts);
         }
 
         if (!this.mClientSessionMap.has(clientId)) {
@@ -85,6 +102,7 @@ export class SshClientCache extends vscode.Disposable {
             const keepAliveInterval = vsceConfig.get<number>("keepAliveInterval");
             const numWorkers = vsceConfig.get<number>("workerCount");
             const requestTimeout = vsceConfig.get<number>("requestTimeout");
+            const responseTimeout = vsceConfig.get<number>("responseTimeout") ?? 60;
             const autoUpdate = vsceConfig.get("serverAutoUpdate", true);
 
             let newClient: ZSshClient | undefined;
@@ -94,6 +112,8 @@ export class SshClientCache extends vscode.Disposable {
                     keepAliveInterval,
                     numWorkers,
                     requestTimeout,
+                    responseTimeout,
+                    requests: replayRequests,
                 });
                 imperative.Logger.getAppLogger().debug(
                     `Server checksums: ${JSON.stringify(newClient.serverChecksums)}`,
@@ -122,6 +142,7 @@ export class SshClientCache extends vscode.Disposable {
                     keepAliveInterval,
                     numWorkers,
                     requestTimeout,
+                    requests: replayRequests,
                 });
             }
             this.mClientSessionMap.set(clientId, {
@@ -129,23 +150,44 @@ export class SshClientCache extends vscode.Disposable {
                 profile: profile,
                 status: ServerStatus.UP,
                 startTime: Date.now(),
-                requestTimeout: 60e3, // TODO: can we sync this with client impl?
+                responseTimeoutMillis: responseTimeout * 1000,
             });
         }
 
         return this.mClientSessionMap.get(clientId)?.client as ZSshClient;
     }
 
-    public end(hostOrProfile: string | imperative.IProfileLoaded): void {
+    public end(
+        hostOrProfile: string | imperative.IProfileLoaded,
+        opts: ZSshRestartOptions = SshClientCache.mNoRestart,
+    ): void {
         const clientId = typeof hostOrProfile === "string" ? hostOrProfile : this.getClientId(hostOrProfile);
-        this.mClientSessionMap.get(clientId)?.client.dispose();
+        this.mClientSessionMap.get(clientId)?.client.dispose(opts.restart, !opts.retryRequests);
         this.mClientSessionMap.delete(clientId);
     }
 
-    private async reloadClient(clientId: string): Promise<void> {
-        const clientStatus = this.mClientSessionMap.get(clientId);
-        // TODO: can we reload the profile??
-        this.connect(clientStatus!.profile, true);
+    private async reloadClient(clientId: string, retryRequests: boolean = false): Promise<void> {
+        const clientSession = this.mClientSessionMap.get(clientId);
+        if (!clientSession) {
+            imperative.Logger.getAppLogger().debug(
+                `Attempted to reload non-existent session for ${clientId}. The session will not be reloaded.`,
+            );
+            return;
+        }
+        clientSession.status = ServerStatus.RESTARTING;
+        const profile = clientSession.profile;
+        const zoweExplorerApi = ZoweVsCodeExtension.getZoweExplorerApi();
+        const profCache = zoweExplorerApi.getExplorerExtenderApi().getProfilesCache();
+        const updatedProfile = await profCache.getLoadedProfConfig(profile.name!, profile.type);
+
+        if (updatedProfile == null) {
+            throw new Error(
+                `Could not load profile ${profile.name}. Check that this profile still exists in your Zowe team config.`,
+            );
+        }
+
+        clientSession.profile = updatedProfile;
+        await this.connect(updatedProfile, { restart: true, retryRequests });
     }
 
     private getClientId(profile: imperative.IProfileLoaded): string {
@@ -172,22 +214,25 @@ export class SshClientCache extends vscode.Disposable {
 
     private handleClientError(clientId: string, err: Error): void {
         const errorMsg = err.toString();
-        const clientSession = this.mClientSessionMap.get(clientId);
+        const clientSession = this.mClientSessionMap.get(clientId)!; // a session must exist, since we're handling the client's error
 
-        // TODO: What does this case imply? No active session?
-        if (clientSession == null) {
+        // If we're mid-reload, swallow the error notification (could be cascading)
+        if (clientSession.status === ServerStatus.RESTARTING) {
             return;
         }
 
         const isFatal = SshClientCache.ERROR_SNIPPETS.FATAL.some((item) => errorMsg.includes(item));
         const isTimeout = SshClientCache.ERROR_SNIPPETS.TIMEOUT.some((item) => errorMsg.includes(item));
+        const isUnsupported = SshClientCache.ERROR_SNIPPETS.UNSUPPORTED.some((item) => errorMsg.includes(item));
 
         if (isFatal) {
             if (clientSession) {
                 clientSession.status = ServerStatus.DOWN;
             }
+            // triggers auto-reload, but what about reload + retry?
+            // this.mClientSessionMap.delete(clientId);
             this.promptErrorAndReload(
-                "Zowe Remote SSH has encountered an unrecoverable error. Reload the server component.",
+                "Zowe Remote SSH stopped working unexpectedly. Please click 'Reload ZRS' to restart the server.",
                 clientId,
             );
             return;
@@ -195,16 +240,24 @@ export class SshClientCache extends vscode.Disposable {
 
         if (isTimeout) {
             // This came before the server started, implying a crash and reload, and so we should ignore the error.
-            const isOldTimeout = Date.now() - clientSession.requestTimeout < clientSession.startTime;
+            const isOldTimeout = Date.now() - clientSession.responseTimeoutMillis < clientSession.startTime;
             if (!isOldTimeout) {
                 const isDown = clientSession?.status === ServerStatus.DOWN;
-                const suffix = isDown
-                    ? ', and the Zowe Remote SSH server is down. Click "Reload ZRS" to restart it.'
-                    : ". If this continues, consider reloading the Zowe Remote SSH Server.";
+                const msg = isDown
+                    ? "The request timed out because the server is down. Click 'Reload ZRS' to restart it."
+                    : "The request timed out. If this happens again, try clicking 'Reload ZRS' to restart the server.";
 
-                this.promptErrorAndReload(`Zowe Remote SSH request timed out${suffix}`, clientId);
+                this.promptErrorAndReload(msg, clientId);
             }
 
+            return;
+        }
+
+        if (isUnsupported) {
+            imperative.Logger.getAppLogger().error(JSON.stringify(err));
+            vscode.window.showErrorMessage(
+                "Zowe Remote SSH doesn't currently support this version of z/OS. Please check the documentation for supported systems, or contact support for help.",
+            );
             return;
         }
 
@@ -214,10 +267,27 @@ export class SshClientCache extends vscode.Disposable {
 
     private promptErrorAndReload(message: string, clientId: string): void {
         vscode.window
-            .showErrorMessage(message, SshClientCache.ACTIONS.RELOAD, SshClientCache.ACTIONS.CLOSE)
+            .showErrorMessage(
+                message,
+                SshClientCache.ACTIONS.RELOAD,
+                SshClientCache.ACTIONS.RELOAD_RETRY,
+                SshClientCache.ACTIONS.CLOSE,
+            )
             .then((selection) => {
                 if (selection === SshClientCache.ACTIONS.RELOAD) {
-                    this.reloadClient(clientId);
+                    this.reloadClient(clientId, false).catch((err) => {
+                        imperative.Logger.getAppLogger().error(`Failed to reload ZRS. Error: ${err.toString()}`);
+                        vscode.window.showErrorMessage(`Failed to reload ZRS. Try reloading your VSCode environment`);
+                    });
+                } else if (selection === SshClientCache.ACTIONS.RELOAD_RETRY) {
+                    this.reloadClient(clientId, true).catch((err) => {
+                        imperative.Logger.getAppLogger().error(
+                            `Failed to reload ZRS and retry requests. Error: ${err.toString()}`,
+                        );
+                        vscode.window.showErrorMessage(
+                            `Failed to reload ZRS and retry requests. Try reloading your VSCode environment`,
+                        );
+                    });
                 }
             });
     }

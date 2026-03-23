@@ -100,7 +100,7 @@ export function registerCommands(context: vscode.ExtensionContext): vscode.Dispo
             const profile = await vscePromptApi.promptForProfile(profName);
             if (!profile?.profile) return;
 
-            await SshClientCache.inst.connect(profile, true);
+            await SshClientCache.inst.connect(profile, { restart: true, retryRequests: false });
 
             imperative.Logger.getAppLogger().info(
                 `Restarted Zowe SSH server on ${profile.profile?.host ?? profile.name}`,
@@ -114,7 +114,7 @@ export function registerCommands(context: vscode.ExtensionContext): vscode.Dispo
             const profile = await vscePromptApi.promptForProfile(profName);
             if (!profile?.profile) return;
 
-            const sshInst = await SshClientCache.inst.connect(profile, false);
+            const sshInst = await SshClientCache.inst.connect(profile);
             await sshInst.tool.abort({});
             imperative.Logger.getAppLogger().info(
                 `Aborted Zowe SSH server on ${profile.profile?.host ?? profile.name}`,

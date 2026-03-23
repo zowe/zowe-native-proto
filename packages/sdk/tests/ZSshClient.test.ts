@@ -259,6 +259,7 @@ describe("ZSshClient", () => {
             const writeMock = vi.fn();
             const client: ZSshClient = new (ZSshClient as any)();
             (client as any).mSshStream = { stdin: { write: writeMock } };
+            (client as any).mErrHandler = (err: Error) => {};
             const response = client.request(request);
             vi.runAllTimers();
             await expect(response).rejects.toMatchObject({ errorCode: "ETIMEDOUT" });
