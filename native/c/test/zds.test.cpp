@@ -1241,7 +1241,7 @@ void zds_tests()
                       [&]() -> void
                       {
                         std::string user = get_user();
-                        std::string base = user + get_random_ds(2, user);
+                        std::string base = get_random_ds(2, user);
                         std::string ksds_dsn = base + ".VSAM.KSDS";
                         std::string ksds_aix_dsn = base + ".VSAM.KAIX";
                         std::string ksds_path_dsn = base + ".VSAM.KPTH";
@@ -1290,9 +1290,9 @@ void zds_tests()
                         auto idcams_jcl = [](const std::string &jobname, const std::string &sysin)
                         {
                           return "//" + jobname + " JOB IZUACCT\n"
-                                 "//STEP1    EXEC PGM=IDCAMS\n"
-                                 "//SYSPRINT DD SYSOUT=*\n"
-                                 "//SYSIN    DD *\n" +
+                                                  "//STEP1    EXEC PGM=IDCAMS\n"
+                                                  "//SYSPRINT DD SYSOUT=*\n"
+                                                  "//SYSIN    DD *\n" +
                                  sysin +
                                  "/*\n";
                         };
@@ -1351,10 +1351,11 @@ void zds_tests()
                                   vsam_opts);
 
                         afterAll([&]() -> void
-                                 {
-                                   submit_and_wait(idcams_jcl("VSAMDEL$",
-                                     "  DELETE " + ksds_dsn + " CLUSTER PURGE\n"
-                                     "  DELETE " + esds_dsn + " CLUSTER PURGE\n"), 200); },
+                                 { submit_and_wait(idcams_jcl("VSAMDEL$",
+                                                              "  DELETE " + ksds_dsn + " CLUSTER PURGE\n"
+                                                                                       "  DELETE " +
+                                                                  esds_dsn + " CLUSTER PURGE\n"),
+                                                   200); },
                                  vsam_opts);
 
                         it("should report VS dsorg and *VSAM* volser for KSDS cluster",
