@@ -29,6 +29,9 @@
 #include "zjbtype.h"
 #include "zdstype.h"
 #include "zdyn.h"
+#include "ihapsa.h"
+#include "cvt.h"
+#include "zdbg.h"
 
 typedef struct iazbtokp IAZBTOKP;
 
@@ -122,11 +125,11 @@ int zjb_read_job_jcl(ZJB *zjb, const std::string &jobid, std::string &response)
 
 #define NUM_TEXT_UNITS 5
 
-int zjb_read_job_content_by_dsn(ZJB *zjb, const std::string &jobdsn, std::string &response)
+static int zjb_read_job_dynamic_allocation(ZJB *zjb, std::string jobdsn, std::string &ddname)
 {
   int rc = 0;
+
   unsigned char *p = nullptr;
-  ZDS zds = {0};
 
   // calculate total size needed, obtain, & clear
   int total_size_needed = sizeof(IAZBTOKP) + (sizeof(S99TUNIT_X) * NUM_TEXT_UNITS) + (sizeof(S99TUPL) * NUM_TEXT_UNITS) + sizeof(__S99parms) + sizeof(__S99rbx_t);
@@ -151,7 +154,7 @@ int zjb_read_job_content_by_dsn(ZJB *zjb, const std::string &jobdsn, std::string
   memcpy(iazbtokp->btokid, "BTOK", sizeof(iazbtokp->btokid));
   len = sizeof(iazbtokp->btokver);
   memcpy(iazbtokp->btokpl2, &len, sizeof(len));
-  iazbtokp->btoktype = btokbrws;
+  iazbtokp->btoktype = btokbrws; // alternative type: btokstkn
   iazbtokp->btokvers = btokvrnm;
   len = sizeof(iazbtokp->btokiotp);
   memcpy(iazbtokp->btokpl3, &len, sizeof(len));
@@ -175,7 +178,7 @@ int zjb_read_job_content_by_dsn(ZJB *zjb, const std::string &jobdsn, std::string
   i++;
   dynkey = daldsnam;
   numparms = 1;
-  plen = std::strlen(jobdsn.c_str());
+  plen = strlen(jobdsn.c_str());
   memcpy(s99tunit_x[i].s99tunit.s99tukey, &dynkey, sizeof(dynkey));
   memcpy(s99tunit_x[i].s99tunit.s99tunum, &numparms, sizeof(numparms));
   memcpy(s99tunit_x[i].s99tunit.s99tulng, &plen, sizeof(plen));
@@ -259,35 +262,120 @@ int zjb_read_job_content_by_dsn(ZJB *zjb, const std::string &jobdsn, std::string
 
   char cddname[8 + 1] = {0};
   memcpy(cddname, &s99tunit_x[4].s99tunit.s99tupar, ddnamelen);
-  auto ddname = std::string(cddname);
-
-  zds.encoding_opts.data_type = zjb->encoding_opts.data_type;
-  memcpy((void *)&zds.encoding_opts.codepage, (const void *)&zjb->encoding_opts.codepage, sizeof(zjb->encoding_opts.codepage));
-
-  ZDSReadOpts read_opts{ .zds = &zds, .ddname = ddname, .dsname = jobdsn };
-  rc = zds_read(read_opts, response);
+  ddname = std::string(cddname);
 
   free(parms);
 
-  if (0 != rc)
-  {
-    memcpy(&zjb->diag, &zds.diag, sizeof(ZDIAG));
-    return rc;
-  }
+  return rc;
+}
+
+static int zjb_free_job_dynamic_allocation(ZJB *zjb, std::string ddname)
+{
+  int rc = 0;
 
   // free DD
   __dyn_t ip;
   dyninit(&ip);
-  ip.__ddname = cddname; // e.g. SYS00001
+  ip.__ddname = (char *)ddname.c_str(); // e.g. SYS00001
   rc = dynfree(&ip);
 
-  if (0 != rc)
+  if (0 != rc && 0 == zjb->diag.e_msg_len) // only set error if no error message was already set
   {
     strcpy(zjb->diag.service_name, "dynfree");
     zjb->diag.service_rc = rc;
     zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "dynfree failed with %d", rc);
     zjb->diag.detail_rc = ZJB_RTNCD_SERVICE_FAILURE;
     return RTNCD_FAILURE;
+  }
+
+  return rc;
+}
+
+int zjb_read_syslog(ZJB *zjb, std::string &response, std::string &date, std::string &timestamp, int max_lines)
+{
+  int rc = 0;
+  std::string ddname;
+  ZDS zds = {};
+
+  //
+  // get system name
+  //
+  struct psa *psa = (struct psa *)0;
+  struct cvt *cvt = (struct cvt *)psa->flccvt;
+  char *sysname_char = (char *)cvt->cvtsname;
+  std::string sysname_str = std::string(sysname_char, sizeof(cvt->cvtsname));
+  std::string dsn = zut_rtrim(sysname_str) + ".SYSLOG" + ".SYSTEM"; // https://www.ibm.com/docs/en/zos/3.1.0?topic=allocation-specifying-data-set-name-daldsnam
+
+  //
+  // get input timestamp from format HH:MM:SS.CC to binary format (low bit represents 0.01 of a second) for CONVTOD
+  //
+  int hh = 0, mm = 0, ss = 0, cs = 0;
+  sscanf(timestamp.c_str(), "%d:%d:%d.%d", &hh, &mm, &ss, &cs);
+  uint32_t ts_binary = ((uint32_t)hh * 360000) + ((uint32_t)mm * 6000) + ((uint32_t)ss * 100) + (uint32_t)cs;
+
+  //
+  // subtract to convert local time -> UTC for CONVTOD (which uses default offset=0/UTC)
+  //
+  int32_t tz_offset_cs = (int32_t)((double)cvt->cvttz * 1.048576 / 0.01); // documented in cvt.h
+  ts_binary -= (uint32_t)tz_offset_cs;
+  memcpy(&zds.ts_binary, &ts_binary, sizeof(ts_binary)); // low half is unused
+
+  //
+  // prepare date for `pack`
+  //
+  std::string date_compact;
+  for (char c : date)
+  {
+    if (c != '-')
+      date_compact += c;
+  }
+  memcpy(&zds.ebcdic_date, date_compact.c_str(), sizeof(zds.ebcdic_date));
+  zds.max_lines = max_lines;
+
+  rc = zjb_read_job_dynamic_allocation(zjb, dsn, ddname);
+  if (0 != rc)
+  {
+    return rc;
+  }
+
+  zds.encoding_opts.data_type = zjb->encoding_opts.data_type;
+  memcpy((void *)&zds.encoding_opts.codepage, (const void *)&zjb->encoding_opts.codepage, sizeof(zjb->encoding_opts.codepage));
+
+  rc = zds_read_vsam(&zds, ddname, response);
+  memcpy(&zjb->diag, &zds.diag, sizeof(ZDIAG));
+
+  int newrc = zjb_free_job_dynamic_allocation(zjb, ddname);
+  if (0 != newrc && 0 == rc)
+  {
+    return newrc;
+  }
+
+  return rc;
+}
+
+int zjb_read_job_content_by_dsn(ZJB *zjb, const std::string &dsn, std::string &response)
+{
+  int rc = 0;
+  std::string ddname;
+  ZDS zds = {};
+
+  rc = zjb_read_job_dynamic_allocation(zjb, dsn, ddname);
+  if (0 != rc)
+  {
+    return rc;
+  }
+
+  zds.encoding_opts.data_type = zjb->encoding_opts.data_type;
+  memcpy((void *)&zds.encoding_opts.codepage, (const void *)&zjb->encoding_opts.codepage, sizeof(zjb->encoding_opts.codepage));
+
+  ZDSReadOpts read_opts{ .zds = &zds, .ddname = ddname, .dsname = dsn };
+  rc = zds_read(read_opts, response);
+  memcpy(&zjb->diag, &zds.diag, sizeof(ZDIAG));
+
+  int newrc = zjb_free_job_dynamic_allocation(zjb, ddname);
+  if (0 != newrc && 0 == rc)
+  {
+    return newrc;
   }
 
   return rc;

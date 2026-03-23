@@ -106,7 +106,13 @@ typedef struct
   void *PTR64 csi;
 
   unsigned int dynalloc : 1; // indicates that the data set was dynamically allocated
-  unsigned char reserve[20];
+  unsigned char reserve[12];
+
+  unsigned char ebcdic_date[8];
+
+  uint64_t ts_binary;
+  uint32_t date;
+  int max_lines;
 
   ZDIAG diag;
 

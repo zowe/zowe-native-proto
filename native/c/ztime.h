@@ -12,6 +12,9 @@
 #ifndef ZTIME_H
 #define ZTIME_H
 
+#include "ihapsa.h"
+#include "cvt.h"
+
 #if defined(__IBM_METAL__)
 #define TIME(tod)                                             \
   __asm(                                                      \
@@ -139,6 +142,42 @@ CONVTOD_MODEL(convtod_model);
 #define CONVTOD(tod, input, plist, rc, format)
 #endif
 
+#if defined(__IBM_METAL__)
+#define CONVETOD(tod, input, plist, rc, format)               \
+  __asm(                                                      \
+      "*                                                  \n" \
+      " LGHI  2,0       Clear                             \n" \
+      " TAM   ,         AMODE64??                         \n" \
+      " JM    *+4+4+2   No, skip switching                \n" \
+      " OILH  2,X'8000' Set AMODE31 flag                  \n" \
+      " SAM31 ,         Set AMODE31                       \n" \
+      "*                                                  \n" \
+      " SYSSTATE PUSH       Save SYSSTATE                 \n" \
+      " SYSSTATE AMODE64=NO                               \n" \
+      "*                                                  \n" \
+      " CONVTOD ETODVAL=%0,"                                  \
+      "CONVVAL=%2,"                                           \
+      "TIMETYPE=BIN,"                                         \
+      "DATETYPE=" #format ","                                 \
+      "MF=(E,%3)                                          \n" \
+      "*                                                  \n" \
+      " ST    15,%1     Save RC                           \n" \
+      "*                                                  \n" \
+      " TMLH  2,X'8000' Did we switch AMODE??             \n" \
+      " JNO   *+4+2     No, skip restore                  \n" \
+      " SAM64 ,         Set AMODE64                       \n" \
+      "*                                                  \n" \
+      " SYSSTATE POP    Restore SYSSTATE                  \n" \
+      "*                                                    " \
+      : "=m"(tod),                                            \
+        "=m"(rc)                                              \
+      : "m"(input),                                           \
+        "m"(plist)                                            \
+      : "r0", "r1", "r2", "r14", "r15");
+#else
+#define CONVETOD(tod, input, plist, rc, format)
+#endif
+
 static void time(unsigned long long *tod)
 {
   TIME(*tod);
@@ -199,6 +238,20 @@ static int convtod(TIME_STRUCT *time_struct, unsigned long long *tod)
   dsa_convtod_model = convtod_model;
 
   CONVTOD(*tod, *time_struct, dsa_convtod_model, rc, YYDDD);
+
+  return rc;
+}
+
+typedef unsigned char etod_t[16];
+
+static int convetod(TIME_STRUCT *time_struct, etod_t *etod)
+{
+  int rc = 0;
+
+  CONVTOD_MODEL(dsa_convtod_model);
+  dsa_convtod_model = convtod_model;
+
+  CONVETOD(*etod[0], *time_struct, dsa_convtod_model, rc, YYYYMMDD);
 
   return rc;
 }

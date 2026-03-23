@@ -138,7 +138,20 @@ int zjb_list_dds(ZJB *zjb, const std::string &jobid, std::vector<ZJobDD> &job_dd
 int zjb_read_jobs_output_by_key(ZJB *zjb, const std::string &jobid, int key, std::string &response);
 
 int zjb_get_job_dsn_by_key(ZJB *zjb, const std::string &, int, std::string &);
+
+/**
+ * @brief Read the content of a job by input job data set name and timestamp or date
+ *
+ * @param zjb job returned attributes and error information
+ * @param job_dsn job data set name to read
+ * @param timestamp timestamp to read, e.g. 10:41:00.15
+ * @param date date to read, e.g. 2026-03-13
+ * @param response return job content
+ * @return int 0 for success; non zero otherwise
+ */
 int zjb_read_job_content_by_dsn(ZJB *zjb, const std::string &job_dsn, std::string &response);
+
+int zjb_read_syslog(ZJB *zjb, std::string &response, std::string &date, std::string &timestamp, int max_lines);
 
 /**
  * @brief Wait for a job to reach a specific status
