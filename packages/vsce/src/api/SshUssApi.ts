@@ -121,17 +121,16 @@ export class SshUssApi extends SshCommonApi implements MainframeInteraction.IUss
         if (null == sourcePath) {
             throw new Error("Error: unix copy 'source' cannot be undefined");
         }
-        await (await this.client).tool.abort({});
-        /* const response = await (await this.client).uss.copyUss({
+        const response = await (await this.client).uss.copyUss({
             srcFsPath: sourcePath,
             dstFsPath: outputPath,
             recursive: recursive,
             followSymlinks: followSymlinks,
             preserveAttributes: preserveAttributes,
             force: force,
-        }); */
+        });
 
-        return Buffer.from(JSON.stringify(this.buildZosFilesResponse({ success: true }, { success: true }.success)));
+        return Buffer.from(JSON.stringify(this.buildZosFilesResponse(response, response.success)));
     }
 
     public async create(ussPath: string, type: string, mode?: string | undefined): Promise<zosfiles.IZosFilesResponse> {

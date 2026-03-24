@@ -185,11 +185,6 @@ ZJSON_SCHEMA(SubmitUssRequest,
     FIELD_REQUIRED(fspath, STRING)
 );
 
-struct AbortCommandRequest {};
-ZJSON_SCHEMA(AbortCommandRequest,
-    FIELD_OPTIONAL(text, STRING)
-);
-
 struct ToolSearchRequest {};
 ZJSON_SCHEMA(ToolSearchRequest,
     FIELD_REQUIRED(dsname, STRING),

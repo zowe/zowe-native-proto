@@ -108,18 +108,6 @@ export function registerCommands(context: vscode.ExtensionContext): vscode.Dispo
             const statusMsg = Gui.setStatusBarMessage("Restarted Zowe SSH server");
             setTimeout(() => statusMsg.dispose(), 5000);
         }),
-        vscode.commands.registerCommand(`${EXTENSION_NAME}.abend`, async (profName?: string) => {
-            imperative.Logger.getAppLogger().trace("Running abort command for profile %s", profName);
-            const vscePromptApi = new VscePromptApi(await profCache.getProfileInfo());
-            const profile = await vscePromptApi.promptForProfile(profName);
-            if (!profile?.profile) return;
-
-            const sshInst = await SshClientCache.inst.connect(profile);
-            await sshInst.tool.abort({});
-            imperative.Logger.getAppLogger().info(
-                `Aborted Zowe SSH server on ${profile.profile?.host ?? profile.name}`,
-            );
-        }),
         vscode.commands.registerCommand(`${EXTENSION_NAME}.showLog`, async () => {
             imperative.Logger.getAppLogger().trace("Running showLog command");
             await vscode.commands.executeCommand(

@@ -245,11 +245,6 @@ ZJSON_SCHEMA(SubmitUssResponse,
     FIELD_REQUIRED(jobName, STRING)
 );
 
-struct AbortCommandResponse {};
-ZJSON_SCHEMA(AbortCommandResponse,
-    FIELD_REQUIRED(success, BOOL)
-);
-
 struct ToolSearchResponse {};
 ZJSON_SCHEMA(ToolSearchResponse,
     FIELD_REQUIRED(success, BOOL),
