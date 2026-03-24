@@ -9,99 +9,235 @@
  *
  */
 
+#include <cctype>
 #include <cstdio>
 #include <iostream>
 #include <optional>
 #include <string>
+#include <unordered_map>
 
-#include "zjson.hpp"
+// Naive JSON helpers - just enough for flat objects with string/int values.
+// Not a general-purpose parser; only covers the JSON-RPC 2.0 subset used here.
 
-// JSON-RPC 2.0 request/response types using zjson serialization,
-// following the same pattern as the zowed backend (see native/c/server/rpcio.hpp).
-
-struct RpcRequest
+namespace json
 {
-    std::string jsonrpc;
-    std::string method;
-    std::optional<zjson::Value> params;
-    int id;
-};
-ZJSON_DERIVE(RpcRequest, jsonrpc, method, params, id);
 
-struct ErrorDetails
+using Object = std::unordered_map<std::string, std::string>;
+
+static void skip_ws(const std::string &s, size_t &i)
 {
-    int code;
-    std::string message;
-};
-ZJSON_DERIVE(ErrorDetails, code, message);
+    while (i < s.size() && std::isspace(static_cast<unsigned char>(s[i])))
+        ++i;
+}
 
-struct RpcResponse
+static std::optional<std::string> parse_string(const std::string &s, size_t &i)
 {
-    std::string jsonrpc;
-    std::optional<zjson::Value> result;
-    std::optional<ErrorDetails> error;
-    int id;
-};
-ZJSON_SERIALIZABLE(RpcResponse,
-                   ZJSON_FIELD(RpcResponse, jsonrpc),
-                   ZJSON_FIELD(RpcResponse, result).skip_serializing_if_none(),
-                   ZJSON_FIELD(RpcResponse, error).skip_serializing_if_none(),
-                   ZJSON_FIELD(RpcResponse, id));
+    if (i >= s.size() || s[i] != '"')
+        return std::nullopt;
+    ++i;
+    std::string out;
+    while (i < s.size() && s[i] != '"')
+    {
+        if (s[i] == '\\' && i + 1 < s.size())
+        {
+            ++i;
+            switch (s[i])
+            {
+            case '"':
+                out += '"';
+                break;
+            case '\\':
+                out += '\\';
+                break;
+            case '/':
+                out += '/';
+                break;
+            case 'n':
+                out += '\n';
+                break;
+            case 't':
+                out += '\t';
+                break;
+            case 'r':
+                out += '\r';
+                break;
+            default:
+                out += s[i];
+                break;
+            }
+        }
+        else
+        {
+            out += s[i];
+        }
+        ++i;
+    }
+    if (i >= s.size())
+        return std::nullopt;
+    ++i; // closing quote
+    return out;
+}
 
-// Application-level types
-
-struct AddParams
+// Parse a raw JSON token (number, true, false, null) or a nested object/array
+// as a raw string. Nested structures are captured verbatim.
+static std::optional<std::string> parse_raw_value(const std::string &s, size_t &i)
 {
-    int a;
-    int b;
-};
-ZJSON_DERIVE(AddParams, a, b);
+    skip_ws(s, i);
+    if (i >= s.size())
+        return std::nullopt;
 
-struct AddResult
-{
-    int sum;
-};
-ZJSON_DERIVE(AddResult, sum);
+    if (s[i] == '{' || s[i] == '[')
+    {
+        char open = s[i];
+        char close = (open == '{') ? '}' : ']';
+        int depth = 1;
+        size_t start = i;
+        ++i;
+        bool in_str = false;
+        while (i < s.size() && depth > 0)
+        {
+            if (in_str)
+            {
+                if (s[i] == '\\')
+                    ++i;
+                else if (s[i] == '"')
+                    in_str = false;
+            }
+            else
+            {
+                if (s[i] == '"')
+                    in_str = true;
+                else if (s[i] == open)
+                    ++depth;
+                else if (s[i] == close)
+                    --depth;
+            }
+            ++i;
+        }
+        return s.substr(start, i - start);
+    }
 
-static void send_response(const RpcResponse &response)
+    size_t start = i;
+    while (i < s.size() && s[i] != ',' && s[i] != '}' && s[i] != ']' && !std::isspace(static_cast<unsigned char>(s[i])))
+        ++i;
+    return s.substr(start, i - start);
+}
+
+// Parse a flat-ish JSON object. All values are stored as raw strings
+// (quoted strings have their quotes stripped; numbers/bools/objects kept verbatim).
+static std::optional<Object> parse_object(const std::string &s)
 {
-    auto json = zjson::to_string(response);
-    if (json.has_value())
-        std::cout << json.value() << std::endl;
+    size_t i = 0;
+    skip_ws(s, i);
+    if (i >= s.size() || s[i] != '{')
+        return std::nullopt;
+    ++i;
+
+    Object obj;
+    skip_ws(s, i);
+    if (i < s.size() && s[i] == '}')
+        return obj;
+
+    while (i < s.size())
+    {
+        skip_ws(s, i);
+        auto key = parse_string(s, i);
+        if (!key)
+            return std::nullopt;
+        skip_ws(s, i);
+        if (i >= s.size() || s[i] != ':')
+            return std::nullopt;
+        ++i;
+        skip_ws(s, i);
+
+        if (i < s.size() && s[i] == '"')
+        {
+            auto val = parse_string(s, i);
+            if (!val)
+                return std::nullopt;
+            obj[*key] = *val;
+        }
+        else
+        {
+            auto val = parse_raw_value(s, i);
+            if (!val)
+                return std::nullopt;
+            obj[*key] = *val;
+        }
+
+        skip_ws(s, i);
+        if (i < s.size() && s[i] == ',')
+        {
+            ++i;
+            continue;
+        }
+        break;
+    }
+    return obj;
+}
+
+static std::string escape(const std::string &s)
+{
+    std::string out;
+    for (char c : s)
+    {
+        switch (c)
+        {
+        case '"':
+            out += "\\\"";
+            break;
+        case '\\':
+            out += "\\\\";
+            break;
+        case '\n':
+            out += "\\n";
+            break;
+        case '\r':
+            out += "\\r";
+            break;
+        case '\t':
+            out += "\\t";
+            break;
+        default:
+            out += c;
+        }
+    }
+    return out;
+}
+
+} // namespace json
+
+// JSON-RPC helpers
+
+static void send_response(const std::string &json)
+{
+    std::cout << json << std::endl;
 }
 
 static void send_error(int id, int code, const std::string &message)
 {
-    RpcResponse response;
-    response.jsonrpc = "2.0";
-    response.error = ErrorDetails{code, message};
-    response.id = id;
-    send_response(response);
+    send_response("{\"jsonrpc\":\"2.0\",\"error\":{\"code\":" + std::to_string(code) +
+                  ",\"message\":\"" + json::escape(message) + "\"},\"id\":" + std::to_string(id) + "}");
 }
 
-static void handle_add(const RpcRequest &request)
+static void send_result(int id, const std::string &result_json)
 {
-    if (!request.params.has_value())
+    send_response("{\"jsonrpc\":\"2.0\",\"result\":" + result_json + ",\"id\":" + std::to_string(id) + "}");
+}
+
+static void handle_add(int id, const json::Object &params_obj)
+{
+    auto a_it = params_obj.find("a");
+    auto b_it = params_obj.find("b");
+    if (a_it == params_obj.end() || b_it == params_obj.end())
     {
-        send_error(request.id, -32602, "Invalid parameters");
+        send_error(id, -32602, "Invalid parameters");
         return;
     }
 
-    auto params = zjson::from_value<AddParams>(request.params.value());
-    if (!params.has_value())
-    {
-        send_error(request.id, -32602, "Invalid parameters");
-        return;
-    }
-
-    AddResult add_result;
-    add_result.sum = params.value().a + params.value().b;
-
-    RpcResponse response;
-    response.jsonrpc = "2.0";
-    response.result = zjson::Serializable<AddResult>::serialize(add_result);
-    response.id = request.id;
-    send_response(response);
+    int a = std::stoi(a_it->second);
+    int b = std::stoi(b_it->second);
+    send_result(id, "{\"sum\":" + std::to_string(a + b) + "}");
 }
 
 int main()
@@ -114,22 +250,43 @@ int main()
         if (line.empty())
             continue;
 
-        auto parsed = zjson::from_str<RpcRequest>(line);
-        if (!parsed.has_value())
+        auto parsed = json::parse_object(line);
+        if (!parsed)
         {
             send_error(0, -32700, "Parse error");
             continue;
         }
 
-        const RpcRequest &request = parsed.value();
+        auto &obj = *parsed;
+        int id = 0;
+        if (auto it = obj.find("id"); it != obj.end())
+            id = std::stoi(it->second);
 
-        if (request.method == "Arith.Add")
+        auto method_it = obj.find("method");
+        if (method_it == obj.end())
         {
-            handle_add(request);
+            send_error(id, -32600, "Invalid request");
+            continue;
+        }
+
+        const std::string &method = method_it->second;
+
+        // Parse the nested params object if present
+        json::Object params_obj;
+        if (auto it = obj.find("params"); it != obj.end())
+        {
+            auto p = json::parse_object(it->second);
+            if (p)
+                params_obj = *p;
+        }
+
+        if (method == "Arith.Add")
+        {
+            handle_add(id, params_obj);
         }
         else
         {
-            send_error(request.id, -32601, "Method not found");
+            send_error(id, -32601, "Method not found");
         }
     }
 

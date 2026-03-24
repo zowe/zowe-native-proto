@@ -1,7 +1,7 @@
 # JSON-RPC SSH Demo
 
-Demonstrates a JSON-RPC 2.0 server over SSH using `zjson` for struct serialization,
-following the same pattern as the zowed backend (see `native/c/server/rpcio.hpp`).
+Demonstrates a JSON-RPC 2.0 server over SSH using a self-contained naive JSON
+parser (no external dependencies beyond C++17 standard library).
 
 ```mermaid
 sequenceDiagram
@@ -13,8 +13,7 @@ sequenceDiagram
 
 ## Deploy & Build
 
-Requires the native backend to be deployed first (the `zjson.hpp` headers must
-exist at `<deploy-dir>/c/`).
+Upload the example to z/OS and build with `make`:
 
 ```bash
 npx tsx examples/deploy.ts <ssh-profile> <deploy-dir> jsonrpc-ssh
