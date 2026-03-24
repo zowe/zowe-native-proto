@@ -109,7 +109,7 @@ void zowex_ds_tests()
                             [&]() -> void
                             {
                               std::string response;
-                              int rc = execute_command_with_output(zowex_command + " job ls --owner \"*\" --prefix PDSMAN --status ACTIVE", response);
+                              int rc = execute_command_with_output(zowex_command + " job ls --owner \"*\" --prefix \"PDSMAN*\" --status ACTIVE", response);
                               if (rc == 0)
                               {
                                 is_pdsman_active = response.find("PDSMAN") != std::string::npos;
