@@ -494,8 +494,8 @@ class WatchUtils {
                 //   ✗ FAIL zowex > data-set > compress
                 // Individual tests are indented with 2 spaces:
                 //     ✗ FAIL should compress a data set (392.248ms)
-                const suiteFailPattern = /^[✗\-] FAIL\s+(.+)/;
-                const testFailPattern = /^\s+[✗\-] FAIL\s+(.+)/;
+                const suiteFailPattern = /^[✗-] FAIL\s+(.+)/;
+                const testFailPattern = /^\s+[✗-] FAIL\s+(.+)/;
                 const timeLinePattern = /^Time:\s+[\d.]+ms/;
 
                 const processLine = (line: string) => {
@@ -1148,6 +1148,11 @@ async function runCommandInShell(connection: Client, command: string, opts?: Run
                     stopSpinner(spinner);
                 }
                 if (!hasError) {
+                    // Print any stderr output (warnings) that wasn't already streamed live
+                    const trimmedError = error.trim();
+                    if (trimmedError.length > 0 && !opts?.streamOutput && !DEBUG_MODE()) {
+                        process.stderr.write(`${trimmedError}\n`);
+                    }
                     resolve(data);
                 }
             });
