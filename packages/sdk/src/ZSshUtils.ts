@@ -96,7 +96,9 @@ export class ZSshUtils {
         serverPath: string,
         options?: ISshCallbacks,
     ): Promise<boolean> {
-        Logger.getAppLogger().info(`[ZSshUtils] installServer to ${session.ISshSession.hostname} at path: ${serverPath}`);
+        Logger.getAppLogger().info(
+            `[ZSshUtils] installServer to ${session.ISshSession.hostname} at path: ${serverPath}`,
+        );
         const localDir = ZSshUtils.getBinDir(__dirname);
         const remoteDir = serverPath.replace(/^~/, ".");
 
@@ -132,7 +134,9 @@ export class ZSshUtils {
                   }
                 : undefined;
 
-            Logger.getAppLogger().info(`[ZSshUtils] Step 2/4: Uploading ${ZSshUtils.SERVER_PAX_FILE} to ${remotePaxPath}`);
+            Logger.getAppLogger().info(
+                `[ZSshUtils] Step 2/4: Uploading ${ZSshUtils.SERVER_PAX_FILE} to ${remotePaxPath}`,
+            );
             try {
                 await promisify(sftp.fastPut.bind(sftp))(localPaxPath, remotePaxPath, { step: progressCallback });
             } catch (err) {

@@ -16,7 +16,11 @@ import { ZSshUtils } from "../src/ZSshUtils";
 
 vi.mock("node:fs", { spy: true });
 
-function setupSftpMocks(sftpMock: object, sshMock: { execCommand: ReturnType<typeof vi.fn> }, options?: { mockGetBinDir?: boolean; mockExistsSync?: boolean }): void {
+function setupSftpMocks(
+    sftpMock: object,
+    sshMock: { execCommand: ReturnType<typeof vi.fn> },
+    options?: { mockGetBinDir?: boolean; mockExistsSync?: boolean },
+): void {
     vi.spyOn(ZSshUtils as any, "sftp").mockImplementation(
         async (_session: any, callback: (sftp: any, ssh: any) => Promise<any>) => callback(sftpMock, sshMock),
     );
@@ -133,7 +137,8 @@ describe("ZSshUtils", () => {
         });
 
         it("should throw ImperativeError when password is expired (FOTS1668)", async () => {
-            const expiredStderr = "FOTS1668 WARNING: Your password has expired.\nFOTS1669 Password change required but no TTY available.";
+            const expiredStderr =
+                "FOTS1668 WARNING: Your password has expired.\nFOTS1669 Password change required but no TTY available.";
             const sftpMock = { fastPut: vi.fn() };
             const sshMock = { execCommand: vi.fn().mockResolvedValue({ code: 1, stderr: expiredStderr, stdout: "" }) };
             setupSftpMocks(sftpMock, sshMock);
@@ -145,12 +150,15 @@ describe("ZSshUtils", () => {
         });
 
         it("should throw ImperativeError on uninstall when password is expired", async () => {
-            const expiredStderr = "FOTS1668 WARNING: Your password has expired.\nFOTS1669 Password change required but no TTY available.";
+            const expiredStderr =
+                "FOTS1668 WARNING: Your password has expired.\nFOTS1669 Password change required but no TTY available.";
             const sftpMock = {};
             const sshMock = { execCommand: vi.fn().mockResolvedValue({ code: 1, stderr: expiredStderr, stdout: "" }) };
             setupSftpMocks(sftpMock, sshMock, { mockGetBinDir: false, mockExistsSync: false });
 
-            await expect(ZSshUtils.uninstallServer(new SshSession(fakeSession), "~/.zowe-server")).rejects.toMatchObject({
+            await expect(
+                ZSshUtils.uninstallServer(new SshSession(fakeSession), "~/.zowe-server"),
+            ).rejects.toMatchObject({
                 message: expect.stringContaining("Password expired"),
                 errorCode: "EPASSWD_EXPIRED",
             });

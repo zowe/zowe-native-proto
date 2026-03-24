@@ -99,7 +99,8 @@ async function run(): Promise<void> {
     console.log("\n=== ALL PASSED ===\n");
 }
 
-void (async () => { // NOSONAR: top-level await not available in CommonJS module target; this file is run via tsx only
+void (async () => {
+    // NOSONAR: top-level await not available in CommonJS module target; this file is run via tsx only
     try {
         await run();
     } catch (err) {
