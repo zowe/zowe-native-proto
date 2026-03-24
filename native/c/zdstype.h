@@ -115,6 +115,7 @@ typedef struct
   uint64_t ts_binary;
   uint32_t date;
   int max_lines;
+  int has_more;
 
   ZDIAG diag;
 

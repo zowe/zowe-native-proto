@@ -15,4 +15,5 @@ export * as ds from "./ds";
 export * as jobs from "./jobs";
 export * as tool from "./tool";
 export * as tso from "./tso";
+export * as system from "./system";
 export * as uss from "./uss";

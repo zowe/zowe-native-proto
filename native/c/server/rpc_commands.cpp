@@ -15,6 +15,7 @@
 #include "schemas/responses.hpp"
 #include "../commands/ds.hpp"
 #include "../commands/job.hpp"
+#include "../commands/system.hpp"
 #include "../commands/tso.hpp"
 #include "../commands/uss.hpp"
 #include "../commands/tool.hpp"
@@ -199,10 +200,21 @@ void register_tool_commands(CommandDispatcher &dispatcher)
                                   .read_stdout("data", false));
 }
 
+void register_system_commands(CommandDispatcher &dispatcher)
+{
+  dispatcher.register_command("viewSyslog",
+                              CommandBuilder(sys::handle_system_view_syslog)
+                                  .validate<ViewSyslogRequest, ViewSyslogResponse>()
+                                  .rename_arg("secondsAgo", "seconds-ago")
+                                  .rename_arg("maxLines", "max-lines")
+                                  .read_stdout("data", false));
+}
+
 void register_all_commands(CommandDispatcher &dispatcher)
 {
   register_ds_commands(dispatcher);
   register_job_commands(dispatcher);
+  register_system_commands(dispatcher);
   register_uss_commands(dispatcher);
   register_tool_commands(dispatcher);
   register_tso_commands(dispatcher);
