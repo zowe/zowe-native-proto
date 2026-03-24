@@ -10,7 +10,6 @@
  */
 
 import { posix } from "node:path";
-import { Stream } from "node:stream";
 import { ImperativeError, Logger } from "@zowe/imperative";
 import type { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import { Client, type ClientChannel } from "ssh2";
@@ -27,6 +26,7 @@ import type {
 import { RpcClientApi } from "./RpcClientApi";
 import { RpcStreamManager } from "./RpcStreamManager";
 import { ZSshUtils } from "./ZSshUtils";
+import Stream = require("node:stream");
 
 export class ZSshClient extends RpcClientApi implements Disposable {
     public static readonly DEFAULT_SERVER_PATH = "~/.zowe-server";
@@ -89,9 +89,7 @@ export class ZSshClient extends RpcClientApi implements Disposable {
         // TODO: do we need to optionally check for replay?? If replay = true, these variables are set, otherwise they're empty
         if (opts.requests != null) {
             for (const req of opts.requests) {
-                if (req.retryable) {
-                    client.request(req.command).then(req.rpc.resolve, req.rpc.reject);
-                }
+                client.request(req.command).then(req.rpc.resolve, req.rpc.reject);
             }
         }
 
@@ -157,9 +155,7 @@ export class ZSshClient extends RpcClientApi implements Disposable {
                     }
                 }
             }, this.mResponseTimeout);
-            let isStream = false;
-            if ("stream" in request && request.stream instanceof Stream) {
-                isStream = true;
+            if ("stream" in request && this.isStreamFunction(request.stream)) {
                 this.mStreamMgr.registerStream(
                     rpcRequest,
                     request.stream,
@@ -176,7 +172,6 @@ export class ZSshClient extends RpcClientApi implements Disposable {
                 command: request,
                 rpc: { resolve, reject },
                 silenced: false,
-                retryable: !isStream,
                 timeoutId,
             });
             const requestStr = JSON.stringify(rpcRequest);
@@ -331,5 +326,9 @@ export class ZSshClient extends RpcClientApi implements Disposable {
         }
 
         this.mRequestMap.delete(response.id);
+    }
+
+    private isStreamFunction(req: unknown): req is () => Stream {
+        return typeof req === "function";
     }
 }

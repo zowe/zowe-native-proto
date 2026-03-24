@@ -24,7 +24,7 @@ export default class UploadFileToUssFileHandler extends SshBaseHandler {
         params.response.progress.startBar({ task });
         const response = await client.uss.writeFile(
             {
-                stream: fs.createReadStream(params.arguments.file),
+                stream: () => fs.createReadStream(params.arguments.file),
                 fspath: params.arguments.ussFile,
                 encoding: params.arguments.binary ? "binary" : params.arguments.encoding,
                 localEncoding: params.arguments.localEncoding,

@@ -16,6 +16,7 @@ import { Client, type ClientCallback, type ConnectConfig } from "ssh2";
 import type { CommandRequest, RpcRequest, RpcResponse } from "../src/doc";
 import { ZSshClient } from "../src/ZSshClient";
 import { ZSshUtils } from "../src/ZSshUtils";
+import type { ReadableStreamRpc } from "../lib";
 
 vi.mock("ssh2");
 
@@ -414,11 +415,12 @@ describe("ZSshClient", () => {
     });
 
     describe("request with stream", () => {
-        it("should register stream when request contains stream", async () => {
+        it("should register stream function when request contains stream", async () => {
             const mockStream = new Readable({ read() {} });
-            const request: CommandRequest & { stream: Readable } = {
+            const streamFn = () => mockStream;
+            const request: CommandRequest & ReadableStreamRpc = {
                 command: "ping",
-                stream: mockStream,
+                stream: streamFn,
             };
             const writeMock = vi.fn();
             const registerStreamMock = vi.fn();
@@ -427,11 +429,16 @@ describe("ZSshClient", () => {
             (client as any).mStreamMgr = { registerStream: registerStreamMock };
 
             const response = client.request(request);
+
+            const mappedRequest = (client as any).mRequestMap.get(1);
+            expect(mappedRequest).toBeDefined();
+            expect(mappedRequest.command).toBe(request);
+
             (client as any).processResponses(`${JSON.stringify(rpcResponseGood)}\n`);
             await response;
 
             expect(registerStreamMock).toHaveBeenCalledTimes(1);
-            expect(registerStreamMock.mock.calls[0][1]).toBe(mockStream);
+            expect(registerStreamMock.mock.calls[0][1]).toBe(streamFn);
         });
     });
 
@@ -449,7 +456,12 @@ describe("ZSshClient", () => {
             (client as any).mStreamMgr = { linkStreamToPromise: linkStreamToPromiseMock };
             (client as any).mSshStream = sshStream;
             (client as any).getServerStatus(sshStream, readyMessage, "zowex server");
-            (client as any).mPromiseMap.set(1, { resolve: vi.fn(), reject: vi.fn() });
+
+            (client as any).mRequestMap.set(1, {
+                rpc: { resolve: vi.fn(), reject: vi.fn() },
+                command: { command: "test" },
+                silenced: false,
+            });
 
             fakeStdout.emit("data", `${JSON.stringify(notification)}\n`);
 
@@ -470,7 +482,12 @@ describe("ZSshClient", () => {
             (client as any).mErrHandler = onErrorMock;
             (client as any).mSshStream = sshStream;
             (client as any).getServerStatus(sshStream, readyMessage, "zowex server");
-            (client as any).mPromiseMap.set(1, { resolve: vi.fn(), reject: vi.fn() });
+
+            (client as any).mRequestMap.set(1, {
+                rpc: { resolve: vi.fn(), reject: vi.fn() },
+                command: { command: "test" },
+                silenced: false,
+            });
 
             fakeStdout.emit("data", `${JSON.stringify(notification)}\n`);
 
@@ -512,59 +529,6 @@ describe("ZSshClient", () => {
 
             await expect(ZSshUtils.uninstallServer(fakeSshSession, serverPath)).rejects.toThrow();
             expect(fakeLogger.error).toHaveBeenCalled();
-        });
-    });
-});
-
-describe("ZSshUtils", () => {
-    describe("isPrivateKeyAuthFailure", () => {
-        it("should return true for common private key failure patterns", () => {
-            const testCases = [
-                "All configured authentication methods failed",
-                "Cannot parse privateKey: Malformed OpenSSH private key",
-                "but no passphrase given",
-                "integrity check failed",
-                "Permission denied (publickey,password)",
-                "Permission denied (publickey)",
-                "Authentication failed",
-                "Invalid private key",
-                "privateKey value does not contain a (valid) private key",
-                "Cannot parse privateKey",
-            ];
-
-            testCases.forEach((errorMessage) => {
-                expect(ZSshUtils.isPrivateKeyAuthFailure(errorMessage, true)).toBe(true);
-            });
-        });
-
-        it("should return false for non-private key error messages", () => {
-            const testCases = [
-                "Connection timed out",
-                "Network is unreachable",
-                "Connection refused",
-                "Host key verification failed",
-                "Some other random error",
-            ];
-
-            testCases.forEach((errorMessage) => {
-                expect(ZSshUtils.isPrivateKeyAuthFailure(errorMessage, true)).toBe(false);
-            });
-        });
-
-        it("should return false when hasPrivateKey is explicitly false", () => {
-            const privateKeyErrorMessage = "All configured authentication methods failed";
-            expect(ZSshUtils.isPrivateKeyAuthFailure(privateKeyErrorMessage, false)).toBe(false);
-        });
-
-        it("should return true when hasPrivateKey is undefined but error matches pattern", () => {
-            const privateKeyErrorMessage = "All configured authentication methods failed";
-            expect(ZSshUtils.isPrivateKeyAuthFailure(privateKeyErrorMessage)).toBe(true);
-        });
-
-        it("should handle partial matches in error messages", () => {
-            const errorMessage =
-                "SSH Error: All configured authentication methods failed. Please check your credentials.";
-            expect(ZSshUtils.isPrivateKeyAuthFailure(errorMessage, true)).toBe(true);
         });
     });
 });

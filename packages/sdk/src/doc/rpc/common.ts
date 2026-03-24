@@ -9,6 +9,8 @@
  *
  */
 
+import type { Readable, Writable } from "node:stream";
+
 // Base Request/Response interfaces
 
 /**
@@ -50,6 +52,16 @@ export interface RpcResponse {
     result?: any;
     error?: ErrorDetails;
     id: number;
+}
+
+// biome-ignore lint/suspicious/noEmptyInterface: using runtime type information in ZSshClient
+export interface StreamRpc {}
+
+export interface ReadableStreamRpc extends StreamRpc {
+    stream?: () => Readable;
+}
+export interface WritableStreamRpc extends StreamRpc {
+    stream?: () => Writable;
 }
 
 export interface CommandRequest<CommandT extends string = string> {

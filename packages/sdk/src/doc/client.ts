@@ -70,7 +70,6 @@ export interface ExistingClientRequest {
     command: CommandRequest;
     rpc: RpcPromise;
     silenced: boolean;
-    retryable: boolean;
     timeoutId: NodeJS.Timeout;
 }
 
