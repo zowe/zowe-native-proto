@@ -528,6 +528,10 @@ int handle_uss_issue_cmd(InvocationContext &context)
   std::string stdout_response;
   std::string stderr_response;
 
+  // Command output may differ from an interactive shell session: the child
+  // process receives a pipe as stdout (not a TTY), so programs that check
+  // isatty(1) to control formatting (e.g. `ls` multi-column layout, `grep`
+  // color) will use their non-interactive defaults. This is expected behavior.
   int rc = zut_spawn_shell_command(command, stdout_response, stderr_response);
 
   if (0 != rc)
@@ -539,7 +543,7 @@ int handle_uss_issue_cmd(InvocationContext &context)
     }
   }
 
-  context.output_stream() << stdout_response;
+  context.output_stream() << stdout_response << '\n';
 
   return rc;
 }

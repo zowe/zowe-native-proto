@@ -331,6 +331,10 @@ int zut_spawn_shell_command(const std::string &command, std::string &stdout_resp
     return RTNCD_FAILURE;
   }
 
+  // stdout/stderr are captured via pipes, not a PTY. This means isatty(1) returns
+  // false in the child process, so commands like `ls` produce single-column output
+  // instead of the multi-column format seen in an interactive terminal. This is
+  // correct POSIX behavior for non-interactive (programmatic) command execution.
   std::array<int, 2> stdout_pipe;
   std::array<int, 2> stderr_pipe;
   if (-1 == pipe(stdout_pipe.data()))
