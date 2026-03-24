@@ -400,14 +400,15 @@ static bool parse_syslog_last_timestamp(const std::string &response, std::string
   return false;
 }
 
-int zjb_read_syslog(ZJB *zjb, std::string &response, std::string &date, std::string &timestamp, int max_lines, bool &has_more, std::string &end_date, std::string &end_time)
+int zjb_read_syslog(ZJB *zjb, std::string &response, ZJBSyslogOptions &opts)
 {
   int rc = 0;
   std::string ddname;
   ZDS zds = {};
-  has_more = false;
-  end_date.clear();
-  end_time.clear();
+  opts.has_more = false;
+  opts.end_date.clear();
+  opts.end_time.clear();
+  opts.returned_lines = 0;
 
   //
   // get system name
@@ -422,7 +423,7 @@ int zjb_read_syslog(ZJB *zjb, std::string &response, std::string &date, std::str
   // get input timestamp from format HH:MM:SS.CC to binary format (low bit represents 0.01 of a second) for CONVTOD
   //
   int hh = 0, mm = 0, ss = 0, cs = 0;
-  sscanf(timestamp.c_str(), "%d:%d:%d.%d", &hh, &mm, &ss, &cs);
+  sscanf(opts.time.c_str(), "%d:%d:%d.%d", &hh, &mm, &ss, &cs);
   uint32_t ts_binary = ((uint32_t)hh * 360000) + ((uint32_t)mm * 6000) + ((uint32_t)ss * 100) + (uint32_t)cs;
 
   //
@@ -436,13 +437,13 @@ int zjb_read_syslog(ZJB *zjb, std::string &response, std::string &date, std::str
   // prepare date for `pack`
   //
   std::string date_compact;
-  for (char c : date)
+  for (char c : opts.date)
   {
     if (c != '-')
       date_compact += c;
   }
   memcpy(&zds.ebcdic_date, date_compact.c_str(), sizeof(zds.ebcdic_date));
-  zds.max_lines = max_lines;
+  zds.max_lines = opts.max_lines;
 
   rc = zjb_read_job_dynamic_allocation(zjb, dsn, ddname);
   if (0 != rc)
@@ -455,10 +456,11 @@ int zjb_read_syslog(ZJB *zjb, std::string &response, std::string &date, std::str
 
   rc = zds_read_vsam(&zds, ddname, response);
   memcpy(&zjb->diag, &zds.diag, sizeof(ZDIAG));
-  has_more = (zds.has_more != 0);
+  opts.has_more = (zds.has_more != 0);
+  opts.returned_lines = zds.returned_lines;
 
   if (rc == 0 && !response.empty())
-    parse_syslog_last_timestamp(response, end_date, end_time);
+    parse_syslog_last_timestamp(response, opts.end_date, opts.end_time);
 
   int newrc = zjb_free_job_dynamic_allocation(zjb, ddname);
   if (0 != newrc && 0 == rc)

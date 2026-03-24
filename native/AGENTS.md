@@ -101,6 +101,52 @@ Metal C files (compiled with `xlc -W"c,metal,..."`) can use:
 
 **Pattern:** If a function needs `stckconv` or `TIME_STRUCT`, put it in a Metal C file (e.g. `zdsm.c`) and expose it via a plain `extern "OS"` declaration in the corresponding `.h` header. Regular C++ code calls the Metal C wrapper.
 
+## Struct Field Conventions — Boolean Flags
+
+Boolean flags inside structs **must** use `unsigned int field : 1;` bitfields, not `int` or `bool`. This is required for structs passed between Language Environment (LE) and Metal C, where only primitive types are allowed, and is the established pattern throughout the codebase.
+
+```cpp
+// Correct
+unsigned int dynalloc : 1; // indicates that the data set was dynamically allocated
+unsigned int has_more  : 1;
+
+// Incorrect — do not use int or bool for flags in structs
+int has_more;
+bool has_more;
+```
+
+Group related bitfields together under a comment block (see `zrecovery.h`, `zamtypes.h`, `zdstype.h` for examples).
+
+## Function Parameter Count
+
+Prefer a dedicated options/result struct when a function has more than ~5 parameters, or when it has multiple output-only reference parameters. Follow the existing patterns in the codebase:
+
+| Pattern | Example | Use for |
+|---------|---------|---------|
+| Input options only | `CopyOptions`, `ListOptions` (`zusf.hpp`) | Grouping boolean/config inputs |
+| Input + output combined | `ZDSCopyOptions` (`zds.hpp`) | Functions that both take options and return multiple results |
+
+Structs replace scattered `bool &out_flag`, `std::string &out_val` parameters and make call sites easier to read and extend without signature changes.
+
+```cpp
+// Before — too many params, hard to extend
+int zjb_read_syslog(ZJB *zjb, std::string &response, std::string &date,
+    std::string &time, int max_lines, bool &has_more,
+    std::string &end_date, std::string &end_time);
+
+// After — clear, extensible
+struct ZJBSyslogOptions {
+  std::string date;     // input
+  std::string time;     // input
+  int max_lines = 0;    // input
+  bool has_more = false; // output
+  std::string end_date; // output
+  std::string end_time; // output
+  int returned_lines = 0; // output
+};
+int zjb_read_syslog(ZJB *zjb, std::string &response, ZJBSyslogOptions &opts);
+```
+
 ## z/OS System Log (Syslog) — VSAM Special Interface
 
 The z/OS system log is stored as a VSAM KSDS and accessed via the **logical syslog special interface** (documented at [IBM z/OS VSAM special processing](https://www.ibm.com/docs/en/zos/3.2.0?topic=interface-special-processing-logical-syslog-data-sets)).

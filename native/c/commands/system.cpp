@@ -116,16 +116,6 @@ int handle_system_list_subsystems(InvocationContext &context)
 #define DEFAULT_MAX_LINES_RELATIVE MAX_LINES
 #define DEFAULT_SECONDS_AGO 30
 
-static int count_lines(const string &s)
-{
-  int count = 0;
-  for (size_t i = 0; i < s.size(); i++)
-  {
-    if (s[i] == '\n')
-      count++;
-  }
-  return count;
-}
 
 int handle_system_view_syslog(InvocationContext &context)
 {
@@ -238,10 +228,12 @@ int handle_system_view_syslog(InvocationContext &context)
 
   string response;
   ZJB zjb = {};
-  bool has_more = false;
-  string end_date, end_time;
+  ZJBSyslogOptions opts;
+  opts.date = date_value;
+  opts.time = time_value;
+  opts.max_lines = static_cast<int>(max_lines);
 
-  rc = zjb_read_syslog(&zjb, response, date_value, time_value, max_lines, has_more, end_date, end_time);
+  rc = zjb_read_syslog(&zjb, response, opts);
   if (0 != rc)
   {
     context.error_stream() << "Error: could not view syslog, rc: '" << rc << "'" << endl;
@@ -249,15 +241,13 @@ int handle_system_view_syslog(InvocationContext &context)
     return RTNCD_FAILURE;
   }
 
-  int returned_lines = count_lines(response);
-
   const auto result = obj();
   result->set("startDate", str(date_value));
   result->set("startTime", str(time_value));
-  result->set("endDate", str(end_date));
-  result->set("endTime", str(end_time));
-  result->set("returnedLines", i64(returned_lines));
-  result->set("hasMore", boolean(has_more));
+  result->set("endDate", str(opts.end_date));
+  result->set("endTime", str(opts.end_time));
+  result->set("returnedLines", i64(opts.returned_lines));
+  result->set("hasMore", boolean(opts.has_more));
   context.set_object(result);
 
   context.output_stream() << response;
@@ -266,9 +256,9 @@ int handle_system_view_syslog(InvocationContext &context)
   {
     context.error_stream() << endl
                            << "Start: " << date_value << " " << time_value
-                           << " | End: " << end_date << " " << end_time
-                           << " | Lines: " << returned_lines
-                           << " | Has more: " << (has_more ? "yes" : "no") << endl;
+                           << " | End: " << opts.end_date << " " << opts.end_time
+                           << " | Lines: " << opts.returned_lines
+                           << " | Has more: " << (opts.has_more ? "yes" : "no") << endl;
   }
 
   return RTNCD_SUCCESS;

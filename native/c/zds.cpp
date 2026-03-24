@@ -817,6 +817,8 @@ int zds_read_vsam(ZDS *zds, std::string ddname, std::string &response)
     }
   }
 
+  zds->returned_lines = lines_read;
+
   rc = ZDSCIVSM(zds, ioc);
   if (rc != RTNCD_SUCCESS)
   {
