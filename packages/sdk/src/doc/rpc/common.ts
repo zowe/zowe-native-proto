@@ -54,13 +54,10 @@ export interface RpcResponse {
     id: number;
 }
 
-// biome-ignore lint/suspicious/noEmptyInterface: using runtime type information in ZSshClient
-export interface StreamRpc {}
-
-export interface ReadableStreamRpc extends StreamRpc {
+export interface ReadableStreamRpc {
     stream?: () => Readable;
 }
-export interface WritableStreamRpc extends StreamRpc {
+export interface WritableStreamRpc {
     stream?: () => Writable;
 }
 
