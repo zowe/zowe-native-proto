@@ -9,11 +9,11 @@
  *
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { SshClientCache } from "../src/SshClientCache";
-import { ZSshClient, ZSshUtils } from "zowe-native-proto-sdk";
 import { imperative, ZoweVsCodeExtension } from "@zowe/zowe-explorer-api";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as vscode from "vscode";
+import { ZSshClient, ZSshUtils } from "zowe-native-proto-sdk";
+import { SshClientCache } from "../src/SshClientCache";
 import { deployWithProgress, getVsceConfig } from "../src/Utilities";
 
 vi.mock("@zowe/zowe-explorer-api", () => {
