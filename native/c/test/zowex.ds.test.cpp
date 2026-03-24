@@ -101,9 +101,20 @@ void zowex_ds_tests()
                   Expect(response).ToContain("view");
                   Expect(response).ToContain("write"); });
 
+             bool is_pdsman_active = false;
              describe("compress",
                       [&]() -> void
                       {
+                        beforeAll(
+                            [&]() -> void
+                            {
+                              std::string response;
+                              int rc = execute_command_with_output(zowex_command + " job ls --owner \"*\" --prefix \"PDSMAN*\" --status ACTIVE", response);
+                              if (rc == 0)
+                              {
+                                is_pdsman_active = response.find("PDSMAN") != std::string::npos;
+                              }
+                            });
                         beforeEach(
                             [&]() -> void
                             {
@@ -146,9 +157,10 @@ void zowex_ds_tests()
                              Expect(response).ToContain("Error: data set '" + ds + "' is not a PDS");
                            });
 
-                        it("should compress a data set",
-                           [&]() -> void
-                           {
+                        // TODO: Unskip test once incompatibility with PDSMAN is resolved
+                        // See https://github.com/zowe/zowe-native-proto/issues/790
+                        itif("should compress a data set", [&]() -> void
+                             {
                              std::string ds = _ds.back();
                              _create_ds(ds, "--dsorg PO --dirblk 2");
 
@@ -157,8 +169,7 @@ void zowex_ds_tests()
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain("Data set");
-                             Expect(response).ToContain("compressed");
-                           });
+                             Expect(response).ToContain("compressed"); }, !is_pdsman_active);
 
                         // TODO: https://github.com/zowe/zowe-native-proto/issues/666
                         xit("should error when the data set is VSAM", []() -> void {});
@@ -1268,13 +1279,15 @@ void zowex_ds_tests()
                              int write_rc = zusf_write_to_uss_file(&zusf, temp_file, write_content);
                              Expect(write_rc).ToBe(RTNCD_SUCCESS);
 
-                             std::string get_uss_file_command = zowex_command + " uss view '" + temp_file + "'";
-                             std::string command = get_uss_file_command + " | " + zowex_command + " data-set write " + ds;
+                             // View the USS file as binary to avoid BPXK_AUTOCVT interference in the pipe,
+                             // then write the raw bytes into the data set (also as binary).
+                             std::string get_uss_file_command = zowex_command + " uss view '" + temp_file + "' --ec binary";
+                             std::string command = get_uss_file_command + " | " + zowex_command + " data-set write " + ds + " --ec binary";
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain("Wrote data to '" + ds + "'");
 
-                             command = zowex_command + " data-set view " + ds;
+                             command = zowex_command + " data-set view " + ds + " --ec binary";
                              rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain(content);

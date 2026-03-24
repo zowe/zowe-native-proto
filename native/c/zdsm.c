@@ -15,6 +15,7 @@
 #include "zmetal.h"
 #include "zdbg.h"
 #include "zwto.h"
+#include "ztime.h"
 #include <ctype.h>
 #include <string.h>
 #include "zam.h"
@@ -161,6 +162,74 @@ int ZDSDSCB1(ZDS *zds, const char *dsn, const char *volser, DSCBFormat1 *dscb)
       zds->diag.e_msg, "Could not find Format-1 or Format-8 DSCB, OBTAIN rc=%d, sizeof(dscb)=%d", rc, sizeof(IndexableDSCBFormat1));
   zds->diag.detail_rc = ZDS_RTNCD_UNEXPECTED_ERROR;
   return RTNCD_FAILURE;
+}
+
+#pragma prolog(ZDSOIVSM, " ZWEPROLG NEWDSA=(YES,24) ")
+#pragma epilog(ZDSOIVSM, " ZWEEPILG ")
+int ZDSOIVSM(ZDS *zds, IO_CTRL **ioc, const char *ddname)
+{
+  int rc = 0;
+  ZDS zds31 = {0};
+  memcpy(&zds31, zds, sizeof(ZDS));
+  char ddname31[8] = {0};
+  memcpy(ddname31, ddname, sizeof(ddname31));
+
+  IO_CTRL *PTR32 ioc31 = NULL;
+  rc = open_input_vsam(&zds31.diag, &ioc31, ddname31);
+  *ioc = ioc31;
+  memcpy(zds, &zds31, sizeof(ZDS));
+
+  if (0 != rc)
+  {
+    ZDS zds_close = {0};
+    close_input_vsam(&zds_close.diag, ioc31);
+    *ioc = NULL;
+  }
+
+  return rc;
+}
+
+#pragma prolog(ZDSPIVSM, " ZWEPROLG NEWDSA=(YES,24) ")
+#pragma epilog(ZDSPIVSM, " ZWEEPILG ")
+int ZDSPIVSM(ZDS *zds, IO_CTRL *ioc)
+{
+  int rc = 0;
+  ZDS zds31 = {0};
+  memcpy(&zds31, zds, sizeof(ZDS));
+
+  __pack((unsigned char *)&zds->date, sizeof(zds->date), (unsigned char *)&zds->ebcdic_date, sizeof(zds->ebcdic_date));
+
+  TIME_STRUCT time_struct = {0};
+  memcpy(&time_struct.time, &zds->ts_binary, sizeof(zds->ts_binary));
+  memcpy(&time_struct.date, &zds->date, sizeof(zds->date));
+
+  rc = point_input_vsam(&zds31.diag, ioc, &time_struct);
+  memcpy(zds, &zds31, sizeof(ZDS));
+  return rc;
+}
+
+#pragma prolog(ZDSRIVSM, " ZWEPROLG NEWDSA=(YES,24) ")
+#pragma epilog(ZDSRIVSM, " ZWEEPILG ")
+int ZDSRIVSM(ZDS *zds, IO_CTRL *ioc)
+{
+  int rc = 0;
+  ZDS zds31 = {0};
+  memcpy(&zds31, zds, sizeof(ZDS));
+  rc = read_input_vsam(&zds31.diag, ioc);
+  memcpy(zds, &zds31, sizeof(ZDS));
+  return rc;
+}
+
+#pragma prolog(ZDSCIVSM, " ZWEPROLG NEWDSA=(YES,24) ")
+#pragma epilog(ZDSCIVSM, " ZWEEPILG ")
+int ZDSCIVSM(ZDS *zds, IO_CTRL *ioc)
+{
+  int rc = 0;
+  ZDS zds31 = {0};
+  memcpy(&zds31, zds, sizeof(ZDS));
+  rc = close_input_vsam(&zds31.diag, ioc);
+  memcpy(zds, &zds31, sizeof(ZDS));
+  return rc;
 }
 
 #pragma prolog(ZDSOBPAM, " ZWEPROLG NEWDSA=(YES,24) ")

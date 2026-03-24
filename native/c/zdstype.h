@@ -55,7 +55,9 @@
 #define ZDS_DEFAULT_MAX_ENTRIES 1000
 #define ZDS_DEFAULT_MAX_MEMBER_ENTRIES 5000
 
-#define ZDS_VOLSER_VSAM "*VSAM*" // library
+#define ZDS_VOLSER_VSAM "*VSAM*"
+#define ZDS_VOLSER_AIX "*AIX *"
+#define ZDS_VOLSER_PATH "*PATH*"
 #define ZDS_VOLSER_ALIAS "*ALIAS"
 #define ZDS_VOLSER_GDG "??????"
 #define ZDS_VOLSER_UNKNOWN "------"
@@ -107,7 +109,13 @@ typedef struct
   void *PTR64 csi;
 
   unsigned int dynalloc : 1; // indicates that the data set was dynamically allocated
-  unsigned char reserve[20];
+  unsigned char reserve[12];
+
+  unsigned char ebcdic_date[8];
+
+  uint64_t ts_binary;
+  uint32_t date;
+  int max_lines;
 
   ZDIAG diag;
 

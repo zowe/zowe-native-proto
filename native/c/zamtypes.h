@@ -14,6 +14,9 @@
 
 #include "dcbd.h"
 #include "ihadcbe.h"
+#include "ifgacb.h"
+#include "iazdsinf.h"
+#include "ifgrpl.h"
 #include "jfcb.h"
 #include "ihaexlst.h"
 #include "ztype.h"
@@ -21,6 +24,9 @@
 
 typedef struct ihadcb IHADCB;
 typedef struct dcbe DCBE;
+typedef struct ifgacb IFGACB;
+typedef struct ifgrpl IFGRPL;
+typedef struct dsinf DSINF;
 
 #define OPTION_BYTE 0X80
 
@@ -208,18 +214,21 @@ typedef struct
 typedef struct
 {
   IHADCB dcb;
+  IFGACB ifgacb;
   DECB decb;
   JFCB jfcb;
   EXLIST exlst[NUM_EXLIST_ENTRIES];
-  RDJFCB_PL rpl;
+  RDJFCB_PL rdjfcb_pl;
   OPEN_PL opl;
   STOW_LIST stow_list;
+  IFGRPL rpl;
   char *PTR32 buffer;
   int buffer_size;
   int output : 1; // TODO(Kelosky): remove this flag
   int input : 1;  // TODO(Kelosky): remove this flag
   unsigned int has_enq : 1;
   unsigned int has_reserve : 1; // not reserved space... indicates RESERVE is outstanding
+  unsigned int eof : 1;         // not reserved space... indicates RESERVE is outstanding
   unsigned int ucb;
   void *PTR32 zam24;
   int zam24_len;

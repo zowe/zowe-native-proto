@@ -12,7 +12,9 @@
 #include "zam.h"
 #include "dcbd.h"
 // #include "zam24.h"
+#include "zamtypes.h"
 #include "zdstype.h"
+#include "zstorage.h"
 #include "ztype.h"
 #include "zenq.h"
 #include "ihapsa.h"
@@ -20,21 +22,9 @@
 #include "ieftiot1.h"
 #include "zutm31.h"
 #include "ztime.h"
-
-// NOTE(Kelosky): must be assembled in AMODE31 code
-#if defined(__IBM_METAL__)
-#define RDJFCB_MODEL(rdjfcbm)                                 \
-  __asm(                                                      \
-      "*                                                  \n" \
-      " RDJFCB (,),"                                          \
-      "MF=L                                               \n" \
-      "*                                                    " \
-      : "DS"(rdjfcbm));
-#else
-#define RDJFCB_MODEL(rdjfcbm)
-#endif
-
-RDJFCB_MODEL(rdfjfcb_model);
+#include "zio.h"
+#include "zwto.h"
+#include "zdbg.h"
 
 register FILE_CTRL *fc ASMREG("r8");
 
@@ -49,6 +39,24 @@ typedef struct
   short int len;
   short int unused;
 } RDW;
+
+static IO_CTRL *PTR32 new_write_io_ctrl(char *PTR32 ddname, int lrecl, int blkSize, unsigned char recfm)
+{
+  IO_CTRL *PTR32 ioc = new_io_ctrl();
+  IHADCB *dcb = &ioc->dcb;
+  memcpy(dcb, &dcb_write_model, sizeof(IHADCB));
+  set_dcb_info(dcb, ddname, lrecl, blkSize, recfm);
+  return ioc;
+}
+
+static IO_CTRL *PTR32 new_read_io_ctrl(char *PTR32 ddname, int lrecl, int blkSize, unsigned char recfm)
+{
+  IO_CTRL *ioc = new_io_ctrl();
+  IHADCB *dcb = &ioc->dcb;
+  memcpy(dcb, &dcb_read_model, sizeof(IHADCB));
+  set_dcb_info(dcb, ddname, lrecl, blkSize, recfm);
+  return ioc;
+}
 
 static int check_dcb_abend(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc, const char *PTR32 operation)
 {
@@ -185,7 +193,7 @@ static int open_data_set(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
 {
   int rc = 0;
   reset_dcb_abend_info(ioc);
-  rc = open_output(&ioc->dcb);
+  rc = open_output_dcb(&ioc->dcb);
   if (0 != rc)
   {
     if (check_dcb_abend(diag, ioc, "OPEN"))
@@ -278,6 +286,165 @@ static int note_member(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc, NOTE_RESPONSE *PTR
   return rc;
 }
 
+#define MAX_SYSLOG_LRECL 256
+int open_input_vsam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 *PTR32 ioc, const char *PTR32 ddname)
+{
+  int rc = 0;
+  int rsn = 0;
+  IO_CTRL *PTR32 ioc31 = NULL;
+
+  //
+  // Obtain IO_CTRL for the data set
+  //
+  IO_CTRL *PTR32 new_ioc = new_io_ctrl();
+  *ioc = new_ioc;
+  void *acbp = &new_ioc->ifgacb;
+
+  ACB_MODEL(dsa_acb_model); // stack var
+  memcpy(&dsa_acb_model, &acb_model, sizeof(IFGACB));
+
+  memcpy(&new_ioc->ifgacb, &dsa_acb_model, sizeof(IFGACB));
+  memcpy(new_ioc->ifgacb.acbddnm, ddname, sizeof(new_ioc->ifgacb.acbddnm));
+
+  IFGRPL *rplp = &new_ioc->rpl;
+  memcpy(rplp, &rpl_model, sizeof(IFGRPL));
+
+  new_ioc->buffer_size = MAX_SYSLOG_LRECL; // NOTE(Kelosky): in the future for other VSAM data sets, this could be set to the actual LRECL, we could use something like stvsmlrl
+  new_ioc->buffer = storage_obtain31(new_ioc->buffer_size);
+
+  MODCB_MODEL(plist);
+  MODCB(rplp, acbp, new_ioc->buffer, new_ioc->buffer_size, new_ioc->buffer_size, plist, rc, rsn);
+  if (0 != rc)
+  {
+    diag->detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
+    strcpy(diag->service_name, "MODCB");
+    diag->e_msg_len = sprintf(diag->e_msg, "MODCB failed rc was: %d rsn was: %d", rc, rsn);
+    diag->service_rc = rc;
+    diag->service_rsn = rsn;
+    return RTNCD_FAILURE;
+  }
+
+  rc = open_input_acb(&new_ioc->ifgacb);
+  if (0 != rc)
+  {
+    diag->detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
+    strcpy(diag->service_name, "OPEN");
+    diag->e_msg_len = sprintf(diag->e_msg, "Failed to open acb rc was: %d", rc);
+    diag->service_rc = rc;
+    return RTNCD_FAILURE;
+  }
+
+  return rc;
+}
+
+// https://www.ibm.com/docs/en/zos/3.2.0?topic=interface-special-processing-logical-syslog-data-sets
+#define FIRST_OCCURRENCE 0xFF00
+#define NEXT_OCCURRENCE 0xFF01
+#define PREV_OCCURRENCE 0xFF02
+#define OFF_CURRENT_RECORD 0xFF03
+#define ABSOLUTE_RECORD 0xFF04
+int point_input_vsam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc, TIME_STRUCT *time_struct)
+{
+  int rc = 0;
+
+  unsigned short request = FIRST_OCCURRENCE;
+
+  etod_t etod = {0};
+
+  rc = convetod(time_struct, &etod);
+  if (0 != rc)
+  {
+    diag->detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
+    strcpy(diag->service_name, "CONVTOD");
+    diag->e_msg_len = sprintf(diag->e_msg, "Failed to CONVTOD rc was: %d", rc);
+    diag->service_rc = rc;
+    return rc;
+  }
+
+  IFGRPL *rplp = &ioc->rpl;
+
+  memcpy(&rplp->rplaixpc, &request, sizeof(rplp->rplaixpc));
+  memcpy(&rplp->rplrbar.rplrbarx, etod, sizeof(rplp->rplrbar.rplrbarx));
+  void *PTR32 larg = &rplp->rplrbar;
+  memcpy(&rplp->rplarg, &larg, sizeof(rplp->rplarg));
+
+  POINT(rplp, rc);
+  if (0 != rc)
+  {
+    diag->detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
+    strcpy(diag->service_name, "POINT");
+    diag->e_msg_len = sprintf(diag->e_msg, "Failed to POINT rc was: %d", rc);
+    diag->service_rc = rc;
+    return rc;
+  }
+
+  return rc;
+}
+
+int read_input_vsam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
+{
+  int rc = 0;
+
+  DSINF dsinf = {0};
+  memcpy(dsinf.dsineye, "DSIN", sizeof(dsinf.dsineye));
+  IFGRPL *rplp = &ioc->rpl;
+  rplp->rplermsa = &dsinf;
+  rplp->rplemlen = dsinsiz1;
+
+  GET(rplp, rc);
+  if (0 != rc)
+  {
+// https://www.ibm.com/docs/en/zos/3.1.0?topic=uai-return-codes
+#define rpleoder 0x04
+    if (rplp->rplerreg == rplloger && rplp->rplfdb3 == rpleoder)
+    {
+      ioc->eof = 1;
+      return RTNCD_WARNING;
+    }
+    else
+    {
+      unsigned char rplrdbk[3] = {0};
+      diag->detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
+      strcpy(diag->service_name, "GET");
+      memcpy(rplrdbk, &rplp->rplfdbwd.rplfdbk, sizeof(rplrdbk));
+      diag->e_msg_len = sprintf(diag->e_msg, "Failed to GET rc was: %d, RPLRDBK was: %02X%02X%02X", rc, rplrdbk[0], rplrdbk[1], rplrdbk[2]);
+      diag->service_rc = rc;
+      return rc;
+    }
+  }
+
+  return rc;
+}
+
+int close_input_vsam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
+{
+  int rc = 0;
+
+  rc = close_acb(&ioc->ifgacb);
+  if (0 != rc)
+  {
+    diag->detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
+    strcpy(diag->service_name, "CLOSE");
+    diag->e_msg_len = sprintf(diag->e_msg, "Failed to close acb rc was: %d", rc);
+    diag->service_rc = rc;
+    return RTNCD_FAILURE;
+  }
+
+  if (ioc->buffer)
+  {
+    storage_release(ioc->buffer_size, ioc->buffer);
+    ioc->buffer = NULL;
+    ioc->buffer_size = 0;
+  }
+
+  if (ioc)
+  {
+    storage_release(sizeof(IO_CTRL), ioc);
+  }
+
+  return rc;
+}
+
 int open_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 *PTR32 ioc, const char *PTR32 ddname)
 {
   int rc = 0;
@@ -288,7 +455,7 @@ int open_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 *PTR32 ioc, const char *P
   //
   IO_CTRL *PTR32 new_ioc = new_io_ctrl();
   *ioc = new_ioc;
-  memcpy(&new_ioc->dcb, &open_write_model, sizeof(IHADCB));
+  memcpy(&new_ioc->dcb, &dcb_write_model, sizeof(IHADCB));
   memcpy(new_ioc->dcb.dcbddnam, ddname, sizeof(new_ioc->dcb.dcbddnam));
   memcpy(new_ioc->ddname, ddname, sizeof(new_ioc->ddname));
 
@@ -949,7 +1116,7 @@ IO_CTRL *open_output_assert(char *ddname, int lrecl, int blkSize, unsigned char 
   IO_CTRL *ioc = new_write_io_ctrl(ddname, lrecl, blkSize, recfm);
   IHADCB *dcb = &ioc->dcb;
   int rc = 0;
-  rc = open_output(dcb);
+  rc = open_output_dcb(dcb);
   dcb->dcbdsrg1 = dcbdsgps; // DSORG=PS
   ioc->output = 1;
   if (0 != rc)
@@ -969,7 +1136,7 @@ IO_CTRL *open_input_assert(char *ddname, int lrecl, int blkSize, unsigned char r
   int rc = 0;
   dcb->dcbdsrg1 = dcbdsgps; // DSORG=PS
 
-  rc = open_input(dcb);
+  rc = open_input_dcb(dcb);
   ioc->input = 1;
 
   if (0 != rc)
@@ -1103,14 +1270,14 @@ int read_input_jfcb(IO_CTRL *ioc)
   int rc = 0;
 
   setup_dcb_abend_exit(ioc);
-  memcpy(&ioc->rpl, &rdfjfcb_model, sizeof(RDJFCB_PL));
+  memcpy(&ioc->rdjfcb_pl, &rdfjfcb_model, sizeof(RDJFCB_PL));
 
   unsigned char recfm = ioc->dcb.dcbrecfm; // save the recfm
   void *PTR32 exlst = &ioc->exlst;
   memcpy(&ioc->dcb.dcbexlst, &exlst, sizeof(ioc->dcb.dcbexlst));
   ioc->dcb.dcbrecfm = recfm; // restore the recfm
 
-  RDJFCB(ioc->dcb, ioc->rpl, rc, INPUT);
+  RDJFCB(ioc->dcb, ioc->rdjfcb_pl, rc, INPUT);
   return rc;
 }
 
@@ -1119,18 +1286,18 @@ int read_output_jfcb(IO_CTRL *ioc)
   int rc = 0;
 
   setup_dcb_abend_exit(ioc);
-  memcpy(&ioc->rpl, &rdfjfcb_model, sizeof(RDJFCB_PL));
+  memcpy(&ioc->rdjfcb_pl, &rdfjfcb_model, sizeof(RDJFCB_PL));
 
   unsigned char recfm = ioc->dcb.dcbrecfm; // save the recfm
   void *PTR32 exlst = &ioc->exlst;
   memcpy(&ioc->dcb.dcbexlst, &exlst, sizeof(ioc->dcb.dcbexlst));
   ioc->dcb.dcbrecfm = recfm; // restore the recfm
 
-  RDJFCB(ioc->dcb, ioc->rpl, rc, OUTPUT);
+  RDJFCB(ioc->dcb, ioc->rdjfcb_pl, rc, OUTPUT);
   return rc;
 }
 
-int open_output(IHADCB *dcb)
+int open_output_dcb(IHADCB *dcb)
 {
   int rc = 0;
   OPEN_PL opl = {0};
@@ -1140,23 +1307,41 @@ int open_output(IHADCB *dcb)
   return rc;
 }
 
-int open_update(IHADCB *dcb)
-{
-  int rc = 0;
-  OPEN_PL opl = {0};
-  opl.option = OPTION_BYTE;
-
-  OPEN(*dcb, opl, rc, OUTPUT);
-  return rc;
-}
-
-int open_input(IHADCB *dcb)
+int open_input_dcb(IHADCB *dcb)
 {
   int rc = 0;
   OPEN_PL opl = {0};
   opl.option = OPTION_BYTE;
 
   OPEN(*dcb, opl, rc, INPUT);
+  return rc;
+}
+
+// https://www.ibm.com/docs/en/zos/3.2.0?topic=sets-using-vsam-macros-in-programs
+// https://www.ibm.com/docs/en/zos/3.2.0?topic=sets-vsam-macro-instructions
+// https://www.ibm.com/docs/en/zos/3.2.0?topic=macros-use-list-execute-generate-forms-vsam
+// https://www.ibm.com/docs/en/zos/3.2.0?topic=instructions-vsam-macro-descriptions-examples
+// https://www.ibm.com/docs/en/zos/3.2.0?topic=interface-special-processing-logical-syslog-data-sets
+// https://www.ibm.com/docs/en/zos/3.2.0?topic=interface-using-rpl-based-macros
+int open_input_acb(IFGACB *acb)
+{
+  int rc = 0;
+
+  OPEN_MODEL(dsa_open_model);  // stack var
+  dsa_open_model = open_model; // copy model
+
+  OPEN_ACB(*acb, dsa_open_model, rc);
+
+  return rc;
+}
+
+int close_acb(IFGACB *acb)
+{
+  int rc = 0;
+  CLOSE_PL cpl = {0};
+  cpl.option = OPTION_BYTE;
+
+  CLOSE_ACB(*acb, cpl, rc);
   return rc;
 }
 
