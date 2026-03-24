@@ -372,8 +372,8 @@ static bool parse_syslog_last_timestamp(const std::string &response, std::string
         tm_julian.tm_mon = 0;
         mktime(&tm_julian);
         char date_buf[16];
-        sprintf(date_buf, "%04d-%02d-%02d",
-                tm_julian.tm_year + 1900, tm_julian.tm_mon + 1, tm_julian.tm_mday);
+        snprintf(date_buf, sizeof(date_buf), "%04d-%02d-%02d",
+                 tm_julian.tm_year + 1900, tm_julian.tm_mon + 1, tm_julian.tm_mday);
         out_date = date_buf;
 
         // Decode time at p+6 from EBCDIC to ASCII
