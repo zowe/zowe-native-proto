@@ -195,6 +195,22 @@ Wildcards:
 - `*` — any characters within that one qualifier only (e.g. `USER.J*.OLD` matches `USER.JCL.OLD` but not `USER.JCL.VERY.OLD`).
 - `**` — any characters across any number of qualifiers (e.g. `USER.**.OLD` matches both `USER.JCL.OLD` and `USER.JCL.VERY.OLD`).
 
+## TypeScript Formatting (Biome)
+
+All TypeScript files are formatted and linted by [Biome](https://biomejs.dev/) (`biome.json`). CI runs `biome format` and `biome lint` — files that differ from Biome's output fail the build.
+
+After editing any TypeScript file, run:
+
+```sh
+npx biome check --write <file>
+```
+
+To suppress a Biome rule inline:
+
+```typescript
+// biome-ignore lint/complexity/noStaticOnlyClass: Utilities class has static methods
+```
+
 ## Maintaining This Guide
 
 When making changes that involve **important learnings or architectural decisions**, update this `AGENTS.md` (or the relevant sub-project `AGENTS.md` such as `native/AGENTS.md`) as part of the same change. Examples of what to capture:
