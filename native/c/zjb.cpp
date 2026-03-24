@@ -35,8 +35,6 @@
 
 typedef struct iazbtokp IAZBTOKP;
 
-const char CR_CHAR = '\x0D';
-
 void zjb_build_job_response(ZJB_JOB_INFO *PTR64, int, std::vector<ZJob> &);
 
 #define BTOKLEN (293 - 254) // 293 is the full length, minus the max optional buffer area for logs (less 254)
@@ -499,28 +497,7 @@ int zjb_submit(ZJB *zjb, const std::string &contents, std::string &jobid)
     return RTNCD_FAILURE;
   }
 
-  std::string new_contents;
-
-  if (zjb->submit_flag & ZJB_OPT_STRIP_CRLF)
-  {
-    std::stringstream ss(contents);
-    std::string line;
-    while (std::getline(ss, line))
-    {
-      if (!line.empty() && line[line.size() - 1] == CR_CHAR)
-      {
-        line.erase(line.size() - 1);
-      }
-      line.resize(80, ' ');
-      new_contents += line;
-    }
-  }
-  else
-  {
-    new_contents = contents;
-  }
-
-  rc = zds_write_to_dd(&zds, ddname, new_contents);
+  rc = zds_write_to_dd(&zds, ddname, contents);
   if (0 != rc)
   {
     memcpy(&zjb->diag, &zds.diag, sizeof(ZDIAG));

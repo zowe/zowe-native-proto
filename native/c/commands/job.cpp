@@ -701,13 +701,29 @@ int job_submit_common(InvocationContext &context, const std::string &jcl, std::s
 {
   int rc = 0;
   ZJB zjb{};
+  const char CR_CHAR = '\x0D';
+  std::string new_contents;
 
   if (strip_crlf)
   {
-    zjb.submit_flag |= ZJB_OPT_STRIP_CRLF;
+    std::stringstream ss(jcl);
+    std::string line;
+    while (std::getline(ss, line))
+    {
+      if (!line.empty() && line.back() == CR_CHAR)
+      {
+        line.pop_back();
+      }
+      line.resize(80, ' ');
+      new_contents += line;
+    }
+  }
+  else
+  {
+    new_contents = jcl;
   }
 
-  rc = zjb_submit(&zjb, jcl, jobid);
+  rc = zjb_submit(&zjb, new_contents, jobid);
 
   if (0 != rc)
   {
