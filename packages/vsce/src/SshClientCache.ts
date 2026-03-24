@@ -68,7 +68,7 @@ export class SshClientCache extends vscode.Disposable {
 
     public dispose(opts?: ZSshRestartOptions): void {
         for (const session of this.mClientSessionMap.values()) {
-            session.client.dispose(opts?.restart, !opts?.retryRequests);
+            session.client.dispose(opts?.restart);
         }
     }
 

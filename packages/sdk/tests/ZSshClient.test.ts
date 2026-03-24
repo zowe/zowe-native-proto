@@ -595,14 +595,13 @@ describe("ZSshClient", () => {
             expect((client as any).mRequestMap.size).toBe(0);
         });
 
-        it("should NOT reject open requests when closeOpenRequests is false (Retry scenario)", () => {
+        it("should NOT reject open requests when requests are silenced", () => {
             const client: ZSshClient = new (ZSshClient as any)();
             const rejectMock = vi.fn();
             (client as any).mSshClient = { end: vi.fn() };
-            (client as any).mRequestMap.set(1, { rpc: { resolve: vi.fn(), reject: rejectMock } });
+            (client as any).mRequestMap.set(1, { rpc: { resolve: vi.fn(), reject: rejectMock }, silenced: true });
 
-            // Restarting AND retrying requests
-            client.dispose(true, false);
+            client.dispose(true);
 
             expect(rejectMock).not.toHaveBeenCalled();
             expect((client as any).mRequestMap.size).toBe(0);
@@ -638,7 +637,8 @@ describe("ZSshClient", () => {
             expect(resolveMock).not.toHaveBeenCalled();
             expect(rejectMock).not.toHaveBeenCalled();
 
-            expect((client as any).mRequestMap.has(99)).toBe(false);
+            // request sticks around for collection
+            expect((client as any).mRequestMap.has(99)).toBe(true);
         });
     });
 

@@ -466,8 +466,8 @@ describe("SshClientCache", () => {
 
             cache.dispose({ restart: true, retryRequests: true });
 
-            expect(mockClient1.dispose).toHaveBeenCalledWith(true, false);
-            expect(mockClient2.dispose).toHaveBeenCalledWith(true, false);
+            expect(mockClient1.dispose).toHaveBeenCalledWith(true);
+            expect(mockClient2.dispose).toHaveBeenCalledWith(true);
         });
 
         it("should handle calls with undefined opts safely", () => {
@@ -476,7 +476,7 @@ describe("SshClientCache", () => {
 
             cache.dispose(); // No opts provided
 
-            expect(mockClient.dispose).toHaveBeenCalledWith(undefined, true);
+            expect(mockClient.dispose).toHaveBeenCalledWith(undefined);
         });
     });
 

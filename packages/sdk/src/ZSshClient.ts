@@ -95,6 +95,11 @@ export class ZSshClient extends RpcClientApi implements Disposable {
         return client;
     }
 
+    /**
+     * Collects all currently pending RPC requests. Can be used to pause, replay, or inspect inflight requests.
+     * * @param silence - If true, silences the requests. They will no longer trigger their resolve or reject methods in normal operation (timeout, server response).
+     * @returns A set of existing client requests currently pending resolution.
+     */
     public collectAllRequests(silence: boolean = false): Set<ExistingClientRequest> {
         const replayRequests: Set<ExistingClientRequest> = new Set();
         this.mRequestMap.forEach((req) => {
@@ -108,14 +113,20 @@ export class ZSshClient extends RpcClientApi implements Disposable {
         return replayRequests;
     }
 
-    public dispose(isRestart: boolean = false, closeOpenRequests: boolean = true): void {
+    /**
+     * Cleans up the SSH client by ending the SSH connection and rejecting pending requests
+     * that have not been silenced. If you want to silence requests, see {@link collectAllRequests}
+     * * @param isRestart - Indicates if the disposal is part of a server restart sequence
+     * (changes the rejection message sent to pending requests).
+     */
+    public dispose(isRestart: boolean = false): void {
         Logger.getAppLogger().debug("Stopping SSH client");
         this.mRequestMap.forEach((req) => {
             let rejMsg = "Shutting down ZRS. No action is required.";
             if (isRestart) {
                 rejMsg = "Restarting ZRS";
             }
-            if (closeOpenRequests) {
+            if (!req.silenced) {
                 req.rpc.reject(new ImperativeError({ msg: rejMsg, suppressDump: true }));
             }
         });
@@ -326,6 +337,11 @@ export class ZSshClient extends RpcClientApi implements Disposable {
         this.mRequestMap.delete(response.id);
     }
 
+    /**
+     * Type guard to verify if an incoming request parameter contains a function that returns a Node.js Stream.
+     * * @param req - The unknown property to inspect.
+     * @returns True if `req` is a function, and asserts it as a stream generator function.
+     */
     private isStreamFunction(req: unknown): req is () => Stream {
         return typeof req === "function";
     }
