@@ -43,6 +43,9 @@ void zut_strip_final_newline(std::string &input)
   }
 }
 
+static void zut_private_drain_fd(struct pollfd &pfd, std::string &output, pid_t pid);
+static void zut_private_drain_pipes(std::array<struct pollfd, 2> &fds, std::string &stdout_response, std::string &stderr_response, pid_t pid);
+
 int zut_private_run_program(const std::string &program, const std::vector<std::string> &args, std::string &stdout_response, std::string &stderr_response, bool merge_streams)
 {
 
@@ -147,73 +150,10 @@ int zut_private_run_program(const std::string &program, const std::vector<std::s
     close(stdout_pipe[1]);
     close(stderr_pipe[1]);
 
-    struct pollfd fds[2];
-    fds[0].fd = stdout_pipe[0];
-    fds[0].events = POLLIN;
+    std::array<struct pollfd, 2> fds = {{{stdout_pipe[0], POLLIN, 0},
+                                         {merge_streams ? -1 : stderr_pipe[0], POLLIN, 0}}};
 
-    // only watch stderr pipe if we're not merging streams, otherwise set to -1
-    if (!merge_streams)
-    {
-      fds[1].fd = stderr_pipe[0];
-      fds[1].events = POLLIN;
-    }
-    else
-    {
-      fds[1].fd = -1;
-    }
-
-    char buffer[4096];
-    ssize_t bytes_read;
-
-    // while pipes still open
-    while (fds[0].fd != -1 || fds[1].fd != -1)
-    {
-      // blocks until there's data or an error
-      if (-1 == poll(fds, 2, -1))
-      {
-        if (EINTR != errno)
-        {
-          // critical problem, cleanup child process and exit loop
-          kill(pid, SIGKILL);
-          break;        
-        } else {
-          // transient problem, run another iteration of loop
-          continue;
-        }
-      }
-
-      for (int i = 0; i < 2; i++)
-      {
-        if (fds[i].fd != -1)
-        {
-
-          std::string &output = ((0 == i) ? stdout_response : stderr_response);
-          // close pipe if there's a hangup or error, otherwise read
-          if (fds[i].revents & POLLIN)
-          {
-            bytes_read = read(fds[i].fd, buffer, sizeof(buffer));
-            if (bytes_read > 0)
-            {
-              output.append(buffer, bytes_read);
-            }
-            else if (0 == bytes_read)
-            {
-              fds[i].fd = -1; // EOF
-            }
-            else if (-1 == bytes_read && EINTR != errno)
-            {
-              // critical error, cleanup child process and stop watching fd
-              kill(pid, SIGKILL);
-              fds[i].fd = -1;
-            }
-          }
-          else if (fds[i].revents & (POLLHUP | POLLERR))
-          {
-            fds[i].fd = -1;
-          }
-        }
-      }
-    }
+    zut_private_drain_pipes(fds, stdout_response, stderr_response, pid);
 
     zut_strip_final_newline(stdout_response);
     zut_strip_final_newline(stderr_response);
