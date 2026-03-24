@@ -13,10 +13,10 @@ import { EventEmitter, Readable } from "node:stream";
 import { Logger } from "@zowe/imperative";
 import { type ISshSession, SshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import { Client, type ClientCallback, type ConnectConfig } from "ssh2";
+import type { ReadableStreamRpc } from "../lib";
 import type { CommandRequest, RpcRequest, RpcResponse } from "../src/doc";
 import { ZSshClient } from "../src/ZSshClient";
 import { ZSshUtils } from "../src/ZSshUtils";
-import type { ReadableStreamRpc } from "../lib";
 
 vi.mock("ssh2");
 
@@ -260,7 +260,7 @@ describe("ZSshClient", () => {
             const writeMock = vi.fn();
             const client: ZSshClient = new (ZSshClient as any)();
             (client as any).mSshStream = { stdin: { write: writeMock } };
-            (client as any).mErrHandler = (err: Error) => {};
+            (client as any).mErrHandler = (_err: Error) => {};
             const response = client.request(request);
             vi.runAllTimers();
             await expect(response).rejects.toMatchObject({ errorCode: "ETIMEDOUT" });

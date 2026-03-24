@@ -9,7 +9,7 @@
  *
  */
 
-import { Readable, Writable } from "node:stream";
+import type { Readable, Writable } from "node:stream";
 import type { B64String } from "../types";
 import type * as common from "./common";
 

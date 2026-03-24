@@ -15,9 +15,9 @@ import type { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import { Client, type ClientChannel } from "ssh2";
 import type {
     ClientOptions,
-    ExistingClientRequest,
     CommandRequest,
     CommandResponse,
+    ExistingClientRequest,
     RpcNotification,
     RpcRequest,
     RpcResponse,
@@ -26,6 +26,7 @@ import type {
 import { RpcClientApi } from "./RpcClientApi";
 import { RpcStreamManager } from "./RpcStreamManager";
 import { ZSshUtils } from "./ZSshUtils";
+
 import Stream = require("node:stream");
 
 export class ZSshClient extends RpcClientApi implements Disposable {
