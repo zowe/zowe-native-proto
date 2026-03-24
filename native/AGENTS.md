@@ -23,17 +23,38 @@ On z/OS USS, `fork()` creates a **new address space** — expensive and slow. Pr
 
 All `npm run z:*` commands work from the repo root and target the remote z/OS system configured in `config.yaml`.
 
-| Command | Purpose |
-|---------|---------|
-| `npm run z:upload` | Upload source files to z/OS |
-| `npm run z:build` | Compile on z/OS |
-| `npm run z:rebuild` | Clean + build |
-| `npm run z:test` | Build all + run native tests |
+| Command                    | Purpose                                  |
+| -------------------------- | ---------------------------------------- |
+| `npm run z:upload`         | Upload source files to z/OS              |
+| `npm run z:build`          | Compile on z/OS                          |
+| `npm run z:rebuild`        | Clean + build                            |
+| `npm run z:test`           | Build all + run native tests             |
 | `npm run z:make all tests` | Build everything including test binaries |
 
 After modifying native source or test files, run `npm run z:upload` before `npm run z:test` to ensure the latest code is compiled on z/OS.
 
 The `zowex` binary on z/OS is at `<deployDir>/c/build-out/zowex` (deployDir is in `config.yaml`, typically `~/zowe-native-proto`).
+
+## Checking for Compiler Warnings
+
+Compiler warnings from z/OS builds are now surfaced by the build scripts. To check for warnings:
+
+```sh
+npm run z:rebuild          # main binary — shows warnings from native/c
+npm run z:make tests       # test binaries — shows warnings from native/c/test
+```
+
+Warnings appear on stderr after the build step completes.
+
+### Recognizing pre-existing warnings
+
+Pre-existing warnings come from files that were **not changed by the current PR**. Cross-reference warnings with the PR's changed files:
+
+```sh
+git diff --name-only main..HEAD
+```
+
+A warning is **pre-existing** if its source file does not appear in that list. A warning is **new** (must be fixed) if its source file was added or modified by the PR.
 
 ## Test Framework
 
