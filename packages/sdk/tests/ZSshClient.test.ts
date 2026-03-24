@@ -531,6 +531,145 @@ describe("ZSshClient", () => {
             expect(fakeLogger.error).toHaveBeenCalled();
         });
     });
+
+    describe("collectAllRequests function", () => {
+        it("should harvest requests, apply silence flag, and clear timeouts", () => {
+            const client: ZSshClient = new (ZSshClient as any)();
+            const clearTimeoutSpy = vi.spyOn(global, "clearTimeout");
+
+            const timeout1 = setTimeout(() => {}, 10000);
+            const timeout2 = setTimeout(() => {}, 10000);
+
+            const req1 = {
+                command: { command: "ping" },
+                rpc: { resolve: vi.fn(), reject: vi.fn() },
+                silenced: false,
+                timeoutId: timeout1,
+            };
+            const req2 = {
+                command: { command: "echo" },
+                rpc: { resolve: vi.fn(), reject: vi.fn() },
+                silenced: false,
+                timeoutId: timeout2,
+            };
+
+            (client as any).mRequestMap.set(1, req1);
+            (client as any).mRequestMap.set(2, req2);
+
+            const harvested = client.collectAllRequests(true);
+            expect(harvested.size).toBe(2);
+            expect(harvested.has(req1 as any)).toBe(true);
+            expect(req1.silenced).toBe(true);
+            expect(req2.silenced).toBe(true);
+            expect(clearTimeoutSpy).toHaveBeenCalledWith(timeout1);
+            expect(clearTimeoutSpy).toHaveBeenCalledWith(timeout2);
+        });
+    });
+
+    describe("dispose function", () => {
+        it("should reject open requests with standard message on normal dispose", () => {
+            const client: ZSshClient = new (ZSshClient as any)();
+            const rejectMock = vi.fn();
+            (client as any).mSshClient = { end: vi.fn() };
+            (client as any).mRequestMap.set(1, { rpc: { resolve: vi.fn(), reject: rejectMock } });
+
+            // Default dispose: isRestart = false, closeOpenRequests = true
+            client.dispose();
+
+            expect(rejectMock).toHaveBeenCalledTimes(1);
+            expect(rejectMock.mock.calls[0][0].message).toContain("Shutting down ZRS. No action is required.");
+            expect((client as any).mRequestMap.size).toBe(0);
+        });
+
+        it("should reject open requests with restart message when isRestart is true", () => {
+            const client: ZSshClient = new (ZSshClient as any)();
+            const rejectMock = vi.fn();
+            (client as any).mSshClient = { end: vi.fn() };
+            (client as any).mRequestMap.set(1, { rpc: { resolve: vi.fn(), reject: rejectMock } });
+
+            // Restarting, not retrying requests
+            client.dispose(true, true);
+
+            expect(rejectMock).toHaveBeenCalledTimes(1);
+            expect(rejectMock.mock.calls[0][0].message).toContain("Restarting ZRS");
+            expect((client as any).mRequestMap.size).toBe(0);
+        });
+
+        it("should NOT reject open requests when closeOpenRequests is false (Retry scenario)", () => {
+            const client: ZSshClient = new (ZSshClient as any)();
+            const rejectMock = vi.fn();
+            (client as any).mSshClient = { end: vi.fn() };
+            (client as any).mRequestMap.set(1, { rpc: { resolve: vi.fn(), reject: rejectMock } });
+
+            // Restarting AND retrying requests
+            client.dispose(true, false);
+
+            expect(rejectMock).not.toHaveBeenCalled();
+            expect((client as any).mRequestMap.size).toBe(0);
+        });
+
+        it("should end SSH connection", () => {
+            const client: ZSshClient = new (ZSshClient as any)();
+            const endMock = vi.fn();
+            (client as any).mSshClient = { end: endMock };
+            client[Symbol.dispose]();
+            expect(endMock).toHaveBeenCalledTimes(1);
+        });
+    });
+
+    describe("handleResponse with silenced requests", () => {
+        it("should silently delete the request and ignore the response if silenced is true", () => {
+            const client: ZSshClient = new (ZSshClient as any)();
+            const resolveMock = vi.fn();
+            const rejectMock = vi.fn();
+
+            // Seed a silenced request
+            (client as any).mRequestMap.set(99, {
+                command: { command: "ping" },
+                rpc: { resolve: resolveMock, reject: rejectMock },
+                silenced: true,
+            });
+
+            const fakeResponse: RpcResponse = { jsonrpc: "2.0", id: 99, result: { success: true } };
+
+            (client as any).handleResponse(fakeResponse);
+
+            // Promise handlers should NOT have been called
+            expect(resolveMock).not.toHaveBeenCalled();
+            expect(rejectMock).not.toHaveBeenCalled();
+
+            expect((client as any).mRequestMap.has(99)).toBe(false);
+        });
+    });
+
+    describe("create function (Replay Requests)", () => {
+        it("should automatically replay harvested requests upon creation", async () => {
+            const fakeResolve = vi.fn();
+            const fakeReject = vi.fn();
+            const harvestedRequest = {
+                command: { command: "harvested-command" },
+                rpc: { resolve: fakeResolve, reject: fakeReject },
+                silenced: true,
+            };
+
+            const requestSpy = vi.spyOn(ZSshClient.prototype, "request").mockResolvedValue({ success: true } as any);
+
+            vi.spyOn(Client.prototype, "connect").mockImplementation(function () {
+                this.emit("ready");
+                return this;
+            });
+            vi.spyOn(ZSshClient.prototype as any, "execAsync").mockResolvedValue(new EventEmitter());
+
+            await ZSshClient.create(new SshSession(fakeSession), {
+                requests: new Set([harvestedRequest] as any),
+            });
+
+            expect(requestSpy).toHaveBeenCalledWith(harvestedRequest.command);
+
+            expect(fakeResolve).toHaveBeenCalledWith({ success: true });
+            expect(fakeReject).not.toHaveBeenCalled();
+        });
+    });
 });
 
 describe("ZSshUtils", () => {
