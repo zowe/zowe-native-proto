@@ -1,5 +1,4 @@
 package-lock.json
-node_modules/
 binary-ssh/tests/config.json
 !binary-ssh/tests/config.example.json
 binary-ssh/tests/resources
