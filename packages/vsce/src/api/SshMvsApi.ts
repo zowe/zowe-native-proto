@@ -319,7 +319,9 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
             pattern: likeDataSetName,
             attributes: true,
         });
-        const sourceDs = listResponse.items[0];
+        const sourceDs = listResponse.items.find(
+            (item) => item.name?.toUpperCase() === likeDataSetName.toUpperCase(),
+        );
         if (!sourceDs) {
             return this.buildZosFilesResponse(
                 { success: false },
@@ -327,6 +329,16 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
                 `Source data set "${likeDataSetName}" not found`,
             );
         }
+
+        let dirblk: number | undefined;
+        if (sourceDs.dsorg === "PO") {
+            const membersResponse = await (await this.client).ds.listDsMembers({
+                dsname: likeDataSetName,
+            });
+            const memberCount = membersResponse.items?.length ?? 0;
+            dirblk = Math.max(5, Math.ceil(memberCount / 5) + 2);
+        }
+
         const attributes: DatasetAttributes = {
             dsname: dataSetName,
             primary: sourceDs.primary ?? 1,
@@ -335,7 +347,7 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
             recfm: sourceDs.recfm,
             dsorg: sourceDs.dsorg,
             dsntype: sourceDs.dsntype,
-            dirblk: sourceDs.dsorg === "PO" ? 5 : undefined,
+            dirblk,
             alcunit: sourceDs.spacu,
             secondary: sourceDs.secondary,
             storclass: sourceDs.storclass,
@@ -356,13 +368,23 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
     ): Promise<zosfiles.IZosFilesResponse> {
         const fromDataset = fromMemberName ? `${fromDataSetName}(${fromMemberName})` : fromDataSetName;
         const toDataset = toMemberName ? `${toDataSetName}(${toMemberName})` : toDataSetName;
-        const response = await (await this.client).ds.copyDataset({
-            fromDataset,
-            toDataset,
-            replace: options?.replace ?? false,
-            deleteTargetMembers: options?.deleteTargetMembers ?? false,
-        });
-        return this.buildZosFilesResponse(response, response.success);
+        try {
+            const response = await (await this.client).ds.copyDataset({
+                fromDataset,
+                toDataset,
+                replace: options?.replace ?? false,
+                deleteTargetMembers: options?.deleteTargetMembers ?? false,
+            });
+            if (!response.success) {
+                Gui.errorMessage(`Failed to copy "${fromDataset}" to "${toDataset}"`);
+            }
+            return this.buildZosFilesResponse(response, response.success);
+        } catch (error) {
+            const errorDetails =
+                error instanceof imperative.ImperativeError ? error.additionalDetails : String(error);
+            Gui.errorMessage(`Failed to copy "${fromDataset}" to "${toDataset}": ${errorDetails}`);
+            return this.buildZosFilesResponse({ success: false }, false, errorDetails);
+        }
     }
 
     public async copyDataSet(
@@ -371,12 +393,22 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
         _enq?: string,
         replace?: boolean,
     ): Promise<zosfiles.IZosFilesResponse> {
-        const response = await (await this.client).ds.copyDataset({
-            fromDataset: fromDataSetName,
-            toDataset: toDataSetName,
-            replace: replace ?? false,
-        });
-        return this.buildZosFilesResponse(response, response.success);
+        try {
+            const response = await (await this.client).ds.copyDataset({
+                fromDataset: fromDataSetName,
+                toDataset: toDataSetName,
+                replace: replace ?? false,
+            });
+            if (!response.success) {
+                Gui.errorMessage(`Failed to copy "${fromDataSetName}" to "${toDataSetName}"`);
+            }
+            return this.buildZosFilesResponse(response, response.success);
+        } catch (error) {
+            const errorDetails =
+                error instanceof imperative.ImperativeError ? error.additionalDetails : String(error);
+            Gui.errorMessage(`Failed to copy "${fromDataSetName}" to "${toDataSetName}": ${errorDetails}`);
+            return this.buildZosFilesResponse({ success: false }, false, errorDetails);
+        }
     }
 
     public async renameDataSet(

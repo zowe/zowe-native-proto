@@ -37,6 +37,9 @@ export default class CopyDataSetHandler extends SshBaseHandler {
         params.response.data.setObj(response);
         if (response.success) {
             params.response.console.log(dsMessage);
+        } else {
+            params.response.console.error(dsMessage);
+            params.response.data.setExitCode(1);
         }
         return response;
     }
