@@ -7,6 +7,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 ## Recent Changes
 
 - **Breaking:** `ZSshClient` (the SSH-based client for communicating with the z/OS server) now connects to `zowex server` (the embedded server subcommand of the `zowex` z/OS backend binary) instead of the standalone `zowed` binary. Users must re-deploy the server to update the binaries at their `serverPath` (the z/OS path where server binaries are deployed). [#846](https://github.com/zowe/zowe-native-proto/issues/846)
+- Updated `ZSshClient` so callers can now safely collect and replay in-flight requests when they detect an unrecoverable error. [#548](https://github.com/zowe/zowe-native-proto/issues/548)
 - Added support for listing member attributes to `DsMember` type [#630](https://github.com/zowe/zowe-native-proto/issues/630)
 - Added support for invoking the `toolSearch` server command, which allows the client SDK to search for data sets.
 - Added support for copying USS files in the `RpcClientApi` class. [#379](https://github.com/zowe/zowe-native-proto/issues/379)
