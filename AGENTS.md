@@ -141,6 +141,26 @@ After creating or pushing to a pull request, check SonarCloud for issues:
 - Follow the existing bullet-point format: `- Description of change. [#issue](url)`.
 - The `## Recent Changes` header is replaced with a version number at release time by the version bump process.
 
+### Which files trigger the changelog check per package
+
+The CI changelog check (`.github/workflows/changelog.yml`) uses `lerna: true` — it checks each package independently. For a given package (e.g. `packages/vsce`), any changed file that is **not** matched by the `ignoreFiles` pattern requires an update to that package's `CHANGELOG.md`.
+
+**Ignored file patterns** (`ignoreFiles: "__tests__|package.json|package-lock.json|*.md"`):
+
+| Pattern | Ignored? |
+|---------|----------|
+| `__tests__/` (double-underscore) directory | Yes |
+| `tests/` (single) directory | **No** — triggers changelog check |
+| `package.json`, `package-lock.json` | Yes |
+| `*.md` files (README, AGENTS.md, etc.) | Yes |
+| Any other `.ts`, `.cpp`, `.hpp`, `.js` changes | **No** — triggers changelog check |
+
+**Practical rule**: If you change any `.ts` (or other non-ignored source) file inside a package directory, update that package's `CHANGELOG.md` too — even if the change is only in `tests/` (not `__tests__/`).
+
+### What NOT to document
+
+- **Do not add separate entries for fixes that are part of a feature introduced in the same PR.** If a bug fix only applies to code added in the same PR (e.g. a guard added while implementing a new command), it is an implementation detail — fold it into the feature entry or omit it entirely. Only document fixes for pre-existing behavior that was broken.
+
 ### Version bumps
 
 Version bumps across `package.json` files are handled by a separate CI step (`Bump version to x.y.z [ci skip]`). Do not manually change `version` fields in `package.json` unless explicitly asked.
