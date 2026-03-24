@@ -249,7 +249,7 @@ static void zut_private_drain_pipes(std::array<struct pollfd, 2> &fds,
  * when _BPX_SHAREAS=YES (shared address space). See e.g. IBM doc for newgrp.
  * When the user runs one of these, we must not pass _BPX_SHAREAS=YES to the child.
  */
-static const char *const ZUT_NOSHAREAS_COMMANDS[] = {"newgrp", "su", "sg", nullptr};
+static constexpr std::array<const char *, 3> ZUT_NOSHAREAS_COMMANDS = {"newgrp", "su", "sg"};
 
 static bool zut_private_command_requires_noshareas(const std::string &command)
 {
@@ -281,9 +281,9 @@ static bool zut_private_command_requires_noshareas(const std::string &command)
     }
     size_t last_slash = token.rfind('/');
     std::string basename = (last_slash != std::string::npos) ? token.substr(last_slash + 1) : token;
-    for (const char *const *p = ZUT_NOSHAREAS_COMMANDS; *p != nullptr; ++p)
+    for (const char *cmd : ZUT_NOSHAREAS_COMMANDS)
     {
-      if (basename == *p)
+      if (basename == cmd)
       {
         return true;
       }

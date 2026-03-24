@@ -89,7 +89,7 @@ async function run(): Promise<void> {
         console.log(`Connected OK — /tmp has ${resp.items.length} entries`);
     } catch (err: unknown) {
         const e = err as { message?: string; additionalDetails?: string };
-        console.error(`Connection failed: ${e.message ?? err}`);
+        console.error(`Connection failed: ${e.message ?? String(err)}`);
         if (e.additionalDetails) {
             console.error(`Details:\n${e.additionalDetails}`);
         }
@@ -99,7 +99,7 @@ async function run(): Promise<void> {
     console.log("\n=== ALL PASSED ===\n");
 }
 
-void (async () => {
+void (async () => { // NOSONAR: top-level await not available in CommonJS module target; this file is run via tsx only
     try {
         await run();
     } catch (err) {

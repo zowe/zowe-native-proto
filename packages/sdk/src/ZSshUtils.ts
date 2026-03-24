@@ -137,7 +137,7 @@ export class ZSshUtils {
                 await promisify(sftp.fastPut.bind(sftp))(localPaxPath, remotePaxPath, { step: progressCallback });
             } catch (err) {
                 ZSshUtils.throwIfExpiredPassword(String(err));
-                const codePart = (err as SftpError).code != null ? ` RC=${(err as SftpError).code}` : "";
+                const codePart = (err as SftpError).code == null ? "" : ` RC=${(err as SftpError).code}`;
                 const errMsg = `[ZSshUtils] Step 2 FAILED: Upload ${ZSshUtils.SERVER_PAX_FILE}${codePart}: ${err}`;
                 Logger.getAppLogger().error(errMsg);
 

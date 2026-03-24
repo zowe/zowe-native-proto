@@ -16,6 +16,18 @@ import { ZSshUtils } from "../src/ZSshUtils";
 
 vi.mock("node:fs", { spy: true });
 
+function setupSftpMocks(sftpMock: object, sshMock: { execCommand: ReturnType<typeof vi.fn> }, options?: { mockGetBinDir?: boolean; mockExistsSync?: boolean }): void {
+    vi.spyOn(ZSshUtils as any, "sftp").mockImplementation(
+        async (_session: any, callback: (sftp: any, ssh: any) => Promise<any>) => callback(sftpMock, sshMock),
+    );
+    if (options?.mockGetBinDir !== false) {
+        vi.spyOn(ZSshUtils as any, "getBinDir").mockReturnValue("/fake/bin");
+    }
+    if (options?.mockExistsSync !== false) {
+        vi.spyOn(fs, "existsSync").mockReturnValue(true);
+    }
+}
+
 describe("ZSshUtils", () => {
     describe("checkIfOutdated", () => {
         it("should return false for dev builds without remote checksums", async () => {
@@ -61,18 +73,6 @@ describe("ZSshUtils", () => {
             user: "admin",
             password: "pass",
         };
-
-        function setupSftpMocks(sftpMock: object, sshMock: { execCommand: ReturnType<typeof vi.fn> }, options?: { mockGetBinDir?: boolean; mockExistsSync?: boolean }): void {
-            vi.spyOn(ZSshUtils as any, "sftp").mockImplementation(
-                async (_session: any, callback: (sftp: any, ssh: any) => Promise<any>) => callback(sftpMock, sshMock),
-            );
-            if (options?.mockGetBinDir !== false) {
-                vi.spyOn(ZSshUtils as any, "getBinDir").mockReturnValue("/fake/bin");
-            }
-            if (options?.mockExistsSync !== false) {
-                vi.spyOn(fs, "existsSync").mockReturnValue(true);
-            }
-        }
 
         beforeEach(() => {
             vi.spyOn(Logger, "getAppLogger").mockReturnValue({
