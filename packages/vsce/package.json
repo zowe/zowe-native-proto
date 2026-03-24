@@ -19,10 +19,6 @@
   "contributes": {
     "commands": [
       {
-        "command": "zowe-native-proto-vsce.abend",
-        "title": "Zowe-SSH: Force abend..."
-      },
-      {
         "command": "zowe-native-proto-vsce.connect",
         "title": "Zowe-SSH: Connect to Host..."
       },
