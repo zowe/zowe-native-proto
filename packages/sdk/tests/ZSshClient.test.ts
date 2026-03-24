@@ -535,7 +535,7 @@ describe("ZSshClient", () => {
     describe("collectAllRequests function", () => {
         it("should harvest requests, apply silence flag, and clear timeouts", () => {
             const client: ZSshClient = new (ZSshClient as any)();
-            const clearTimeoutSpy = vi.spyOn(global, "clearTimeout");
+            const clearTimeoutSpy = vi.spyOn(globalThis, "clearTimeout");
 
             const timeout1 = setTimeout(() => {}, 10000);
             const timeout2 = setTimeout(() => {}, 10000);

@@ -119,7 +119,7 @@ describe("SshClientCache", () => {
                     responseTimeout: 60,
                     serverAutoUpdate: true,
                 };
-                return config[key] !== undefined ? config[key] : defaultVal;
+                return config[key] === undefined ? defaultVal : config[key];
             }),
         } as any);
         vi.mocked(vscode.window.showErrorMessage).mockResolvedValue(undefined);
@@ -255,18 +255,9 @@ describe("SshClientCache", () => {
             const mockClient = { dispose: vi.fn() };
             (cache as any).mClientSessionMap.set(clientId, { client: mockClient });
 
-            // If we ARE retrying requests, we want the client.dispose to NOT drop/clear them
             cache.end(clientId, { restart: true, retryRequests: true });
 
-            // Expect dispose(isRestart, !retryRequests) -> dispose(true, false)
-            expect(mockClient.dispose).toHaveBeenCalledWith(true, false);
-
-            // Re-seed and test the opposite
-            (cache as any).mClientSessionMap.set(clientId, { client: mockClient });
-            cache.end(clientId, { restart: true, retryRequests: false });
-
-            // Expect dispose(true, true) because we are NOT retrying requests
-            expect(mockClient.dispose).toHaveBeenCalledWith(true, true);
+            expect(mockClient.dispose).toHaveBeenCalledWith(true);
         });
 
         it("should dispose the client with correct flags and remove it from the map", () => {
@@ -275,7 +266,7 @@ describe("SshClientCache", () => {
 
             cache.end(clientId, { restart: true, retryRequests: true });
 
-            expect(mockClient.dispose).toHaveBeenCalledWith(true, false);
+            expect(mockClient.dispose).toHaveBeenCalledWith(true);
             expect((cache as any).mClientSessionMap.has(clientId)).toBe(false);
         });
     });

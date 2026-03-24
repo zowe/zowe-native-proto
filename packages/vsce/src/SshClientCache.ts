@@ -47,9 +47,9 @@ enum ServerStatus {
 }
 
 export class SshClientCache extends vscode.Disposable {
-    private static mNoRestart: ZSshRestartOptions = { restart: false, retryRequests: false };
+    private static readonly mNoRestart: ZSshRestartOptions = { restart: false, retryRequests: false };
     private static mInstance: SshClientCache;
-    private mClientSessionMap: Map<string, ZSshClientSessions> = new Map();
+    private readonly mClientSessionMap: Map<string, ZSshClientSessions> = new Map();
     private mMutexMap: Map<string, AsyncMutex> = new Map();
     private static readonly ERROR_SNIPPETS = {
         FATAL: ["CEE5207E", "CEE3204S", "at compile unit offset", "Fatal error encountered in zowex"],
@@ -162,7 +162,7 @@ export class SshClientCache extends vscode.Disposable {
         opts: ZSshRestartOptions = SshClientCache.mNoRestart,
     ): void {
         const clientId = typeof hostOrProfile === "string" ? hostOrProfile : this.getClientId(hostOrProfile);
-        this.mClientSessionMap.get(clientId)?.client.dispose(opts.restart, !opts.retryRequests);
+        this.mClientSessionMap.get(clientId)?.client.dispose(opts.restart);
         this.mClientSessionMap.delete(clientId);
     }
 
