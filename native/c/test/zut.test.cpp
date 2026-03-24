@@ -81,8 +81,7 @@ void zut_tests()
                   rc = zut_run_program(nullptr, {}, stdout_data, stderr_data);
                   ExpectWithContext(rc, stderr_data).ToBe(-1);
                   ExpectWithContext(stderr_data, "Expecting an error").ToContain("You must specify a program to run.");
-                  Expect(stdout_data).ToBe("");
-                });
+                  Expect(stdout_data).ToBe(""); });
 
              // Tests if a semicolon can break out of the command
              it("test semicolon injection", []() -> void
@@ -103,8 +102,7 @@ void zut_tests()
                   rc = zut_run_program("echo", args, response);
 
                   ExpectWithContext(rc, response).ToBe(0);
-                  ExpectWithContext(response.find("line2; echo INJECTED_PAYLOAD"), "Expected the semicolon and second command to be treated as literal text").Not().ToBe(std::string::npos);
-                });
+                  ExpectWithContext(response.find("line2; echo INJECTED_PAYLOAD"), "Expected the semicolon and second command to be treated as literal text").Not().ToBe(std::string::npos); });
 
              // Tests if pipes can output to another command or modify the filesystem
              it("test pipe and redirect injection", []() -> void
