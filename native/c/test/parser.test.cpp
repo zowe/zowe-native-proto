@@ -201,6 +201,41 @@ void parser_tests()
                    .ToBe("cli");
              });
 
+             it("coerces numeric-looking keyword values to strings when requested", []() {
+               ArgumentParser arg_parser("prog", "keyword sample");
+               Command &root = arg_parser.get_root_command();
+               root.add_keyword_arg("date", make_aliases("--date"), "date filter",
+                                   ArgType_Single, false, ArgValue(), true);
+
+               std::vector<std::string> raw = {"prog", "--date", "19900101"};
+               std::vector<char *> argv = to_argv(raw);
+
+               ParseResult result =
+                   arg_parser.parse(static_cast<int>(argv.size()), argv.data());
+
+               Expect(result.status).ToBe(ParseResult::ParserStatus_Success);
+               Expect(result.get_value<std::string>("date", ""))
+                   .ToBe("19900101");
+               Expect(result.get<long long>("date") == nullptr).ToBe(true);
+             });
+
+             it("keeps numeric-looking keyword values numeric by default", []() {
+               ArgumentParser arg_parser("prog", "keyword sample");
+               Command &root = arg_parser.get_root_command();
+               root.add_keyword_arg("timeout", make_aliases("--timeout"),
+                                   "timeout in seconds", ArgType_Single);
+
+               std::vector<std::string> raw = {"prog", "--timeout", "30"};
+               std::vector<char *> argv = to_argv(raw);
+
+               ParseResult result =
+                   arg_parser.parse(static_cast<int>(argv.size()), argv.data());
+
+               Expect(result.status).ToBe(ParseResult::ParserStatus_Success);
+               Expect(result.get_value<long long>("timeout", 0)).ToBe(30);
+               Expect(result.get<std::string>("timeout") == nullptr).ToBe(true);
+             });
+
              it("collects multiple values for keyword arguments", []() {
                ArgumentParser arg_parser("prog", "keyword sample");
                Command &root = arg_parser.get_root_command();
