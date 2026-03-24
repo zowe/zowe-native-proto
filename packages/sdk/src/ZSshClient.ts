@@ -10,6 +10,7 @@
  */
 
 import { posix } from "node:path";
+import type { Stream } from "node:stream";
 import { ImperativeError, Logger } from "@zowe/imperative";
 import type { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import { Client, type ClientChannel } from "ssh2";
@@ -26,8 +27,6 @@ import type {
 import { RpcClientApi } from "./RpcClientApi";
 import { RpcStreamManager } from "./RpcStreamManager";
 import { ZSshUtils } from "./ZSshUtils";
-
-import Stream = require("node:stream");
 
 export class ZSshClient extends RpcClientApi implements Disposable {
     public static readonly DEFAULT_SERVER_PATH = "~/.zowe-server";
@@ -87,7 +86,6 @@ export class ZSshClient extends RpcClientApi implements Disposable {
         });
         client.mStreamMgr = new RpcStreamManager(client.mSshClient);
 
-        // TODO: do we need to optionally check for replay?? If replay = true, these variables are set, otherwise they're empty
         if (opts.requests != null) {
             for (const req of opts.requests) {
                 client.request(req.command).then(req.rpc.resolve, req.rpc.reject);
@@ -107,7 +105,7 @@ export class ZSshClient extends RpcClientApi implements Disposable {
                 clearTimeout(req.timeoutId);
             }
         });
-        return new Set(Array.from(replayRequests).reverse());
+        return replayRequests;
     }
 
     public dispose(isRestart: boolean = false, closeOpenRequests: boolean = true): void {
@@ -309,7 +307,6 @@ export class ZSshClient extends RpcClientApi implements Disposable {
         const request = this.mRequestMap.get(response.id);
 
         if (request.silenced) {
-            this.mRequestMap.delete(response.id);
             return;
         }
 
