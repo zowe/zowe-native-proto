@@ -298,6 +298,23 @@ static bool zut_private_command_requires_noshareas(const std::string &command)
   return false;
 }
 
+static std::string zut_private_get_shell() {
+  std::string shell_path = "/bin/sh";
+
+  // Check if /bin/sh exists AND is executable by the current user
+  if (access(shell_path.c_str(), X_OK) != 0)
+  {
+    // otherwise, try env. If it's empty, we leave shell_path=/bin/sh
+    const char* env_shell = std::getenv("SHELL");
+    if (env_shell != nullptr && env_shell[0] != '\0')
+    {
+      shell_path = env_shell;
+    }
+  }
+
+  return shell_path;
+}
+
 static std::vector<const char *> zut_private_build_env(const std::string &command)
 {
   extern char **environ; // NOSONAR: POSIX-mandated global, cannot be const
@@ -336,8 +353,9 @@ int zut_spawn_shell_command(const std::string &command, std::string &stdout_resp
     return RTNCD_FAILURE;
   }
 
+  const std::string shell_program = zut_private_get_shell();
   std::vector<std::string> argv_vec = {"-c", command};
-  return zut_private_run_program("/bin/sh", argv_vec, stdout_response, stderr_response, false);
+  return zut_private_run_program(shell_program, argv_vec, stdout_response, stderr_response, false);
 }
 
 int zut_search(const std::string &parms)
