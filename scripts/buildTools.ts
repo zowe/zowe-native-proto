@@ -80,10 +80,12 @@ const asciiToEbcdicMap =
 
 class AsciiToEbcdicTransform extends Transform {
     _transform(chunk: Buffer, _encoding: BufferEncoding, callback: TransformCallback) {
-        const latin1 = Buffer.from(chunk.toString("utf8"), "latin1");
-        const output = Buffer.allocUnsafe(latin1.length);
-        for (let i = 0; i < latin1.length; i++) {
-            output[i] = asciiToEbcdicMap[latin1[i]];
+        const output = Buffer.allocUnsafe(chunk.length);
+        for (let i = 0; i < chunk.length; i++) {
+            const b = chunk[i];
+            // Don't convert extended ASCII bytes in source files as they are
+            // likely Unicode literals without an EBCDIC equivalent.
+            output[i] = b < 0x80 ? asciiToEbcdicMap[b] : b;
         }
         callback(null, output);
     }
@@ -117,6 +119,7 @@ class EbcdicToAsciiTransform extends Transform {
         for (let i = 0; i < chunk.length; i++) {
             output[i] = ebcdicToAsciiMap[chunk[i]];
         }
+        // Convert extended ASCII bytes to UTF-8 for valid XML test results.
         callback(null, Buffer.from(output.toString("latin1"), "utf8"));
     }
 }
