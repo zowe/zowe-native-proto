@@ -29,13 +29,24 @@ void zut_tests()
                 {
                   std::string stdout_response;
                   std::string stderr_response;
-                  std::string program = "printf";
-                  std::vector<std::string> args = {"line1\nline2\nline3"};
+                  std::string args = "line1\nline2\nline3";
+                  std::string shell_command = "printf \"" + args + "\"";
 
-                  int rc = zut_spawn_shell_command(program, stdout_response, stderr_response);
+                  int rc = zut_spawn_shell_command(shell_command, stdout_response, stderr_response);
                   ExpectWithContext(rc, stderr_response).ToBe(0);
-                  ExpectWithContext(stdout_response, "Expected all lines").ToBe(args[0]);
-                  ExpectWithContext(stderr_response, "std err should be empty").ToBe(""); });
+                  ExpectWithContext(stdout_response, "Expected all lines").ToBe(args);
+                  ExpectWithContext(stderr_response, "std err should be empty").ToBe(""); 
+
+                  shell_command = "fakeutility";
+                  rc = zut_spawn_shell_command(shell_command, stdout_response, stderr_response);
+                  ExpectWithContext(rc, stdout_response).ToBe(127);
+                  ExpectWithContext(stderr_response, "Expecting an error").ToContain("fakeutility: FSUM7351 not found");
+
+                  shell_command = "";
+                  rc = zut_spawn_shell_command(shell_command, stdout_response, stderr_response);
+                  ExpectWithContext(rc, stdout_response).ToBe(-1);
+                  ExpectWithContext(stderr_response, "Expecting an error").ToContain("You must specify a program to run.");});
+
 
              it("should run programs", []() -> void
                 {
@@ -54,8 +65,8 @@ void zut_tests()
 
                   program = "fakeutility";
                   rc = zut_run_program(program, {}, response);
-                  ExpectWithContext(rc, response).ToBe(255);
-                  ExpectWithContext(response, "Expecting an error").ToContain("zut_run_program: error executing fakeutility");
+                  ExpectWithContext(rc, response).ToBe(-1);
+                  ExpectWithContext(response, "Expecting an error").ToContain("zut_private_run_program: fakeutility: command not found");
 
                   program = "";
                   rc = zut_run_program(program, {}, response);
@@ -77,8 +88,8 @@ void zut_tests()
 
                   program = "fakeutility";
                   rc = zut_run_program(program, {}, stdout_data, stderr_data);
-                  ExpectWithContext(rc, stderr_data).ToBe(255);
-                  ExpectWithContext(stderr_data, "Expecting an error").ToContain("zut_run_program: error executing fakeutility");
+                  ExpectWithContext(rc, stderr_data).ToBe(-1);
+                  ExpectWithContext(stderr_data, "Expecting an error").ToContain("zut_private_run_program: fakeutility: command not found");
                   Expect(stdout_data).ToBe("");
 
                   program = "";

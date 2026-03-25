@@ -19,6 +19,7 @@
 #include <cstdio>
 #include <cstring>
 #include <csignal>
+#include <fcntl.h>
 #include <iostream>
 #include <string>
 #include <algorithm>
@@ -80,6 +81,16 @@ int zut_private_run_program(const std::string &program, const std::vector<std::s
     return RTNCD_FAILURE;
   }
 
+  int devnull_fd = open("/dev/null", O_RDONLY); // for use with spawn'd stdin
+  if (devnull_fd == -1)
+  {
+    close(stdout_pipe[0]);
+    close(stdout_pipe[1]);
+    close(stderr_pipe[0]);
+    close(stderr_pipe[1]);
+    return RTNCD_FAILURE; 
+  }
+
   std::vector<char *> argv_vec;
   argv_vec.reserve(args.size() + 2); // 2 = program + ending nullptr
   argv_vec.push_back(const_cast<char *>(program.c_str()));
@@ -92,8 +103,7 @@ int zut_private_run_program(const std::string &program, const std::vector<std::s
   int fd_count = 3;
   int fd_map[3];
 
-  // Child fd 0 (stdin): Close it using the z/OS macro
-  fd_map[0] = SPAWN_FDCLOSED;
+  fd_map[0] = devnull_fd; // set to /dev/null - no unintentional writes to stdin
 
   // Child fd 1 (stdout): Map to the write end of the stdout pipe
   fd_map[1] = stdout_pipe[1];
@@ -112,9 +122,29 @@ int zut_private_run_program(const std::string &program, const std::vector<std::s
   struct inheritance inherit = {};
 
   pid_t pid = spawnp(program.c_str(), fd_count, fd_map, &inherit, (const char **)argv_vec.data(), env_vec.data());
+  
+  close(devnull_fd); // close /dev/null fd right away; child has a clone
 
   if (pid == -1)
   {
+    int spawn_error = errno;
+    std::string error_message;
+    if (spawn_error == ENOENT) 
+    {
+      error_message = "zut_private_run_program: " + program + ": command not found";
+    } 
+    else if (spawn_error == EACCES)
+    {
+      error_message = "zut_private_run_program: Permission denied when trying to execute '" + program + "'.";
+    }
+    else {
+      error_message = "zut_private_run_program: error running " + program + ": " + std::string(strerror(spawn_error));
+    }
+    if (merge_streams) {
+      stdout_response = error_message;
+    } else {
+      stderr_response = error_message;
+    }
     close(stdout_pipe[0]);
     close(stdout_pipe[1]);
     close(stderr_pipe[0]);
@@ -297,6 +327,15 @@ static std::vector<const char *> zut_private_build_env(const std::string &comman
 
 int zut_spawn_shell_command(const std::string &command, std::string &stdout_response, std::string &stderr_response)
 {
+  stdout_response.clear();
+  stderr_response.clear();
+
+  if (0 == command.size())
+  {  
+    stderr_response = "Error: You must specify a program to run.";
+    return RTNCD_FAILURE;
+  }
+
   std::vector<std::string> argv_vec = {"-c", command};
   return zut_private_run_program("/bin/sh", argv_vec, stdout_response, stderr_response, false);
 }
