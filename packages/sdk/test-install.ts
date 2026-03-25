@@ -16,8 +16,8 @@
  *   npx tsx test-install.ts <host> <user> <password> [serverPath]
  *
  * Example:
- *   npx tsx test-install.ts r152.msd.labs.broadcom.net PROD002 mypass
- *   npx tsx test-install.ts r152.msd.labs.broadcom.net PROD002 mypass ~/.zowe-server-test
+ *   npx tsx test-install.ts zos-host.example.com myuser mypass
+ *   npx tsx test-install.ts zos-host.example.com myuser mypass ~/.zowe-server-test
  */
 
 import { Logger, LoggingConfigurer } from "@zowe/imperative";
