@@ -14,10 +14,14 @@ import { Logger } from "@zowe/imperative";
 import { type ISshSession, SshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import { Client, type ClientCallback, type ConnectConfig } from "ssh2";
 import type { CommandRequest, RpcRequest, RpcResponse } from "../src/doc";
+import * as sshRs from "../src/ssh-rs";
 import { ZSshClient } from "../src/ZSshClient";
 import { ZSshUtils } from "../src/ZSshUtils";
 
 vi.mock("ssh2");
+vi.mock("../src/ssh-rs", () => {
+    return { createClient: () => new Client() };
+});
 
 describe("ZSshClient", () => {
     const fakeSession: ISshSession = {
@@ -171,6 +175,20 @@ describe("ZSshClient", () => {
             expect(execAsyncMock.mock.calls[0].slice(1)).toEqual(["server", "--num-workers", "1"]);
         });
 
+        it("should respect requestTimeout option", async () => {
+            const sshStream = new EventEmitter();
+            vi.spyOn(Client.prototype, "connect").mockImplementation(function (_config: ConnectConfig) {
+                this.emit("ready");
+                return this;
+            });
+            const execAsyncMock = vi.spyOn(ZSshClient.prototype as any, "execAsync").mockResolvedValue(sshStream);
+            await ZSshClient.create(new SshSession(fakeSession), {
+                requestTimeout: 300,
+            });
+            expect(execAsyncMock).toHaveBeenCalledTimes(1);
+            expect(execAsyncMock.mock.calls[0].slice(1)).toEqual(["server", "--request-timeout", "300"]);
+        });
+
         it("should respect responseTimeout option", async () => {
             const sshStream = new EventEmitter();
             vi.spyOn(Client.prototype, "connect").mockImplementation(function (_config: ConnectConfig) {
@@ -210,6 +228,18 @@ describe("ZSshClient", () => {
             });
             expect(execAsyncMock).toHaveBeenCalledTimes(1);
             expect(execAsyncMock.mock.calls[0][0]).toBe("/tmp/zowe-server/zowex");
+        });
+
+        it("should respect useNativeSsh option", async () => {
+            const sshStream = new EventEmitter();
+            vi.spyOn(Client.prototype, "connect").mockImplementation(function (_config: ConnectConfig) {
+                this.emit("ready");
+                return this;
+            });
+            vi.spyOn(ZSshClient.prototype as any, "execAsync").mockResolvedValue(sshStream);
+            const createClientMock = vi.spyOn(sshRs, "createClient").mockReturnValue(new Client() as any);
+            await ZSshClient.create(new SshSession(fakeSession), { useNativeSsh: true });
+            expect(createClientMock).toHaveBeenCalledWith(true);
         });
     });
 
@@ -380,8 +410,10 @@ describe("ZSshClient", () => {
             };
             (client as any).mSshStream = sshStream;
             (client as any).getServerStatus(sshStream, readyMessage, "zowex server");
-            client.request(request);
+            const response = client.request(request);
             expect(() => fakeStdout.emit("data", "bad json\n")).toThrow("Invalid JSON response");
+            vi.runAllTimers();
+            await expect(response).rejects.toBeDefined();
         });
 
         it("should handle unmapped response from Zowe server", async () => {
@@ -394,10 +426,12 @@ describe("ZSshClient", () => {
             };
             (client as any).mSshStream = sshStream;
             (client as any).getServerStatus(sshStream, readyMessage, "zowex server");
-            client.request(request);
+            const response = client.request(request);
             expect(() => fakeStdout.emit("data", `${JSON.stringify({ ...rpcResponseGood, id: -1 })}\n`)).toThrow(
                 "Missing promise for response ID",
             );
+            vi.runAllTimers();
+            await expect(response).rejects.toBeDefined();
         });
 
         it("should log message with default error handler", () => {
