@@ -83,8 +83,8 @@ class AsciiToEbcdicTransform extends Transform {
         const output = Buffer.allocUnsafe(chunk.length);
         for (let i = 0; i < chunk.length; i++) {
             const b = chunk[i];
-            // Don't convert extended ASCII bytes in source files as they are
-            // likely Unicode literals without an EBCDIC equivalent.
+            // Only convert 7-bit ASCII bytes. Bytes >= 0x80 are likely part of multi-byte UTF-8
+            // sequences and are left unchanged to avoid corrupting the data or introducing NULs.
             output[i] = b < 0x80 ? asciiToEbcdicMap[b] : b;
         }
         callback(null, output);
@@ -119,7 +119,7 @@ class EbcdicToAsciiTransform extends Transform {
         for (let i = 0; i < chunk.length; i++) {
             output[i] = ebcdicToAsciiMap[chunk[i]];
         }
-        // Convert extended ASCII bytes to UTF-8 for valid XML test results.
+        // Re-encode the entire buffer from latin1 to UTF-8 so non-ASCII characters are valid in the XML test results.
         callback(null, Buffer.from(output.toString("latin1"), "utf8"));
     }
 }
