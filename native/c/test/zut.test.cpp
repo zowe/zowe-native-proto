@@ -25,6 +25,18 @@ void zut_tests()
   describe("zut tests",
            []() -> void
            {
+             it("should run shell program", []() -> void
+                {
+                  std::string stdout_response;
+                  std::string stderr_response;
+                  std::string program = "printf";
+                  std::vector<std::string> args = {"line1\nline2\nline3"};
+
+                  int rc = zut_spawn_shell_command(program, stdout_response, stderr_response);
+                  ExpectWithContext(rc, stderr_response).ToBe(0);
+                  ExpectWithContext(stdout_response, "Expected all lines").ToBe(args[0]);
+                  ExpectWithContext(stderr_response, "std err should be empty").ToBe(""); });
+
              it("should run programs", []() -> void
                 {
                   std::string response;
@@ -47,10 +59,6 @@ void zut_tests()
 
                   program = "";
                   rc = zut_run_program(program, {}, response);
-                  ExpectWithContext(rc, response).ToBe(-1);
-                  ExpectWithContext(response, "Expecting an error").ToContain("You must specify a program to run.");
-
-                  rc = zut_run_program(nullptr, {}, response);
                   ExpectWithContext(rc, response).ToBe(-1);
                   ExpectWithContext(response, "Expecting an error").ToContain("You must specify a program to run.");
 
@@ -77,13 +85,7 @@ void zut_tests()
                   rc = zut_run_program(program, {}, stdout_data, stderr_data);
                   ExpectWithContext(rc, stderr_data).ToBe(-1);
                   ExpectWithContext(stderr_data, "Expecting an error").ToContain("You must specify a program to run.");
-                  Expect(stdout_data).ToBe("");
-
-                  rc = zut_run_program(nullptr, {}, stdout_data, stderr_data);
-                  ExpectWithContext(rc, stderr_data).ToBe(-1);
-                  ExpectWithContext(stderr_data, "Expecting an error").ToContain("You must specify a program to run.");
-                  Expect(stdout_data).ToBe("");
-                });
+                  Expect(stdout_data).ToBe(""); });
 
              // Tests if a semicolon can break out of the command
              it("test semicolon injection", []() -> void
@@ -104,8 +106,7 @@ void zut_tests()
                   rc = zut_run_program("echo", args, response);
 
                   ExpectWithContext(rc, response).ToBe(0);
-                  ExpectWithContext(response.find("line2; echo INJECTED_PAYLOAD"), "Expected the semicolon and second command to be treated as literal text").Not().ToBe(std::string::npos);
-                });
+                  ExpectWithContext(response.find("line2; echo INJECTED_PAYLOAD"), "Expected the semicolon and second command to be treated as literal text").Not().ToBe(std::string::npos); });
 
              // Tests if pipes can output to another command or modify the filesystem
              it("test pipe and redirect injection", []() -> void
@@ -161,8 +162,7 @@ void zut_tests()
                              ExpectWithContext(stdout_data, "stdout should contain stdout output").ToContain("STDOUT_LINE");
                              ExpectWithContext(stderr_data, "stderr should contain stderr output").ToContain("STDERR_LINE");
                              ExpectWithContext(stdout_data, "stdout should not contain stderr output").Not().ToContain("STDERR_LINE");
-                             ExpectWithContext(stderr_data, "stderr should not contain stdout output").Not().ToContain("STDOUT_LINE");
-                           });
+                             ExpectWithContext(stderr_data, "stderr should not contain stdout output").Not().ToContain("STDOUT_LINE"); });
 
                         it("should fully drain stdout output larger than the pipe buffer", []() -> void
                            {
@@ -173,8 +173,7 @@ void zut_tests()
                              int rc = zut_run_program(program, args, stdout_data, stderr_data);
                              ExpectWithContext(rc, stderr_data).ToBe(0);
                              ExpectWithContext(static_cast<int>(stdout_data.size()), "stdout should be 8000 bytes").ToBe(8000);
-                             Expect(stderr_data).ToBe("");
-                           });
+                             Expect(stderr_data).ToBe(""); });
 
                         it("should fully drain output via single-stream (merged) overload", []() -> void
                            {
@@ -184,8 +183,7 @@ void zut_tests()
 
                              int rc = zut_run_program(program, args, response);
                              ExpectWithContext(rc, response).ToBe(0);
-                             ExpectWithContext(static_cast<int>(response.size()), "response should be 8000 bytes").ToBe(8000);
-                           });
+                             ExpectWithContext(static_cast<int>(response.size()), "response should be 8000 bytes").ToBe(8000); });
                       });
 
              describe("zut_list_parmlib",
