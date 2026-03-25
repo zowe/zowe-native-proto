@@ -178,6 +178,7 @@ typedef struct
   OPEN_PL opl;
   STOW_LIST stow_list;
   IFGRPL rpl;
+  DSINF dsinf;
   char *PTR32 buffer;
   int buffer_size;
   int output : 1; // TODO(Kelosky): remove this flag

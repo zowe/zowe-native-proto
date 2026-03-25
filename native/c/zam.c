@@ -351,10 +351,9 @@ int read_input_vsam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
 {
   int rc = 0;
 
-  DSINF dsinf = {0};
-  memcpy(dsinf.dsineye, "DSIN", sizeof(dsinf.dsineye));
+  memcpy(ioc->dsinf.dsineye, "DSIN", sizeof(ioc->dsinf.dsineye));
   IFGRPL *rplp = &ioc->rpl;
-  rplp->rplermsa = &dsinf;
+  rplp->rplermsa = &ioc->dsinf;
   rplp->rplemlen = dsinsiz1;
 
   GET(rplp, rc);
