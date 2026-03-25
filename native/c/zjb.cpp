@@ -368,7 +368,7 @@ int zjb_read_job_content_by_dsn(ZJB *zjb, const std::string &dsn, std::string &r
   zds.encoding_opts.data_type = zjb->encoding_opts.data_type;
   memcpy((void *)&zds.encoding_opts.codepage, (const void *)&zjb->encoding_opts.codepage, sizeof(zjb->encoding_opts.codepage));
 
-  ZDSReadOpts read_opts{ .zds = &zds, .ddname = ddname, .dsname = dsn };
+  ZDSReadOpts read_opts{.zds = &zds, .ddname = ddname, .dsname = dsn};
   rc = zds_read(read_opts, response);
   memcpy(&zjb->diag, &zds.diag, sizeof(ZDIAG));
 
@@ -449,7 +449,7 @@ int zjb_release(ZJB *zjb, const std::string &jobid)
 int zjb_submit_dsn(ZJB *zjb, const std::string &dsn, std::string &jobid)
 {
   ZDS zds{};
-  ZDSReadOpts read_opts{ .zds = &zds, .dsname = dsn };
+  ZDSReadOpts read_opts{.zds = &zds, .dsname = dsn};
   std::string contents;
   const auto rc = zds_read(read_opts, contents);
   if (0 != rc)
