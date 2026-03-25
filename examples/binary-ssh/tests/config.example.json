@@ -1,6 +1,6 @@
 {
     "chunkSize": 32768,
-    "serverPath": "/u/users/ibmuser/zowe-native-proto/golang",
+    "serverPath": "/u/users/ibmuser/zowe-native-proto/c/build-out",
     "sshProfile": "ssh",
     "testCount": 5,
     "testFile": "resources/test1m.bin",
