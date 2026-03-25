@@ -59,7 +59,13 @@ module.exports = (_env, argv) => {
               target: 'es2022'
             },
           },
-        }
+        },
+        {
+          // Patch russh/lib/native.js to load .node binaries from prebuilds/
+          // using __non_webpack_require__ so rspack doesn't try to bundle them.
+          test: /russh[\\/]lib[\\/]native\.js$/,
+          loader: path.resolve(__dirname, 'russh-native-loader.js'),
+        },
       ]
     },
     plugins: [

@@ -10,6 +10,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - Added the functionality for the **Rename** option in the USS tree. [#820](https://github.com/zowe/zowe-native-proto/pull/820)
 - Added the functionality to move files in the USS tree. [#820](https://github.com/zowe/zowe-native-proto/pull/820)
 - Added the functionality to copy USS files and directories. [#379](https://github.com/zowe/zowe-native-proto/pull/379).
+- Added experimental native client for improved performance which can be enabled via a VS Code setting. [#833](https://github.com/zowe/zowe-native-proto/pull/833)
 
 ## `0.3.0`
 
