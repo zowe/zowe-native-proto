@@ -108,7 +108,7 @@ STCKCONV_MODEL(stckconv_model);
       "*                                                  \n" \
       " STCKCONV STCKEVAL=%2,"                                \
       "CONVVAL=%0,"                                           \
-      "TIMETYPE=DEC,"                                         \
+      "TIMETYPE=BIN,"                                         \
       "DATETYPE=" #format ","                                 \
       "MF=(E,%3)                                          \n" \
       "*                                                  \n" \
