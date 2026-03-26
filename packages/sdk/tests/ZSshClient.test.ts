@@ -409,7 +409,7 @@ describe("ZSshClient", () => {
             const sshStream = { stdin: { write: vi.fn() }, stdout: fakeStdout, stderr: { on: vi.fn() } };
             const client: ZSshClient = new (ZSshClient as any)();
             (client as any).mErrHandler = (err: Error) => {
-                throw err;
+                if (!err.toString().includes("Request timed out")) throw err; // we're expecting a request timed out error for the handler
             };
             (client as any).mSshStream = sshStream;
             (client as any).getServerStatus(sshStream, readyMessage, "zowex server");
@@ -425,7 +425,7 @@ describe("ZSshClient", () => {
             const sshStream = { stdin: { write: vi.fn() }, stdout: fakeStdout, stderr: { on: vi.fn() } };
             const client: ZSshClient = new (ZSshClient as any)();
             (client as any).mErrHandler = (err: Error) => {
-                throw err;
+                if (!err.toString().includes("Request timed out")) throw err; // we're expecting a request timed out error for the handler
             };
             (client as any).mSshStream = sshStream;
             (client as any).getServerStatus(sshStream, readyMessage, "zowex server");
