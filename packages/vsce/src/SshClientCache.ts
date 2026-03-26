@@ -57,8 +57,8 @@ export class SshClientCache extends vscode.Disposable {
         TIMEOUT: ["Request timed out"],
     };
     private static readonly ACTIONS = {
-        RELOAD: "Reload ZRS",
-        RELOAD_RETRY: "Reload ZRS and Retry Requests",
+        RELOAD: "Reload",
+        RELOAD_RETRY: "Reload and Retry",
         CLOSE: "Close",
     };
 
@@ -229,10 +229,14 @@ export class SshClientCache extends vscode.Disposable {
             if (clientSession) {
                 clientSession.status = ServerStatus.DOWN;
             }
-            // triggers auto-reload, but what about reload + retry?
+            /** FYI: with the below `delete` ZRS silently restarts on error (good when navigating file trees and recovering from an error),
+            /*   but makes managing sessions and replay requests more complex (repeated errors and restarts / merging long, multi-session replay queues)
+            /*   and de-syncs notification pop-ups from ZRS state, creating unintuitive ux in some scenarios
+            /*  Keeping this comment for posterity in case we revisit restart behavior later.
+             */
             // this.mClientSessionMap.delete(clientId);
             this.promptErrorAndReload(
-                "Zowe Remote SSH stopped working unexpectedly. Please click 'Reload ZRS' to restart the server.",
+                "Zowe Remote SSH stopped working unexpectedly. Choose 'Reload' for a clean restart, or 'Reload and Retry' to restart and automatically resend your active requests.",
                 clientId,
             );
             return;
@@ -244,8 +248,8 @@ export class SshClientCache extends vscode.Disposable {
             if (!isOldTimeout) {
                 const isDown = clientSession?.status === ServerStatus.DOWN;
                 const msg = isDown
-                    ? "The request timed out because the server is down. Click 'Reload ZRS' to restart it."
-                    : "The request timed out. If this happens again, try clicking 'Reload ZRS' to restart the server.";
+                    ? "A request timed out because the server is down. Click 'Reload' to restart it, or 'Reload and Retry' to restart and resend your active requests."
+                    : "A request timed out. If the issue persists, choose 'Reload' to restart the server, or 'Reload and Retry' to restart and resend your active requests.";
 
                 this.promptErrorAndReload(msg, clientId);
             }
