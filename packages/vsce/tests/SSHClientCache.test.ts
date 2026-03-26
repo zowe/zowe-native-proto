@@ -10,7 +10,7 @@
  */
 
 import { imperative, ZoweVsCodeExtension } from "@zowe/zowe-explorer-api";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as vscode from "vscode";
 import { ZSshClient, ZSshUtils } from "zowe-native-proto-sdk";
 import { SshClientCache } from "../src/SshClientCache";
@@ -84,6 +84,13 @@ vi.mock("../src/Utilities", () => ({
     getVsceConfig: vi.fn(),
 }));
 
+vi.mock("vscode", () => ({
+    Disposable: class {},
+    window: {
+        showErrorMessage: vi.fn(),
+    },
+}));
+
 describe("SshClientCache", () => {
     let cache: SshClientCache;
     let mockGetLoadedProfConfig: ReturnType<typeof vi.fn>;
@@ -101,13 +108,6 @@ describe("SshClientCache", () => {
         // Reset the singleton instance for clean tests
         (SshClientCache as any).mInstance = undefined;
         cache = SshClientCache.inst;
-
-        vi.mock("vscode", () => ({
-            Disposable: class {},
-            window: {
-                showErrorMessage: vi.fn(),
-            },
-        }));
 
         // Default mocks
         vi.mocked(getVsceConfig).mockReturnValue({
@@ -132,10 +132,6 @@ describe("SshClientCache", () => {
         const api = ZoweVsCodeExtension.getZoweExplorerApi();
         mockGetLoadedProfConfig = api.getExplorerExtenderApi().getProfilesCache().getLoadedProfConfig as any;
         mockGetLoadedProfConfig.mockResolvedValue(mockProfile); // Resolve with valid profile by default
-    });
-
-    afterEach(() => {
-        vi.clearAllMocks();
     });
 
     describe("connect()", () => {
@@ -251,7 +247,7 @@ describe("SshClientCache", () => {
     });
 
     describe("end()", () => {
-        it("should invert the retryRequests boolean when calling client.dispose()", () => {
+        it("should pass the restart boolean when calling client.dispose()", () => {
             const mockClient = { dispose: vi.fn() };
             (cache as any).mClientSessionMap.set(clientId, { client: mockClient });
 
@@ -329,13 +325,13 @@ describe("SshClientCache", () => {
             });
         });
 
-        it("should reload AND retry requests if 'Reload ZRS and Retry Requests' is clicked", async () => {
+        it("should reload AND retry if 'Reload and Retry' is clicked", async () => {
             const reloadSpy = vi.spyOn(cache as any, "reloadClient").mockResolvedValue(Promise.resolve(undefined));
 
             const session = (cache as any).mClientSessionMap.get(clientId);
             session.startTime = Date.now() - 70000; // make sure we throw an error
 
-            vi.mocked(vscode.window.showErrorMessage).mockResolvedValue("Reload ZRS and Retry Requests" as any);
+            vi.mocked(vscode.window.showErrorMessage).mockResolvedValue("Reload and Retry" as any);
 
             await (cache as any).handleClientError(clientId, new Error("Request timed out"));
 
@@ -344,9 +340,9 @@ describe("SshClientCache", () => {
             expect(reloadSpy).toHaveBeenCalledWith(clientId, true);
         });
 
-        it("should reload without retrying requests if 'Reload ZRS' is clicked", async () => {
+        it("should reload without retrying requests if 'Reload' is clicked", async () => {
             const reloadSpy = vi.spyOn(cache as any, "reloadClient").mockResolvedValue(undefined);
-            vi.mocked(vscode.window.showErrorMessage).mockResolvedValue("Reload ZRS" as any);
+            vi.mocked(vscode.window.showErrorMessage).mockResolvedValue("Reload" as any);
 
             await (cache as any).handleClientError(clientId, new Error("Something went wrong CEE5207E offset"));
 
@@ -354,9 +350,9 @@ describe("SshClientCache", () => {
             expect(reloadSpy).toHaveBeenCalledWith(clientId, false);
         });
 
-        it("should reload AND retry requests if 'Reload ZRS and Retry Requests' is clicked", async () => {
+        it("should reload AND retry if 'Reload and Retry' is clicked", async () => {
             const reloadSpy = vi.spyOn(cache as any, "reloadClient").mockResolvedValue(undefined);
-            vi.mocked(vscode.window.showErrorMessage).mockResolvedValue("Reload ZRS and Retry Requests" as any);
+            vi.mocked(vscode.window.showErrorMessage).mockResolvedValue("Reload and Retry" as any);
 
             await (cache as any).handleClientError(clientId, new Error("CEE5207E"));
 
@@ -364,33 +360,31 @@ describe("SshClientCache", () => {
             expect(reloadSpy).toHaveBeenCalledWith(clientId, true);
         });
 
-        it("should prompt to reload on FATAL error and set status to DOWN", async () => {
-            const errorMessages = [
-                "CEE3204S The system detected a protection exception (System Completion Code=0C4).",
-                "Znbdj__some_abend_method38432mangled at compile unit offset",
-                "Fatal error encountered in zowex: CEEERR# some internal error",
-                "CEE5207E The signal SIGABRT was received.",
-            ];
-            for (const testCase of errorMessages) {
-                const reloadSpy = vi.spyOn(cache as any, "reloadClient").mockResolvedValue(undefined);
-                vi.mocked(vscode.window.showErrorMessage).mockResolvedValue("Reload ZRS" as any);
-                const fatalError = new Error(testCase);
-                await (cache as any).handleClientError(clientId, fatalError);
+        const errorMessages = [
+            "CEE3204S The system detected a protection exception (System Completion Code=0C4).",
+            "Znbdj__some_abend_method38432mangled at compile unit offset",
+            "Fatal error encountered in zowex: CEEERR# some internal error",
+            "CEE5207E The signal SIGABRT was received.",
+        ];
+        it.each(errorMessages)("should prompt to reload on FATAL error and set status to DOWN", async (testCase) => {
+            const reloadSpy = vi.spyOn(cache as any, "reloadClient").mockResolvedValue(undefined);
+            vi.mocked(vscode.window.showErrorMessage).mockResolvedValue("Reload" as any);
+            const fatalError = new Error(testCase);
+            await (cache as any).handleClientError(clientId, fatalError);
 
-                const session = (cache as any).mClientSessionMap.get(clientId);
-                expect(session.status).toBe(1); // ServerStatus.DOWN
-                expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(
-                    expect.stringContaining("stopped working unexpectedly"),
-                    "Reload ZRS",
-                    "Reload ZRS and Retry Requests",
-                    "Close",
-                );
+            const session = (cache as any).mClientSessionMap.get(clientId);
+            expect(session.status).toBe(1); // ServerStatus.DOWN
+            expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(
+                expect.stringContaining("stopped working unexpectedly"),
+                "Reload",
+                "Reload and Retry",
+                "Close",
+            );
 
-                expect(reloadSpy).toHaveBeenCalledWith(clientId, false);
-                reloadSpy.mockClear();
-                vi.mocked(vscode.window.showErrorMessage).mockClear();
-                session.status = 0;
-            }
+            expect(reloadSpy).toHaveBeenCalledWith(clientId, false);
+            reloadSpy.mockClear();
+            vi.mocked(vscode.window.showErrorMessage).mockClear();
+            session.status = 0;
         });
 
         it("should prompt to reload on TIMEOUT error (new timeout)", async () => {
@@ -399,18 +393,18 @@ describe("SshClientCache", () => {
             session.startTime = Date.now() - 70 * 1000;
             await (cache as any).handleClientError(clientId, timeoutError);
             expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(
-                expect.stringContaining("The request timed out."),
-                "Reload ZRS",
-                "Reload ZRS and Retry Requests",
+                expect.stringContaining("A request timed out."),
+                "Reload",
+                "Reload and Retry",
                 "Close",
             );
             vi.mocked(vscode.window.showErrorMessage).mockClear();
             session.status = 1; // ServerStatus.DOWN
             await (cache as any).handleClientError(clientId, timeoutError);
             expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(
-                expect.stringContaining("The request timed out because the server is down."),
-                "Reload ZRS",
-                "Reload ZRS and Retry Requests",
+                expect.stringContaining("A request timed out because the server is down."),
+                "Reload",
+                "Reload and Retry",
                 "Close",
             );
         });
