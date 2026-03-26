@@ -319,9 +319,7 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
             pattern: likeDataSetName,
             attributes: true,
         });
-        const sourceDs = listResponse.items.find(
-            (item) => item.name?.toUpperCase() === likeDataSetName.toUpperCase(),
-        );
+        const sourceDs = listResponse.items.find((item) => item.name?.toUpperCase() === likeDataSetName.toUpperCase());
         if (!sourceDs) {
             return this.buildZosFilesResponse(
                 { success: false },
@@ -329,14 +327,13 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
                 `Source data set "${likeDataSetName}" not found`,
             );
         }
-
-        let dirblk: number | undefined;
-        if (sourceDs.dsorg === "PO") {
-            const membersResponse = await (await this.client).ds.listDsMembers({
-                dsname: likeDataSetName,
-            });
-            const memberCount = membersResponse.items?.length ?? 0;
-            dirblk = Math.max(5, Math.ceil(memberCount / 5) + 2);
+        if (sourceDs.recfm === "U") {
+            Gui.errorMessage("RECFM=U data sets are not supported for copy operations");
+            return this.buildZosFilesResponse(
+                { success: false },
+                false,
+                "RECFM=U data sets are not supported for copy operations",
+            );
         }
 
         const attributes: DatasetAttributes = {
@@ -347,7 +344,6 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
             recfm: sourceDs.recfm,
             dsorg: sourceDs.dsorg,
             dsntype: sourceDs.dsntype,
-            dirblk,
             alcunit: sourceDs.spacu,
             secondary: sourceDs.secondary,
             storclass: sourceDs.storclass,
@@ -380,8 +376,7 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
             }
             return this.buildZosFilesResponse(response, response.success);
         } catch (error) {
-            const errorDetails =
-                error instanceof imperative.ImperativeError ? error.additionalDetails : String(error);
+            const errorDetails = error instanceof imperative.ImperativeError ? error.additionalDetails : String(error);
             Gui.errorMessage(`Failed to copy "${fromDataset}" to "${toDataset}": ${errorDetails}`);
             return this.buildZosFilesResponse({ success: false }, false, errorDetails);
         }
@@ -404,8 +399,7 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
             }
             return this.buildZosFilesResponse(response, response.success);
         } catch (error) {
-            const errorDetails =
-                error instanceof imperative.ImperativeError ? error.additionalDetails : String(error);
+            const errorDetails = error instanceof imperative.ImperativeError ? error.additionalDetails : String(error);
             Gui.errorMessage(`Failed to copy "${fromDataSetName}" to "${toDataSetName}": ${errorDetails}`);
             return this.buildZosFilesResponse({ success: false }, false, errorDetails);
         }
