@@ -389,8 +389,9 @@ int handle_job_submit(InvocationContext &context)
   std::string jobid;
 
   ZDS zds{};
+  ZDSReadOpts read_opts{.zds = &zds, .dsname = dsn};
   std::string contents;
-  rc = zds_read_from_dsn(&zds, dsn, contents);
+  rc = zds_read(read_opts, contents);
   if (0 != rc)
   {
     context.error_stream() << "Error: could not read data set: '" << dsn << "' rc: '" << rc << "'" << std::endl;
@@ -447,7 +448,7 @@ int handle_job_submit_jcl(InvocationContext &context)
     data = zut_encode(data, source_encoding, std::string(encoding_opts.codepage), zjb.diag);
   }
 
-  return job_submit_common(context, data, jobid, "JCL");
+  return job_submit_common(context, data, jobid, "JCL", true);
 }
 
 int handle_job_delete(InvocationContext &context)
@@ -696,11 +697,33 @@ int handle_job_release(InvocationContext &context)
   return RTNCD_SUCCESS;
 }
 
-int job_submit_common(InvocationContext &context, const std::string &jcl, std::string &jobid, const std::string &identifier)
+int job_submit_common(InvocationContext &context, const std::string &jcl, std::string &jobid, const std::string &identifier, bool strip_crlf)
 {
   int rc = 0;
   ZJB zjb{};
-  rc = zjb_submit(&zjb, jcl, jobid);
+  const char CR_CHAR = '\x0D';
+  std::string new_contents;
+
+  if (strip_crlf)
+  {
+    std::stringstream ss(jcl);
+    std::string line;
+    while (std::getline(ss, line))
+    {
+      if (!line.empty() && line.back() == CR_CHAR)
+      {
+        line.pop_back();
+      }
+      line.resize(80, ' ');
+      new_contents += line;
+    }
+  }
+  else
+  {
+    new_contents = jcl;
+  }
+
+  rc = zjb_submit(&zjb, new_contents, jobid);
 
   if (0 != rc)
   {

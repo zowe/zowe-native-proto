@@ -77,7 +77,7 @@ std::vector<ZDSEntry> list_data_sets(std::string dsn)
 
 std::string read_data_set(std::string dsn, std::string codepage)
 {
-  ZDS zds = {0};
+  ZDS zds{};
 
   if (!codepage.empty())
   {
@@ -86,8 +86,9 @@ std::string read_data_set(std::string dsn, std::string codepage)
   }
 
   a2e_inplace(dsn);
+  ZDSReadOpts read_opts{ .zds = &zds, .dsname = dsn };
   std::string response;
-  int rc = zds_read_from_dsn(&zds, dsn, response);
+  int rc = zds_read(read_opts, response);
 
   if (rc != 0)
   {

@@ -151,7 +151,7 @@ int AMSMAIN(const char *ddname)
    * @brief Obtain 24 bit structures for legacy macros for non-VSAM data sets and initialize the DCB.
    */
   resources.sysprint = new_io_ctrl();
-  memcpy(&resources.sysprint->dcb, &open_write_model, sizeof(IHADCB));
+  memcpy(&resources.sysprint->dcb, &dcb_write_model, sizeof(IHADCB));
 
   /**
    * @brief Set DD of data set we intend to open.  In the future, we'll probably have to require that the system provide use with a unique DD name.
@@ -286,7 +286,7 @@ int AMSMAIN(const char *ddname)
   /**
    * @brief Perform open
    */
-  rc = open_output(&resources.sysprint->dcb);
+  rc = open_output_dcb(&resources.sysprint->dcb);
   if (0 != rc)
   {
     zwto_debug("@TEST open_output failed: %d", rc);

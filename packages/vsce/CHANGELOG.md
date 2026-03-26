@@ -12,6 +12,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - Added the functionality to copy USS files and directories. [#379](https://github.com/zowe/zowe-native-proto/pull/379).
 - Added `copyDataSetMember` and `copyDataSet` APIs for Zowe Explorer copy/paste integration. Supports `replace` and `deleteTargetMembers` options. [#778](https://github.com/zowe/zowe-native-proto/pull/778)
 - Added `allocateLikeDataSet` API for creating data sets with the same attributes as an existing data set. [#778](https://github.com/zowe/zowe-native-proto/pull/778)
+- Added experimental native client for improved performance which can be enabled via a VS Code setting. [#833](https://github.com/zowe/zowe-native-proto/pull/833)
 
 ## `0.3.0`
 

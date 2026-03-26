@@ -145,15 +145,23 @@ int zds_copy_dsn(ZDS *zds, const std::string &dsn1, const std::string &dsn2, ZDS
 bool zds_dataset_exists(const std::string &dsn);
 
 /**
- * @brief Read data from a z/OS data set
+ * @brief Options for reading a z/OS data set or DD
+ */
+struct ZDSReadOpts
+{
+  ZDS *zds = nullptr;
+  std::string ddname;
+  std::string dsname;
+};
+
+/**
+ * @brief Read data from a z/OS data set or DD.
  *
- * @param zds data set returned attributes and error information
- * @param dsn data set name from which to read
+ * @param opts read options containing ZDS state and either a dsname or ddname. If both ddname and dsname are provided, ddname takes precedence.
  * @param response data read
- * @param encoding The desired encoding for the data set (optional)
  * @return int 0 for success; non zero otherwise
  */
-int zds_read_from_dsn(ZDS *zds, const std::string &dsn, std::string &response);
+int zds_read(const ZDSReadOpts &opts, std::string &response);
 
 /**
  * @brief Write data to a z/OS data set name
@@ -251,14 +259,14 @@ int zds_list_data_sets(ZDS *zds, std::string dsn, std::vector<ZDSEntry> &dataset
 #endif
 
 /**
- * @brief Read data from a DDNAME
+ * @brief Read data from a DDNAME using ACB/RPL mode (for VSAM data sets)
  *
  * @param zds data set returned attributes and error information
  * @param ddname ddname from which to read
  * @param response data read
  * @return int 0 for success; non zero otherwise
  */
-int zds_read_from_dd(ZDS *zds, std::string ddname, std::string &response);
+int zds_read_vsam(ZDS *zds, std::string ddname, std::string &response);
 
 /**
  * @brief Write data to a DDNAME
@@ -322,15 +330,14 @@ int zds_delete_dsn(ZDS *zds, std::string dsn);
 int zdsReadDynalloc(const std::string &, const std::string &, const std::string &, std::string &); // NOTE(Kelosky): testing only
 
 /**
- * @brief Read data from a z/OS data set in streaming mode
+ * @brief Read data from a z/OS data set in streaming mode.
  *
- * @param zds data set returned attributes and error information
- * @param dsn data set name from which to read
+ * @param opts read options containing ZDS state and either a dsname or ddname. If both ddname and dsname are provided, ddname takes precedence.
  * @param pipe name of the output pipe
  * @param content_len pointer where the length of the data set contents will be stored
  * @return int 0 for success; non zero otherwise
  */
-int zds_read_from_dsn_streamed(ZDS *zds, const std::string &dsn, const std::string &pipe, size_t *content_len);
+int zds_read_streamed(const ZDSReadOpts &opts, const std::string &pipe, size_t *content_len);
 
 /**
  * @brief Write data to a z/OS data set in streaming mode
