@@ -1219,30 +1219,33 @@ int note(IO_CTRL *ioc, NOTE_RESPONSE *PTR32 note_response, int *rsn)
 int ZAMDA31(DCB_ABEND_PARMS *PTR32 parms);
 
 // AMODE 24 DCB ABEND exit stub (machine code).
-// This tiny routine saves/restores caller regs, masks R1 to 24 bits,
-// loads the ZAMDA31 address from an inline constant, and calls it.
+// Saves/restores caller regs, masks R1 to 24 bits, switches to AMODE 31
+// to call ZAMDA31, then returns to the system with a plain BR R14.
 //
-//   STM   R14,R12,12(R13)   90EC D00C
-//   LR    R12,R15           18CF
-//   LA    R1,0(,R1)         4110 1000
-//   L     R15,18(,R12)      58F0 C012
-//   BALR  R14,R15           05EF
-//   LM    R14,R12,12(R13)   98EC D00C
-//   BR    R14               07FE
-//   DC    A(0)              00000000  <- ZAMDA31 addr, patched at runtime
+//   STM   R14,R12,12(R13)   90EC D00C  <- save caller regs
+//   LR    R12,R15           18CF       <- R12 = base (entry point)
+//   LA    R1,0(,R1)         4110 1000  <- mask R1 to 24-bit address
+//   L     R15,26(,R12)      58F0 C01A  <- load ZAMDA31 addr from ADCON
+//   OILH  R15,X'8000'       A5F5 8000  <- set AMODE 31 bit for BASSM
+//   BASSM R14,R15           0CEF       <- call ZAMDA31 in AMODE 31
+//   LM    R14,R12,12(R13)   98EC D00C  <- restore regs (back in AMODE 24)
+//   BR    R14               07FE       <- return to system
+//   DC    A(0)              00000000   <- ZAMDA31 addr, patched at runtime
 //
 // Offset 18 (0x12) is where the A-con lives (18 bytes of code precede it).
-#define ZAM24_STUB_SIZE     22
-#define ZAM24_STUB_ACON_OFF 18
+#define ZAM24_STUB_SIZE 30
+#define ZAM24_STUB_ACON_OFF 26
 
 static const unsigned char zam24_stub[ZAM24_STUB_SIZE] = {
-  0x90, 0xEC, 0xD0, 0x0C,  /* STM  R14,R12,12(R13) */
-  0x18, 0xCF,              /* LR   R12,R15          */
-  0x41, 0x10, 0x10, 0x00,  /* LA   R1,0(,R1)        */
-  0x58, 0xF0, 0xC0, 0x12,  /* L    R15,18(,R12)     */
-  0x05, 0xEF,              /* BALR R14,R15           */
-  0x98, 0xEC, 0xD0, 0x0C,  /* LM   R14,R12,12(R13) */
-  0x07, 0xFE               /* BR   R14              */
+    0x90, 0xEC, 0xD0, 0x0C, /* STM  R14,R12,12(R13) */
+    0x18, 0xCF,             /* LR   R12,R15          */
+    0x41, 0x10, 0x10, 0x00, /* LA   R1,0(,R1)        */
+    0x58, 0xF0, 0xC0, 0x1A, /* L    R15,26(,R12)     */
+    0xA5, 0xF5, 0x80, 0x00, /* OILH R15,X'8000'       */
+    0x0C, 0xEF,             /* BASSM R14,R15         */
+    0x98, 0xEC, 0xD0, 0x0C, /* LM   R14,R12,12(R13) */
+    0x07, 0xFE,             /* BR   R14              */
+    0x00, 0x00, 0x00, 0x00, /* DC   A(0)             */
 };
 
 static void setup_dcb_abend_exit(IO_CTRL *ioc)
@@ -1475,7 +1478,7 @@ int ZAMDA31(DCB_ABEND_PARMS *PTR32 parms)
 
   // The DCB is the first field in IO_CTRL, so we can derive IO_CTRL from the DCB address
   IO_CTRL *PTR32 ioc = (IO_CTRL * PTR32) parms->dcb;
-  DCB_ABEND_INFO *PTR32 info = ioc ? ioc->abend_info : (DCB_ABEND_INFO * PTR32) 0;
+  DCB_ABEND_INFO *PTR32 info = ioc ? ioc->abend_info : (DCB_ABEND_INFO * PTR32)0;
   unsigned char mask = parms->option_mask;
 
   if (info)
