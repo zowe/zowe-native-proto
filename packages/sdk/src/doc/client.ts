@@ -53,6 +53,12 @@ export interface ClientOptions {
     serverPath?: string;
 
     /**
+     * Use experimental native SSH client for improved performance
+     * (default: false)
+     */
+    useNativeSsh?: boolean;
+
+    /**
      * Enable verbose logging from the server
      * (default: false)
      */

@@ -103,6 +103,7 @@ export class SshClientCache extends vscode.Disposable {
             const numWorkers = vsceConfig.get<number>("workerCount");
             const requestTimeout = vsceConfig.get<number>("requestTimeout");
             const responseTimeout = vsceConfig.get<number>("responseTimeout") ?? 60;
+            const useNativeSsh = vsceConfig.get<boolean>("experimentalNativeSsh", false);
             const autoUpdate = vsceConfig.get("serverAutoUpdate", true);
 
             let newClient: ZSshClient | undefined;
@@ -114,6 +115,7 @@ export class SshClientCache extends vscode.Disposable {
                     requestTimeout,
                     responseTimeout,
                     requests: replayRequests,
+                    useNativeSsh,
                 });
                 imperative.Logger.getAppLogger().debug(
                     `Server checksums: ${JSON.stringify(newClient.serverChecksums)}`,
@@ -143,6 +145,7 @@ export class SshClientCache extends vscode.Disposable {
                     numWorkers,
                     requestTimeout,
                     requests: replayRequests,
+                    useNativeSsh,
                 });
             }
             this.mClientSessionMap.set(clientId, {
