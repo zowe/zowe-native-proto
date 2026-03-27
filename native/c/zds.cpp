@@ -791,6 +791,7 @@ int zds_read_vsam(ZDS *zds, std::string ddname, std::string &response)
   }
 
   int lines_read = 0;
+  zds->has_more = 0;
   while (true)
   {
     rc = ZDSRIVSM(zds, ioc);
@@ -811,9 +812,12 @@ int zds_read_vsam(ZDS *zds, std::string ddname, std::string &response)
     }
     if (lines_read >= zds->max_lines)
     {
+      zds->has_more = 1;
       break;
     }
   }
+
+  zds->returned_lines = lines_read;
 
   rc = ZDSCIVSM(zds, ioc);
   if (rc != RTNCD_SUCCESS)

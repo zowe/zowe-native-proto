@@ -291,11 +291,124 @@ static int zjb_free_job_dynamic_allocation(ZJB *zjb, std::string ddname)
   return rc;
 }
 
-int zjb_read_syslog(ZJB *zjb, std::string &response, std::string &date, std::string &timestamp, int max_lines)
+// Parse the timestamp of the last timestamped line from a syslog VSAM response.
+//
+// The function does NOT assume fixed column positions.  Instead it scans each line
+// for the EBCDIC pattern "YYDDD HH:MM:SS.th" (17 bytes): five decimal digits, an
+// EBCDIC space, then a time value validated by its structural characters (hour tens
+// digit 0-2, colons at offsets +2/+5 from the time start, dot at offset +8) and
+// range-checked minute/second tens digits.  Scanning is done backwards from the end
+// of the response so that the timestamp of the last (most recent) record is returned.
+// On success, out_date is set to "yyyy-mm-dd" and out_time to "hh:mm:ss.th" (ASCII)
+// and the function returns true.  Returns false when no matching timestamp is found.
+static bool parse_syslog_last_timestamp(const std::string &response, std::string &out_date, std::string &out_time)
+{
+  const unsigned char EBCDIC_0 = 0xF0;
+  const unsigned char EBCDIC_9 = 0xF9;
+  const unsigned char EBCDIC_SPACE = 0x40;
+  const unsigned char EBCDIC_COLON = 0x7A;
+  const unsigned char EBCDIC_DOT = 0x4B;
+
+  auto is_digit = [&](size_t pos) -> bool {
+    unsigned char c = (unsigned char)response[pos];
+    return c >= EBCDIC_0 && c <= EBCDIC_9;
+  };
+  auto digit_val = [&](size_t pos) -> int {
+    return (int)((unsigned char)response[pos] - EBCDIC_0);
+  };
+
+  size_t search_from = response.size();
+  while (search_from > 0)
+  {
+    size_t line_end = search_from;
+    if (line_end > 0 && response[line_end - 1] == '\n')
+      line_end--;
+    size_t line_start = (line_end > 0) ? response.rfind('\n', line_end - 1) : std::string::npos;
+    line_start = (line_start == std::string::npos) ? 0 : line_start + 1;
+
+    // "YYDDD HH:MM:SS.th" is 17 bytes; skip short lines.
+    if (line_end >= line_start + 17)
+    {
+      for (size_t p = line_start; p + 17 <= line_end; p++)
+      {
+        // Five EBCDIC digits for Julian YYDDD
+        if (!is_digit(p) || !is_digit(p+1) || !is_digit(p+2) || !is_digit(p+3) || !is_digit(p+4))
+          continue;
+        // EBCDIC space separator
+        if ((unsigned char)response[p+5] != EBCDIC_SPACE)
+          continue;
+        // Time: hour tens 0-2 (p+6), digit (p+7), colon (p+8)
+        unsigned char h_tens = (unsigned char)response[p+6];
+        if (h_tens < EBCDIC_0 || h_tens > (unsigned char)0xF2)
+          continue;
+        if (!is_digit(p+7) || (unsigned char)response[p+8] != EBCDIC_COLON)
+          continue;
+        // Minute tens 0-5 (p+9), digit (p+10), colon (p+11)
+        unsigned char m_tens = (unsigned char)response[p+9];
+        if (m_tens < EBCDIC_0 || m_tens > (unsigned char)0xF5)
+          continue;
+        if (!is_digit(p+10) || (unsigned char)response[p+11] != EBCDIC_COLON)
+          continue;
+        // Second tens 0-5 (p+12), digit (p+13), dot (p+14)
+        unsigned char s_tens = (unsigned char)response[p+12];
+        if (s_tens < EBCDIC_0 || s_tens > (unsigned char)0xF5)
+          continue;
+        if (!is_digit(p+13) || (unsigned char)response[p+14] != EBCDIC_DOT)
+          continue;
+        // Two centisecond digits (p+15, p+16)
+        if (!is_digit(p+15) || !is_digit(p+16))
+          continue;
+
+        // Validate Julian day-of-year (001-366)
+        int ddd = digit_val(p+2) * 100 + digit_val(p+3) * 10 + digit_val(p+4);
+        if (ddd < 1 || ddd > 366)
+          continue;
+
+        // Convert Julian YYDDD -> calendar date
+        int yy = digit_val(p) * 10 + digit_val(p+1);
+        struct tm tm_julian = {};
+        tm_julian.tm_year = (2000 + yy) - 1900;
+        tm_julian.tm_mday = ddd;
+        tm_julian.tm_mon = 0;
+        mktime(&tm_julian);
+        char date_buf[16];
+        snprintf(date_buf, sizeof(date_buf), "%04d-%02d-%02d",
+                 tm_julian.tm_year + 1900, tm_julian.tm_mon + 1, tm_julian.tm_mday);
+        out_date = date_buf;
+
+        // Decode time at p+6 from EBCDIC to ASCII
+        char time_buf[12] = {0};
+        for (int i = 0; i < 11; i++)
+        {
+          unsigned char ch = (unsigned char)response[p + 6 + i];
+          if (ch >= EBCDIC_0 && ch <= EBCDIC_9)
+            time_buf[i] = (char)('0' + (ch - EBCDIC_0));
+          else if (ch == EBCDIC_COLON)
+            time_buf[i] = ':';
+          else if (ch == EBCDIC_DOT)
+            time_buf[i] = '.';
+        }
+        out_time = time_buf;
+        return true;
+      }
+    }
+
+    search_from = line_start;
+    if (line_start == 0)
+      break;
+  }
+  return false;
+}
+
+int zjb_read_syslog(ZJB *zjb, std::string &response, ZJBSyslogOptions &opts)
 {
   int rc = 0;
   std::string ddname;
   ZDS zds = {};
+  opts.has_more = false;
+  opts.end_date.clear();
+  opts.end_time.clear();
+  opts.returned_lines = 0;
 
   //
   // get system name
@@ -310,7 +423,7 @@ int zjb_read_syslog(ZJB *zjb, std::string &response, std::string &date, std::str
   // get input timestamp from format HH:MM:SS.CC to binary format (low bit represents 0.01 of a second) for CONVTOD
   //
   int hh = 0, mm = 0, ss = 0, cs = 0;
-  sscanf(timestamp.c_str(), "%d:%d:%d.%d", &hh, &mm, &ss, &cs);
+  sscanf(opts.time.c_str(), "%d:%d:%d.%d", &hh, &mm, &ss, &cs);
   uint32_t ts_binary = ((uint32_t)hh * 360000) + ((uint32_t)mm * 6000) + ((uint32_t)ss * 100) + (uint32_t)cs;
 
   //
@@ -324,13 +437,13 @@ int zjb_read_syslog(ZJB *zjb, std::string &response, std::string &date, std::str
   // prepare date for `pack`
   //
   std::string date_compact;
-  for (char c : date)
+  for (char c : opts.date)
   {
     if (c != '-')
       date_compact += c;
   }
   memcpy(&zds.ebcdic_date, date_compact.c_str(), sizeof(zds.ebcdic_date));
-  zds.max_lines = max_lines;
+  zds.max_lines = opts.max_lines;
 
   rc = zjb_read_job_dynamic_allocation(zjb, dsn, ddname);
   if (0 != rc)
@@ -343,6 +456,11 @@ int zjb_read_syslog(ZJB *zjb, std::string &response, std::string &date, std::str
 
   rc = zds_read_vsam(&zds, ddname, response);
   memcpy(&zjb->diag, &zds.diag, sizeof(ZDIAG));
+  opts.has_more = (zds.has_more != 0);
+  opts.returned_lines = zds.returned_lines;
+
+  if (rc == 0 && !response.empty())
+    parse_syslog_last_timestamp(response, opts.end_date, opts.end_time);
 
   int newrc = zjb_free_job_dynamic_allocation(zjb, ddname);
   if (0 != newrc && 0 == rc)

@@ -151,7 +151,20 @@ int zjb_get_job_dsn_by_key(ZJB *zjb, const std::string &, int, std::string &);
  */
 int zjb_read_job_content_by_dsn(ZJB *zjb, const std::string &job_dsn, std::string &response);
 
-int zjb_read_syslog(ZJB *zjb, std::string &response, std::string &date, std::string &timestamp, int max_lines);
+struct ZJBSyslogOptions
+{
+  // Inputs
+  std::string date;
+  std::string time;
+  int max_lines = 0;
+  // Outputs
+  bool has_more = false;
+  std::string end_date;
+  std::string end_time;
+  int returned_lines = 0;
+};
+
+int zjb_read_syslog(ZJB *zjb, std::string &response, ZJBSyslogOptions &opts);
 
 /**
  * @brief Wait for a job to reach a specific status
