@@ -73,6 +73,26 @@ typedef DECB READ_PL;
 
 typedef struct exlst EXLIST;
 
+// https://www.ibm.com/docs/en/zos/3.1.0?topic=routines-dcb-abend-exit
+typedef struct
+{
+  unsigned short system_completion_code; // offset 0: system completion code in first 12 bits
+  unsigned char return_code;             // offset 2: return code associated with completion code
+  unsigned char option_mask;             // offset 3: option mask (input) / chosen action (output)
+  IHADCB *PTR32 dcb;                    // offset 4: address of DCB
+  unsigned int diag_info;                // offset 8: for system diagnostic use
+  void *PTR32 recovery_work_area;        // offset 12: must be below 16 MB
+} DCB_ABEND_PL;
+
+#define DCB_ABEND_OPT_OK_TO_RECOVER 0x08
+#define DCB_ABEND_OPT_OK_TO_IGNORE  0x04
+#define DCB_ABEND_OPT_OK_TO_DELAY   0x02
+
+#define DCB_ABEND_RC_TERMINATE       0
+#define DCB_ABEND_RC_IGNORE          4
+#define DCB_ABEND_RC_DELAY           8
+#define DCB_ABEND_RC_IGNORE_QUIETLY  20
+
 #define MAX_HEADER_LEN 100
 typedef struct
 {
@@ -183,9 +203,12 @@ typedef struct
   int output : 1; // TODO(Kelosky): remove this flag
   int input : 1;  // TODO(Kelosky): remove this flag
   unsigned int has_enq : 1;
-  unsigned int has_reserve : 1; // not reserved space... indicates RESERVE is outstanding
-  unsigned int eof : 1;         // not reserved space... indicates RESERVE is outstanding
+  unsigned int has_reserve : 1;
+  unsigned int eof : 1;
+  unsigned int dcb_abend : 1;
   unsigned int ucb;
+  unsigned short abend_completion_code;
+  unsigned char abend_return_code;
   void *PTR32 zam24;
   int zam24_len;
   int lines_written;

@@ -7,26 +7,26 @@
 *
 *  Copyright Contributors to the Zowe Project.
 ZAM24    RSECT ,
-ZAM24    AMODE 24
-ZAM24    RMODE 24                   Manually loaded in 24 bit storage
-*
-RTNCD00  EQU   0
+ZAM24    AMODE 31
+ZAM24    RMODE 31                   Manually loaded in 24 bit storage
 *
          YREGS ,
 *
-*        TODO(Kelosky): find address of real DCBABEND
+*        On entry: R1=DCB abend parameter list, R14=return address
+*        Call ZAMDA31 (AMODE 31) with R1 preserved, then return
+*        R2 is used to hold R14 across the call (BAKR preserves R2)
 *
-         USING ZAM24,R15
-*
-         EXRL  0,*
-         L     R1,DCBABND@         -> ZAMDA31
-         LHI   R15,RTNCD00
-         BR    R14                  return to caller
+ENTRY24  DS    0H
+         LARL  R15,DCBABND@
+         L     R15,0(,R15)         -> ZAMDA31
+         OILH  R15,X'8000'         Set AMODE 31 bit for BASSM
+         BASSM R14,R15             Call ZAMDA31 in AMODE 31
+         BR    R14                  Return to system
 *
 CONSTANT DS    0D
          LTORG ,
 *
-DCBABND@ DC    V(ZAMDA31)
+DCBABND@ DC    V(ZAMDEXIT)
 *
 *        Separate ENTRY to obtain length of this module
 *

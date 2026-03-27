@@ -11,7 +11,7 @@
 
 #include "zam.h"
 #include "dcbd.h"
-// #include "zam24.h"
+#include "zam24.h"
 #include "zamtypes.h"
 #include "zdstype.h"
 #include "zstorage.h"
@@ -172,6 +172,15 @@ static int open_data_set(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
     strcpy(diag->service_name, "OPEN");
     diag->e_msg_len = sprintf(diag->e_msg, "Failed to open ddname: %8.8s for data set: %44.44s rc was: %d", ioc->dcb.dcbddnam, ioc->jfcb.jfcbdsnm, rc);
     diag->detail_rc = ZDS_RTNCD_OPEN_ERROR;
+    return RTNCD_FAILURE;
+  }
+
+  if (ioc->dcb_abend)
+  {
+    strcpy(diag->service_name, "OPEN");
+    diag->e_msg_len = sprintf(diag->e_msg, "DCB abend during OPEN for %44.44s: system completion code=%03X, return code=%02X",
+                              ioc->jfcb.jfcbdsnm, ioc->abend_completion_code, ioc->abend_return_code);
+    diag->detail_rc = ZDS_RTNCD_DCB_ABEND_ERROR;
     return RTNCD_FAILURE;
   }
 
@@ -894,10 +903,24 @@ static int close_data_set(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
   int rc = 0;
   if (ioc->dcb.dcboflgs & dcbofopn)
   {
+    ioc->dcb_abend = 0;
     rc = close_dcb(&ioc->dcb);
+
+    if (ioc->dcb_abend)
+    {
+      if (0 == diag->e_msg_len)
+      {
+        strcpy(diag->service_name, "CLOSE");
+        diag->e_msg_len = sprintf(diag->e_msg, "DCB abend during CLOSE for %8.8s data set: %44.44s: system completion code=%03X, return code=%02X",
+                                  ioc->ddname, ioc->jfcb.jfcbdsnm, ioc->abend_completion_code, ioc->abend_return_code);
+        diag->detail_rc = ZDS_RTNCD_DCB_ABEND_ERROR;
+      }
+      return RTNCD_FAILURE;
+    }
+
     if (0 != rc)
     {
-      if (0 == diag->e_msg_len) // only set error if no error message was already set
+      if (0 == diag->e_msg_len)
       {
         diag->service_rc = rc;
         strcpy(diag->service_name, "CLOSE");
@@ -1038,6 +1061,12 @@ int close_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
       first_rc = rc;
   }
 
+  if (ioc->zam24)
+  {
+    storage_release(ioc->zam24_len, ioc->zam24);
+    ioc->zam24 = NULL;
+  }
+
   storage_release(sizeof(IO_CTRL), ioc);
 
   return first_rc;
@@ -1098,12 +1127,11 @@ void close_assert(IO_CTRL *ioc)
     }
   }
 
-  // if (ioc->zam24)
-  // {
-  //   zwto_debug("@TEST close_assert: releasing zam24: %p", ioc->zam24);
-  //   storage_release(ioc->zam24_len, ioc->zam24);
-  //   ioc->zam24 = NULL;
-  // }
+  if (ioc->zam24)
+  {
+    storage_release(ioc->zam24_len, ioc->zam24);
+    ioc->zam24 = NULL;
+  }
 
   storage_release(sizeof(IO_CTRL), ioc);
 }
@@ -1144,28 +1172,95 @@ int note(IO_CTRL *ioc, NOTE_RESPONSE *PTR32 note_response, int *rsn)
   return rc;
 }
 
-// TODO(Kelosky): common logic for both read_input_jfcb and read_output_jfcb should be combined
+// 24-bit DCB abend exit glue routine (assembled inline).
+// On entry from z/OS: R1=DCB abend parameter list, R14=return address.
+// Calls ZAMDA31 in AMODE 31 with R1 preserved, then returns in AMODE 24.
+//
+//   BASR  R12,0           0DC0          R12 -> offset 2
+//   LR    R2,R14          182E
+//   L     R15,24(R12)     58F0C018      -> ZAMDA31 addr at offset 26
+//   OILH  R15,X'8000'     A5F58000      set AMODE 31
+//   BASSM R14,R15         0CEF          call ZAMDA31 (returns in AMODE 31)
+//   SAM24                  010C          restore AMODE 24
+//   LR    R14,R2          18E2
+//   LHI   R15,0           A7F80000
+//   BR    R14              07FE
+//   <2 bytes pad>         0000
+//   DC    F'0'            00000000      -> patched with ZAMDA31 address
+//
+// #define ZAM24_GLUE_LEN 2
+// #define ZAM24_GLUE_PATCH_OFFSET 26
+// static const unsigned char zam24_glue_template[ZAM24_GLUE_LEN] = {
+//     0x0D, 0xC0,                         // BASR  R12,0
+//     0x18, 0x2E,                         // LR    R2,R14
+//     0x58, 0xF0, 0xC0, 0x18,             // L     R15,24(,R12)
+//     0xA5, 0xF5, 0x80, 0x00,             // OILH  R15,X'8000'
+//     0x0C, 0xEF,                         // BASSM R14,R15
+//     0x01, 0x0C,                         // SAM24
+//     0x18, 0xE2,                         // LR    R14,R2
+//     0xA7, 0xF8, 0x00, 0x00,             // LHI   R15,0
+//     0x07, 0xFE,                         // BR    R14
+//     0x00, 0x00,                         // padding to doubleword
+//     0x00, 0x00, 0x00, 0x00              // ZAMDA31 address (patched)
+// };
+
+// static const unsigned char zam24_glue_template[ZAM24_GLUE_LEN] = {
+//     0x07, 0xFE, // BR    R14
+// };
+
+#pragma prolog(ZAMDEXIT, " ZWEPROLG NEWDSA=(YES,24),SAVE=BAKR ")
+#pragma epilog(ZAMDEXIT, " ZWEEPILG ")
+int ZAMDEXIT(unsigned int r1)
+{
+  zut_dump_storage("ZAMDEXIT", &r1, 4);
+  // IBM doc: low 3 bytes of R1 hold the parameter list address
+  DCB_ABEND_PL *PTR32 plist = (DCB_ABEND_PL * PTR32)(r1 & 0x00FFFFFF);
+  zwto_debug("ZAMDEXIT called");
+  zut_dump_storage("ZAMDEXIT", plist, 3);
+  IO_CTRL *PTR32 ioc = (IO_CTRL * PTR32) plist->dcb;
+  ioc->dcb_abend = 1;
+  ioc->abend_completion_code = plist->system_completion_code;
+  ioc->abend_return_code = plist->return_code;
+
+  if (plist->option_mask & DCB_ABEND_OPT_OK_TO_IGNORE)
+  {
+    plist->option_mask = DCB_ABEND_RC_IGNORE_QUIETLY;
+  }
+  else if (plist->option_mask & DCB_ABEND_OPT_OK_TO_DELAY)
+  {
+    plist->option_mask = DCB_ABEND_RC_DELAY;
+  }
+  return 0;
+}
+
+typedef int (*ZAM24Fn)();
+
+static void setup_exit_list(IO_CTRL *ioc)
+{
+  int zam24_len = ZAM24Q();
+  ioc->zam24_len = zam24_len;
+  ioc->zam24 = storage_obtain24(zam24_len);
+  ZAM24Fn x = ZAM24;
+  memcpy(ioc->zam24, (void *)x, zam24_len);
+  zut_dump_storage("ZAM24STUB", ioc->zam24, zam24_len);
+
+  ioc->exlst[0].exlentrb = (unsigned int)ioc->zam24;
+  ioc->exlst[0].exlcodes = exldcbab;
+  ioc->exlst[1].exlentrb = (unsigned int)&ioc->jfcb;
+  ioc->exlst[1].exlcodes = exllaste + exlrjfcb;
+
+  memcpy(&ioc->rdjfcb_pl, &rdfjfcb_model, sizeof(RDJFCB_PL));
+
+  unsigned char recfm = ioc->dcb.dcbrecfm;
+  void *PTR32 exlst = &ioc->exlst;
+  memcpy(&ioc->dcb.dcbexlst, &exlst, sizeof(ioc->dcb.dcbexlst));
+  ioc->dcb.dcbrecfm = recfm;
+}
+
 int read_input_jfcb(IO_CTRL *ioc)
 {
   int rc = 0;
-
-  // int zam24_len = ZAM24Q();
-  // zwto_debug("@TEST zam24_len: %d", zam24_len);
-  // ioc->zam24_len = zam24_len;
-  // ioc->zam24 = storage_obtain24(zam24_len);
-  // memcpy(ioc->zam24, (void *PTR32)ZAM24, zam24_len);
-
-  // ioc->exlst[0].exlentrb = (unsigned int)ioc->zam24; uncommend to enable DCBABEND
-  // ioc->exlst[0].exlcodes = exldcbab;
-  ioc->exlst[0].exlentrb = (unsigned int)&ioc->jfcb;
-  ioc->exlst[0].exlcodes = exllaste + exlrjfcb;
-  memcpy(&ioc->rdjfcb_pl, &rdfjfcb_model, sizeof(RDJFCB_PL));
-
-  unsigned char recfm = ioc->dcb.dcbrecfm; // save the recfm
-  void *PTR32 exlst = &ioc->exlst;
-  memcpy(&ioc->dcb.dcbexlst, &exlst, sizeof(ioc->dcb.dcbexlst));
-  ioc->dcb.dcbrecfm = recfm; // restore the recfm
-
+  setup_exit_list(ioc);
   RDJFCB(ioc->dcb, ioc->rdjfcb_pl, rc, INPUT);
   return rc;
 }
@@ -1173,24 +1268,7 @@ int read_input_jfcb(IO_CTRL *ioc)
 int read_output_jfcb(IO_CTRL *ioc)
 {
   int rc = 0;
-
-  // int zam24_len = ZAM24Q();
-  // zwto_debug("@TEST zam24_len: %d", zam24_len);
-  // ioc->zam24_len = zam24_len;
-  // ioc->zam24 = storage_obtain24(zam24_len);
-  // memcpy(ioc->zam24, (void *PTR32)ZAM24, zam24_len);
-
-  // ioc->exlst[0].exlentrb = (unsigned int)ioc->zam24; uncommend to enable DCBABEND
-  // ioc->exlst[0].exlcodes = exldcbab;
-  ioc->exlst[0].exlentrb = (unsigned int)&ioc->jfcb;
-  ioc->exlst[0].exlcodes = exllaste + exlrjfcb;
-  memcpy(&ioc->rdjfcb_pl, &rdfjfcb_model, sizeof(RDJFCB_PL));
-
-  unsigned char recfm = ioc->dcb.dcbrecfm; // save the recfm
-  void *PTR32 exlst = &ioc->exlst;
-  memcpy(&ioc->dcb.dcbexlst, &exlst, sizeof(ioc->dcb.dcbexlst));
-  ioc->dcb.dcbrecfm = recfm; // restore the recfm
-
+  setup_exit_list(ioc);
   RDJFCB(ioc->dcb, ioc->rdjfcb_pl, rc, OUTPUT);
   return rc;
 }
@@ -1364,9 +1442,21 @@ void eodad()
   fc->eod = 1;
 }
 
-#pragma prolog(ZAMDA31, " ZWEPROLG NEWDSA=(YES,8),SAVE=BAKR ") // TODO(Kelosky): BSM=NO?
-#pragma epilog(ZAMDA31, " ZWEEPILG ")
-int ZAMDA31()
-{
-  return 0;
-}
+// #pragma prolog(ZAMDA31, " ZWEPROLG NEWDSA=(YES,8),SAVE=BAKR ")
+// #pragma epilog(ZAMDA31, " ZWEEPILG ")
+// void ZAMDA31(DCB_ABEND_PL *PTR32 plist)
+// {
+//   IO_CTRL *PTR32 ioc = (IO_CTRL * PTR32) plist->dcb;
+//   ioc->dcb_abend = 1;
+//   ioc->abend_completion_code = plist->system_completion_code;
+//   ioc->abend_return_code = plist->return_code;
+
+//   if (plist->option_mask & DCB_ABEND_OPT_OK_TO_IGNORE)
+//   {
+//     plist->option_mask = DCB_ABEND_RC_IGNORE_QUIETLY;
+//   }
+//   else if (plist->option_mask & DCB_ABEND_OPT_OK_TO_DELAY)
+//   {
+//     plist->option_mask = DCB_ABEND_RC_DELAY;
+//   }
+// }
