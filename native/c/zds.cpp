@@ -320,6 +320,13 @@ int zds_copy_dsn(ZDS *zds, const std::string &dsn1, const std::string &dsn2, ZDS
     return RTNCD_FAILURE;
   }
 
+  // RECFM=U data sets are not supported for copy operations
+  if (info1.entry.recfm == "U")
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Copying RECFM=U data sets is not supported");
+    return RTNCD_FAILURE;
+  }
+
   // PDS -> Member is not allowed (can't copy entire PDS into a single member)
   if (info1.type == ZDS_TYPE_PDS && !info2.member_name.empty())
   {
