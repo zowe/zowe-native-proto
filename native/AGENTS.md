@@ -56,6 +56,24 @@ git diff --name-only main..HEAD
 
 A warning is **pre-existing** if its source file does not appear in that list. A warning is **new** (must be fixed) if its source file was added or modified by the PR.
 
+## Logging
+
+Use `ZLogger` macros (`ZLOG_DEBUG`, `ZLOG_INFO`, `ZLOG_WARN`, `ZLOG_ERROR`) for all diagnostic output in native C++ source and test files. Never use `std::fprintf(stderr, ...)` or `std::fflush(stderr)` for logging.
+
+- Include `"zlogger.hpp"` (or `"../zlogger.hpp"` from the `test/` subdirectory) where needed.
+- Choose the level by severity: `ZLOG_DEBUG` for trace/progress messages, `ZLOG_WARN` for unexpected-but-recoverable conditions, `ZLOG_ERROR` for failures.
+- Macros are no-ops when `ZLOG_ENABLE` is not defined, and are gated by `ZOWEX_LOG_LEVEL` at runtime (default: INFO, so DEBUG messages are silent unless the env var is set).
+
+### Checking for forgotten fprintf debug statements
+
+Before finalizing a PR, verify no raw `fprintf(stderr` calls were introduced in any changed native file:
+
+```sh
+git diff main..HEAD -- 'native/c/**/*.cpp' 'native/c/**/*.hpp' | grep '^+.*fprintf'
+```
+
+Any hit that is not a removal (i.e. lines starting with `+` rather than `-`) must be converted to the appropriate `ZLOG_*` macro.
+
 ## Test Framework
 
 - CLI tests: `c/test/zowex.<domain>.test.cpp` — use `execute_command_with_output()`

@@ -25,6 +25,7 @@
 #include <algorithm>
 #include <unistd.h>
 #include "zut.hpp"
+#include "zlogger.hpp"
 #include "zutm.h"
 #include <ios>
 #include "zuttype.h"
@@ -579,11 +580,9 @@ int zut_list_parmlib(ZDIAG &diag, std::vector<std::string> &parmlibs)
   PARMLIB_DSNS dsns = {0};
   int num_dsns = 0;
 
-  std::fprintf(stderr, "zut_list_parmlib: calling ZUTMLPLB\n");
-  std::fflush(stderr);
+  ZLOG_DEBUG("zut_list_parmlib: calling ZUTMLPLB");
   rc = ZUTMLPLB(&diag, &num_dsns, &dsns);
-  std::fprintf(stderr, "zut_list_parmlib: ZUTMLPLB returned rc=%d num_dsns=%d (positive=%d)\n", rc, num_dsns, num_dsns > 0 ? 1 : 0);
-  std::fflush(stderr);
+  ZLOG_DEBUG("zut_list_parmlib: ZUTMLPLB returned rc=%d num_dsns=%d (positive=%d)", rc, num_dsns, num_dsns > 0 ? 1 : 0);
   if (0 != rc)
   {
     return rc;
@@ -591,8 +590,7 @@ int zut_list_parmlib(ZDIAG &diag, std::vector<std::string> &parmlibs)
 
   if (num_dsns < 0 || num_dsns > MAX_PARMLIB_DSNS)
   {
-    std::fprintf(stderr, "zut_list_parmlib: clamping num_dsns from %d to [0,%d]\n", num_dsns, MAX_PARMLIB_DSNS);
-    std::fflush(stderr);
+    ZLOG_WARN("zut_list_parmlib: clamping num_dsns from %d to [0,%d]", num_dsns, MAX_PARMLIB_DSNS);
     num_dsns = num_dsns < 0 ? 0 : MAX_PARMLIB_DSNS;
   }
 
