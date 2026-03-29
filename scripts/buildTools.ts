@@ -78,12 +78,14 @@ const asciiToEbcdicMap =
     /* F */ 0x8c, 0x49, 0xcd, 0xce, 0xcb, 0xcf, 0xcc, 0xe1, 0x70, 0xdd, 0xde, 0xdb, 0xdc, 0x8d, 0x8e, 0xdf,
     ];
 
-class AsciiToEbcdicTransform extends Transform {
+export class AsciiToEbcdicTransform extends Transform {
     _transform(chunk: Buffer, _encoding: BufferEncoding, callback: TransformCallback) {
-        const latin1 = Buffer.from(chunk.toString("utf8"), "latin1");
-        const output = Buffer.allocUnsafe(latin1.length);
-        for (let i = 0; i < latin1.length; i++) {
-            output[i] = asciiToEbcdicMap[latin1[i]];
+        const output = Buffer.allocUnsafe(chunk.length);
+        for (let i = 0; i < chunk.length; i++) {
+            const b = chunk[i];
+            // Only convert 7-bit ASCII bytes. Bytes >= 0x80 are likely part of multi-byte UTF-8
+            // sequences and are left unchanged to avoid corrupting the data or introducing NULs.
+            output[i] = b < 0x80 ? asciiToEbcdicMap[b] : b;
         }
         callback(null, output);
     }
@@ -117,6 +119,7 @@ class EbcdicToAsciiTransform extends Transform {
         for (let i = 0; i < chunk.length; i++) {
             output[i] = ebcdicToAsciiMap[chunk[i]];
         }
+        // Re-encode the entire buffer from latin1 to UTF-8 so non-ASCII characters are valid in the XML test results.
         callback(null, Buffer.from(output.toString("latin1"), "utf8"));
     }
 }
@@ -1583,11 +1586,12 @@ async function main() {
     }
 }
 
-main().catch((err) => {
-    // Print error message without the Error object wrapper
-    const errorMessage = err instanceof Error ? err.message : String(err);
-    if (errorMessage) {
-        console.error(`\n${errorMessage}`);
-    }
-    process.exit(process.exitCode ?? 1);
-});
+if (path.resolve(process.argv[1]) === path.resolve(__filename)) {
+    main().catch((err) => {
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        if (errorMessage) {
+            console.error(`\n${errorMessage}`);
+        }
+        process.exit(process.exitCode ?? 1);
+    });
+}
