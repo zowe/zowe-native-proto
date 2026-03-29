@@ -17,7 +17,7 @@ import { type ISshSession, SshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import { isEqual } from "es-toolkit";
 import { NodeSSH, type Config as NodeSSHConfig } from "node-ssh";
 import type { ConnectConfig, SFTPWrapper } from "ssh2";
-import { PrivateKeyFailurePatterns } from "./SshErrors";
+import { PrivateKeyFailurePatterns, SshErrors } from "./SshErrors";
 
 export interface ISshCallbacks {
     onProgress?: (increment: number) => void; // Callback to report incremental progress
@@ -32,18 +32,29 @@ export class ZSshUtils {
     private static readonly EXPIRED_PASSWORD_CODES = ["FOTS1668", "FOTS1669"];
 
     /**
-     * Throws an `ImperativeError` if the given text contains z/OS expired-password
-     * indicators (FOTS1668/FOTS1669). Call this after any `execCommand` to surface
-     * the real problem instead of returning a generic failure.
+     * Routes an expired-password error through `onError` when a callback is registered,
+     * or throws an `ImperativeError` directly as a fallback (preserving CLI behavior).
+     * Returns `true` if the text contained an expired-password indicator (i.e. the caller
+     * should abort the current operation), `false` otherwise.
      */
-    private static throwIfExpiredPassword(text: string): void {
-        if (ZSshUtils.EXPIRED_PASSWORD_CODES.some((code) => text.includes(code))) {
-            throw new ImperativeError({
-                msg: "Password expired on the remote z/OS system. Change your password and retry.",
-                errorCode: "EPASSWD_EXPIRED",
-                additionalDetails: text,
-            });
+    private static async routeExpiredPasswordError(
+        text: string,
+        context: string,
+        options?: Pick<ISshCallbacks, "onError">,
+    ): Promise<boolean> {
+        if (!ZSshUtils.EXPIRED_PASSWORD_CODES.some((code) => text.includes(code))) {
+            return false;
         }
+        const err = new ImperativeError({
+            msg: SshErrors.FOTS1668.summary,
+            errorCode: "EPASSWD_EXPIRED",
+            additionalDetails: text,
+        });
+        if (options?.onError) {
+            await options.onError(err, context);
+            return true;
+        }
+        throw err;
     }
 
     /**
@@ -105,12 +116,17 @@ export class ZSshUtils {
         return ZSshUtils.sftp(session, async (sftp, ssh) => {
             Logger.getAppLogger().info(`[ZSshUtils] Step 1/4: Creating remote directory ${remoteDir}`);
             const execReturn = await ssh.execCommand(`mkdir -p ${remoteDir}`);
-            ZSshUtils.throwIfExpiredPassword(execReturn.stderr ?? "");
+            if (await ZSshUtils.routeExpiredPasswordError(execReturn.stderr ?? "", "deploy", options)) return false;
             if (execReturn.code !== 0) {
-                const errMsg = `[ZSshUtils] Step 1 FAILED: mkdir -p ${remoteDir} RC=${execReturn.code}: ${execReturn.stderr}`;
-                Logger.getAppLogger().error(errMsg);
+                const technical = `mkdir -p ${remoteDir} RC=${execReturn.code}: ${execReturn.stderr}`;
+                Logger.getAppLogger().error(`[ZSshUtils] Step 1 FAILED: ${technical}`);
+                const err = new ImperativeError({
+                    msg: "Failed to create the server directory on the remote system.",
+                    errorCode: "EDEPLOYFAIL",
+                    additionalDetails: technical,
+                });
                 if (options?.onError) {
-                    const shouldRetry = await options.onError(new Error(errMsg), "deploy");
+                    const shouldRetry = await options.onError(err, "deploy");
                     if (!shouldRetry) {
                         return false;
                     }
@@ -140,13 +156,17 @@ export class ZSshUtils {
             try {
                 await promisify(sftp.fastPut.bind(sftp))(localPaxPath, remotePaxPath, { step: progressCallback });
             } catch (err) {
-                ZSshUtils.throwIfExpiredPassword(String(err));
+                if (await ZSshUtils.routeExpiredPasswordError(String(err), "upload", options)) return false;
                 const codePart = (err as SftpError).code == null ? "" : ` RC=${(err as SftpError).code}`;
-                const errMsg = `[ZSshUtils] Step 2 FAILED: Upload ${ZSshUtils.SERVER_PAX_FILE}${codePart}: ${err}`;
-                Logger.getAppLogger().error(errMsg);
-
+                const technical = `Upload ${ZSshUtils.SERVER_PAX_FILE}${codePart}: ${err}`;
+                Logger.getAppLogger().error(`[ZSshUtils] Step 2 FAILED: ${technical}`);
+                const uploadErr = new ImperativeError({
+                    msg: "Failed to upload the server binary to the remote system.",
+                    errorCode: "EDEPLOYFAIL",
+                    additionalDetails: technical,
+                });
                 if (options?.onError) {
-                    const shouldRetry = await options.onError(new Error(errMsg), "upload");
+                    const shouldRetry = await options.onError(uploadErr, "upload");
                     if (!shouldRetry) {
                         return false;
                     }
@@ -157,15 +177,19 @@ export class ZSshUtils {
 
             Logger.getAppLogger().info(`[ZSshUtils] Step 3/4: Extracting PAX archive in ${remoteDir}`);
             const result = await ssh.execCommand(`pax -rzf ${ZSshUtils.SERVER_PAX_FILE}`, { cwd: remoteDir });
-            ZSshUtils.throwIfExpiredPassword(result.stderr ?? "");
+            if (await ZSshUtils.routeExpiredPasswordError(result.stderr ?? "", "extract", options)) return false;
             if (result.code === 0) {
                 Logger.getAppLogger().info(`[ZSshUtils] Step 3 OK: Extracted server binaries`);
             } else {
-                const errMsg = `[ZSshUtils] Step 3 FAILED: pax -rzf RC=${result.code}: ${result.stderr}`;
-                Logger.getAppLogger().error(errMsg);
-
+                const technical = `pax -rzf RC=${result.code}: ${result.stderr}`;
+                Logger.getAppLogger().error(`[ZSshUtils] Step 3 FAILED: ${technical}`);
+                const paxErr = new ImperativeError({
+                    msg: "Failed to extract the server archive on the remote system.",
+                    errorCode: "EDEPLOYFAIL",
+                    additionalDetails: technical,
+                });
                 if (options?.onError) {
-                    const shouldContinue = await options.onError(new Error(errMsg), "extract");
+                    const shouldContinue = await options.onError(paxErr, "extract");
                     if (!shouldContinue) {
                         return false;
                     }
@@ -178,11 +202,15 @@ export class ZSshUtils {
             try {
                 await promisify(sftp.unlink.bind(sftp))(remotePaxPath);
             } catch (err) {
-                const errMsg = `[ZSshUtils] Step 4 WARNING: cleanup failed: ${err}`;
-                Logger.getAppLogger().warn(errMsg);
-
+                const technical = `${err}`;
+                Logger.getAppLogger().warn(`[ZSshUtils] Step 4 WARNING: cleanup failed: ${technical}`);
+                const cleanupErr = new ImperativeError({
+                    msg: "Failed to clean up the upload archive on the remote system.",
+                    errorCode: "ECLEANUPFAIL",
+                    additionalDetails: technical,
+                });
                 if (options?.onError) {
-                    await options.onError(new Error(errMsg), "cleanup");
+                    await options.onError(cleanupErr, "cleanup");
                 } else {
                     Logger.getAppLogger().debug("Cleanup error is non-fatal, continuing...");
                 }
@@ -200,20 +228,25 @@ export class ZSshUtils {
         Logger.getAppLogger().debug(`Uninstalling server from ${session.ISshSession.hostname} at path: ${serverPath}`);
         return ZSshUtils.sftp(session, async (_sftp, ssh) => {
             const result = await ssh.execCommand(`rm -rf ${serverPath}`);
-            ZSshUtils.throwIfExpiredPassword(result.stderr ?? "");
+            if (await ZSshUtils.routeExpiredPasswordError(result.stderr ?? "", "unlink", options)) return;
             if (result.code === 0) {
                 Logger.getAppLogger().debug(`Deleted directory ${serverPath} with response: ${result.stdout}`);
             } else {
-                const errMsg = `Failed to delete directory ${serverPath} with RC ${result.code}: ${result.stderr}`;
-                Logger.getAppLogger().error(errMsg);
+                const technical = `rm -rf ${serverPath} RC=${result.code}: ${result.stderr}`;
+                Logger.getAppLogger().error(`[ZSshUtils] Uninstall FAILED: ${technical}`);
+                const rmErr = new ImperativeError({
+                    msg: "Failed to uninstall the server from the remote system.",
+                    errorCode: "EUNINSTALLFAIL",
+                    additionalDetails: technical,
+                });
                 if (options?.onError) {
-                    const shouldContinue = await options.onError(new Error(errMsg), "unlink");
+                    const shouldContinue = await options.onError(rmErr, "unlink");
                     if (!shouldContinue) {
-                        throw new Error(errMsg);
+                        throw rmErr;
                     }
                     return ZSshUtils.uninstallServer(session, serverPath, options);
                 }
-                throw new Error(errMsg);
+                throw rmErr;
             }
         });
     }

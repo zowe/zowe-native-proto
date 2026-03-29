@@ -12,6 +12,7 @@
 import * as fs from "node:fs";
 import { Logger } from "@zowe/imperative";
 import { type ISshSession, SshSession } from "@zowe/zos-uss-for-zowe-sdk";
+import { SshErrors } from "../src/SshErrors";
 import { ZSshUtils } from "../src/ZSshUtils";
 
 vi.mock("node:fs", { spy: true });
@@ -136,6 +137,23 @@ describe("ZSshUtils", () => {
             expect(result).toBe(false);
         });
 
+        it("should pass a user-friendly message to onError when a step fails", async () => {
+            const fastPutMock = vi.fn((_local: string, _remote: string, _opts: any, cb: (err?: Error) => void) =>
+                cb(new Error("disk full")),
+            );
+            const sftpMock = { fastPut: fastPutMock };
+            const sshMock = { execCommand: vi.fn().mockResolvedValue({ code: 0, stdout: "", stderr: "" }) };
+            setupSftpMocks(sftpMock, sshMock);
+
+            const onError = vi.fn().mockResolvedValue(false);
+            const result = await ZSshUtils.installServer(new SshSession(fakeSession), "~/.zowe-server", { onError });
+            expect(result).toBe(false);
+            expect(onError).toHaveBeenCalledOnce();
+            const [err] = onError.mock.calls[0] as [{ message: string; details: { additionalDetails: string } }];
+            expect(err.message).toBe("Failed to upload the server binary to the remote system.");
+            expect(err.details.additionalDetails).toContain("disk full");
+        });
+
         it("should throw ImperativeError when password is expired (FOTS1668)", async () => {
             const expiredStderr =
                 "FOTS1668 WARNING: Your password has expired.\nFOTS1669 Password change required but no TTY available.";
@@ -144,9 +162,26 @@ describe("ZSshUtils", () => {
             setupSftpMocks(sftpMock, sshMock);
 
             await expect(ZSshUtils.installServer(new SshSession(fakeSession), "~/.zowe-server")).rejects.toMatchObject({
-                message: expect.stringContaining("Password expired"),
+                message: SshErrors.FOTS1668.summary,
                 errorCode: "EPASSWD_EXPIRED",
             });
+        });
+
+        it("should call onError with FOTS1668 summary when password is expired and onError is provided", async () => {
+            const expiredStderr =
+                "FOTS1668 WARNING: Your password has expired.\nFOTS1669 Password change required but no TTY available.";
+            const sftpMock = { fastPut: vi.fn() };
+            const sshMock = { execCommand: vi.fn().mockResolvedValue({ code: 1, stderr: expiredStderr, stdout: "" }) };
+            setupSftpMocks(sftpMock, sshMock);
+
+            const onError = vi.fn().mockResolvedValue(false);
+            const result = await ZSshUtils.installServer(new SshSession(fakeSession), "~/.zowe-server", { onError });
+            expect(result).toBe(false);
+            expect(onError).toHaveBeenCalledOnce();
+            const [err, context] = onError.mock.calls[0] as [{ message: string; errorCode: string }, string];
+            expect(err.message).toBe(SshErrors.FOTS1668.summary);
+            expect(err.errorCode).toBe("EPASSWD_EXPIRED");
+            expect(context).toBe("deploy");
         });
 
         it("should throw ImperativeError on uninstall when password is expired", async () => {
@@ -159,7 +194,7 @@ describe("ZSshUtils", () => {
             await expect(
                 ZSshUtils.uninstallServer(new SshSession(fakeSession), "~/.zowe-server"),
             ).rejects.toMatchObject({
-                message: expect.stringContaining("Password expired"),
+                message: SshErrors.FOTS1668.summary,
                 errorCode: "EPASSWD_EXPIRED",
             });
         });

@@ -198,7 +198,44 @@ There is no single documented Open XL option (e.g. “target z/OS 2.5”) that f
 
 ### Expired password detection
 
-When an SSH session connects with an expired password, z/OS emits `FOTS1668`/`FOTS1669` on stderr. This can masquerade as SFTP failures or generic command errors. `ZSshUtils` checks for these codes after every `execCommand` call and throws an `ImperativeError` with `errorCode: "EPASSWD_EXPIRED"` so the client gets a clear, actionable message instead of a cryptic failure.
+When an SSH session connects with an expired password, z/OS emits `FOTS1668`/`FOTS1669` on stderr. This can masquerade as SFTP failures or generic command errors. `ZSshUtils.routeExpiredPasswordError()` checks for these codes after every `execCommand` call: if an `onError` callback is registered it is called with an `ImperativeError` using `SshErrors.FOTS1668.summary` as the message (so the VSCE notification bubble shows a readable string); otherwise the error is thrown directly (preserving CLI behavior). The `errorCode` is always `"EPASSWD_EXPIRED"`.
+
+## SDK Error Handling (TypeScript)
+
+Errors raised by SDK operations that may surface in a client UI (CLI output or VSCE notification bubble) must be constructed with two layers of information:
+
+- **`msg`** — a short, jargon-free sentence that a user can act on (e.g. `"Failed to upload the server binary to the remote system."`). This is what `SshErrorHandler` shows directly in a VSCode notification bubble.
+- **`additionalDetails`** — the raw technical context (command, return code, stderr text) for log files and "Show Details" panels.
+
+Always use `ImperativeError`, never a plain `Error`, so the `errorCode` and `additionalDetails` fields are available downstream:
+
+```typescript
+const technical = `mkdir -p ${remoteDir} RC=${execReturn.code}: ${execReturn.stderr}`;
+Logger.getAppLogger().error(`[ZSshUtils] Step 1 FAILED: ${technical}`);
+const err = new ImperativeError({
+    msg: "Failed to create the server directory on the remote system.",
+    errorCode: "EDEPLOYFAIL",
+    additionalDetails: technical,
+});
+if (options?.onError) {
+    await options.onError(err, "deploy");
+} else {
+    throw err;
+}
+```
+
+### Routing errors through `onError`
+
+SDK utility functions that accept an `ISshCallbacks` options object should route errors through `options.onError` when it is registered, and fall back to throwing only when there is no callback. This keeps VSCE and CLI error surfaces consistent and gives callers control over retry logic.
+
+For well-known z/OS error codes (FOTS*, FSUM*, etc.) already catalogued in `packages/sdk/src/SshErrors.ts`, use the existing `SshErrors.<KEY>.summary` string as the `msg` so the user sees the same wording everywhere.
+
+### `SshErrors` catalogue
+
+`packages/sdk/src/SshErrors.ts` maps known z/OS OpenSSH error codes to `{ summary, tips[], resources[] }`. When adding handling for a new z/OS error:
+
+1. Add an entry to `SshErrors` with a user-friendly `summary` and actionable `tips`.
+2. Reference `SshErrors.<KEY>.summary` as the `msg` of any `ImperativeError` raised for that condition — never hard-code a duplicate message string.
 
 ## DSLEVEL Pattern (List Data Sets)
 
