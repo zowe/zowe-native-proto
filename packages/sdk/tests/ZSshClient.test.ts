@@ -636,8 +636,7 @@ describe("ZSshClient", () => {
             expect(resolveMock).not.toHaveBeenCalled();
             expect(rejectMock).not.toHaveBeenCalled();
 
-            // request sticks around for collection
-            expect((client as any).mRequestMap.has(99)).toBe(true);
+            expect((client as any).mRequestMap.has(99)).toBe(false);
         });
     });
 

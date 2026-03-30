@@ -318,6 +318,7 @@ export class ZSshClient extends RpcClientApi implements Disposable {
         const request = this.mRequestMap.get(response.id);
 
         if (request.silenced) {
+            this.mRequestMap.delete(response.id);
             return;
         }
 
