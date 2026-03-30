@@ -229,9 +229,8 @@ export class SshClientCache extends vscode.Disposable {
         const isUnsupported = SshClientCache.ERROR_SNIPPETS.UNSUPPORTED.some((item) => errorMsg.includes(item));
 
         if (isFatal) {
-            if (clientSession) {
-                clientSession.status = ServerStatus.DOWN;
-            }
+            clientSession.status = ServerStatus.DOWN;
+
             /** FYI: with the below `delete` ZRS silently restarts on error (good when navigating file trees and recovering from an error),
             /*   but makes managing sessions and replay requests more complex (repeated errors and restarts / merging long, multi-session replay queues)
             /*   and de-syncs notification pop-ups from ZRS state, creating unintuitive ux in some scenarios
