@@ -1210,17 +1210,18 @@ int note(IO_CTRL *ioc, NOTE_RESPONSE *PTR32 note_response, int *rsn)
 
 #pragma prolog(ZAMDEXIT, " ZWEPROLG NEWDSA=(YES,24),SAVE=BAKR ")
 #pragma epilog(ZAMDEXIT, " ZWEEPILG ")
-int ZAMDEXIT(unsigned int r1)
+int ZAMDEXIT(DCB_ABEND_PL *PTR32 r1)
 {
+  zwto_debug("[> ZAMDEXIT]");
   zut_dump_storage("ZAMDEXIT", &r1, 4);
   // IBM doc: low 3 bytes of R1 hold the parameter list address
-  DCB_ABEND_PL *PTR32 plist = (DCB_ABEND_PL * PTR32)(r1 & 0x00FFFFFF);
-  zwto_debug("ZAMDEXIT called");
-  zut_dump_storage("ZAMDEXIT", plist, 3);
-  IO_CTRL *PTR32 ioc = (IO_CTRL * PTR32) plist->dcb;
-  ioc->dcb_abend = 1;
-  ioc->abend_completion_code = plist->system_completion_code;
-  ioc->abend_return_code = plist->return_code;
+  zwto_debug("plist: %p", r1);
+  DCB_ABEND_PL *plist = (DCB_ABEND_PL * PTR32)(((uint32_t)r1 & 0x00FFFFFF));
+  zwto_debug("plist w/ first byte stripped: %p", plist);
+  zut_dump_storage("plist", plist, 3);
+  // ioc->dcb_abend = 1;
+  // ioc->abend_completion_code = r1->system_completion_code;
+  // ioc->abend_return_code = r1->return_code;
 
   if (plist->option_mask & DCB_ABEND_OPT_OK_TO_IGNORE)
   {
@@ -1230,6 +1231,7 @@ int ZAMDEXIT(unsigned int r1)
   {
     plist->option_mask = DCB_ABEND_RC_DELAY;
   }
+  zwto_debug("[< ZAMDEXIT]");
   return 0;
 }
 
