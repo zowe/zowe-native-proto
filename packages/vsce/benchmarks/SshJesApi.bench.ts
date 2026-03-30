@@ -10,54 +10,56 @@
  */
 
 import "./setup"; // installs vscode mock before any other imports
-import { bench, describe, beforeAll, afterAll } from "vitest";
-import { targets, DUMMY_JCL, setupTargets } from "./setup";
+import { beforeAll, bench, describe } from "vitest";
+import { DUMMY_JCL, setupTargets, targets } from "./setup";
 
 beforeAll(() => setupTargets(), 60000);
 
-describe("Jobs (JES)", () => {
-    beforeAll(async () => {
+describe("Jobs", () => {
+    describe("List jobs", () => {
         for (const target of targets) {
-            try {
-                target.job = await target.jes.submitJcl(DUMMY_JCL);
-            } catch (e: any) {
-                console.error(`[${target.name}] Submit job failed:`, e?.mDetails?.msg ?? e?.message);
-            }
-        }
-    }, 60000);
-
-    afterAll(async () => {
-        for (const target of targets) {
-            try {
-                if (target.job) await target.jes?.deleteJob(target.job.jobname, target.job.jobid);
-            } catch {}
+            bench(
+                target.name,
+                async () => {
+                    await target.jes.getJobsByParameters({});
+                },
+                { iterations: 1, throws: true },
+            );
         }
     });
 
-    describe("Get job status", () => {
+    describe("Submit + get job status", () => {
         for (const target of targets) {
-            bench(target.name, async () => {
-                if (!target.job) throw new Error(`[${target.name}] No job available`);
-                await target.jes.getJob(target.job.jobid);
-            }, { throws: true });
+            bench(
+                target.name,
+                async () => {
+                    const job = await target.jes.submitJcl(DUMMY_JCL);
+                    try {
+                        await target.jes.getJob(job.jobid);
+                    } finally {
+                        await target.jes.deleteJob(job.jobname, job.jobid);
+                    }
+                },
+                { iterations: 1, throws: true },
+            );
         }
     });
 
-    describe("List spool files", () => {
+    describe("Submit + list spool + read first spool", () => {
         for (const target of targets) {
-            bench(target.name, async () => {
-                if (!target.job) throw new Error(`[${target.name}] No job available`);
-                await target.jes.getSpoolFiles(target.job.jobname, target.job.jobid);
-            }, { throws: true });
-        }
-    });
-
-    describe("Get job JCL", () => {
-        for (const target of targets) {
-            bench(target.name, async () => {
-                if (!target.job) throw new Error(`[${target.name}] No job available`);
-                await target.jes.getJclForJob({ jobid: target.job.jobid, jobname: target.job.jobname });
-            }, { throws: true });
+            bench(
+                target.name,
+                async () => {
+                    const job = await target.jes.submitJcl(DUMMY_JCL);
+                    try {
+                        const spoolFiles = await target.jes.getSpoolFiles(job.jobname, job.jobid);
+                        await target.jes.getSpoolContentById(job.jobname, job.jobid, spoolFiles[0].id);
+                    } finally {
+                        await target.jes.deleteJob(job.jobname, job.jobid);
+                    }
+                },
+                { iterations: 1, throws: true },
+            );
         }
     });
 });

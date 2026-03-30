@@ -10,8 +10,8 @@
  */
 
 import Module from "node:module";
-import { vi } from "vitest";
 import { createVSCodeMock } from "jest-mock-vscode";
+import { vi } from "vitest";
 
 // Intercept vscode require for CommonJS modules in node_modules that call require("vscode") directly.
 // This module must be imported before any module that transitively requires vscode.
@@ -37,13 +37,12 @@ export interface BenchmarkTarget {
 export const RANDOM_STR = Math.random().toString(36).substring(2, 8).toUpperCase();
 export const USS_DIR = `/tmp`;
 export const DUMMY_JCL = `//BENCHJOB JOB (ACCT),'BENCHMARK',CLASS=A,MSGCLASS=X,MSGLEVEL=(1,1)\n//STEP1    EXEC PGM=IEFBR14\n`;
-export const DS_OPTS = { alcunit: "TRK", primary: 10, secondary: 5 };
 
 export let PREFIX = process.env.ZOWE_PREFIX || "";
 
 export const targets: BenchmarkTarget[] = [
     { name: "z/OSMF", mvs: null, uss: null, jes: null, dsName: "", ussFile: "" },
-    { name: "SSH",    mvs: null, uss: null, jes: null, dsName: "", ussFile: "" },
+    { name: "SSH", mvs: null, uss: null, jes: null, dsName: "", ussFile: "" },
 ];
 
 export async function setupTargets(): Promise<void> {
@@ -66,17 +65,17 @@ export async function setupTargets(): Promise<void> {
         Object.fromEntries(merged.knownArgs.map((arg: any) => [arg.argName, arg.argValue]));
 
     const zosmfProfile = toProfile(profileInfo.mergeArgsForProfile(zosmfAttrs, { getSecureVals: true }));
-    const sshProfile   = toProfile(profileInfo.mergeArgsForProfile(sshAttrs,   { getSecureVals: true }));
+    const sshProfile = toProfile(profileInfo.mergeArgsForProfile(sshAttrs, { getSecureVals: true }));
 
     if (!PREFIX) PREFIX = ((zosmfProfile.user as string) ?? "USER").toUpperCase();
 
-    targets[0].dsName  = `${PREFIX}.BZ${RANDOM_STR}`;
+    targets[0].dsName = `${PREFIX}.BZ${RANDOM_STR}`;
     targets[0].ussFile = `${USS_DIR}/bench-zosmf-${RANDOM_STR}.txt`;
-    targets[1].dsName  = `${PREFIX}.BS${RANDOM_STR}`;
+    targets[1].dsName = `${PREFIX}.BS${RANDOM_STR}`;
     targets[1].ussFile = `${USS_DIR}/bench-ssh-${RANDOM_STR}.txt`;
 
     const zosmfLoaded = { name: zosmfAttrs.name, type: zosmfAttrs.type, profile: zosmfProfile, failNotFound: false };
-    const sshLoaded   = { name: sshAttrs.name,   type: sshAttrs.type,   profile: sshProfile,   failNotFound: false };
+    const sshLoaded = { name: sshAttrs.name, type: sshAttrs.type, profile: sshProfile, failNotFound: false };
 
     targets[0].mvs = new ZoweExplorerZosmf.MvsApi(zosmfLoaded);
     targets[0].uss = new ZoweExplorerZosmf.UssApi(zosmfLoaded);

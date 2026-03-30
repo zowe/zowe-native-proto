@@ -10,27 +10,13 @@
  */
 
 import "./setup"; // installs vscode mock before any other imports
-import { bench, describe, beforeAll, afterAll } from "vitest";
 import { PassThrough } from "node:stream";
-import { targets, USS_DIR, setupTargets } from "./setup";
+import { beforeAll, bench, describe } from "vitest";
+import { RANDOM_STR, setupTargets, targets, USS_DIR } from "./setup";
 
 beforeAll(() => setupTargets(), 60000);
 
-describe("USS Files", () => {
-    beforeAll(async () => {
-        for (const target of targets) {
-            await target.uss.create(target.ussFile, "file");
-        }
-    }, 60000);
-
-    afterAll(async () => {
-        for (const target of targets) {
-            try {
-                await target.uss?.delete(target.ussFile);
-            } catch {}
-        }
-    });
-
+describe("USS", () => {
     describe("List directory", () => {
         for (const target of targets) {
             bench(
@@ -38,31 +24,26 @@ describe("USS Files", () => {
                 async () => {
                     await target.uss.fileList(USS_DIR);
                 },
-                { throws: true },
+                { iterations: 1, throws: true },
             );
         }
     });
 
-    describe("Write file", () => {
+    describe("Read/write file", () => {
         for (const target of targets) {
             bench(
                 target.name,
                 async () => {
-                    await target.uss.uploadFromBuffer(Buffer.from("HELLO BENCH"), target.ussFile);
+                    const ussFile = `${USS_DIR}/bench-${RANDOM_STR}.txt`;
+                    await target.uss.create(ussFile, "file");
+                    try {
+                        await target.uss.uploadFromBuffer(Buffer.from("HELLO BENCH"), ussFile);
+                        await target.uss.getContents(ussFile, { stream: new PassThrough() });
+                    } finally {
+                        await target.uss.delete(ussFile);
+                    }
                 },
-                { throws: true },
-            );
-        }
-    });
-
-    describe("Read file", () => {
-        for (const target of targets) {
-            bench(
-                target.name,
-                async () => {
-                    await target.uss.getContents(target.ussFile, { stream: new PassThrough() });
-                },
-                { throws: true },
+                { iterations: 1, throws: true },
             );
         }
     });

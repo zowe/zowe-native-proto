@@ -10,59 +10,81 @@
  */
 
 import "./setup"; // installs vscode mock before any other imports
-import { bench, describe, beforeAll, afterAll } from "vitest";
 import { PassThrough } from "node:stream";
-import { targets, PREFIX, DS_OPTS, setupTargets } from "./setup";
+import { beforeAll, bench, describe } from "vitest";
+import { PREFIX, RANDOM_STR, setupTargets, targets } from "./setup";
+import { CreateDataSetTypeEnum, CreateDefaults } from "@zowe/zos-files-for-zowe-sdk";
 
 beforeAll(() => setupTargets(), 60000);
 
-describe("Data Sets (MVS)", () => {
-    beforeAll(async () => {
-        for (const target of targets) {
-            try {
-                await target.mvs.createDataSet(3 as any, target.dsName, DS_OPTS);
-                await target.mvs.uploadFromBuffer(Buffer.from("HELLO BENCH"), `${target.dsName}(MEMBER1)`);
-            } catch (e: any) {
-                console.error(`[${target.name}] MVS setup failed:`, e?.mDetails?.msg ?? e?.message);
-            }
-        }
-    }, 60000);
-
-    afterAll(async () => {
-        for (const target of targets) {
-            try { await target.mvs?.deleteDataSet(target.dsName); } catch {}
-        }
-    });
-
+describe("Data Sets", () => {
     describe("List data sets", () => {
         for (const target of targets) {
-            bench(target.name, async () => {
-                await target.mvs.dataSet(`${PREFIX}.B*`);
-            }, { throws: true });
+            bench(
+                target.name,
+                async () => {
+                    await target.mvs.dataSet("SYS1.*");
+                },
+                { iterations: 1, throws: true },
+            );
         }
     });
 
     describe("List PDS members", () => {
         for (const target of targets) {
-            bench(target.name, async () => {
-                await target.mvs.allMembers(target.dsName);
-            }, { throws: true });
+            bench(
+                target.name,
+                async () => {
+                    await target.mvs.allMembers("SYS1.MACLIB");
+                },
+                { iterations: 1, throws: true },
+            );
         }
     });
 
-    describe("Write member", () => {
+    describe("Read/write PDS member", () => {
         for (const target of targets) {
-            bench(target.name, async () => {
-                await target.mvs.uploadFromBuffer(Buffer.from("HELLO BENCH"), `${target.dsName}(MEMBER1)`);
-            }, { throws: true });
+            bench(
+                target.name,
+                async () => {
+                    const dsName = `${PREFIX}.BP${RANDOM_STR}`;
+                    await target.mvs.createDataSet(
+                        CreateDataSetTypeEnum.DATA_SET_PARTITIONED,
+                        dsName,
+                        CreateDefaults.DATA_SET.PARTITIONED,
+                    );
+                    try {
+                        await target.mvs.uploadFromBuffer(Buffer.from("HELLO BENCH"), `${dsName}(MEMBER1)`);
+                        await target.mvs.getContents(`${dsName}(MEMBER1)`, { stream: new PassThrough() });
+                    } finally {
+                        await target.mvs.deleteDataSet(dsName);
+                    }
+                },
+                { iterations: 1, throws: true },
+            );
         }
     });
 
-    describe("Read member", () => {
+    describe("Read/write sequential data set", () => {
         for (const target of targets) {
-            bench(target.name, async () => {
-                await target.mvs.getContents(`${target.dsName}(MEMBER1)`, { binary: false, stream: new PassThrough() });
-            }, { throws: true });
+            bench(
+                target.name,
+                async () => {
+                    const dsName = `${PREFIX}.BS${RANDOM_STR}`;
+                    await target.mvs.createDataSet(
+                        CreateDataSetTypeEnum.DATA_SET_SEQUENTIAL,
+                        dsName,
+                        CreateDefaults.DATA_SET.SEQUENTIAL,
+                    );
+                    try {
+                        await target.mvs.uploadFromBuffer(Buffer.from("HELLO BENCH"), dsName);
+                        await target.mvs.getContents(dsName, { stream: new PassThrough() });
+                    } finally {
+                        await target.mvs.deleteDataSet(dsName);
+                    }
+                },
+                { iterations: 1, throws: true },
+            );
         }
     });
 });
