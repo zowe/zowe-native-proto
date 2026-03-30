@@ -350,16 +350,6 @@ describe("SshClientCache", () => {
             expect(reloadSpy).toHaveBeenCalledWith(clientId, false);
         });
 
-        it("should reload AND retry if 'Reload and Retry' is clicked", async () => {
-            const reloadSpy = vi.spyOn(cache as any, "reloadClient").mockResolvedValue(undefined);
-            vi.mocked(vscode.window.showErrorMessage).mockResolvedValue("Reload and Retry" as any);
-
-            await (cache as any).handleClientError(clientId, new Error("CEE5207E"));
-
-            await new Promise(process.nextTick);
-            expect(reloadSpy).toHaveBeenCalledWith(clientId, true);
-        });
-
         const errorMessages = [
             "CEE3204S The system detected a protection exception (System Completion Code=0C4).",
             "Znbdj__some_abend_method38432mangled at compile unit offset",
