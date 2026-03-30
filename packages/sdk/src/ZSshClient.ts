@@ -97,7 +97,7 @@ export class ZSshClient extends RpcClientApi implements Disposable {
 
     /**
      * Collects all currently pending RPC requests. Can be used to pause, replay, or inspect inflight requests.
-     * * @param silence - If true, silences the requests. They will no longer trigger their resolve or reject methods in normal operation (timeout, server response).
+     * * @param silence - If true, silences the requests. They will no longer trigger their resolve or reject methods in normal operation (timeout, server response). The caller assumes responsibility for these resolve and rejects.
      * @returns A set of existing client requests currently pending resolution.
      */
     public collectAllRequests(silence: boolean = false): Set<ExistingClientRequest> {
@@ -318,6 +318,7 @@ export class ZSshClient extends RpcClientApi implements Disposable {
         const request = this.mRequestMap.get(response.id);
 
         if (request.silenced) {
+            // Requests that are silenced have already been collected.
             this.mRequestMap.delete(response.id);
             return;
         }
