@@ -843,9 +843,9 @@ class RESULT_CHECK
       if (ce != ca)
       {
         out << "\n    [" << i << "]: "
-            << (int)ce << " (0x" << std::hex << (int)(unsigned char)ce << std::dec << ")"
+            << (int)(unsigned char)ce << " (0x" << std::hex << (int)(unsigned char)ce << std::dec << ")"
             << " -> "
-            << (int)ca << " (0x" << std::hex << (int)(unsigned char)ca << std::dec << ")";
+            << (int)(unsigned char)ca << " (0x" << std::hex << (int)(unsigned char)ca << std::dec << ")";
         ++found;
       }
     }
