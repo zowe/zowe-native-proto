@@ -1187,6 +1187,8 @@ int note(IO_CTRL *ioc, NOTE_RESPONSE *PTR32 note_response, int *rsn)
 #pragma epilog(ZAMDEXIT, " ZWEEPILG ")
 int ZAMDEXIT(DCB_ABEND_PL plist)
 {
+  // Ref: https://www.ibm.com/docs/en/zos/2.5.0?topic=routines-dcb-abend-exit
+
   // Some abends cannot be ignored or delayed (such as SB14). Default is worst-case scenario of following through w/ termination.
   int rc = DCB_ABEND_RC_TERMINATE;
   if (plist.option_mask & DCB_ABEND_OPT_OK_TO_IGNORE)
@@ -1208,6 +1210,7 @@ typedef int (*ZAM24Fn)();
 
 static void setup_exit_list(IO_CTRL *ioc)
 {
+  // Ref: https://www.ibm.com/docs/en/zos/2.5.0?topic=routines-dcb-exit-list
   int zam24_len = ZAM24Q();
   ioc->zam24_len = zam24_len;
   ioc->zam24 = storage_obtain24(zam24_len);
