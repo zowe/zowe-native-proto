@@ -228,11 +228,11 @@ int ZDSRIVSM(ZDS *zds, IO_CTRL *ioc)
     int stck_rc = stckeconv(&etod, &time_struct);
     if (0 != stck_rc)
     {
-      zwto_debug("Failed to STCKECONV rc was: %d", stck_rc);
       zds31.diag.detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
       zds31.diag.service_rc = stck_rc;
       strcpy(zds31.diag.service_name, "STCKECONV");
       zds31.diag.e_msg_len = sprintf(zds31.diag.e_msg, "Failed to STCKECONV rc was: %d", stck_rc);
+      return RTNCD_FAILURE;
     }
 
     unsigned char ebcdic_date[8] = {0};
