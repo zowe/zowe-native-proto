@@ -204,7 +204,7 @@ typedef struct
   int output : 1; // TODO(Kelosky): remove this flag
   int input : 1;  // TODO(Kelosky): remove this flag
   unsigned int has_enq : 1;
-  unsigned int has_reserve : 1;
+  unsigned int has_reserve : 1; // not reserved space... indicates RESERVE is outstanding
   unsigned int eof : 1;
   unsigned int dcb_abend : 1;
   unsigned int ucb;
