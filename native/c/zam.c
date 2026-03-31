@@ -1181,63 +1181,26 @@ int note(IO_CTRL *ioc, NOTE_RESPONSE *PTR32 note_response, int *rsn)
   return rc;
 }
 
-// 24-bit DCB abend exit glue routine (assembled inline).
-// On entry from z/OS: R1=DCB abend parameter list, R14=return address.
-// Calls ZAMDA31 in AMODE 31 with R1 preserved, then returns in AMODE 24.
-//
-//   BASR  R12,0           0DC0          R12 -> offset 2
-//   LR    R2,R14          182E
-//   L     R15,24(R12)     58F0C018      -> ZAMDA31 addr at offset 26
-//   OILH  R15,X'8000'     A5F58000      set AMODE 31
-//   BASSM R14,R15         0CEF          call ZAMDA31 (returns in AMODE 31)
-//   SAM24                  010C          restore AMODE 24
-//   LR    R14,R2          18E2
-//   LHI   R15,0           A7F80000
-//   BR    R14              07FE
-//   <2 bytes pad>         0000
-//   DC    F'0'            00000000      -> patched with ZAMDA31 address
-//
-// #define ZAM24_GLUE_LEN 2
-// #define ZAM24_GLUE_PATCH_OFFSET 26
-// static const unsigned char zam24_glue_template[ZAM24_GLUE_LEN] = {
-//     0x0D, 0xC0,                         // BASR  R12,0
-//     0x18, 0x2E,                         // LR    R2,R14
-//     0x58, 0xF0, 0xC0, 0x18,             // L     R15,24(,R12)
-//     0xA5, 0xF5, 0x80, 0x00,             // OILH  R15,X'8000'
-//     0x0C, 0xEF,                         // BASSM R14,R15
-//     0x01, 0x0C,                         // SAM24
-//     0x18, 0xE2,                         // LR    R14,R2
-//     0xA7, 0xF8, 0x00, 0x00,             // LHI   R15,0
-//     0x07, 0xFE,                         // BR    R14
-//     0x00, 0x00,                         // padding to doubleword
-//     0x00, 0x00, 0x00, 0x00              // ZAMDA31 address (patched)
-// };
-
-// static const unsigned char zam24_glue_template[ZAM24_GLUE_LEN] = {
-//     0x07, 0xFE, // BR    R14
-// };
-
 #include <stdarg.h>
 
 #pragma prolog(ZAMDEXIT, " ZWEPROLG NEWDSA=(YES,24),SAVE=BAKR ")
 #pragma epilog(ZAMDEXIT, " ZWEEPILG ")
 int ZAMDEXIT(DCB_ABEND_PL plist)
 {
-  // zut_dump_storage("plist before change", &plist, sizeof(DCB_ABEND_PL));
-
-  // Some abends cannot be ignored or delayed (such as SB14). Default is worst case scenario of termination.
+  // Some abends cannot be ignored or delayed (such as SB14). Default is worst-case scenario of following through w/ termination.
   int rc = DCB_ABEND_RC_TERMINATE;
   if (plist.option_mask & DCB_ABEND_OPT_OK_TO_IGNORE)
   {
     // If the abend is safe to ignore according to the option mask, tell the system to quietly ignore it (e.g. SE37 out-of-space)
     plist.option_mask = rc = DCB_ABEND_RC_IGNORE_QUIETLY;
   }
+  // TODO(traeok): Talk w/ Dan about whether this next branch is worthwhile or if it should be re-introduced later
+  // Likely not useful for client-server scenario - abend would likely never hit delay branch and is still handled by ESTAE/ARR,
+  // but this branch may provide benefit for general API consumers w/ custom ESTAE/SPIE recovery
   else if (plist.option_mask & DCB_ABEND_OPT_OK_TO_DELAY)
   {
     plist.option_mask = rc = DCB_ABEND_RC_DELAY;
   }
-
-  // zut_dump_storage("plist after change", &plist, sizeof(DCB_ABEND_PL));
   return rc;
 }
 
