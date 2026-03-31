@@ -236,7 +236,7 @@ int ZDSRIVSM(ZDS *zds, IO_CTRL *ioc)
     }
 
     unsigned char ebcdic_date[8] = {0};
-    __unpk(ebcdic_date, sizeof(ebcdic_date), &time_struct.date.yyyyddmm.year[0], sizeof(time_struct.date));
+    __unpk(ebcdic_date, sizeof(ebcdic_date), &time_struct.date.yyyymmdd.year[0], sizeof(time_struct.date));
     memcpy(zds->ebcdic_date, ebcdic_date, sizeof(zds->ebcdic_date));
     memcpy(&zds->ts_binary, &time_struct.time, sizeof(zds->ts_binary));
   }

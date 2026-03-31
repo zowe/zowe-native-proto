@@ -257,7 +257,7 @@ typedef struct
   union
   {
     DATE_MMDDYYYY mmddyyyy;
-    DATE_YYYYMMDD yyyyddmm;
+    DATE_YYYYMMDD yyyymmdd;
   } date;
   unsigned char unused[4];
 } TIME_STRUCT;
