@@ -1214,18 +1214,22 @@ int note(IO_CTRL *ioc, NOTE_RESPONSE *PTR32 note_response, int *rsn)
 #pragma epilog(ZAMDEXIT, " ZWEEPILG ")
 int ZAMDEXIT(DCB_ABEND_PL plist)
 {
-  // If the abend is safe to ignore according to the option mask, tell the system to quietly ignore it (e.g. SE37 out-of-space)
+  // zut_dump_storage("plist before change", &plist, sizeof(DCB_ABEND_PL));
+
+  // Some abends cannot be ignored or delayed (such as SB14). Default is worst case scenario of termination.
+  int rc = DCB_ABEND_RC_TERMINATE;
   if (plist.option_mask & DCB_ABEND_OPT_OK_TO_IGNORE)
   {
-    plist.option_mask = DCB_ABEND_RC_IGNORE_QUIETLY;
+    // If the abend is safe to ignore according to the option mask, tell the system to quietly ignore it (e.g. SE37 out-of-space)
+    plist.option_mask = rc = DCB_ABEND_RC_IGNORE_QUIETLY;
   }
   else if (plist.option_mask & DCB_ABEND_OPT_OK_TO_DELAY)
   {
-    plist.option_mask = DCB_ABEND_RC_DELAY;
+    plist.option_mask = rc = DCB_ABEND_RC_DELAY;
   }
 
-  // Some abends cannot be ignored or delayed (such as SB14)
-  return 0;
+  // zut_dump_storage("plist after change", &plist, sizeof(DCB_ABEND_PL));
+  return rc;
 }
 
 typedef int (*ZAM24Fn)();
