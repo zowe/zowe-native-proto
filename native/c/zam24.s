@@ -20,8 +20,8 @@ ENTRY24  DS    0H
          LARL  R15,DCBABND@
          L     R15,0(,R15)         -> ZAMDA31
          OILH  R15,X'8000'         Set AMODE 31 bit for BASSM
-         BASSM R14,R15             Call ZAMDA31 in AMODE 31
-         BR    R14                  Return to system
+         BASSM 0,R15               Call ZAMDA31 in AMODE 31
+         BR    R14                 Return to system
 *
 CONSTANT DS    0D
          LTORG ,
