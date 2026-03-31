@@ -10,97 +10,10 @@
 #
 
 OUT_DIR=build-out
-OUT_DIRS=$(OUT_DIR_CXXLANG)
 
-XLC_FLAGS=_CC_ACCEPTABLE_RC=0 _C89_ACCEPTABLE_RC=0 _CXX_ACCEPTABLE_RC=0
-CXX=$(XLC_FLAGS) xlc++
-CXXLANG=xlclang++
-CC=$(XLC_FLAGS) xlc
-ASM=as
+.INCLUDE: ../examples_toolchain.mk
 
-MTL_OPTS=metal,\
- langlvl(extended),\
- sscom,\
- nolongname,\
- inline,\
- genasm,\
- inlrpt,\
- csect,\
- nose,\
- list,\
- warn64,\
- optimize(2),\
- aggregate
-
-MTL_OPTS64=$(MTL_OPTS),lp64
-MTL_FLAGS=-S -W "c,$(MTL_OPTS)"
-MTL_FLAGS64=-S -W "c,$(MTL_OPTS64)"
-
-MACLIBS= -I../../../asmmac \
- -ISYS1.MACLIB \
- -ISYS1.MODGEN \
- -ICBC.SCCNSAM
-
-MTL_HEADERS=-I/usr/include/metal \
- -I/usr/include \
- -I../../chdsect \
- -I../../../c
-
-CPP_BND_FLAGS=-W "l,lp64,xplink,map,list"
-
-CPP_BND_FLAGS_AUTH=-W "l,lp64,xplink,map,list,ac=1"
-
-C_FLAGS=-W "c,lp64,langlvl(extended),xplink,exportall"\
- -c \
- -I../../chdsect \
- -I../../../c
-
-DLL_CPP_FLAGS=-W "c,lp64,langlvl(extended0x),dll,xplink,exportall"\
- -c \
- -I./chdsect
-
-DLL_BND_FLAGS=-W "l,lp64,dll,dynam=dll,xplink,map,list"
-
-CPP_FLAGS=-W "c,lp64,langlvl(extended0x),dll,xplink"\
- -c \
- -I../../chdsect \
- -I../../../c
-
-ASM_FLAGS=-mRENT
-
-# make -DBuildType=DEBUG
-.IF $(BuildType) == DEBUG
-# -g generates debugging information
-DEBUGGER_FLAGS=-qSOURCE -g9
-OTHER_C_FLAGS=-qSHOWINC -qSHOWMACROS
-
-CPP_BND_FLAGS+=$(DEBUGGER_FLAGS)
-CPP_BND_FLAGS_AUTH+=$(DEBUGGER_FLAGS)
-C_FLAGS+=$(DEBUGGER_FLAGS)
-DLL_BND_FLAGS+=$(DEBUGGER_FLAGS)
-DLL_CPP_FLAGS+=$(DEBUGGER_FLAGS) $(OTHER_C_FLAGS)
-CPP_FLAGS+=$(DEBUGGER_FLAGS) $(OTHER_C_FLAGS)
-MTL_FLAGS+=$(DEBUGGER_FLAGS) $(OTHER_C_FLAGS)
-MTL_FLAGS64+=$(DEBUGGER_FLAGS) $(OTHER_C_FLAGS)
-ASM_FLAGS+=--verbose
-
-.ELSE
-C_FLAGS+=-g0
-CPP_FLAGS+=-g0
-# CPP_FLAGS+=-qasm
-# CPP_FLAGS+=-qasmlib\('CEE.SCEEMAC','SYS1.MACLIB','SYS1.MODGEN'\)
-CPP_BND_FLAGS+=-g0
-CPP_BND_FLAGS_AUTH+=-g0
-DLL_BND_FLAGS+=-g0
-DLL_CPP_FLAGS+=-g0
-ASM_FLAGS+=--noverbose
-
-# Still investigating why we need `-g1` for the MetalC flags :'(
-MTL_FLAGS+=-g1
-MTL_FLAGS64+=-g1
-.END
-
-all: copy-mtl build-out json
+all: copy-mtl build-out run
 
 #
 # Output directories
@@ -108,6 +21,10 @@ all: copy-mtl build-out json
 build-out:
 	@echo 'Creating build-out'
 	mkdir -p build-out
+
+run: build-out/json
+	@echo 'Running ./build-out/json'
+	./build-out/json
 
 copy-mtl:
 	cp ../../zjsonm.c zjsonm.c
@@ -122,13 +39,11 @@ build-out/zjsonm.o: build-out/zjsonm.s
 
 build-out/json.o: json.cpp
 	@echo 'Building $(OUT_DIR)/json.o'
-	$(CXXLANG) $(CPP_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@
+	$(CXX) $(CPP_FLAGS) -c $^ -o $@
 
 build-out/json: build-out/json.o build-out/zjsonm.o
 	@echo 'Building json'
-	$(CXXLANG) $(CPP_BND_FLAGS) -o $@ $^ > $*.bind.lst
-
-json: build-out/json
+	$(CXX) $(CPP_BND_FLAGS) -o $@ $^ > $*.bind.lst
 
 clean:
 	rm -f *.o
