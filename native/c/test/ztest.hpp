@@ -827,7 +827,7 @@ class RESULT_CHECK
       throw std::runtime_error(msg + append_error_details());
   }
 
-  static const size_t LARGE_STRING = 50;
+  static const size_t LARGE_STRING = 80;
 
   std::string string_diff_hint(const std::string &expected, const std::string &actual)
   {
