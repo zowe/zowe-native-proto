@@ -178,8 +178,8 @@ static int open_data_set(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
   if (ioc->dcb_abend)
   {
     strcpy(diag->service_name, "OPEN");
-    diag->e_msg_len = sprintf(diag->e_msg, "DCB abend during OPEN for %44.44s: system completion code=%03X, return code=%02X",
-                              ioc->jfcb.jfcbdsnm, ioc->abend_completion_code, ioc->abend_return_code);
+    diag->e_msg_len = sprintf(diag->e_msg, "DCB abend during OPEN for %44.44s",
+                              ioc->jfcb.jfcbdsnm);
     diag->detail_rc = ZDS_RTNCD_DCB_ABEND_ERROR;
     return RTNCD_FAILURE;
   }
@@ -911,8 +911,8 @@ static int close_data_set(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
       if (0 == diag->e_msg_len)
       {
         strcpy(diag->service_name, "CLOSE");
-        diag->e_msg_len = sprintf(diag->e_msg, "DCB abend during CLOSE for %8.8s data set: %44.44s: system completion code=%03X, return code=%02X",
-                                  ioc->ddname, ioc->jfcb.jfcbdsnm, ioc->abend_completion_code, ioc->abend_return_code);
+        diag->e_msg_len = sprintf(diag->e_msg, "DCB abend during CLOSE for %8.8s data set: %44.44s",
+                                  ioc->ddname, ioc->jfcb.jfcbdsnm);
         diag->detail_rc = ZDS_RTNCD_DCB_ABEND_ERROR;
       }
       return RTNCD_FAILURE;

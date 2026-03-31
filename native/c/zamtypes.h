@@ -208,8 +208,6 @@ typedef struct
   unsigned int eof : 1;
   unsigned int dcb_abend : 1;
   unsigned int ucb;
-  unsigned short abend_completion_code;
-  unsigned char abend_return_code;
   void *PTR32 zam24;
   int zam24_len;
   int lines_written;
