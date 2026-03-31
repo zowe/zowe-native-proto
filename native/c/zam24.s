@@ -8,19 +8,19 @@
 *  Copyright Contributors to the Zowe Project.
 ZAM24    RSECT ,
 ZAM24    AMODE 31
-ZAM24    RMODE 31                   Manually loaded in 24 bit storage
+ZAM24    RMODE 31                   31-bit addressing & residency for Metal C interop
 *
          YREGS ,
 *
 *        On entry: R1=DCB abend parameter list, R14=return address
-*        Call ZAMDA31 (AMODE 31) with R1 preserved, then return
+*        Call ZAMDEXIT with R1 preserved, then return
 *        R2 is used to hold R14 across the call (BAKR preserves R2)
 *
 ENTRY24  DS    0H
          LARL  R15,DCBABND@
-         L     R15,0(,R15)         -> ZAMDA31
+         L     R15,0(,R15)         -> ZAMDEXIT
          OILH  R15,X'8000'         Set AMODE 31 bit for BASSM
-         BASSM 0,R15               Call ZAMDA31 in AMODE 31
+         BASSM 0,R15               Call ZAMDEXIT in AMODE 31
          BR    R14                 Return to system
 *
 CONSTANT DS    0D
