@@ -285,9 +285,8 @@ void zut_tests()
 
                              std::string result = zut_read_input(input_stream);
 
-                             //  expect(result).ToBe(input_data);
-                             //  expect(result.length()).ToBe(input_data.length());
-                             expect(result).ToContain("Fernando rules!");
+                             expect(result).ToBe(input_data);
+                             expect(result.length()).ToBe(input_data.length());
                            });
                       });
 

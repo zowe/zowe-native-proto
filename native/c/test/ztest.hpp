@@ -360,12 +360,11 @@ private:
 
     if (!context.empty())
     {
-      // Print exactly (current_nesting * 2 + 2) spaces for context
-      for (int i = 0; i < current_nesting * 2 + 2; i++)
-      {
-        std::cout << " ";
-      }
-      std::cout << context.substr(1) << std::endl;
+      std::string indent = get_indent(current_nesting + 1);
+      std::istringstream lines(context.substr(1));
+      std::string line;
+      while (std::getline(lines, line))
+        std::cout << indent << line << std::endl;
     }
   }
 
@@ -832,8 +831,8 @@ class RESULT_CHECK
   std::string string_diff_hint(const std::string &expected, const std::string &actual)
   {
     std::stringstream out;
-    out << "  sizes: expected=" << expected.size() << " actual=" << actual.size();
-    out << "\n  first 5 differences (byte offset: expected -> actual):";
+    out << "sizes: expected=" << expected.size() << " actual=" << actual.size();
+    out << "\nfirst 5 differences (byte offset: expected -> actual):";
     size_t len = std::max(expected.size(), actual.size());
     int found = 0;
     for (size_t i = 0; i < len && found < 5; ++i)
@@ -842,7 +841,7 @@ class RESULT_CHECK
       char ca = i < actual.size() ? actual[i] : '\0';
       if (ce != ca)
       {
-        out << "\n    [" << i << "]: "
+        out << "\n  [" << i << "]: "
             << (int)(unsigned char)ce << " (0x" << std::hex << (int)(unsigned char)ce << std::dec << ")"
             << " -> "
             << (int)(unsigned char)ca << " (0x" << std::hex << (int)(unsigned char)ca << std::dec << ")";
@@ -850,7 +849,7 @@ class RESULT_CHECK
       }
     }
     if (found == 0)
-      out << "\n    (strings are equal up to shorter length)";
+      out << "\n  (strings are equal up to shorter length)";
     return out.str();
   }
 
@@ -961,9 +960,13 @@ public:
   ToContain(const std::string &substring)
   {
     bool large = result.size() >= LARGE_STRING;
+    std::string snippet = large ? result.substr(0, LARGE_STRING) : result;
+    std::string escaped;
+    for (char c : snippet)
+      escaped += (c == '\n') ? "\\n" : std::string(1, c);
     std::string haystack = large
-                               ? result.substr(0, LARGE_STRING) + "...(truncated, total " + std::to_string(result.size()) + " chars)"
-                               : result;
+      ? escaped + "...(truncated, total " + std::to_string(result.size()) + " chars)"
+      : escaped;
     if (inverse)
       fail_if(result.find(substring) != std::string::npos, "expected string '" + haystack + "' to NOT contain '" + substring + "'");
     else
@@ -1331,7 +1334,22 @@ inline void print_failed_tests()
           std::cout << "  " << colors.red << colors.cross << " FAIL " << test.description << colors.reset << std::endl;
           if (!test.fail_message.empty())
           {
-            std::cout << "    " << colors.arrow << " " << test.fail_message << std::endl;
+            std::string main_error = test.fail_message;
+          std::string context;
+          size_t nl = main_error.find("\n");
+          if (nl != std::string::npos)
+          {
+            context = main_error.substr(nl + 1);
+            main_error = main_error.substr(0, nl);
+          }
+          std::cout << "    " << colors.arrow << " " << main_error << std::endl;
+          if (!context.empty())
+          {
+            std::istringstream ctx_lines(context);
+            std::string ctx_line;
+            while (std::getline(ctx_lines, ctx_line))
+              std::cout << "      " << ctx_line << std::endl;
+          }
           }
         }
       }
