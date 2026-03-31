@@ -310,7 +310,7 @@ int open_input_vsam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 *PTR32 ioc, const char *PT
 #define OFF_CURRENT_RECORD 0xFF03
 #define ABSOLUTE_RECORD 0xFF04
 
-// TOOD(Kelosky): this should have accepted a etod_t instead of a TIME_STRUCT
+// TODO(Kelosky): this should have accepted a etod_t instead of a TIME_STRUCT
 int point_input_vsam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc, TIME_STRUCT *time_struct)
 {
   int rc = 0;
