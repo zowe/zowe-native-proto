@@ -854,7 +854,7 @@ class RESULT_CHECK
     return out.str();
   }
 
-  std::string type_name_of()
+  static std::string type_name_of()
   {
     int status;
     char *demangled = abi::__cxa_demangle(typeid(T).name(), nullptr, nullptr, &status);
@@ -888,8 +888,10 @@ public:
     else
     {
       std::string name = type_name_of();
-      std::stringstream ss; ss << result;
-      std::stringstream ss2; ss2 << val;
+      std::stringstream ss;
+      ss << result;
+      std::stringstream ss2;
+      ss2 << val;
       if (inverse)
         fail_if(result == val, "expected " + name + " '" + ss.str() + "' NOT to be '" + ss2.str() + "'");
       else
@@ -901,7 +903,8 @@ public:
   typename std::enable_if<std::is_pointer<U>::value>::type
   ToBeNull()
   {
-    std::stringstream ss; ss << result;
+    std::stringstream ss;
+    ss << result;
     if (inverse)
       fail_if(nullptr == result, "expected '" + ss.str() + "' NOT to be null");
     else
@@ -913,8 +916,10 @@ public:
   ToBeGreaterThan(U val)
   {
     std::string name = type_name_of();
-    std::stringstream ss; ss << result;
-    std::stringstream ss2; ss2 << val;
+    std::stringstream ss;
+    ss << result;
+    std::stringstream ss2;
+    ss2 << val;
     if (inverse)
       fail_if(result > val, "expected " + name + " '" + ss.str() + "' NOT to be greater than '" + ss2.str() + "'");
     else
@@ -926,8 +931,10 @@ public:
   ToBeGreaterThanOrEqualTo(U val)
   {
     std::string name = type_name_of();
-    std::stringstream ss; ss << result;
-    std::stringstream ss2; ss2 << val;
+    std::stringstream ss;
+    ss << result;
+    std::stringstream ss2;
+    ss2 << val;
     if (inverse)
       fail_if(result >= val, "expected " + name + " '" + ss.str() + "' NOT to be greater than or equal to '" + ss2.str() + "'");
     else
@@ -939,8 +946,10 @@ public:
   ToBeLessThan(U val)
   {
     std::string name = type_name_of();
-    std::stringstream ss; ss << result;
-    std::stringstream ss2; ss2 << val;
+    std::stringstream ss;
+    ss << result;
+    std::stringstream ss2;
+    ss2 << val;
     if (inverse)
       fail_if(result < val, "expected " + name + " '" + ss.str() + "' NOT to be less than '" + ss2.str() + "'");
     else
@@ -951,10 +960,14 @@ public:
   typename std::enable_if<std::is_same<U, std::string>::value>::type
   ToContain(const std::string &substring)
   {
+    bool large = result.size() >= LARGE_STRING;
+    std::string haystack = large
+                               ? result.substr(0, LARGE_STRING) + "...(truncated, total " + std::to_string(result.size()) + " chars)"
+                               : result;
     if (inverse)
-      fail_if(result.find(substring) != std::string::npos, "expected string '" + result + "' to NOT contain '" + substring + "'");
+      fail_if(result.find(substring) != std::string::npos, "expected string '" + haystack + "' to NOT contain '" + substring + "'");
     else
-      fail_if(result.find(substring) == std::string::npos, "expected string '" + result + "' to contain '" + substring + "'");
+      fail_if(result.find(substring) == std::string::npos, "expected string '" + haystack + "' to contain '" + substring + "'");
   }
 
   std::string append_error_details()
