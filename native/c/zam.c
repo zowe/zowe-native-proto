@@ -708,7 +708,7 @@ static int write_flush(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
   return rc;
 }
 
-static int bldl_member(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc, BLDL_PL *PTR32 bldl_pl)
+int bldl_member(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc, BLDL_PL *PTR32 bldl_pl)
 {
   int rc = 0;
   int rsn = 0;
