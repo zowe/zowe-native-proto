@@ -1415,22 +1415,3 @@ void eodad()
 {
   fc->eod = 1;
 }
-
-// #pragma prolog(ZAMDA31, " ZWEPROLG NEWDSA=(YES,8),SAVE=BAKR ")
-// #pragma epilog(ZAMDA31, " ZWEEPILG ")
-// void ZAMDA31(DCB_ABEND_PL *PTR32 plist)
-// {
-//   IO_CTRL *PTR32 ioc = (IO_CTRL * PTR32) plist->dcb;
-//   ioc->dcb_abend = 1;
-//   ioc->abend_completion_code = plist->system_completion_code;
-//   ioc->abend_return_code = plist->return_code;
-
-//   if (plist->option_mask & DCB_ABEND_OPT_OK_TO_IGNORE)
-//   {
-//     plist->option_mask = DCB_ABEND_RC_IGNORE_QUIETLY;
-//   }
-//   else if (plist->option_mask & DCB_ABEND_OPT_OK_TO_DELAY)
-//   {
-//     plist->option_mask = DCB_ABEND_RC_DELAY;
-//   }
-// }
