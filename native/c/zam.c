@@ -1181,8 +1181,6 @@ int note(IO_CTRL *ioc, NOTE_RESPONSE *PTR32 note_response, int *rsn)
   return rc;
 }
 
-#include <stdarg.h>
-
 #pragma prolog(ZAMDEXIT, " ZWEPROLG NEWDSA=(YES,24),SAVE=BAKR ")
 #pragma epilog(ZAMDEXIT, " ZWEEPILG ")
 int ZAMDEXIT(DCB_ABEND_PL plist)
