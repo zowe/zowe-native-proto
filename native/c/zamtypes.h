@@ -73,15 +73,16 @@ typedef DECB READ_PL;
 
 typedef struct exlst EXLIST;
 
-// https://www.ibm.com/docs/en/zos/3.1.0?topic=routines-dcb-abend-exit
+// Ref: https://www.ibm.com/docs/en/zos/2.5.0?topic=routines-dcb-abend-exit
 typedef struct
 {
-  unsigned short system_completion_code; // offset 0: system completion code in first 12 bits
-  unsigned char return_code;             // offset 2: return code associated with completion code
-  unsigned char option_mask;             // offset 3: option mask (input) / chosen action (output)
-  IHADCB *PTR32 dcb;                    // offset 4: address of DCB
-  unsigned int diag_info;                // offset 8: for system diagnostic use
-  void *PTR32 recovery_work_area;        // offset 12: must be below 16 MB
+  unsigned short system_completion_code;  // offset 0: system completion code in first 12 bits
+  unsigned char return_code;              // offset 2: return code associated with completion code
+  unsigned char option_mask;              // offset 3: option mask (input) / chosen action (output)
+  // following fields are only output from exit
+  IHADCB *PTR32 dcb;                      // offset 4: address of DCB
+  unsigned int diag_info;                 // offset 8: for system diagnostic use
+  void *PTR32 recovery_work_area;         // offset 12: must be below 16 MB
 } DCB_ABEND_PL;
 
 #define DCB_ABEND_OPT_OK_TO_RECOVER 0x08
