@@ -8,7 +8,7 @@
 *  Copyright Contributors to the Zowe Project.
 ZAM24    RSECT ,
 ZAM24    AMODE 31
-ZAM24    RMODE 31                   31-bit addressing & residency for Metal C interop
+ZAM24    RMODE 31                   31-bit residency ensures ZAMDEXIT address is resolved as 31-bit
 *
          YREGS ,
 *
