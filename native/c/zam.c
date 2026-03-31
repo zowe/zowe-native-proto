@@ -999,36 +999,45 @@ int close_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
   }
 
   //
-  // Update ISPF statistics
+  // Per IBM guidance: check whether the DCB is really open before issuing
+  // any other macros using that DCB, other than CLOSE or FREEPOOL.
+  // If write_flush encountered an E37 and the DCB was silently closed,
+  // skip STOW and CLOSE but still perform DEQ and cleanup below.
   //
-  rc = update_ispf_statistics(diag, ioc);
-  if (0 != rc)
+  if (ioc->dcb.dcboflgs & dcbofopn)
   {
-    if (0 == first_rc)
-      first_rc = rc;
-  }
-
-  //
-  // STOW the ISPF statistics
-  //
-  if (0 == rc)
-  {
-    rc = stow_data_set(diag, ioc);
+    //
+    // Update ISPF statistics
+    //
+    rc = update_ispf_statistics(diag, ioc);
     if (0 != rc)
     {
       if (0 == first_rc)
         first_rc = rc;
     }
-  }
 
-  //
-  // Close the data set
-  //
-  rc = close_data_set(diag, ioc);
-  if (0 != rc)
-  {
-    if (0 == first_rc)
-      first_rc = rc;
+    //
+    // STOW the ISPF statistics
+    //
+    if (0 == rc)
+    {
+      rc = stow_data_set(diag, ioc);
+      if (0 != rc)
+      {
+        if (0 == first_rc)
+          first_rc = rc;
+      }
+    }
+
+    //
+    // Close the data set
+    //
+    rc = close_data_set(diag, ioc);
+    if (0 != rc)
+    {
+      if (0 == first_rc)
+        first_rc = rc;
+    }
   }
 
   //
