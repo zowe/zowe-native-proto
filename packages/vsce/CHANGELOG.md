@@ -6,6 +6,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Recent Changes
 
+- Added error correlation for expired z/OS password (`FOTS1668`/`FOTS1669`), surfacing actionable tips and documentation links in Zowe Explorer when SSH commands fail due to an expired password. [#867](https://github.com/zowe/zowe-native-proto/pull/867)
 - Updated **Show Attributes** to display member ISPF statistics [#630](https://github.com/zowe/zowe-native-proto/issues/630)
 - Added the functionality for the **Rename** option in the USS tree. [#820](https://github.com/zowe/zowe-native-proto/pull/820)
 - Added the functionality to move files in the USS tree. [#820](https://github.com/zowe/zowe-native-proto/pull/820)
