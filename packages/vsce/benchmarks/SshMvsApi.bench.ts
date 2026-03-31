@@ -30,12 +30,36 @@ describe("Data Sets", () => {
         }
     });
 
+    describe("List data sets with attributes", () => {
+        for (const target of targets) {
+            bench(
+                target.name,
+                async () => {
+                    await target.mvs.dataSet("SYS1.*", { attributes: true });
+                },
+                { iterations: 1, throws: true },
+            );
+        }
+    });
+
     describe("List PDS members", () => {
         for (const target of targets) {
             bench(
                 target.name,
                 async () => {
                     await target.mvs.allMembers("SYS1.MACLIB");
+                },
+                { iterations: 1, throws: true },
+            );
+        }
+    });
+
+    describe("List PDS members with attributes", () => {
+        for (const target of targets) {
+            bench(
+                target.name,
+                async () => {
+                    await target.mvs.allMembers("SYS1.MACLIB", { attributes: true });
                 },
                 { iterations: 1, throws: true },
             );

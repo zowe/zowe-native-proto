@@ -29,6 +29,18 @@ describe("USS", () => {
         }
     });
 
+    describe("List directory with attributes", () => {
+        for (const target of targets) {
+            bench(
+                target.name,
+                async () => {
+                    await target.uss.fileList(USS_DIR, { attributes: true });
+                },
+                { iterations: 1, throws: true },
+            );
+        }
+    });
+
     describe("Read/write file", () => {
         for (const target of targets) {
             bench(
