@@ -828,6 +828,11 @@ class RESULT_CHECK
 
   static const size_t LARGE_STRING = 80;
 
+  static bool verbose_strings()
+  {
+    return std::getenv("ZTEST_VERBOSE_STRINGS") != nullptr;
+  }
+
   std::string string_diff_hint(const std::string &expected, const std::string &actual)
   {
     std::stringstream out;
@@ -868,7 +873,7 @@ public:
   {
     if constexpr (std::is_same<T, std::string>::value)
     {
-      bool large = result.size() >= LARGE_STRING || val.size() >= LARGE_STRING;
+      bool large = !verbose_strings() && (result.size() >= LARGE_STRING || val.size() >= LARGE_STRING);
       if (inverse)
       {
         if (!large)
@@ -959,7 +964,7 @@ public:
   typename std::enable_if<std::is_same<U, std::string>::value>::type
   ToContain(const std::string &substring)
   {
-    bool large = result.size() >= LARGE_STRING;
+    bool large = !verbose_strings() && result.size() >= LARGE_STRING;
     std::string snippet = large ? result.substr(0, LARGE_STRING) : result;
     std::string escaped;
     for (char c : snippet)
