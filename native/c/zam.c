@@ -1211,12 +1211,14 @@ static void setup_exit_list(IO_CTRL *ioc)
   int zam24_len = ZAM24Q();
   ioc->zam24_len = zam24_len;
   ioc->zam24 = storage_obtain24(zam24_len);
+  // Copy function to local variable to avoid memcpy cast error
   ZAM24Fn x = ZAM24;
   memcpy(ioc->zam24, (void *)x, zam24_len);
-  zut_dump_storage("ZAM24STUB", ioc->zam24, zam24_len);
 
+  // DCB abend exit that invokes ZAMDEXIT
   ioc->exlst[0].exlentrb = (unsigned int)ioc->zam24;
   ioc->exlst[0].exlcodes = exldcbab;
+  // "End-of-list" entry (used as delimiter)
   ioc->exlst[1].exlentrb = (unsigned int)&ioc->jfcb;
   ioc->exlst[1].exlcodes = exllaste + exlrjfcb;
 
