@@ -999,7 +999,7 @@ int close_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
   }
 
   //
-  // Per IBM guidance: check whether the DCB is really open before issuing
+  // Per IBM docs: check whether the DCB is really open before issuing
   // any other macros using that DCB, other than CLOSE or FREEPOOL.
   // If write_flush encountered an E37 and the DCB was silently closed,
   // skip STOW and CLOSE but still perform DEQ and cleanup below.
