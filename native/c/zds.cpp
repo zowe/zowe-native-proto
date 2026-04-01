@@ -1149,13 +1149,15 @@ zds_write_member_bpam(ZDS *zds, const std::string &dsn, std::string &data, const
   // Finalize any pending range
   truncation.flush_range();
 
-  printf("DEBUG: is_copy value: %d\n", options.is_copy);
+  printf("is_copy value: %d\n", options.is_copy);
 
-  // printf("DEBUG: source_name: %s\n", options.source_name.c_str());
+  printf("source_name: %s\n", options.source_name.c_str());
   if (options.is_copy && !options.source_name.empty())
   {
     IO_CTRL *source_ioc = nullptr;
     rc = zds_open_output_bpam(zds, options.source_name, source_ioc);
+    fprintf(stderr, "LRECL: %d\n", ioc->dcb.dcblrecl);
+    fprintf(stderr, "RECFM: %02X\n", ioc->dcb.dcbrecfm);
 
     if (rc == RTNCD_SUCCESS)
     {
@@ -1166,15 +1168,6 @@ zds_write_member_bpam(ZDS *zds, const std::string &dsn, std::string &data, const
       memcpy(bldl_pl.list.name, options.source_name.c_str(),
              std::min((size_t)8, options.source_name.length()));
       rc = ZDSBLDL(zds, ioc, &bldl_pl);
-      if (rc == RTNCD_SUCCESS)
-      {
-        printf("DEBUG: Captured Source Stats: %02X %02X\n",
-               bldl_pl.list.user_data[0], bldl_pl.list.user_data[1]);
-      }
-      else
-      {
-        printf("DEBUG: BLDL failed for member %s\n", options.source_name.c_str());
-      }
 
       if (rc == RTNCD_SUCCESS)
       {
@@ -1184,27 +1177,29 @@ zds_write_member_bpam(ZDS *zds, const std::string &dsn, std::string &data, const
     }
   }
 
+  printf("here: %d\n", options.is_copy);
   // Close the member (this updates ISPF stats and STOWs the directory entry)
   rc = zds_close_output_bpam(zds, ioc);
 
   // Report truncation warning if lines were truncated and close succeeded
   if (truncation.count > 0 && rc == RTNCD_SUCCESS)
   {
+    fprintf(stderr, "Truncation: %d lines\n", truncation.count);
     const auto warning_msg = truncation.get_warning_message();
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "%s", warning_msg.c_str());
     zds->diag.detail_rc = ZDS_RSNCD_TRUNCATION_WARNING;
+    printf("here inside: %d\n", options.is_copy);
     return RTNCD_WARNING;
   }
 
+  printf("here3: %d\n", options.is_copy);
   return rc;
 }
 static int copy_member_with_stats(ZDS *zds, const ZDSTypeInfo &src_info, const ZDSTypeInfo &dst_info)
 {
-  // 1. Construct paths
   std::string src_path = "//'" + src_info.base_dsn + "(" + src_info.member_name + ")'";
   std::string dst_dsn = dst_info.base_dsn + "(" + dst_info.member_name + ")";
 
-  // 2. READ the source data
   FILE *fin = fopen(src_path.c_str(), "rb");
   if (!fin)
   {
@@ -1255,7 +1250,6 @@ static int copy_pds_to_pds(ZDS *zds, const ZDSTypeInfo &src, const ZDSTypeInfo &
 
 int zds_copy_dsn(ZDS *zds, const std::string &dsn1, const std::string &dsn2, ZDSCopyOptions *options)
 {
-  printf("COPYING PDS TEST");
   int rc = 0;
   ZDSCopyOptions default_options;
   ZDSCopyOptions *opts = options ? options : &default_options;
@@ -1408,7 +1402,6 @@ int zds_copy_dsn(ZDS *zds, const std::string &dsn1, const std::string &dsn2, ZDS
 
   if (is_pds_full_copy)
   {
-    printf("HELLO");
     // When delete_target_members is used, always replace since target is now empty
     return copy_pds_to_pds(zds, info1, info2, opts->replace || opts->delete_target_members);
   }
@@ -1420,7 +1413,6 @@ int zds_copy_dsn(ZDS *zds, const std::string &dsn1, const std::string &dsn2, ZDS
       std::string src_mem_dsn = info1.base_dsn + "(" + info1.member_name + ")";
       std::string dst_mem_dsn = info2.base_dsn + "(" + info2.member_name + ")";
       rc = copy_sequential(zds, src_mem_dsn, dst_mem_dsn);
-      // rc = copy_member_with_stats(zds, info1, info2);
     }
     else
     {
