@@ -2,7 +2,7 @@
   "name": "zowe-native-proto-vsce",
   "displayName": "Zowe Remote SSH",
   "description": "Zowe Native Proto VS Code Extension for Zowe Explorer",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "publisher": "Zowe",
   "repository": "https://github.com/zowe/zowe-native-proto-vsce/tree/main/packages/vsce",
   "engines": {
