@@ -267,7 +267,8 @@ static int copy_sequential(ZDS *zds, const std::string &src_dsn, const std::stri
 struct ZDSWriteMemberOptions
 {
   bool is_copy{false};
-  std::string source_name{};
+  std::string source_name;
+  std::string source_dsn;
 };
 
 // Delete all members from a PDS
@@ -974,66 +975,85 @@ zds_write_member_bpam(ZDS *zds, const std::string &dsn, std::string &data, const
   std::vector<std::pair<std::string, char>> lines_to_write; // std::pair of (encoded line, asa_char)
 
   // Parse data line by line
+  size_t pos = 0;
   if (!data.empty())
   {
-    size_t pos = 0;
-    size_t newline_pos;
-
-    while ((newline_pos = data.find(newline_char, pos)) != std::string::npos)
+    if (options.is_copy)
     {
-      std::string line = data.substr(pos, newline_pos - pos);
-
-      // Remove trailing CR if present (Windows line endings)
-      if (!line.empty() && line[line.size() - 1] == CR_CHAR)
+      while (pos < data.length())
       {
-        line.erase(line.size() - 1);
-      }
+        int line_len = std::min(int(data.size() - pos), max_len);
+        rc = ZDSWBPAM(zds, ioc, data.c_str() + pos, &line_len);
 
-      // Process ASA: determine control char, skip blank lines
-      char asa_char = '\0';
-      if (is_asa)
-      {
-        auto asa_result = asa_state.prepare_line(line);
-        if (asa_result.skip_line)
+        if (rc != RTNCD_SUCCESS)
         {
-          pos = newline_pos + 1;
-          continue;
-        }
-
-        // Add overflow blank lines as empty '-' records (for 3+ blank lines)
-        for (int i = 0; i < asa_result.overflow_records; i++)
-        {
-          lines_to_write.emplace_back(std::make_pair(std::string(), '-'));
-        }
-
-        asa_char = asa_result.asa_char;
-      }
-
-      line_num++;
-
-      // Encode line if needed
-      if (has_encoding)
-      {
-        try
-        {
-          line = zut_encode(line, iconv_guard.get(), zds->diag);
-        }
-        catch (std::exception &e)
-        {
-          zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from %s to %s", source_encoding.c_str(), codepage.c_str());
           zds_close_output_bpam(zds, ioc);
           return RTNCD_FAILURE;
         }
-      }
 
-      // Check if line will be truncated (account for ASA char if present)
-      if (static_cast<int>(line.length() + (is_asa ? 1 : 0)) > max_len)
+        pos = pos + line_len;
+      }
+    }
+    else
+    {
+      size_t newline_pos;
+
+      while ((newline_pos = data.find(newline_char, pos)) != std::string::npos)
       {
-        truncation.add_line(line_num);
-      }
+        std::string line = data.substr(pos, newline_pos - pos);
 
-      lines_to_write.emplace_back(std::make_pair(line, is_asa ? asa_char : '\0'));
-      pos = newline_pos + 1;
+        // Remove trailing CR if present (Windows line endings)
+        if (!line.empty() && line[line.size() - 1] == CR_CHAR)
+        {
+          line.erase(line.size() - 1);
+        }
+
+        // Process ASA: determine control char, skip blank lines
+        char asa_char = '\0';
+        if (is_asa)
+        {
+          auto asa_result = asa_state.prepare_line(line);
+          if (asa_result.skip_line)
+          {
+            pos = newline_pos + 1;
+            continue;
+          }
+
+          // Add overflow blank lines as empty '-' records (for 3+ blank lines)
+          for (int i = 0; i < asa_result.overflow_records; i++)
+          {
+            lines_to_write.emplace_back(std::make_pair(std::string(), '-'));
+          }
+
+          asa_char = asa_result.asa_char;
+        }
+
+        line_num++;
+
+        // Encode line if needed
+        if (has_encoding)
+        {
+          try
+          {
+            line = zut_encode(line, iconv_guard.get(), zds->diag);
+          }
+          catch (std::exception &e)
+          {
+            zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from %s to %s", source_encoding.c_str(), codepage.c_str());
+            zds_close_output_bpam(zds, ioc);
+            return RTNCD_FAILURE;
+          }
+        }
+
+        // Check if line will be truncated (account for ASA char if present)
+        if (static_cast<int>(line.length() + (is_asa ? 1 : 0)) > max_len)
+        {
+          truncation.add_line(line_num);
+        }
+
+        lines_to_write.emplace_back(std::make_pair(line, is_asa ? asa_char : '\0'));
+        pos = newline_pos + 1;
+      }
     }
 
     // Handle remaining content after last newline
@@ -1152,12 +1172,16 @@ zds_write_member_bpam(ZDS *zds, const std::string &dsn, std::string &data, const
   printf("is_copy value: %d\n", options.is_copy);
 
   printf("source_name: %s\n", options.source_name.c_str());
+
   if (options.is_copy && !options.source_name.empty())
   {
     IO_CTRL *source_ioc = nullptr;
-    rc = zds_open_output_bpam(zds, options.source_name, source_ioc);
-    fprintf(stderr, "LRECL: %d\n", ioc->dcb.dcblrecl);
-    fprintf(stderr, "RECFM: %02X\n", ioc->dcb.dcbrecfm);
+
+    // std::string src = "//'" + dsn + "(" + options.source_name + ")'";
+    ZDS zds_src = {};
+    fprintf(stderr, "dsn: %s\n", options.source_dsn.c_str());
+    rc = zds_open_output_bpam(&zds_src, options.source_dsn, source_ioc);
+    fprintf(stderr, "open suceeded: %d\n", rc);
 
     if (rc == RTNCD_SUCCESS)
     {
@@ -1168,31 +1192,33 @@ zds_write_member_bpam(ZDS *zds, const std::string &dsn, std::string &data, const
       memcpy(bldl_pl.list.name, options.source_name.c_str(),
              std::min((size_t)8, options.source_name.length()));
       rc = ZDSBLDL(zds, ioc, &bldl_pl);
+      fprintf(stderr, "bldl rc: %d\n", rc);
 
       if (rc == RTNCD_SUCCESS)
       {
+        fprintf(stderr, "INSIDE: %d\n", ioc->dcb.dcbrecfm);
+
+        ioc->stow_list.c = bldl_pl.list.c;
         memcpy(ioc->stow_list.user_data, bldl_pl.list.user_data, sizeof(ISPF_STATS));
-        ioc->stow_list.c = (bldl_pl.list.c & 0x1F);
+        ioc->skip_stat_update = 1;
       }
     }
   }
-
-  printf("here: %d\n", options.is_copy);
-  // Close the member (this updates ISPF stats and STOWs the directory entry)
-  rc = zds_close_output_bpam(zds, ioc);
-
-  // Report truncation warning if lines were truncated and close succeeded
-  if (truncation.count > 0 && rc == RTNCD_SUCCESS)
+  else
   {
-    fprintf(stderr, "Truncation: %d lines\n", truncation.count);
-    const auto warning_msg = truncation.get_warning_message();
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "%s", warning_msg.c_str());
-    zds->diag.detail_rc = ZDS_RSNCD_TRUNCATION_WARNING;
-    printf("here inside: %d\n", options.is_copy);
-    return RTNCD_WARNING;
+    if (truncation.count > 0 && rc == RTNCD_SUCCESS)
+    {
+      fprintf(stderr, "Truncation: %d lines\n", truncation.count);
+      const auto warning_msg = truncation.get_warning_message();
+      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "%s", warning_msg.c_str());
+      zds->diag.detail_rc = ZDS_RSNCD_TRUNCATION_WARNING;
+      printf("here inside: %d\n", options.is_copy);
+      return RTNCD_WARNING;
+    }
   }
+  rc = zds_close_output_bpam(zds, ioc);
+  printf("here: %d\n", options.is_copy);
 
-  printf("here3: %d\n", options.is_copy);
   return rc;
 }
 static int copy_member_with_stats(ZDS *zds, const ZDSTypeInfo &src_info, const ZDSTypeInfo &dst_info)
@@ -1219,6 +1245,7 @@ static int copy_member_with_stats(ZDS *zds, const ZDSTypeInfo &src_info, const Z
   ZDSWriteMemberOptions options;
   options.is_copy = true;
   options.source_name = src_info.member_name;
+  options.source_dsn = src_info.base_dsn;
 
   return zds_write_member_bpam(zds, dst_dsn, member_data, options);
 }
