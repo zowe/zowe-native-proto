@@ -9,6 +9,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 - Added an `--attributes` flag to list ISPF statistics for member attributes. [#630](https://github.com/zowe/zowe-native-proto/issues/630)
 - Added the `zssh uss copy` command to the CLI. [#379](https://github.com/zowe/zowe-native-proto/pull/379).
+- Updated `stream` fields to match new requirements from the SDK. [#548](https://github.com/zowe/zowe-native-proto/issues/548)
 
 ## `0.3.0`
 
