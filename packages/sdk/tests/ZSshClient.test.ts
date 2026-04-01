@@ -449,6 +449,30 @@ describe("ZSshClient", () => {
         });
     });
 
+    describe("uss.issueCmd", () => {
+        it("should send unixCommand request and return command output", async () => {
+            const writeMock = vi.fn();
+            const client: ZSshClient = new (ZSshClient as any)();
+            (client as any).mSshStream = { stdin: { write: writeMock } };
+
+            const response = client.uss.issueCmd({ commandText: "whoami" });
+            const rpcResponse: RpcResponse = {
+                jsonrpc: "2.0",
+                result: { success: true, data: "admin" },
+                id: 1,
+            };
+            (client as any).processResponses(`${JSON.stringify(rpcResponse)}\n`);
+
+            const result = await response;
+            expect(result.success).toBe(true);
+            expect(result.data).toBe("admin");
+
+            const sentRequest = JSON.parse(writeMock.mock.calls[0][0]);
+            expect(sentRequest.method).toBe("unixCommand");
+            expect(sentRequest.params.commandText).toBe("whoami");
+        });
+    });
+
     describe("request with stream", () => {
         it("should register stream function when request contains stream", async () => {
             const mockStream = new Readable({ read() {} });
@@ -680,9 +704,9 @@ describe("ZSshUtils", () => {
             vi.spyOn(ZSshUtils as any, "sftp").mockImplementation(
                 async (_session: any, callback: (sftp: any, ssh: any) => Promise<void>) => {
                     const sshMock = {
-                        execCommand: vi.fn().mockResolvedValue({ code: 0, stdout: "deleted" }),
+                        execCommand: vi.fn().mockResolvedValue({ code: 0, stdout: "deleted", stderr: "" }),
                     };
-                    return callback({} as any, sshMock);
+                    return callback({}, sshMock);
                 },
             );
             await ZSshUtils.uninstallServer(fakeSshSession, serverPath);
@@ -690,15 +714,15 @@ describe("ZSshUtils", () => {
             expect(fakeLogger.error).not.toHaveBeenCalled();
         });
 
-        it("should return code 1 when uninstalling server succeeds", async () => {
+        it("should return code 1 when uninstalling server fails", async () => {
             const fakeLogger = { debug: vi.fn(), error: vi.fn() };
             vi.spyOn(Logger, "getAppLogger").mockReturnValue(fakeLogger as any);
             vi.spyOn(ZSshUtils as any, "sftp").mockImplementation(
                 async (_session: any, callback: (sftp: any, ssh: any) => Promise<void>) => {
                     const sshMock = {
-                        execCommand: vi.fn().mockResolvedValue({ code: 1 }),
+                        execCommand: vi.fn().mockResolvedValue({ code: 1, stderr: "" }),
                     };
-                    return callback({} as any, sshMock);
+                    return callback({}, sshMock);
                 },
             );
 
