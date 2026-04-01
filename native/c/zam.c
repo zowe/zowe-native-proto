@@ -1170,6 +1170,9 @@ int note(IO_CTRL *ioc, NOTE_RESPONSE *PTR32 note_response, int *rsn)
 #pragma epilog(ZAMDEXIT, " ZWEEPILG ")
 int ZAMDEXIT(DCB_ABEND_PL *PTR32 plist)
 {
+
+  gioc->dcb_abend = 1; // note DCBABEND
+
   // Some abends cannot be ignored or delayed (such as SB14). Default is worst-case scenario of following through w/ termination.
   int rc = DCB_ABEND_RC_TERMINATE;
   if (plist->option_mask & DCB_ABEND_OPT_OK_TO_IGNORE)
