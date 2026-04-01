@@ -1279,6 +1279,7 @@ async function upload(connection: Client, sshProfile: IProfile) {
 }
 
 async function build(connection: Client) {
+    console.log(`cd ${deployDirs.cDir} && make ${BUILD_TYPE_FLAG()}\n`, process.env.CI);
     const response = await runCommandInShell(connection, `cd ${deployDirs.cDir} && make ${BUILD_TYPE_FLAG()}\n`, {
         stepName: "Building native/c",
     });
