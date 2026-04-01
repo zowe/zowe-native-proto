@@ -241,48 +241,59 @@ static int copy_pds_to_pds(ZDS *zds, const ZDSTypeInfo &src, const ZDSTypeInfo &
   return RTNCD_SUCCESS;
 }
 
-// Copy sequential data set or member using binary I/O
+// Copy sequential data set or member
+// For PDS members, uses BPAM to properly finalize directory entries
+// For sequential data sets, uses binary I/O
 // Note: RECFM=U data sets are not explicitly checked here because fldata() returns
 // unreliable RECFM information when files are opened in binary mode. The write
 // operation will fail naturally if the target is truly RECFM=U.
 static int copy_sequential(ZDS *zds, const std::string &src_dsn, const std::string &dst_dsn)
 {
-  std::string src_path = "//'" + src_dsn + "'";
-  std::string dst_path = "//'" + dst_dsn + "'";
+  // Check if destination is a PDS member
+  const auto dst_is_member = zds_has_member(dst_dsn);
 
-  FILE *fin = fopen(src_path.c_str(), "rb");
-  if (!fin)
+  // Read source data
+  std::string data;
+  ZDSReadOpts read_opts{.zds = zds, .dsname = src_dsn};
+  int rc = zds_read(read_opts, data);
+  if (0 != rc)
   {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open source '%s'", src_dsn.c_str());
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not read source '%s'", src_dsn.c_str());
     return RTNCD_FAILURE;
   }
 
-  FILE *fout = fopen(dst_path.c_str(), "wb");
-  if (!fout)
+  // Write to destination using appropriate method
+  if (dst_is_member)
   {
-    fclose(fin);
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open target '%s'", dst_dsn.c_str());
-    return RTNCD_FAILURE;
+    // Use BPAM for PDS members (properly STOWs directory entry)
+    rc = zds_write_member_bpam(zds, dst_dsn, data);
+    // Clear ddname after BPAM close since the DD was freed
+    memset(zds->ddname, 0, sizeof(zds->ddname));
   }
-
-  char buffer[32760];
-  size_t bytes_read;
-  while ((bytes_read = fread(buffer, 1, sizeof(buffer), fin)) > 0)
+  else
   {
-    size_t bytes_written = fwrite(buffer, 1, bytes_read, fout);
-    if (bytes_written != bytes_read)
+    // Use binary I/O for sequential data sets
+    std::string dst_path = "//'" + dst_dsn + "'";
+    FILE *fout = fopen(dst_path.c_str(), "wb");
+    if (!fout)
     {
-      fclose(fin);
+      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open target '%s'", dst_dsn.c_str());
+      return RTNCD_FAILURE;
+    }
+
+    size_t bytes_written = fwrite(data.c_str(), 1, data.size(), fout);
+    if (bytes_written != data.size())
+    {
       fclose(fout);
       zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Write error copying to '%s'", dst_dsn.c_str());
       return RTNCD_FAILURE;
     }
+
+    fflush(fout);
+    fclose(fout);
   }
 
-  fflush(fout);
-  fclose(fin);
-  fclose(fout);
-  return RTNCD_SUCCESS;
+  return rc;
 }
 
 // Delete all members from a PDS

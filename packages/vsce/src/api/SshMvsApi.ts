@@ -353,7 +353,7 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
                 dsname: likeDataSetName,
             });
             if (memberResponse.items.length > 0) {
-                dirblk = Math.max(5, (memberResponse.items.length / 6) + 2);
+                dirblk = Math.max(10, Math.ceil(memberResponse.items.length / 4) + 5);
             }
         }
 
