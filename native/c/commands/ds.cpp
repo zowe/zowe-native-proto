@@ -992,7 +992,7 @@ int handle_data_set_copy(InvocationContext &context)
     result->set("memberCreated", boolean(true));
     context.output_stream() << "New member '" << target << "' created and copied from '" << source << "'" << std::endl;
   }
-  else if (options.delete_target_members)
+  if (options.delete_target_members)
   {
     context.output_stream() << "Target members deleted and data set '" << target << "' replaced with contents of '" << source << "'" << std::endl;
   }
@@ -1000,7 +1000,7 @@ int handle_data_set_copy(InvocationContext &context)
   {
     context.output_stream() << "Data set '" << target << "' has been updated with contents of '" << source << "'" << std::endl;
   }
-  else if (!options.target_created)
+  else if (!options.target_created && !options.member_created)
   {
     context.output_stream() << "Data set '" << source << "' copied to '" << target << "'" << std::endl;
   }

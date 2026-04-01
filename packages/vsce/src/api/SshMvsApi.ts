@@ -317,16 +317,27 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
     ): Promise<zosfiles.IZosFilesResponse> {
         const listResponse = await (await this.client).ds.listDatasets({
             pattern: likeDataSetName,
+            maxItems: 1,
             attributes: true,
         });
-        const sourceDs = listResponse.items.find((item) => item.name?.toUpperCase() === likeDataSetName.toUpperCase());
-        if (!sourceDs) {
+
+        if (listResponse.items.length === 0) {
             return this.buildZosFilesResponse(
                 { success: false },
                 false,
                 `Source data set "${likeDataSetName}" not found`,
             );
         }
+
+        const sourceDs = listResponse.items[0];
+        if (sourceDs.name?.toUpperCase() !== likeDataSetName.toUpperCase()) {
+            return this.buildZosFilesResponse(
+                { success: false },
+                false,
+                `Source data set "${likeDataSetName}" not found`,
+            );
+        }
+
         if (sourceDs.recfm === "U") {
             Gui.errorMessage("RECFM=U data sets are not supported for copy operations");
             return this.buildZosFilesResponse(
@@ -334,6 +345,16 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
                 false,
                 "RECFM=U data sets are not supported for copy operations",
             );
+        }
+
+        let dirblk = 5;
+        if (sourceDs.dsorg?.startsWith("PO")) {
+            const memberResponse = await (await this.client).ds.listDsMembers({
+                dsname: likeDataSetName,
+            });
+            if (memberResponse.items.length > 0) {
+                dirblk = Math.max(5, Math.ceil(memberResponse.items.length / 5) + 2);
+            }
         }
 
         const attributes: DatasetAttributes = {
@@ -349,6 +370,7 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
             storclass: sourceDs.storclass,
             dataclass: sourceDs.dataclass,
             mgntclass: sourceDs.mgmtclass,
+            dirblk,
         };
         const response = await (await this.client).ds.createDataset({
             dsname: dataSetName,
@@ -388,6 +410,7 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
         _enq?: string,
         replace?: boolean,
     ): Promise<zosfiles.IZosFilesResponse> {
+        // Note: _enq parameter is not currently used by the backend copy API
         try {
             const response = await (await this.client).ds.copyDataset({
                 fromDataset: fromDataSetName,
