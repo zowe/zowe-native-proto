@@ -1185,7 +1185,6 @@ int note(IO_CTRL *ioc, NOTE_RESPONSE *PTR32 note_response, int *rsn)
 #pragma epilog(ZAMDEXIT, " ZWEEPILG ")
 int ZAMDEXIT(DCB_ABEND_PL *PTR32 plist)
 {
-
   // Some abends cannot be ignored or delayed (such as SB14). Default is worst-case scenario of following through w/ termination.
   int rc = DCB_ABEND_RC_TERMINATE;
   if (plist->option_mask & DCB_ABEND_OPT_OK_TO_IGNORE)
@@ -1326,8 +1325,11 @@ void force_nab()
 int check(DECB *cpl)
 {
   int rc = 0;
+  zwto_debug("calling force_nab");
   force_nab();
+  zwto_debug("force_nab called");
   CHECK(*cpl, rc)
+  zwto_debug("CHECK returned %d", rc);
   rc = 0;
   return rc;
 }
@@ -1360,6 +1362,7 @@ int write_sync(IO_CTRL *ioc, char *buffer)
     return rc;
   }
 
+  zwto_debug("calling metal C check");
   return check(&ioc->decb);
 }
 
