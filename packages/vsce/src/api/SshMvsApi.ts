@@ -384,8 +384,17 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
         { dsn: toDataSetName, member: toMemberName }: zosfiles.IDataSet,
         options?: { replace?: boolean; deleteTargetMembers?: boolean },
     ): Promise<zosfiles.IZosFilesResponse> {
-        const fromDataset = fromMemberName ? `${fromDataSetName}(${fromMemberName})` : fromDataSetName;
-        const toDataset = toMemberName ? `${toDataSetName}(${toMemberName})` : toDataSetName;
+        const quoteMemberIfNeeded = (member: string): string => {
+            if (/[^A-Z0-9#@$]/.test(member.toUpperCase())) {
+                return `'${member}'`;
+            }
+            return member;
+        };
+
+        const fromMem = fromMemberName ? quoteMemberIfNeeded(fromMemberName) : undefined;
+        const toMem = toMemberName ? quoteMemberIfNeeded(toMemberName) : undefined;
+        const fromDataset = fromMem ? `${fromDataSetName}(${fromMem})` : fromDataSetName;
+        const toDataset = toMem ? `${toDataSetName}(${toMem})` : toDataSetName;
         try {
             const response = await (await this.client).ds.copyDataset({
                 fromDataset,
