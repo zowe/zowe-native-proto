@@ -241,6 +241,10 @@ static int copy_pds_to_pds(ZDS *zds, const ZDSTypeInfo &src, const ZDSTypeInfo &
   return RTNCD_SUCCESS;
 }
 
+// Forward declarations for static helper functions
+static bool zds_has_member(const std::string &dsn);
+static int zds_write_member_bpam(ZDS *zds, const std::string &dsn, std::string &data);
+
 // Copy sequential data set or member
 // For PDS members, uses BPAM to properly finalize directory entries
 // For sequential data sets, uses binary I/O
