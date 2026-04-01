@@ -326,7 +326,7 @@ describe("SshConfigUtils", () => {
             });
 
             it("returns undefined when quick pick is hidden", async () => {
-                const opts = { items: [] };
+                const opts = { items: [] } as any;
                 const promise = (instance as any).showCustomMenu(opts);
                 const onDidHide = (mockQuickPick.onDidHide as any).mock.calls[0][0];
                 onDidHide();

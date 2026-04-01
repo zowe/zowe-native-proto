@@ -46,8 +46,7 @@ void zut_tests()
                   shell_command = "";
                   rc = zut_spawn_shell_command(shell_command, stdout_response, stderr_response);
                   ExpectWithContext(rc, stdout_response).ToBe(-1);
-                  ExpectWithContext(stderr_response, "Expecting an error").ToContain("You must specify a program to run.");});
-
+                  ExpectWithContext(stderr_response, "Expecting an error").ToContain("You must specify a program to run."); });
 
              it("should run programs", []() -> void
                 {

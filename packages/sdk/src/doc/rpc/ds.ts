@@ -131,7 +131,7 @@ export interface ListDsMembersResponse extends common.CommandResponse {
     returnedRows: number;
 }
 
-export interface ReadDatasetRequest extends common.CommandRequest<"readDataset"> {
+export interface ReadDatasetRequest extends common.CommandRequest<"readDataset">, common.WritableStreamRpc {
     /**
      * Desired encoding for the dataset (optional)
      */
@@ -151,7 +151,7 @@ export interface ReadDatasetRequest extends common.CommandRequest<"readDataset">
     /**
      * Stream to write contents to
      */
-    stream?: Writable;
+    stream?: () => Writable;
 }
 
 export interface ReadDatasetResponse extends common.CommandResponse {
@@ -182,7 +182,7 @@ export interface RestoreDatasetRequest extends common.CommandRequest<"restoreDat
 
 export type RestoreDatasetResponse = common.CommandResponse;
 
-export interface WriteDatasetRequest extends common.CommandRequest<"writeDataset"> {
+export interface WriteDatasetRequest extends common.CommandRequest<"writeDataset">, common.ReadableStreamRpc {
     /**
      * Desired encoding for the dataset (optional)
      */
@@ -210,7 +210,7 @@ export interface WriteDatasetRequest extends common.CommandRequest<"writeDataset
     /**
      * Stream to read contents from
      */
-    stream?: Readable;
+    stream?: () => Readable;
 }
 
 export interface WriteDatasetResponse extends common.CommandResponse {
