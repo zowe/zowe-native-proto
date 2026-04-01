@@ -1183,22 +1183,24 @@ int note(IO_CTRL *ioc, NOTE_RESPONSE *PTR32 note_response, int *rsn)
 
 #pragma prolog(ZAMDEXIT, " ZWEPROLG NEWDSA=(YES,24),SAVE=BAKR ")
 #pragma epilog(ZAMDEXIT, " ZWEEPILG ")
-int ZAMDEXIT(DCB_ABEND_PL plist)
+int ZAMDEXIT(DCB_ABEND_PL *PTR32 plist)
 {
+
   // Some abends cannot be ignored or delayed (such as SB14). Default is worst-case scenario of following through w/ termination.
   int rc = DCB_ABEND_RC_TERMINATE;
-  if (plist.option_mask & DCB_ABEND_OPT_OK_TO_IGNORE)
+  if (plist->option_mask & DCB_ABEND_OPT_OK_TO_IGNORE)
   {
     // If the abend is safe to ignore according to the option mask, tell the system to quietly ignore it (e.g. SE37 out-of-space)
-    plist.option_mask = rc = DCB_ABEND_RC_IGNORE_QUIETLY;
+    rc = DCB_ABEND_RC_IGNORE_QUIETLY;
   }
   // TODO(traeok): Talk w/ Dan about whether this next branch is worthwhile or if it should be re-introduced later
   // Likely not useful for client-server scenario - abend would likely never hit delay branch and is still handled by ESTAE/ARR,
   // but this branch may provide benefit for general API consumers w/ custom ESTAE/SPIE recovery
-  else if (plist.option_mask & DCB_ABEND_OPT_OK_TO_DELAY)
+  else if (plist->option_mask & DCB_ABEND_OPT_OK_TO_DELAY)
   {
-    plist.option_mask = rc = DCB_ABEND_RC_DELAY;
+    rc = DCB_ABEND_RC_DELAY;
   }
+
   return rc;
 }
 
