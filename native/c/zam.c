@@ -1187,11 +1187,11 @@ int ZAMDEXIT(DCB_ABEND_PL *PTR32 plist)
 {
   // Some abends cannot be ignored or delayed (such as SB14). Default is worst-case scenario of following through w/ termination.
   int rc = DCB_ABEND_RC_TERMINATE;
-  if (plist->option_mask & DCB_ABEND_OPT_OK_TO_IGNORE && plist->return_code != 0xE37)
+  if (plist->option_mask & DCB_ABEND_OPT_OK_TO_IGNORE && plist->system_completion_code != 0xE37)
   {
     // If the abend is safe to ignore according to the option mask, tell the system to quietly ignore it (e.g. SE37 out-of-space)
     // EOV abends should continue to terminate so ESTAEX handles them
-    rc = DCB_ABEND_RC_IGNORE_QUIETLY;
+    rc = DCB_ABEND_RC_IGNORE;
   }
   // TODO(traeok): Talk w/ Dan about whether this next branch is worthwhile or if it should be re-introduced later
   // Likely not useful for client-server scenario - abend would likely never hit delay branch and is still handled by ESTAE/ARR,
