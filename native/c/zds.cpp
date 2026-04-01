@@ -279,6 +279,7 @@ static int copy_sequential(ZDS *zds, const std::string &src_dsn, const std::stri
     }
   }
 
+  fflush(fout);
   fclose(fin);
   fclose(fout);
   return RTNCD_SUCCESS;
