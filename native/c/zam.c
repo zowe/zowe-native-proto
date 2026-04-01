@@ -23,10 +23,8 @@
 #include "zutm31.h"
 #include "ztime.h"
 #include "zio.h"
-#include "zwto.h"
-#include "zdbg.h"
 
-register FILE_CTRL *fc ASMREG("r8");
+register IO_CTRL *gioc ASMREG("r8");
 
 typedef struct
 {
@@ -434,6 +432,8 @@ int open_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 *PTR32 ioc, const char *P
   memcpy(new_ioc->dcb.dcbddnam, ddname, sizeof(new_ioc->dcb.dcbddnam));
   memcpy(new_ioc->ddname, ddname, sizeof(new_ioc->ddname));
 
+  gioc = new_ioc;
+
   //
   // Read the JFCB for the data set
   //
@@ -653,6 +653,8 @@ int write_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc, const char *PTR32 d
 
   int lrecl = ioc->dcb.dcblrecl;
   int blocksize = ioc->dcb.dcbblksi;
+
+  gioc = ioc;
 
   if (ioc->dcb.dcbrecfm & dcbrecv)
   {
@@ -988,6 +990,8 @@ int close_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
   int rc = 0;
   int first_rc = 0;
 
+  gioc = ioc;
+
   //
   // Write any remaining bytes in the buffer
   //
@@ -1094,25 +1098,6 @@ IO_CTRL *open_output_assert(char *ddname, int lrecl, int blkSize, unsigned char 
   if (!(dcbofopn & dcb->dcboflgs))
     s0c3_abend(OPEN_OUTPUT_ASSERT_FAIL);
 
-  return ioc;
-}
-
-IO_CTRL *open_input_assert(char *ddname, int lrecl, int blkSize, unsigned char recfm)
-{
-  IO_CTRL *ioc = new_read_io_ctrl(ddname, lrecl, blkSize, recfm);
-  set_dcb_dcbe(&ioc->dcb);
-  set_eod(&ioc->dcb, eodad);
-  IHADCB *dcb = &ioc->dcb;
-  int rc = 0;
-  dcb->dcbdsrg1 = dcbdsgps; // DSORG=PS
-
-  rc = open_input_dcb(dcb);
-  ioc->input = 1;
-
-  if (0 != rc)
-    s0c3_abend(OPEN_INPUT_ASSERT_RC);
-  if (!(dcbofopn & dcb->dcboflgs))
-    s0c3_abend(OPEN_INPUT_ASSERT_FAIL);
   return ioc;
 }
 
@@ -1230,14 +1215,6 @@ static void setup_exit_list(IO_CTRL *ioc)
   ioc->dcb.dcbrecfm = recfm;
 }
 
-int read_input_jfcb(IO_CTRL *ioc)
-{
-  int rc = 0;
-  setup_exit_list(ioc);
-  RDJFCB(ioc->dcb, ioc->rdjfcb_pl, rc, INPUT);
-  return rc;
-}
-
 int read_output_jfcb(IO_CTRL *ioc)
 {
   int rc = 0;
@@ -1325,21 +1302,10 @@ void force_nab()
 int check(DECB *cpl)
 {
   int rc = 0;
-  zwto_debug("calling force_nab");
   force_nab();
-  zwto_debug("force_nab called");
   CHECK(*cpl, rc)
-  zwto_debug("CHECK returned %d", rc);
   rc = 0;
   return rc;
-}
-
-void read_dcb(IHADCB *dcb, READ_PL *rpl, char *buffer)
-{
-  // NOTE(Kelosky): READ does not appear to give an RC
-  int rc = 0;
-  memset(rpl, 0x00, sizeof(READ_PL));
-  READ(*dcb, *rpl, *buffer, rc);
 }
 
 int close_dcb(IHADCB *dcb)
@@ -1362,59 +1328,5 @@ int write_sync(IO_CTRL *ioc, char *buffer)
     return rc;
   }
 
-  zwto_debug("calling metal C check");
   return check(&ioc->decb);
-}
-
-int read_sync(IO_CTRL *ioc, char *buffer)
-{
-  int rc = 0;
-  READ_PL *rpl = &ioc->decb;
-  IHADCB *dcb = &ioc->dcb;
-
-  if (dcb->dcbdcbe)
-  {
-    // file control begins at DCBE address
-    fc = dcb->dcbdcbe;
-
-    // fixed only records until rdjfcb
-    if (dcbrecf == dcb->dcbrecfm)
-    {
-      // TODO(Kelosky): skip read and use buffer for blocked records
-      // TODO(Kelosky): check for rc
-      // right now, for non-blocked, there is no buffer
-      read_dcb(dcb, rpl, fc->buffer);
-      // read(dcb, rpl, buffer);
-
-      rc = check(rpl);
-      if (fc->eod)
-      {
-        return -1;
-      }
-      if (0 != rc)
-      {
-        return rc;
-      }
-
-      // TODO(Kelosky): offset into buffer
-      memcpy(buffer, fc->buffer, dcb->dcblrecl);
-    }
-    else
-    {
-      s0c3_abend(UNSUPPORTED_RECFM);
-    }
-  }
-  else
-  {
-    s0c3_abend(DCBE_REQUIRED);
-  }
-
-  return 0;
-}
-
-// NOTE(Kelosky): registers 2-13 should be the same as the time
-// the read/check was called for non-VSAM end of data exit.
-void eodad()
-{
-  fc->eod = 1;
 }

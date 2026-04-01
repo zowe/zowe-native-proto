@@ -120,6 +120,7 @@ enum AMS_ERR
 static IO_CTRL *PTR32 new_io_ctrl()
 {
   IO_CTRL *ioc = storage_obtain24(sizeof(IO_CTRL));
+  memcpy(ioc->eye, EYE, strlen(EYE));
   memset(ioc, 0x00, sizeof(IO_CTRL));
   return ioc;
 }
