@@ -22,7 +22,7 @@ vi.mock("vscode", () => ({
     },
 }));
 
-// Mock Zowe Explorer API
+// Mock Zowe Explorer API (shared structure with SshErrorCorrelations.test.ts)
 vi.mock("@zowe/zowe-explorer-api", () => ({
     ZoweExplorerApiType: {
         All: "all",

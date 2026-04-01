@@ -186,6 +186,11 @@ void register_uss_commands(CommandDispatcher &dispatcher)
                                   .set_default("encoding", "IBM-1047")
                                   .write_stdin("data", true)
                                   .handle_fifo("stream", "pipe-path", FifoMode::PUT));
+  dispatcher.register_command("unixCommand",
+                              CommandBuilder(uss::handle_uss_issue_cmd)
+                                  .validate<IssueUssCmdRequest, IssueUssCmdResponse>()
+                                  .rename_arg("commandText", "command")
+                                  .read_stdout("data", false));
 }
 
 void register_tso_commands(CommandDispatcher &dispatcher)

@@ -185,5 +185,16 @@ void zowex_server_tests()
                   Expect(response).ToContain("\"code\":-32700");
                   Expect(response).ToContain("\"message\":\"Failed to parse command request\"");
                 });
+             it("should execute unixCommand and return output",
+                []() -> void
+                {
+                  ServerHandle server = start_server(zowex_server_command, true);
+                  write_to_server(server, "{\"jsonrpc\":\"2.0\",\"method\":\"unixCommand\",\"params\":{\"commandText\":\"whoami\"},\"id\":1}\n");
+                  std::string response = read_line_from_server(server);
+                  stop_server(server);
+
+                  Expect(response).ToContain("\"success\":true");
+                  Expect(response).ToContain("\"data\":");
+                });
            });
 }
