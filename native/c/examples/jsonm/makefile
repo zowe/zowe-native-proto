@@ -11,15 +11,22 @@
 
 OUT_DIR=build-out
 
-.INCLUDE: ../toolchain.mk
+.INCLUDE: ../examples_toolchain.mk
 
-all: build-out build-out/json
+all: build-out run
 
-json: build-out/json
+run: build-out/json
+	@echo 'Running ./build-out/json'
+	./build-out/json
 
 build-out:
 	@echo 'Creating build-out'
 	mkdir -p build-out
+
+copy-mtl:
+	cp ../../zmetal.h zmetal.h
+	cp ../../zwto.h zwto.h
+	cp ../../zjsonm31.h zjsonm31.h
 
 build-out/json.s: json.c
 	@echo 'Building build-out/json.s'
@@ -31,7 +38,7 @@ build-out/json.o: build-out/json.s
 
 build-out/json: build-out/json.o
 	@echo 'Building build-out/json'
-	$(CXX) $(CPP_BND_FLAGS) -Wl,-eMAIN -o $@ $^
+	$(CXX) $(CPP_BND_FLAGS) -o $@ $^
 
 clean:
 	rm -f *.o

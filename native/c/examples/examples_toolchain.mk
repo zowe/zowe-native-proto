@@ -14,7 +14,7 @@
 # WARNING: Since this file is meant to be included by other files, we need to use the relative path to the toolchain.mk file.
 
 # Common directories for examples
-MACLIBS= -I../../../asmmac $(MACLIBS_BASE)
+MACLIBS= -I../../../asmmac -I../../../asmchdr $(MACLIBS_BASE)
 MTL_HEADERS=$(MTL_HEADERS_BASE) -I../../chdsect -I../../../c
 
 # Common flags for examples
@@ -29,7 +29,7 @@ CPP_FLAGS=$(CPP_FLAGS_BASE) $(CPP_FLAGS_COMMON) $(DEBUGGER_FLAGS)
 MTL_FLAGS+=$(DEBUGGER_FLAGS) $(OTHER_C_FLAGS)
 MTL_FLAGS64+=$(DEBUGGER_FLAGS) $(OTHER_C_FLAGS)
 ASM_FLAGS+=--verbose
-.ELIF $(BuildType) == RELEASE
+.ELSIF $(BuildType) == RELEASE
 CPP_BND_FLAGS=$(CPP_BND_BASE_FLAGS)
 C_FLAGS=$(C_FLAGS_BASE) $(C_FLAGS_COMMON) $(RELEASE_FLAGS)
 CPP_FLAGS=$(CPP_FLAGS_BASE) $(CPP_FLAGS_COMMON) $(RELEASE_FLAGS)
