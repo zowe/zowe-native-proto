@@ -1187,14 +1187,14 @@ static int zds_copy_member_streamed(ZDS *zds, const std::string &src_dsn, const 
   }
 
   // Stream read and write in chunks
-  char buffer[32760];
+  std::vector<char> buffer(32760);
   size_t bytes_read;
   int write_error = 0;
 
-  while ((bytes_read = fread(buffer, 1, sizeof(buffer), fin)) > 0)
+  while ((bytes_read = fread(&buffer[0], 1, buffer.size(), fin)) > 0)
   {
     int length = bytes_read;
-    rc = ZDSWBPAM(zds, ioc, buffer, &length);
+    rc = ZDSWBPAM(zds, ioc, &buffer[0], &length);
     if (rc != RTNCD_SUCCESS)
     {
       write_error = 1;
