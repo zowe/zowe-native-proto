@@ -23,7 +23,6 @@
 #include "zutm31.h"
 #include "ztime.h"
 #include "zio.h"
-#include "zwto.h"
 #include "zdbg.h"
 
 register FILE_CTRL *fc ASMREG("r8");
@@ -733,11 +732,9 @@ static int update_ispf_statistics(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
   int rc = 0;
   if (ioc->skip_stat_update)
   {
-    zwto_debug("skip stat update");
     return RTNCD_SUCCESS;
   }
 
-  zwto_debug("updating stats");
   // Skip ISPF stats for undefined record format (RECFM=U)
   if ((ioc->dcb.dcbrecfm & dcbrecu) == dcbrecu)
   {
