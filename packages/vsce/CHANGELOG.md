@@ -4,10 +4,11 @@ All notable changes to the "zowe-native-proto-vsce" extension will be documented
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## Recent Changes
+## `0.4.0`
 
 - Added error correlation for expired z/OS password (`FOTS1668`/`FOTS1669`), surfacing actionable tips and documentation links in Zowe Explorer when SSH commands fail due to an expired password. [#867](https://github.com/zowe/zowe-native-proto/pull/867)
 - Updated **Show Attributes** to display member ISPF statistics [#630](https://github.com/zowe/zowe-native-proto/issues/630)
+- Improved Error Message handling and actions when encountering unrecoverable errors in `zowex`. [#548](https://github.com/zowe/zowe-native-proto/issues/548)
 - Added the functionality for the **Rename** option in the USS tree. [#820](https://github.com/zowe/zowe-native-proto/pull/820)
 - Added the functionality to move files in the USS tree. [#820](https://github.com/zowe/zowe-native-proto/pull/820)
 - Added the functionality to copy USS files and directories. [#379](https://github.com/zowe/zowe-native-proto/pull/379).

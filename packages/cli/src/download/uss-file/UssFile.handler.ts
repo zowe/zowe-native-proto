@@ -30,7 +30,7 @@ export default class DownloadUssFileHandler extends SshBaseHandler {
         params.response.progress.startBar({ task });
         const response = await client.uss.readFile(
             {
-                stream: fs.createWriteStream(localFilePath),
+                stream: () => fs.createWriteStream(localFilePath),
                 fspath: params.arguments.filePath,
                 encoding: params.arguments.binary ? "binary" : params.arguments.encoding,
                 localEncoding: params.arguments.localEncoding,

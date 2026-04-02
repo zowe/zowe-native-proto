@@ -93,11 +93,11 @@ ZJSON_SCHEMA(ListDsMembersRequest,
 
 struct ReadDatasetRequest {};
 ZJSON_SCHEMA(ReadDatasetRequest,
+    FIELD_OPTIONAL(stream, ANY),
     FIELD_OPTIONAL(encoding, STRING),
     FIELD_OPTIONAL(localEncoding, STRING),
     FIELD_OPTIONAL(volume, STRING),
-    FIELD_REQUIRED(dsname, STRING),
-    FIELD_OPTIONAL(stream, ANY)
+    FIELD_REQUIRED(dsname, STRING)
 );
 
 struct RestoreDatasetRequest {};
@@ -107,13 +107,13 @@ ZJSON_SCHEMA(RestoreDatasetRequest,
 
 struct WriteDatasetRequest {};
 ZJSON_SCHEMA(WriteDatasetRequest,
+    FIELD_OPTIONAL(stream, ANY),
     FIELD_OPTIONAL(encoding, STRING),
     FIELD_OPTIONAL(localEncoding, STRING),
     FIELD_OPTIONAL(etag, STRING),
     FIELD_OPTIONAL(volume, STRING),
     FIELD_REQUIRED(dsname, STRING),
-    FIELD_OPTIONAL(data, STRING),
-    FIELD_OPTIONAL(stream, ANY)
+    FIELD_OPTIONAL(data, STRING)
 );
 
 struct CancelJobRequest {};
@@ -253,20 +253,20 @@ ZJSON_SCHEMA(ListFilesRequest,
 
 struct ReadFileRequest {};
 ZJSON_SCHEMA(ReadFileRequest,
+    FIELD_OPTIONAL(stream, ANY),
     FIELD_OPTIONAL(encoding, STRING),
     FIELD_OPTIONAL(localEncoding, STRING),
-    FIELD_REQUIRED(fspath, STRING),
-    FIELD_OPTIONAL(stream, ANY)
+    FIELD_REQUIRED(fspath, STRING)
 );
 
 struct WriteFileRequest {};
 ZJSON_SCHEMA(WriteFileRequest,
+    FIELD_OPTIONAL(stream, ANY),
     FIELD_OPTIONAL(encoding, STRING),
     FIELD_OPTIONAL(localEncoding, STRING),
     FIELD_OPTIONAL(etag, STRING),
     FIELD_REQUIRED(fspath, STRING),
     FIELD_OPTIONAL(data, STRING),
-    FIELD_OPTIONAL(stream, ANY),
     FIELD_OPTIONAL(contentLen, NUMBER)
 );
 
