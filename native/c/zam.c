@@ -905,7 +905,6 @@ static int close_data_set(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
   int rc = 0;
   if (ioc->dcb.dcboflgs & dcbofopn)
   {
-    ioc->dcb_abend = 0;
     rc = close_dcb(&ioc->dcb);
 
     if (ioc->dcb_abend)
