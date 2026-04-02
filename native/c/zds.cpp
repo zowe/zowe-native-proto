@@ -1209,6 +1209,7 @@ zds_write_member_bpam(ZDS *zds, const std::string &dsn, std::string &data, const
 
         ioc->stow_list.c = bldl_pl.list.c;
         memcpy(ioc->stow_list.user_data, bldl_pl.list.user_data, sizeof(ISPF_STATS));
+        memcpy(ioc->stow_list.name, ioc->jfcb.jfcbelnm, sizeof(ioc->jfcb.jfcbelnm));
         ioc->skip_stat_update = 1;
       }
       zds_close_output_bpam(&zds_src, source_ioc);
