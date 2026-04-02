@@ -4,6 +4,11 @@ All notable changes to the "zowe-native-proto-vsce" extension will be documented
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## Recent Changes
+
+- Improved `allocateLikeDataSet` to use exact matching with `maxItems: 1`, validate RECFM=U rejection, and estimate directory blocks for PDS based on member count with sensible defaults for primary and lrecl attributes. [#778](https://github.com/zowe/zowe-native-proto/pull/778)
+- Enhanced copy functionality with `copyDataSetMember` for member-to-member and full data set copies supporting `replace` and `deleteTargetMembers` options, plus `copyDataSet` wrapper for full data set operations.[#778](https://github.com/zowe/zowe-native-proto/pull/778)
+
 ## `0.4.0`
 
 - Added error correlation for expired z/OS password (`FOTS1668`/`FOTS1669`), surfacing actionable tips and documentation links in Zowe Explorer when SSH commands fail due to an expired password. [#867](https://github.com/zowe/zowe-native-proto/pull/867)
