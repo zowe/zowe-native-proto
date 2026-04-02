@@ -9,11 +9,13 @@
  *
  */
 
+#include <cstdio>
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
 #include "ztest.hpp"
 #include "zut.hpp"
+#include "../zlogger.hpp"
 #include "zstorage.metal.test.h"
 
 using namespace ztst;
@@ -24,6 +26,28 @@ void zut_tests()
   describe("zut tests",
            []() -> void
            {
+             it("should run shell program", []() -> void
+                {
+                  std::string stdout_response;
+                  std::string stderr_response;
+                  std::string args = "line1\nline2\nline3";
+                  std::string shell_command = "printf \"" + args + "\"";
+
+                  int rc = zut_spawn_shell_command(shell_command, stdout_response, stderr_response);
+                  ExpectWithContext(rc, stderr_response).ToBe(0);
+                  ExpectWithContext(stdout_response, "Expected all lines").ToBe(args);
+                  ExpectWithContext(stderr_response, "std err should be empty").ToBe(""); 
+
+                  shell_command = "fakeutility";
+                  rc = zut_spawn_shell_command(shell_command, stdout_response, stderr_response);
+                  ExpectWithContext(rc, stdout_response).ToBe(127);
+                  ExpectWithContext(stderr_response, "Expecting an error").ToContain("fakeutility: FSUM7351 not found");
+
+                  shell_command = "";
+                  rc = zut_spawn_shell_command(shell_command, stdout_response, stderr_response);
+                  ExpectWithContext(rc, stdout_response).ToBe(-1);
+                  ExpectWithContext(stderr_response, "Expecting an error").ToContain("You must specify a program to run."); });
+
              it("should run programs", []() -> void
                 {
                   std::string response;
@@ -41,15 +65,11 @@ void zut_tests()
 
                   program = "fakeutility";
                   rc = zut_run_program(program, {}, response);
-                  ExpectWithContext(rc, response).ToBe(255);
-                  ExpectWithContext(response, "Expecting an error").ToContain("zut_run_program: error executing fakeutility");
+                  ExpectWithContext(rc, response).ToBe(-1);
+                  ExpectWithContext(response, "Expecting an error").ToContain("zut_private_run_program: fakeutility: command not found");
 
                   program = "";
                   rc = zut_run_program(program, {}, response);
-                  ExpectWithContext(rc, response).ToBe(-1);
-                  ExpectWithContext(response, "Expecting an error").ToContain("You must specify a program to run.");
-
-                  rc = zut_run_program(nullptr, {}, response);
                   ExpectWithContext(rc, response).ToBe(-1);
                   ExpectWithContext(response, "Expecting an error").ToContain("You must specify a program to run.");
 
@@ -68,17 +88,12 @@ void zut_tests()
 
                   program = "fakeutility";
                   rc = zut_run_program(program, {}, stdout_data, stderr_data);
-                  ExpectWithContext(rc, stderr_data).ToBe(255);
-                  ExpectWithContext(stderr_data, "Expecting an error").ToContain("zut_run_program: error executing fakeutility");
+                  ExpectWithContext(rc, stderr_data).ToBe(-1);
+                  ExpectWithContext(stderr_data, "Expecting an error").ToContain("zut_private_run_program: fakeutility: command not found");
                   Expect(stdout_data).ToBe("");
 
                   program = "";
                   rc = zut_run_program(program, {}, stdout_data, stderr_data);
-                  ExpectWithContext(rc, stderr_data).ToBe(-1);
-                  ExpectWithContext(stderr_data, "Expecting an error").ToContain("You must specify a program to run.");
-                  Expect(stdout_data).ToBe("");
-
-                  rc = zut_run_program(nullptr, {}, stdout_data, stderr_data);
                   ExpectWithContext(rc, stderr_data).ToBe(-1);
                   ExpectWithContext(stderr_data, "Expecting an error").ToContain("You must specify a program to run.");
                   Expect(stdout_data).ToBe(""); });
@@ -144,6 +159,44 @@ void zut_tests()
                   expect(std::string(buffer)).ToBe("ABC     ");
                 });
 
+             describe("zut_run_program pipe draining",
+                      []() -> void
+                      {
+                        it("should capture stdout and stderr in separate streams", []() -> void
+                           {
+                             std::string stdout_data, stderr_data;
+                             std::string program = "sh";
+                             std::vector<std::string> args = {"-c", "echo STDOUT_LINE; echo STDERR_LINE >&2"};
+
+                             int rc = zut_run_program(program, args, stdout_data, stderr_data);
+                             ExpectWithContext(rc, stderr_data).ToBe(0);
+                             ExpectWithContext(stdout_data, "stdout should contain stdout output").ToContain("STDOUT_LINE");
+                             ExpectWithContext(stderr_data, "stderr should contain stderr output").ToContain("STDERR_LINE");
+                             ExpectWithContext(stdout_data, "stdout should not contain stderr output").Not().ToContain("STDERR_LINE");
+                             ExpectWithContext(stderr_data, "stderr should not contain stdout output").Not().ToContain("STDOUT_LINE"); });
+
+                        it("should fully drain stdout output larger than the pipe buffer", []() -> void
+                           {
+                             std::string stdout_data, stderr_data;
+                             std::string program = "sh";
+                             std::vector<std::string> args = {"-c", "awk 'BEGIN { for (i = 0; i < 8000; i++) printf \"A\" }'"};
+
+                             int rc = zut_run_program(program, args, stdout_data, stderr_data);
+                             ExpectWithContext(rc, stderr_data).ToBe(0);
+                             ExpectWithContext(static_cast<int>(stdout_data.size()), "stdout should be 8000 bytes").ToBe(8000);
+                             Expect(stderr_data).ToBe(""); });
+
+                        it("should fully drain output via single-stream (merged) overload", []() -> void
+                           {
+                             std::string response;
+                             std::string program = "sh";
+                             std::vector<std::string> args = {"-c", "awk 'BEGIN { for (i = 0; i < 8000; i++) printf \"B\" }'"};
+
+                             int rc = zut_run_program(program, args, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+                             ExpectWithContext(static_cast<int>(response.size()), "response should be 8000 bytes").ToBe(8000); });
+                      });
+
              describe("zut_list_parmlib",
                       []() -> void
                       {
@@ -159,9 +212,11 @@ void zut_tests()
              describe("zut_bpxwdyn",
                       []() -> void
                       {
+                        ZLOG_DEBUG("zut.test: describe zut_bpxwdyn");
                         it("should allocate a sysout data set and get the DS name",
                            []() -> void
                            {
+                             ZLOG_DEBUG("zut.test: it allocate sysout");
                              std::string cmd = "ALLOC SYSOUT";
                              unsigned int code = 0;
                              std::string dsname = "";
@@ -170,11 +225,13 @@ void zut_tests()
                              expect(rc).ToBe(0);
                              expect(dsname.size()).ToBeGreaterThan(0);
                              expect(code).ToBe(0);
+                             ZLOG_DEBUG("zut.test: it allocate sysout done");
                            });
 
                         it("should allocate a data set, get the DD name, and free it",
                            []() -> void
                            {
+                             ZLOG_DEBUG("zut.test: it alloc DA SYS1.MACLIB");
                              std::string cmd = "ALLOC DA('SYS1.MACLIB') SHR";
                              unsigned int code = 0;
                              std::string ddname = "";

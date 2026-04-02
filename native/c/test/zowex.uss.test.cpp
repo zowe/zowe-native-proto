@@ -967,5 +967,37 @@ void zowex_uss_tests()
                              Expect(response).ToContain("Path '/does/not/exist' does not exist");
                            });
                       });
+             describe("issue command",
+                      [&]() -> void
+                      {
+                        it("should issue whoami and return a non-empty user ID",
+                           [&]() -> void
+                           {
+                             std::string command = zowex_command + " uss issue whoami";
+                             rc = execute_command_with_output(command, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+                             Expect(response.size()).ToBeGreaterThan(0);
+                           });
+
+                        it("should issue echo and return the expected output",
+                           [&]() -> void
+                           {
+                             std::string command = zowex_command + " uss issue \"echo hello\"";
+                             rc = execute_command_with_output(command, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+                             Expect(response).ToContain("hello");
+                           });
+
+                        it("should return non-zero for an invalid command",
+                           [&]() -> void
+                           {
+                             std::string command = zowex_command + " uss issue \"command_that_does_not_exist_xyz\"";
+                             {
+                               test_utils::ErrorStreamCapture c;
+                               rc = execute_command_with_output(command, response);
+                             }
+                             Expect(rc).Not().ToBe(0);
+                           });
+                      });
            });
 }

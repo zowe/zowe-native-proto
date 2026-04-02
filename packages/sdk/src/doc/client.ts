@@ -10,7 +10,7 @@
  */
 
 import type { CommandRequest, CommandResponse } from "./rpc/common";
-import type { ProgressCallback } from "./types";
+import type { ProgressCallback, RpcPromise } from "./types";
 
 export interface ClientOptions {
     /**
@@ -63,6 +63,20 @@ export interface ClientOptions {
      * (default: false)
      */
     verbose?: boolean;
+
+    /**
+     * A set of requests to run after the client starts.
+     * Typically previously failed requests queued for re-run.
+     * (default: empty)
+     */
+    requests?: Set<ExistingClientRequest>;
+}
+
+export interface ExistingClientRequest {
+    command: CommandRequest;
+    rpc: RpcPromise;
+    silenced: boolean;
+    timeoutId: NodeJS.Timeout;
 }
 
 export interface IRpcClient {
