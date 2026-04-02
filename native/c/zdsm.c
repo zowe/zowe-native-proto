@@ -11,6 +11,7 @@
 
 #include "zdsm.h"
 #include "iggcsina.h"
+#include "zamtypes.h"
 #include "zdstype.h"
 #include "zmetal.h"
 #include "zdbg.h"
@@ -297,10 +298,12 @@ int ZDSBLDL(ZDS *zds, IO_CTRL *ioc, BLDL_PL *pl)
 {
   int rc = 0;
   ZDS zds31 = {0};
+  BLDL_PL pl31 = {0};
   memcpy(&zds31, zds, sizeof(ZDS));
-  rc = bldl_member(&zds31.diag, ioc, pl);
-
+  memcpy(&pl31, pl, sizeof(BLDL_PL));
+  rc = bldl_member(&zds31.diag, ioc, &pl31);
   memcpy(zds, &zds31, sizeof(ZDS));
+  memcpy(pl, &pl31, sizeof(BLDL_PL));
 
   return rc;
 }

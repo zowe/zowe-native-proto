@@ -138,8 +138,13 @@ static std::vector<std::string> get_member_names(const std::string &pds_dsn)
   zds_list_members(&temp_zds, pds_dsn, members);
   for (const auto &mem : members)
   {
+    std::cerr << "MEMBER NAME " << mem.name << std::endl;
     std::string name = mem.name;
     zut_trim(name);
+    if (name.empty())
+    {
+      continue;
+    }
     names.push_back(name);
   }
   return names;
@@ -932,6 +937,7 @@ static int write_asa_overflow_records(ZDS *zds, IO_CTRL *ioc, int overflow_count
 static int
 zds_write_member_bpam(ZDS *zds, const std::string &dsn, std::string &data, const ZDSWriteMemberOptions &options = {})
 {
+
   int rc = 0;
   IO_CTRL *ioc = nullptr;
 
@@ -942,8 +948,10 @@ zds_write_member_bpam(ZDS *zds, const std::string &dsn, std::string &data, const
   rc = zds_open_output_bpam(zds, dsn, ioc);
   if (rc != RTNCD_SUCCESS)
   {
+    std::cerr << "fail write  dsn:" << dsn << std::endl;
     return rc;
   }
+  std::cerr << "writing member dsn:" << dsn << std::endl;
 
   // Check if ASA format from DCB after open
   const bool is_asa = (ioc->dcb.dcbrecfm & dcbrecca) != 0;
@@ -1177,21 +1185,22 @@ zds_write_member_bpam(ZDS *zds, const std::string &dsn, std::string &data, const
   {
     IO_CTRL *source_ioc = nullptr;
 
-    // std::string src = "//'" + dsn + "(" + options.source_name + ")'";
+    std::string src = options.source_dsn + "(" + options.source_name + ")";
     ZDS zds_src = {};
-    fprintf(stderr, "dsn: %s\n", options.source_dsn.c_str());
-    rc = zds_open_output_bpam(&zds_src, options.source_dsn, source_ioc);
+    fprintf(stderr, "dsn: %s\n", src.c_str());
+    rc = zds_open_output_bpam(&zds_src, src, source_ioc);
     fprintf(stderr, "open suceeded: %d\n", rc);
 
     if (rc == RTNCD_SUCCESS)
     {
       BLDL_PL bldl_pl = {0};
-      bldl_pl.ff = 1;
-      bldl_pl.ll = 76;
-      memset(bldl_pl.list.name, ' ', 8);
-      memcpy(bldl_pl.list.name, options.source_name.c_str(),
-             std::min((size_t)8, options.source_name.length()));
-      rc = ZDSBLDL(zds, ioc, &bldl_pl);
+      source_ioc->skip_stat_update = 1;
+      // bldl_pl.ff = 1;
+      // bldl_pl.ll = 76;
+      // memset(bldl_pl.list.name, ' ', 8);
+      // memcpy(bldl_pl.list.name, options.source_name.c_str(),
+      //        std::min((size_t)8, options.source_name.length()));
+      rc = ZDSBLDL(&zds_src, source_ioc, &bldl_pl);
       fprintf(stderr, "bldl rc: %d\n", rc);
 
       if (rc == RTNCD_SUCCESS)
@@ -1202,6 +1211,7 @@ zds_write_member_bpam(ZDS *zds, const std::string &dsn, std::string &data, const
         memcpy(ioc->stow_list.user_data, bldl_pl.list.user_data, sizeof(ISPF_STATS));
         ioc->skip_stat_update = 1;
       }
+      zds_close_output_bpam(&zds_src, source_ioc);
     }
   }
   else
@@ -1217,7 +1227,7 @@ zds_write_member_bpam(ZDS *zds, const std::string &dsn, std::string &data, const
     }
   }
   rc = zds_close_output_bpam(zds, ioc);
-  printf("here: %d\n", options.is_copy);
+  printf("here: %d\n", rc);
 
   return rc;
 }
@@ -1225,6 +1235,9 @@ static int copy_member_with_stats(ZDS *zds, const ZDSTypeInfo &src_info, const Z
 {
   std::string src_path = "//'" + src_info.base_dsn + "(" + src_info.member_name + ")'";
   std::string dst_dsn = dst_info.base_dsn + "(" + dst_info.member_name + ")";
+
+  std::cerr << "SRC_Path:" << src_path << std::endl;
+  std::cerr << "DST_Path:" << dst_dsn << std::endl;
 
   FILE *fin = fopen(src_path.c_str(), "rb");
   if (!fin)
@@ -1268,6 +1281,8 @@ static int copy_pds_to_pds(ZDS *zds, const ZDSTypeInfo &src, const ZDSTypeInfo &
     ZDSTypeInfo current_dst = dst;
     current_src.member_name = member;
     current_dst.member_name = member;
+    std::cerr << "SRC:" << current_src.member_name << std::endl;
+    std::cerr << "DST:" << current_dst.member_name << std::endl;
     int rc = copy_member_with_stats(zds, current_src, current_dst);
     if (rc != RTNCD_SUCCESS)
       return rc;
