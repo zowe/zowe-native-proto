@@ -4,7 +4,7 @@ All notable changes to the native code for "zowe-native-proto" are documented in
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## Recent Changes
+## `0.4.0`
 
 - `c`: Added `zowex uss issue` command and the `unixCommand` RPC for executing USS shell commands using `spawn()` with `_BPX_SHAREAS=YES` for efficient same-address-space execution. [#867](https://github.com/zowe/zowe-native-proto/pull/867)
 - `c`: Fixed an issue where submitting JCL from the VS Code editor with CRLF line endings caused job submission errors. [#882](https://github.com/zowe/zowe-native-proto/pull/882)
