@@ -42,8 +42,8 @@
 // TODO(Kelosky): handle test not run
 // TODO(Kelosky): handle running individual test and/or suite
 
-#define Expect(x) [&]() -> RESULT_CHECK<typename std::remove_reference<decltype(x)>::type> { EXPECT_CONTEXT ctx = {__LINE__, __FILE__}; return expect(x, ctx); }()
-#define ExpectWithContext(x, context) [&]() -> RESULT_CHECK<typename std::remove_reference<decltype(x)>::type> { EXPECT_CONTEXT ctx = {__LINE__, __FILE__, std::string(context), true}; return expect(x, ctx); }()
+#define Expect(x) expect((x), EXPECT_CONTEXT{__LINE__, __FILE__, "", false})
+#define ExpectWithContext(x, context) expect((x), EXPECT_CONTEXT{__LINE__, __FILE__, std::string(context), true})
 #define TestLog(message) Globals::get_instance().test_log(message)
 #define TrimChars(str) Globals::get_instance().trim_chars(str)
 
@@ -1056,16 +1056,63 @@ public:
     return error;
   }
 
+  template <typename U = T>
+  auto ToAbend() -> decltype(std::declval<U>()(), void())
+  {
+    Globals &g = Globals::get_instance();
+    jmp_buf old_buf;
+    std::memcpy(old_buf, g.get_jmp_buf(), sizeof(jmp_buf));
+
+    bool abend = false;
+
+    if (0 != setjmp(g.get_jmp_buf()))
+    {
+      if (g.get_timeout_occurred())
+      {
+        std::memcpy(g.get_jmp_buf(), old_buf, sizeof(jmp_buf));
+        std::string error = "expected to ABEND, but timed out instead";
+        error += append_error_details();
+        throw std::runtime_error(error);
+      }
+      abend = true;
+    }
+
+    if (!abend)
+    {
+      result();
+    }
+
+    std::memcpy(g.get_jmp_buf(), old_buf, sizeof(jmp_buf));
+
+    if (inverse)
+    {
+      if (abend)
+      {
+        std::string error = "expected NOT to ABEND";
+        error += append_error_details();
+        throw std::runtime_error(error);
+      }
+    }
+    else
+    {
+      if (!abend)
+      {
+        std::string error = "expected to ABEND";
+        error += append_error_details();
+        throw std::runtime_error(error);
+      }
+    }
+  }
+
   RESULT_CHECK Not()
   {
-    RESULT_CHECK copy;
+    RESULT_CHECK copy(result);
     copy.set_inverse(true);
-    copy.result = result;
     set_inverse(false);
     copy.set_context(ctx);
     return copy;
   }
-  RESULT_CHECK()
+  RESULT_CHECK(T r) : result(std::move(r)), inverse(false)
   {
   }
   ~RESULT_CHECK()
@@ -1232,13 +1279,11 @@ void itif(const std::string &description, Callable test, TEST_OPTIONS &opts, boo
 }
 
 template <typename T>
-RESULT_CHECK<T> expect(T val, EXPECT_CONTEXT ctx = {0})
+RESULT_CHECK<T> expect(T val, EXPECT_CONTEXT ctx = {0, "", "", false})
 {
-  RESULT_CHECK<T> result;
-  result.set_result(val);
-  result.set_inverse(false);
-  result.set_context(ctx);
-  return result;
+  RESULT_CHECK<T> res(std::move(val));
+  res.set_context(ctx);
+  return res;
 }
 
 // Hook registration functions
