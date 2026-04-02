@@ -4,6 +4,10 @@ All notable changes to the native code for "zowe-native-proto" are documented in
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## Recent Changes
+
+- Added a DCB abend exit for handling edge cases around PDS member open, write, and close operations. When an abend is encountered, it is ignored (when applicable) and an error is returned gracefully via the diagnostic structure (`ZDIAG`) rather than terminating the process. **Note:** In the event of an end-of-space (end-of-volume) abend, the operating system closes the DCB if the ignore request is honored. However, the abend may still percolate during end-of-volume `CLOSE` routines. An ESTAE/ESTAEX recovery routine should be used to gracefully handle these cases. [#839](https://github.com/zowe/zowe-native-proto/issues/839)
+
 ## `0.4.0`
 
 - `c`: Added `zowex uss issue` command and the `unixCommand` RPC for executing USS shell commands using `spawn()` with `_BPX_SHAREAS=YES` for efficient same-address-space execution. [#867](https://github.com/zowe/zowe-native-proto/pull/867)
