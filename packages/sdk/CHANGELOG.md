@@ -4,6 +4,8 @@ All notable changes to the Client code for "zowe-native-proto-sdk" are documente
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## Recent Changes
+
 ## `0.4.0`
 
 - Added `copyDataset` to `RpcClientApi.ds` for copying data sets and members with optional `replace` and `deleteTargetMembers` options. [#778](https://github.com/zowe/zowe-native-proto/pull/778)
