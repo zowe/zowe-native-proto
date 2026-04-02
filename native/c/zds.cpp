@@ -244,10 +244,11 @@ static int copy_pds_to_pds(ZDS *zds, const ZDSTypeInfo &src, const ZDSTypeInfo &
 // Forward declarations for static helper functions
 static bool zds_has_member(const std::string &dsn);
 static int zds_write_member_bpam(ZDS *zds, const std::string &dsn, std::string &data);
+static int zds_copy_member_streamed(ZDS *zds, const std::string &src_dsn, const std::string &dst_dsn);
 
 // Copy sequential data set or member
-// For PDS members, uses BPAM to properly finalize directory entries
-// For sequential data sets, uses binary I/O
+// For PDS members, uses BPAM with streaming to handle large members without OOM
+// For sequential data sets, uses binary I/O with chunked reading
 // Note: RECFM=U data sets are not explicitly checked here because fldata() returns
 // unreliable RECFM information when files are opened in binary mode. The write
 // operation will fail naturally if the target is truly RECFM=U.
@@ -256,56 +257,64 @@ static int copy_sequential(ZDS *zds, const std::string &src_dsn, const std::stri
   // Check if destination is a PDS member
   const auto dst_is_member = zds_has_member(dst_dsn);
 
-  // Read source data
-  std::string data;
-  ZDSReadOpts read_opts{.zds = zds, .dsname = src_dsn};
-  int rc = zds_read(read_opts, data);
-  if (0 != rc)
+  if (dst_is_member)
   {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not read source '%s'", src_dsn.c_str());
+    // For PDS members: use streamed BPAM write to handle large members
+    return zds_copy_member_streamed(zds, src_dsn, dst_dsn);
+  }
+
+  // For sequential data sets: stream in 32KB chunks
+  std::string src_path = "//'" + src_dsn + "'";
+  std::string dst_path = "//'" + dst_dsn + "'";
+
+  FILE *fin = fopen(src_path.c_str(), "rb");
+  if (!fin)
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open source '%s'", src_dsn.c_str());
     return RTNCD_FAILURE;
   }
 
-  // Write to destination using appropriate method
-  if (dst_is_member)
+  int fd = open(dst_path.c_str(), O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
+  if (fd < 0)
   {
-    // Use BPAM for PDS members (properly STOWs directory entry)
-    rc = zds_write_member_bpam(zds, dst_dsn, data);
-    // Clear ddname after BPAM close since the DD was freed
-    memset(zds->ddname, 0, sizeof(zds->ddname));
-  }
-  else
-  {
-    // Use binary I/O for sequential data sets
-    std::string dst_path = "//'" + dst_dsn + "'";
-    int fd = open(dst_path.c_str(), O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
-    if (fd < 0)
-    {
-      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open target '%s'", dst_dsn.c_str());
-      return RTNCD_FAILURE;
-    }
-    
-    FILE *fout = fdopen(fd, "wb");
-    if (!fout)
-    {
-      close(fd);
-      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open target '%s'", dst_dsn.c_str());
-      return RTNCD_FAILURE;
-    }
-
-    size_t bytes_written = fwrite(data.c_str(), 1, data.size(), fout);
-    if (bytes_written != data.size())
-    {
-      fclose(fout);
-      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Write error copying to '%s'", dst_dsn.c_str());
-      return RTNCD_FAILURE;
-    }
-
-    fflush(fout);
-    fclose(fout);
+    fclose(fin);
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open target '%s'", dst_dsn.c_str());
+    return RTNCD_FAILURE;
   }
 
-  return rc;
+  FILE *fout = fdopen(fd, "wb");
+  if (!fout)
+  {
+    close(fd);
+    fclose(fin);
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open target '%s'", dst_dsn.c_str());
+    return RTNCD_FAILURE;
+  }
+
+  char buffer[32760];
+  size_t bytes_read;
+  int write_error = 0;
+  while ((bytes_read = fread(buffer, 1, sizeof(buffer), fin)) > 0)
+  {
+    size_t bytes_written = fwrite(buffer, 1, bytes_read, fout);
+    if (bytes_written != bytes_read)
+    {
+      write_error = 1;
+      break;
+    }
+  }
+
+  fflush(fout);
+  fclose(fout);
+  fclose(fin);
+
+  if (write_error)
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Write error copying to '%s'", dst_dsn.c_str());
+    return RTNCD_FAILURE;
+  }
+
+  return RTNCD_SUCCESS;
 }
 
 // Delete all members from a PDS
@@ -1147,6 +1156,65 @@ static int write_asa_overflow_records(ZDS *zds, IO_CTRL *ioc, int overflow_count
       return rc;
     }
   }
+  return RTNCD_SUCCESS;
+}
+
+/**
+ * Stream copy a data set or member to a PDS member using BPAM
+ * Reads source in 32KB chunks and writes to target member using ZDSWBPAM
+ * This avoids OOM errors on large members/data sets
+ */
+static int zds_copy_member_streamed(ZDS *zds, const std::string &src_dsn, const std::string &dst_dsn)
+{
+  int rc = 0;
+  IO_CTRL *ioc = nullptr;
+
+  // Open the destination member for BPAM output
+  rc = zds_open_output_bpam(zds, dst_dsn, ioc);
+  if (rc != RTNCD_SUCCESS)
+  {
+    return rc;
+  }
+
+  // Open source for reading
+  std::string src_path = "//'" + src_dsn + "'";
+  FILE *fin = fopen(src_path.c_str(), "rb");
+  if (!fin)
+  {
+    zds_close_output_bpam(zds, ioc);
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open source '%s'", src_dsn.c_str());
+    return RTNCD_FAILURE;
+  }
+
+  // Stream read and write in chunks
+  char buffer[32760];
+  size_t bytes_read;
+  int write_error = 0;
+
+  while ((bytes_read = fread(buffer, 1, sizeof(buffer), fin)) > 0)
+  {
+    int length = bytes_read;
+    rc = ZDSWBPAM(zds, ioc, buffer, &length);
+    if (rc != RTNCD_SUCCESS)
+    {
+      write_error = 1;
+      if (zds->diag.e_msg_len == 0)
+      {
+        zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to write to PDS member '%s'", dst_dsn.c_str());
+      }
+      break;
+    }
+  }
+
+  fclose(fin);
+  zds_close_output_bpam(zds, ioc);
+  memset(zds->ddname, 0, sizeof(zds->ddname));
+
+  if (write_error)
+  {
+    return RTNCD_FAILURE;
+  }
+
   return RTNCD_SUCCESS;
 }
 
