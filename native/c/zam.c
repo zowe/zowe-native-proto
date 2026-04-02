@@ -920,15 +920,12 @@ static int close_data_set(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
       return RTNCD_FAILURE;
     }
 
-    if (0 != rc)
+    if (0 != rc && 0 == diag->e_msg_len)
     {
-      if (0 == diag->e_msg_len)
-      {
-        diag->service_rc = rc;
-        strcpy(diag->service_name, "CLOSE");
-        diag->e_msg_len = sprintf(diag->e_msg, "Failed to close ddname: %8.8s data set: %44.44s rc was: %d", ioc->ddname, ioc->jfcb.jfcbdsnm, rc);
-        diag->detail_rc = ZDS_RTNCD_CLOSE_ERROR;
-      }
+      diag->service_rc = rc;
+      strcpy(diag->service_name, "CLOSE");
+      diag->e_msg_len = sprintf(diag->e_msg, "Failed to close ddname: %8.8s data set: %44.44s rc was: %d", ioc->ddname, ioc->jfcb.jfcbdsnm, rc);
+      diag->detail_rc = ZDS_RTNCD_CLOSE_ERROR;
     }
   }
   return rc;
@@ -984,6 +981,47 @@ static int deq_data_set(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
   return rc;
 }
 
+static int finalize_dcb(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
+{
+  int rc = 0;
+  int first_rc = 0;
+
+  //
+  // Update ISPF statistics
+  //
+  rc = update_ispf_statistics(diag, ioc);
+  if (0 != rc)
+  {
+    if (0 == first_rc)
+      first_rc = rc;
+  }
+
+  //
+  // STOW the ISPF statistics
+  //
+  if (0 == rc)
+  {
+    rc = stow_data_set(diag, ioc);
+    if (0 != rc)
+    {
+      if (0 == first_rc)
+        first_rc = rc;
+    }
+  }
+
+  //
+  // Close the data set
+  //
+  rc = close_data_set(diag, ioc);
+  if (0 != rc)
+  {
+    if (0 == first_rc)
+      first_rc = rc;
+  }
+
+  return first_rc;
+}
+
 // TODO(Kelosky): handle when each fails... continue or return?
 int close_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
 {
@@ -1010,33 +1048,7 @@ int close_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
   //
   if (ioc->dcb.dcboflgs & dcbofopn)
   {
-    //
-    // Update ISPF statistics
-    //
-    rc = update_ispf_statistics(diag, ioc);
-    if (0 != rc)
-    {
-      if (0 == first_rc)
-        first_rc = rc;
-    }
-
-    //
-    // STOW the ISPF statistics
-    //
-    if (0 == rc)
-    {
-      rc = stow_data_set(diag, ioc);
-      if (0 != rc)
-      {
-        if (0 == first_rc)
-          first_rc = rc;
-      }
-    }
-
-    //
-    // Close the data set
-    //
-    rc = close_data_set(diag, ioc);
+    rc = finalize_dcb(diag, ioc);
     if (0 != rc)
     {
       if (0 == first_rc)
@@ -1177,7 +1189,7 @@ int ZAMDEXIT(DCB_ABEND_PL *PTR32 plist)
   if (plist->option_mask & DCB_ABEND_OPT_OK_TO_IGNORE)
   {
     // If the abend is safe to ignore according to the option mask, tell the system to ignore it (e.g. SE37 out-of-space)
-    // EOV abends should continue to terminate so ESTAEX handles them
+    // EOV abends continue to terminate and ignore this option, so ESTAEX will handle them instead.
     rc = DCB_ABEND_RC_IGNORE;
   }
   // TODO(traeok): Talk w/ Dan about whether this next branch is worthwhile or if it should be re-introduced later
