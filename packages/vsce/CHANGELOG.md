@@ -6,8 +6,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Recent Changes
 
-- Improved `allocateLikeDataSet` to use exact matching with `maxItems: 1`, validate RECFM=U rejection, and estimate directory blocks for PDS based on member count with sensible defaults for primary and lrecl attributes. [#778](https://github.com/zowe/zowe-native-proto/pull/778)
-- Enhanced copy functionality with `copyDataSetMember` for member-to-member and full data set copies supporting `replace` and `deleteTargetMembers` options, plus `copyDataSet` wrapper for full data set operations. [#778](https://github.com/zowe/zowe-native-proto/pull/778)
+- Enhanced copy functionality with `copyDataSetMember` for member-to-member and full data set copies supporting `replace` and `deleteTargetMembers` options, plus `copyDataSet` wrapper for full data set operations. When the target data set does not exist, the server allocates it like the source then copies data. [#778](https://github.com/zowe/zowe-native-proto/pull/778)
 
 ## `0.4.0`
 

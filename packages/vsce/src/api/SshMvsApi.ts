@@ -347,16 +347,23 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
             );
         }
 
+        const sourcePoLike = Boolean(sourceDs.dsorg?.toUpperCase().startsWith("PO"));
+        if (!sourcePoLike) {
+            // Zowe Explorer paste invokes allocateLikeDataSet then copyDataSet. Pre-creating a PS here catalogs
+            // an empty target; copy then fails with "already exists" (no --replace). copyDataset on the server
+            // allocates missing PS targets with LIKE+DSORG(PS), so skip create for physical sequential models.
+            return this.buildZosFilesResponse({ success: true }, true);
+        }
+
+        // Directory blocks apply only to partitioned data sets (PS uses dirblk 0; see early return above).
         // TODO: True directory block count is not returned by list APIs; we estimate from member count.
         // Revisit when the backend exposes dirblk or a shared estimation helper.
         let dirblk = 5;
-        if (sourceDs.dsorg?.startsWith("PO")) {
-            const memberResponse = await (await this.client).ds.listDsMembers({
-                dsname: likeDataSetName,
-            });
-            if (memberResponse.items.length > 0) {
-                dirblk = Math.max(10, Math.ceil(memberResponse.items.length / 4) + 5);
-            }
+        const memberResponse = await (await this.client).ds.listDsMembers({
+            dsname: likeDataSetName,
+        });
+        if (memberResponse.items.length > 0) {
+            dirblk = Math.max(10, Math.ceil(memberResponse.items.length / 4) + 5);
         }
 
         const attributes: DatasetAttributes = {

@@ -22,6 +22,7 @@
 #include <unistd.h>
 #include <cstdio>
 #include <cstdlib>
+#include <cerrno>
 #include <climits>
 #include <cstring>
 #include <fstream>
@@ -166,6 +167,32 @@ static std::string zds_canonical_dsn(const ZDSTypeInfo &info)
   return info.base_dsn;
 }
 
+// Use catalog DSORG for allocate-like; trim first (CSI/catalog fields may be padded).
+static bool zds_dsorg_string_is_po_family(const std::string &dsorg_raw)
+{
+  auto dsorg = dsorg_raw;
+  zut_trim(dsorg);
+  return dsorg.rfind(ZDS_DSORG_PO, 0) == 0;
+}
+
+// DSCB can report PS or PSU (sequential + unmovable); both are sequential for copy/allocate-like.
+static bool zds_dsorg_string_is_ps_family(const std::string &dsorg_raw)
+{
+  auto dsorg = dsorg_raw;
+  zut_trim(dsorg);
+  return dsorg.rfind(ZDS_DSORG_PS, 0) == 0;
+}
+
+// CSI must return the same data set name as requested; otherwise do not use DSORG from the row
+// (prefix / catalog edge cases can return one row that is not the requested DSN).
+static bool zds_catalog_entry_name_matches(const std::string &entry_name_raw, const std::string &base_dsn_upper)
+{
+  auto name = entry_name_raw;
+  zut_trim(name);
+  std::transform(name.begin(), name.end(), name.begin(), ::toupper);
+  return name == base_dsn_upper;
+}
+
 static int zds_get_type_info(const std::string &dsn, ZDSTypeInfo &info)
 {
   info.exists = false;
@@ -200,14 +227,18 @@ static int zds_get_type_info(const std::string &dsn, ZDSTypeInfo &info)
   if (rc == RTNCD_SUCCESS && entries.size() == 1)
   {
     ZDSEntry &entry = entries[0];
+    if (!zds_catalog_entry_name_matches(entry.name, info.base_dsn))
+    {
+      return RTNCD_SUCCESS;
+    }
     info.exists = true;
     info.entry = entry;
 
-    if (entry.dsorg == ZDS_DSORG_PS)
+    if (zds_dsorg_string_is_ps_family(entry.dsorg))
     {
       info.type = ZDS_TYPE_PS;
     }
-    else if (entry.dsorg.rfind(ZDS_DSORG_PO, 0) == 0)
+    else if (zds_dsorg_string_is_po_family(entry.dsorg))
     {
       if (!info.member_name.empty())
       {
@@ -255,6 +286,10 @@ static int copy_pds_to_pds(ZDS *zds, const ZDSTypeInfo &src, const ZDSTypeInfo &
 static bool zds_has_member(const std::string &dsn);
 static int zds_write_member_bpam(ZDS *zds, const std::string &dsn, std::string &data);
 static int zds_copy_member_streamed(ZDS *zds, const std::string &src_dsn, const std::string &dst_dsn);
+static int zds_create_dsn_like_model(const std::string &new_dsn, const std::string &model_dsn, bool catalog_as_ps,
+                                   const ZDSEntry *sms_from_model, std::string &response);
+static int zds_allocate_sequential_target(ZDS *zds, const std::string &new_dsn, const std::string &model_dsn,
+                                          const ZDSEntry &src_entry, std::string &response);
 
 // Copy sequential data set or member
 // For PDS members, uses BPAM with streaming to handle large members without OOM
@@ -284,20 +319,14 @@ static int copy_sequential(ZDS *zds, const std::string &src_dsn, const std::stri
     return RTNCD_FAILURE;
   }
 
-  int fd = open(dst_path.c_str(), O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
-  if (fd < 0)
-  {
-    fclose(fin);
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open target '%s'", dst_dsn.c_str());
-    return RTNCD_FAILURE;
-  }
-
-  FILE *fout = fdopen(fd, "wb");
+  // Use fopen for the target (not open+O_CREAT). z/OS C RTL reliably opens cataloged MVS PS files
+  // for record/binary I/O via fopen; open() on //'dsn' often fails even after ALLOC NEW CATALOG.
+  FILE *fout = fopen(dst_path.c_str(), "wb");
   if (!fout)
   {
-    close(fd);
+    const int err = errno;
     fclose(fin);
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open target '%s'", dst_dsn.c_str());
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open target '%s' (errno=%d)", dst_dsn.c_str(), err);
     return RTNCD_FAILURE;
   }
 
@@ -410,67 +439,33 @@ int zds_copy_dsn(ZDS *zds, const std::string &dsn1, const std::string &dsn2, ZDS
   bool target_is_member = !info2.member_name.empty();
   bool target_base_exists = zds_dataset_exists(info2.base_dsn);
 
-  if (info1.type == ZDS_TYPE_PS && info2.member_name.empty() && target_base_exists &&
-      info2.type != ZDS_TYPE_PS)
+  if (info1.type == ZDS_TYPE_PS && info2.member_name.empty() && target_base_exists && info2.exists &&
+      (info2.type == ZDS_TYPE_PDS || info2.type == ZDS_TYPE_VSAM))
   {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg,
-                                  "Cannot copy sequential data set to '%s': target must be a sequential data set",
-                                  info2.base_dsn.c_str());
+    zds->diag.e_msg_len = sprintf(
+        zds->diag.e_msg,
+        "Cannot copy sequential data set to '%s': target is a partitioned or VSAM data set. "
+        "Use --replace to overwrite the target, or choose another name.",
+        info2.base_dsn.c_str());
     return RTNCD_FAILURE;
   }
 
   if (!target_base_exists)
   {
-    // Create the target data set
-    ZDS create_zds{};
+    // Sequential new target: LIKE+DSORG(PS), then catalog verify. No remove() here if DSORG is wrong.
+    const bool allocate_target_as_ps = (info1.type == ZDS_TYPE_PS && info2.member_name.empty());
     std::string create_resp;
-    DS_ATTRIBUTES attrs{};
-
-    // Common attributes for all data set types
-    attrs.recfm = info1.entry.recfm.c_str();
-    attrs.lrecl = info1.entry.lrecl;
-    attrs.blksize = info1.entry.blksize;
-
-    // Preserve space unit (CYLINDERS or TRACKS)
-    if (info1.entry.spacu == "CYLINDERS" || info1.entry.spacu == "CYL")
+    if (allocate_target_as_ps)
     {
-      attrs.alcunit = "CYL";
+      rc = zds_allocate_sequential_target(zds, info2.base_dsn, info1.base_dsn, info1.entry, create_resp);
     }
     else
     {
-      attrs.alcunit = "TRACKS";
+      rc = zds_create_dsn_like_model(info2.base_dsn, info1.base_dsn, false, &info1.entry, create_resp);
     }
-
-    // Preserve primary/secondary allocation
-    if (info1.entry.primary >= 0 && info1.entry.secondary >= 0)
-    {
-      attrs.primary = info1.entry.primary > INT_MAX ? INT_MAX : static_cast<int>(info1.entry.primary);
-      attrs.secondary = info1.entry.secondary > INT_MAX ? INT_MAX : static_cast<int>(info1.entry.secondary);
-    }
-    else
-    {
-      attrs.primary = 1;
-      attrs.secondary = 1;
-    }
-
-    if (info1.type == ZDS_TYPE_PDS || info1.type == ZDS_TYPE_MEMBER)
-    {
-      // PDS -> PDS or Member -> Member: create PDS with source attributes
-      attrs.dsorg = "PO";
-      attrs.dirblk = 5;
-      attrs.dsntype = info1.entry.dsntype.c_str();
-    }
-    else
-    {
-      // PS -> PS: create sequential data set with source attributes
-      attrs.dsorg = "PS";
-    }
-
-    rc = zds_create_dsn(&create_zds, info2.base_dsn, attrs, create_resp);
     if (rc != RTNCD_SUCCESS)
     {
-      // Truncate detail message to avoid buffer overflow (leave room for prefix + dsn + ": ")
-      const char *detail = create_zds.diag.e_msg_len > 0 ? create_zds.diag.e_msg : create_resp.c_str();
+      const char *detail = create_resp.c_str();
       char truncated_detail[128];
       strncpy(truncated_detail, detail, sizeof(truncated_detail) - 1);
       truncated_detail[sizeof(truncated_detail) - 1] = '\0';
@@ -1696,6 +1691,44 @@ int alloc_and_free(const std::string &alloc_dd, const std::string &dsn, unsigned
   return rc;
 }
 
+// SMS re-evaluates on the new name if STORCLAS/DATACLAS/MGMTCLAS are omitted; that can force PO while LIKE+PS
+// matches a PS model. Pass the model's catalog classes so ACS uses the same path as the source.
+static void zds_append_sms_to_alloc_parm(std::string &parm, const ZDSEntry *entry)
+{
+  if (entry == nullptr)
+  {
+    return;
+  }
+  auto append_kw = [&parm](const char *kw, const std::string &raw) {
+    auto s = raw;
+    zut_trim(s);
+    if (!s.empty())
+    {
+      parm += " ";
+      parm += kw;
+      parm += "(";
+      parm += s;
+      parm += ")";
+    }
+  };
+  append_kw("STORCLAS", entry->storclass);
+  append_kw("DATACLAS", entry->dataclass);
+  append_kw("MGMTCLAS", entry->mgmtclass);
+}
+
+static int zds_create_dsn_like_model(const std::string &new_dsn, const std::string &model_dsn, bool catalog_as_ps,
+                                   const ZDSEntry *sms_from_model, std::string &response)
+{
+  unsigned int code = 0;
+  std::string parm = "ALLOC DA('" + new_dsn + "') LIKE('" + model_dsn + "') NEW CATALOG";
+  if (catalog_as_ps)
+  {
+    parm += " DSORG(PS)";
+  }
+  zds_append_sms_to_alloc_parm(parm, sms_from_model);
+  return alloc_and_free(parm, new_dsn, &code, response);
+}
+
 // TODO(Kelosky): add attributues to ZDS and have other functions populate it
 int zds_create_dsn(ZDS *, const std::string &dsn, DS_ATTRIBUTES attributes, std::string &response)
 {
@@ -1789,6 +1822,33 @@ int zds_create_dsn(ZDS *, const std::string &dsn, DS_ATTRIBUTES attributes, std:
   }
 
   return alloc_and_free(parm, dsn, &code, response);
+}
+
+static int zds_allocate_sequential_target(ZDS *zds, const std::string &new_dsn, const std::string &model_dsn,
+                                          const ZDSEntry &src_entry, std::string &response)
+{
+  const int rc = zds_create_dsn_like_model(new_dsn, model_dsn, true, &src_entry, response);
+  if (rc != RTNCD_SUCCESS)
+  {
+    return rc;
+  }
+  ZDSTypeInfo verify{};
+  zds_get_type_info(new_dsn, verify);
+  if (!verify.exists || verify.type == ZDS_TYPE_PS || verify.type == ZDS_TYPE_UNKNOWN)
+  {
+    return RTNCD_SUCCESS;
+  }
+  if (verify.type == ZDS_TYPE_PDS || verify.type == ZDS_TYPE_VSAM)
+  {
+    zds->diag.e_msg_len = sprintf(
+        zds->diag.e_msg,
+        "Allocation cataloged '%s' as partitioned or VSAM; sequential copy requires PS. "
+        "SMS or data class may have overridden DSORG—adjust allocation rules or remove the data set yourself, "
+        "then retry with another name.",
+        new_dsn.c_str());
+    return RTNCD_FAILURE;
+  }
+  return RTNCD_SUCCESS;
 }
 
 int zds_create_dsn_fb(ZDS *zds, const std::string &dsn, std::string &response)
