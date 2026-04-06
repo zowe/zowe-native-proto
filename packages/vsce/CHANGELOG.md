@@ -7,7 +7,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 ## Recent Changes
 
 - Improved `allocateLikeDataSet` to use exact matching with `maxItems: 1`, validate RECFM=U rejection, and estimate directory blocks for PDS based on member count with sensible defaults for primary and lrecl attributes. [#778](https://github.com/zowe/zowe-native-proto/pull/778)
-- Enhanced copy functionality with `copyDataSetMember` for member-to-member and full data set copies supporting `replace` and `deleteTargetMembers` options, plus `copyDataSet` wrapper for full data set operations.[#778](https://github.com/zowe/zowe-native-proto/pull/778)
+- Enhanced copy functionality with `copyDataSetMember` for member-to-member and full data set copies supporting `replace` and `deleteTargetMembers` options, plus `copyDataSet` wrapper for full data set operations. [#778](https://github.com/zowe/zowe-native-proto/pull/778)
 
 ## `0.4.0`
 
@@ -17,8 +17,6 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - Added the functionality for the **Rename** option in the USS tree. [#820](https://github.com/zowe/zowe-native-proto/pull/820)
 - Added the functionality to move files in the USS tree. [#820](https://github.com/zowe/zowe-native-proto/pull/820)
 - Added the functionality to copy USS files and directories. [#379](https://github.com/zowe/zowe-native-proto/pull/379).
-- Added `copyDataSetMember` and `copyDataSet` APIs for Zowe Explorer copy/paste integration. Supports `replace` and `deleteTargetMembers` options. [#778](https://github.com/zowe/zowe-native-proto/pull/778)
-- Added `allocateLikeDataSet` API for creating data sets with the same attributes as an existing data set. [#778](https://github.com/zowe/zowe-native-proto/pull/778)
 - Added experimental native client for improved performance which can be enabled via a VS Code setting. [#833](https://github.com/zowe/zowe-native-proto/pull/833)
 
 ## `0.3.0`

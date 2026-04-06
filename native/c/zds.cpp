@@ -156,6 +156,16 @@ static bool member_exists_in_pds(const std::string &pds_dsn, const std::string &
   return false;
 }
 
+// Catalog-normalized name (uppercase base/member) for I/O paths; must match zds_create_dsn / list APIs.
+static std::string zds_canonical_dsn(const ZDSTypeInfo &info)
+{
+  if (!info.member_name.empty())
+  {
+    return info.base_dsn + "(" + info.member_name + ")";
+  }
+  return info.base_dsn;
+}
+
 static int zds_get_type_info(const std::string &dsn, ZDSTypeInfo &info)
 {
   info.exists = false;
@@ -400,6 +410,15 @@ int zds_copy_dsn(ZDS *zds, const std::string &dsn1, const std::string &dsn2, ZDS
   bool target_is_member = !info2.member_name.empty();
   bool target_base_exists = zds_dataset_exists(info2.base_dsn);
 
+  if (info1.type == ZDS_TYPE_PS && info2.member_name.empty() && target_base_exists &&
+      info2.type != ZDS_TYPE_PS)
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg,
+                                  "Cannot copy sequential data set to '%s': target must be a sequential data set",
+                                  info2.base_dsn.c_str());
+    return RTNCD_FAILURE;
+  }
+
   if (!target_base_exists)
   {
     // Create the target data set
@@ -479,10 +498,6 @@ int zds_copy_dsn(ZDS *zds, const std::string &dsn1, const std::string &dsn2, ZDS
     }
   }
 
-  // Check if source and target are in the same PDS - need special handling
-  bool same_pds = (info1.type == ZDS_TYPE_MEMBER && target_is_member &&
-                   info1.base_dsn == info2.base_dsn);
-
   // Delete all target members if requested (only for PDS-to-PDS copy)
   if (opts->delete_target_members && is_pds_full_copy && target_base_exists)
   {
@@ -500,17 +515,7 @@ int zds_copy_dsn(ZDS *zds, const std::string &dsn1, const std::string &dsn2, ZDS
   }
   else
   {
-    if (same_pds)
-    {
-      // Same PDS: copy member to member using binary I/O
-      std::string src_mem_dsn = info1.base_dsn + "(" + info1.member_name + ")";
-      std::string dst_mem_dsn = info2.base_dsn + "(" + info2.member_name + ")";
-      rc = copy_sequential(zds, src_mem_dsn, dst_mem_dsn);
-    }
-    else
-    {
-      rc = copy_sequential(zds, dsn1, dsn2);
-    }
+    rc = copy_sequential(zds, zds_canonical_dsn(info1), zds_canonical_dsn(info2));
 
     // Report if a new member was created
     if (rc == RTNCD_SUCCESS && target_is_member && !target_member_exists)

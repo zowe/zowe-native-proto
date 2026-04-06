@@ -347,6 +347,8 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
             );
         }
 
+        // TODO: True directory block count is not returned by list APIs; we estimate from member count.
+        // Revisit when the backend exposes dirblk or a shared estimation helper.
         let dirblk = 5;
         if (sourceDs.dsorg?.startsWith("PO")) {
             const memberResponse = await (await this.client).ds.listDsMembers({

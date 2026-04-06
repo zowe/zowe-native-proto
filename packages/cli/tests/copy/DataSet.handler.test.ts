@@ -39,9 +39,11 @@ describe("CopyDataSetHandler", () => {
                 data: {
                     setMessage: vi.fn(),
                     setObj: vi.fn(),
+                    setExitCode: vi.fn(),
                 },
                 console: {
                     log: vi.fn(),
+                    error: vi.fn(),
                 },
             },
         } as unknown as IHandlerParameters;
@@ -168,6 +170,8 @@ describe("CopyDataSetHandler", () => {
 
             expect(mockParams.response.data.setMessage).toHaveBeenCalled();
             expect(mockParams.response.console.log).not.toHaveBeenCalled();
+            expect(mockParams.response.console.error).toHaveBeenCalled();
+            expect(mockParams.response.data.setExitCode).toHaveBeenCalledWith(1);
         });
 
         it("should handle both replace and deleteTargetMembers options", async () => {
