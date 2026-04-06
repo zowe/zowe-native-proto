@@ -13,8 +13,8 @@ A DCB abend exit is used to intercept and handle abnormal endings (abends) that 
    - When an abend triggers the exit, it sets a flag `gioc->dcb_abend = 1;` on the global/register variable `gioc` to record that an abend occurred.
    - It evaluates the parameter list's options mask (`plist->option_mask`). 
       - If `DCB_ABEND_OPT_OK_TO_IGNORE` is set, it returns `DCB_ABEND_RC_IGNORE` to tell the system that it is safe to ignore the abend (for example, an out-of-space SE37 abend). 
-      - Some abends cannot be ignored but they can be delayed; if `DCB_ABEND_OPT_OK_TO_DELAY` is set, it returns `DCB_ABEND_RC_DELAY` and delays the abend until all the DCBs in the same OPEN or CLOSE macro are opened or closed.
-      - Otherwise, it defaults to returning `DCB_ABEND_RC_TERMINATE`.
+      - Some abends cannot be ignored but they can be delayed. For instance, if `DCB_ABEND_OPT_OK_TO_DELAY` is set, it returns `DCB_ABEND_RC_DELAY` and delays the abend until all the DCBs in the same OPEN or CLOSE macro are opened or closed.
+      - The default return code for the DCB abend exit is `DCB_ABEND_RC_TERMINATE`, which tells the system to continue with terminating the process as a result of the abend.
    - *Note on End-of-Volume errors*: Requests to ignore an abend are disregarded if the abend occurs during end-of-volume processing and the end-of-volume routines were called by the `CLOSE` routines. In this situation, an `ABEND` macro is issued even though the `IGNORE` option has been selected. If the end-of-volume error is successfully ignored, the DCB is closed, and control returns to the application. The application must then check if the DCB is still open before issuing any macros other than `CLOSE` or `FREEPOOL`.
 
 - **The Context Pointer (`gioc`)**:
