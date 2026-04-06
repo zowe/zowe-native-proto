@@ -1957,7 +1957,8 @@ int zds_list_members(ZDS *zds, std::string dsn, std::vector<ZDSMem> &members, co
 
   if (!fp)
   {
-    if (errno == 92) // EABEND
+    constexpr auto EABEND = 92;
+    if (errno == EABEND)
     {
       __amrc_type save_amrc = *__amrc;
       const auto abend_code = save_amrc.__code.__abend.__syscode;
