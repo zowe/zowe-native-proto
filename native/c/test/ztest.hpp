@@ -1215,7 +1215,7 @@ void itif(const std::string &description, Callable test, TEST_OPTIONS &opts, boo
 }
 
 template <typename T>
-RESULT_CHECK<T> expect(T val, const EXPECT_CONTEXT &ctx = {0, "", "", false})
+RESULT_CHECK<T> expect(T val, EXPECT_CONTEXT ctx = {0, "", "", false})
 {
   RESULT_CHECK<T> res(std::move(val));
   res.set_context(ctx);
