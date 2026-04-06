@@ -6,7 +6,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Recent Changes
 
-- Added warning to `AbstractConfigManager.validateDeployPath` method when server path ends in `/c/build-out` which means that deploying would overwrite a dev build. [#912](https://github.com/zowe/zowe-native-proto/pull/912)
+- Added warning to `AbstractConfigManager.validateDeployPath` method when server path ends in `/c/build-out`, preventing developers from accidentally overwriting a dev deployment. [#912](https://github.com/zowe/zowe-native-proto/pull/912)
 
 ## `0.4.0`
 
