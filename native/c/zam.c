@@ -1048,10 +1048,9 @@ int close_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
   if (ioc->dcb.dcboflgs & dcbofopn)
   {
     rc = finalize_dcb(diag, ioc);
-    if (0 != rc)
+    if (0 != rc && 0 == first_rc)
     {
-      if (0 == first_rc)
-        first_rc = rc;
+      first_rc = rc;
     }
   }
 
@@ -1191,11 +1190,9 @@ int ZAMDEXIT(DCB_ABEND_PL *PTR32 plist)
     // EOV abends continue to terminate and ignore this option, so ESTAEX will handle them instead.
     rc = DCB_ABEND_RC_IGNORE;
   }
-  // TODO(traeok): Talk w/ Dan about whether this next branch is worthwhile or if it should be re-introduced later
-  // Likely not useful for client-server scenario - abend would likely never hit delay branch and is still handled by ESTAE/ARR,
-  // but this branch may provide benefit for general API consumers w/ custom ESTAE/SPIE recovery
   else if (plist->option_mask & DCB_ABEND_OPT_OK_TO_DELAY)
   {
+    // If ignoring is not possible, we can sometimes delay the abend until all the DCBs in the same OPEN or CLOSE macro are opened or closed
     rc = DCB_ABEND_RC_DELAY;
   }
 
