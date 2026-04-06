@@ -539,6 +539,19 @@ static int handle_fixed_record(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc, const char
   if (ioc->bytes_in_buffer >= blocksize)
   {
     rc = write_sync(ioc, ioc->buffer);
+
+    if (ioc->dcb_abend)
+    {
+      if (0 == diag->e_msg_len)
+      {
+        strcpy(diag->service_name, "WRITE");
+        diag->e_msg_len = sprintf(diag->e_msg, "DCB abend during WRITE for %8.8s data set: %44.44s",
+                                  ioc->ddname, ioc->jfcb.jfcbdsnm);
+        diag->detail_rc = ZDS_RTNCD_DCB_ABEND_ERROR;
+      }
+      return RTNCD_FAILURE;
+    }
+
     if (0 != rc)
     {
       diag->e_msg_len = sprintf(diag->e_msg, "Failed to write record rc was: %d", rc);
@@ -580,6 +593,20 @@ static int write_variable_record(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc, const ch
   ioc->dcb.dcbblksi = ioc->bytes_in_buffer; // temporary update block size before writing
 
   rc = write_sync(ioc, ioc->buffer);
+  ioc->dcb.dcbblksi = blocksize; // restore block size before we do anything else
+
+  if (ioc->dcb_abend)
+  {
+    if (0 == diag->e_msg_len)
+    {
+      strcpy(diag->service_name, "WRITE");
+      diag->e_msg_len = sprintf(diag->e_msg, "DCB abend during WRITE for %8.8s data set: %44.44s",
+                                ioc->ddname, ioc->jfcb.jfcbdsnm);
+      diag->detail_rc = ZDS_RTNCD_DCB_ABEND_ERROR;
+    }
+    return RTNCD_FAILURE;
+  }
+
   if (0 != rc)
   {
     diag->e_msg_len = sprintf(diag->e_msg, "Failed to write record rc was: %d", rc);
@@ -587,7 +614,6 @@ static int write_variable_record(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc, const ch
     diag->service_rc = rc;
     return RTNCD_FAILURE;
   }
-  ioc->dcb.dcbblksi = blocksize;
 
   ioc->free_location = ioc->buffer;
   ioc->free_location += sizeof(BDW);
@@ -703,6 +729,20 @@ static int write_flush(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
 
       ioc->dcb.dcbblksi = ioc->bytes_in_buffer; // temporary update block size before writing
       rc = write_sync(ioc, ioc->buffer);        // TODO(Kelosky): if we abend, we MUST restore the original block size before CLOSE
+      ioc->dcb.dcbblksi = blocksize;            // restore block size before we do anything else
+
+      if (ioc->dcb_abend)
+      {
+        if (0 == diag->e_msg_len)
+        {
+          strcpy(diag->service_name, "WRITE");
+          diag->e_msg_len = sprintf(diag->e_msg, "DCB abend during WRITE for %8.8s data set: %44.44s",
+                                    ioc->ddname, ioc->jfcb.jfcbdsnm);
+          diag->detail_rc = ZDS_RTNCD_DCB_ABEND_ERROR;
+        }
+        return RTNCD_FAILURE;
+      }
+
       if (0 != rc)
       {
         diag->e_msg_len = sprintf(diag->e_msg, "Failed to write record rc was: %d", rc);
@@ -710,7 +750,6 @@ static int write_flush(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
         diag->service_rc = rc;
         return RTNCD_FAILURE;
       }
-      ioc->dcb.dcbblksi = blocksize;
 
       ioc->bytes_in_buffer = 0;
       ioc->free_location = ioc->buffer;
@@ -1068,20 +1107,18 @@ int close_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
   // DEQ the reserve data set
   //
   rc = deq_reserve_data_set(diag, ioc);
-  if (0 != rc)
+  if (0 != rc && 0 == first_rc)
   {
-    if (0 == first_rc)
-      first_rc = rc;
+    first_rc = rc;
   }
 
   //
   // DEQ the data set
   //
   rc = deq_data_set(diag, ioc);
-  if (0 != rc)
+  if (0 != rc && 0 == first_rc)
   {
-    if (0 == first_rc)
-      first_rc = rc;
+    first_rc = rc;
   }
 
   if (ioc->zam24)
