@@ -94,7 +94,7 @@ int close_input_vsam(ZDIAG *PTR32, IO_CTRL *PTR32) ATTRIBUTE(amode31);
 int read_input_jfcb(IO_CTRL *ioc) ATTRIBUTE(amode31);
 int read_output_jfcb(IO_CTRL *ioc) ATTRIBUTE(amode31);
 
-int bldl_member(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc, BLDL_PL *PTR32 bldl_pl) ATTRIBUTE(amode31);
+int BLDLMEM(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc, BLDL_PL *PTR32 bldl_pl) ATTRIBUTE(amode31);
 int bldl(IO_CTRL *, BLDL_PL *, int *rsn) ATTRIBUTE(amode31);
 int stow(IO_CTRL *, int *rsn) ATTRIBUTE(amode31);
 int note(IO_CTRL *, NOTE_RESPONSE *PTR32 note_response, int *rsn) ATTRIBUTE(amode31);

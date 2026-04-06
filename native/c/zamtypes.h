@@ -185,7 +185,7 @@ typedef struct
   unsigned int has_enq : 1;
   unsigned int has_reserve : 1; // not reserved space... indicates RESERVE is outstanding
   unsigned int eof : 1;         // not reserved space... indicates RESERVE is outstanding
-  unsigned int skip_stat_update : 1;
+  unsigned int preserve_stow_user_data : 1;
   unsigned int ucb;
   void *PTR32 zam24;
   int zam24_len;

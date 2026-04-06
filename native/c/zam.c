@@ -707,7 +707,9 @@ static int write_flush(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
   return rc;
 }
 
-int bldl_member(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc, BLDL_PL *PTR32 bldl_pl)
+#pragma prolog(BLDLMEM, " ZWEPROLG NEWDSA=(YES,8) ")
+#pragma epilog(BLDLMEM, " ZWEEPILG ")
+int BLDLMEM(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc, BLDL_PL *PTR32 bldl_pl)
 {
   int rc = 0;
   int rsn = 0;
@@ -730,7 +732,7 @@ int bldl_member(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc, BLDL_PL *PTR32 bldl_pl)
 static int update_ispf_statistics(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
 {
   int rc = 0;
-  if (ioc->skip_stat_update)
+  if (ioc->preserve_stow_user_data)
   {
     return RTNCD_SUCCESS;
   }
@@ -748,7 +750,7 @@ static int update_ispf_statistics(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
     //
     BLDL_PL bldl_pl = {0};
 #define BLDL_WARNING 4
-    rc = bldl_member(diag, ioc, &bldl_pl);
+    rc = BLDLMEM(diag, ioc, &bldl_pl);
     if (0 != rc && rc != BLDL_WARNING)
     {
       return rc;
