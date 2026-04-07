@@ -76,8 +76,9 @@ if (errno == EABEND) // EABEND
     if (abend_code == 0x913)
     {
         // Insufficient permissions for this data set
-        zds->diag.e_msg_len = sprintf(
+        zds->diag.e_msg_len = snprintf(
             zds->diag.e_msg,
+            sizeof(zds->diag.e_msg),
             "Insufficient permissions for opening data set '%s' (S913 abend)",
             dsn.c_str());
     }

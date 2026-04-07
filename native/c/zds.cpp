@@ -1965,16 +1965,16 @@ int zds_list_members(ZDS *zds, std::string dsn, std::vector<ZDSMem> &members, co
       if (abend_code == 0x913)
       {
         // Insufficient permissions for this data set
-        zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Insufficient permissions for opening data set '%s' (S913 abend)", dsn.c_str());
+        zds->diag.e_msg_len = snprintf(zds->diag.e_msg, sizeof(zds->diag.e_msg), "Insufficient permissions for opening data set '%s' (S913 abend)", dsn.c_str());
       }
       else
       {
-        zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not list members for '%s': %s (errno %d) abend code S%03X", dsn.c_str(), strerror(errno), errno, save_amrc.__code.__abend.__syscode);
+        zds->diag.e_msg_len = snprintf(zds->diag.e_msg, sizeof(zds->diag.e_msg), "Could not list members for '%s': %s (errno %d) abend code S%03X", dsn.c_str(), strerror(errno), errno, save_amrc.__code.__abend.__syscode);
       }
     }
     else
     {
-      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not list members for '%s': %s (errno %d)", dsn.c_str(), strerror(errno), errno);
+      zds->diag.e_msg_len = snprintf(zds->diag.e_msg, sizeof(zds->diag.e_msg), "Could not list members for '%s': %s (errno %d)", dsn.c_str(), strerror(errno), errno);
     }
     return RTNCD_FAILURE;
   }
@@ -2027,7 +2027,7 @@ int zds_list_members(ZDS *zds, std::string dsn, std::vector<ZDSMem> &members, co
 
           if (total_entries > zds->max_entries)
           {
-            zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Reached maximum returned members requested %d", zds->max_entries);
+            zds->diag.e_msg_len = snprintf(zds->diag.e_msg, sizeof(zds->diag.e_msg), "Reached maximum returned members requested %d", zds->max_entries);
             zds->diag.detail_rc = ZDS_RSNCD_MAXED_ENTRIES_REACHED;
             fclose(fp);
             return RTNCD_WARNING;
