@@ -1,10 +1,10 @@
-# Opening Data Sets: Handling Abends
+# Opening data sets: Handling abends
 
 ## Overview
 
 Manual testing is required for some abends, such as [S913 (Insufficient
 Permissions)](https://www.ibm.com/docs/en/zos/2.5.0?topic=messages-iec150i),
-because creating an inaccessible data set in an automated test isn't trivial.
+because creating an inaccessible data set in an automated test is not trivial.
 
 This document describes how to:
 
@@ -17,7 +17,7 @@ This document describes how to:
 In IBM's Resource Access Control Facility (RACF), a "private" data set is one
 that only the owner can access; all other users are denied access.
 
-### Create a profile with UACC(NONE)
+### Creating a profile with UACC(NONE)
 
 The most effective way to make a data set private is to create a RACF profile
 for it and set the **Universal Access Authority (UACC)** to **NONE**. This
@@ -43,7 +43,7 @@ denied access.
 > The double asterisk (`**`) acts as a wildcard for all qualifiers following
 > the prefix.
 
-### Test the S913 abend
+### Testing the S913 abend
 
 To test the S913 (Insufficient Permissions) abend, you need two separate user
 IDs:
