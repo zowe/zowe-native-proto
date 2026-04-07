@@ -45,10 +45,15 @@
 
 const size_t MAX_DS_LENGTH = 44u;
 
-// BPAM output uses RESERVE on the base PDS name. Multiple zowex worker threads copying different
-// members into the same library (e.g. Zowe Explorer multi-select paste) issue concurrent RESERVEs
-// and the second fails with rc 4. Serialize member-level BPAM output in this address space.
-static std::mutex g_zds_bpam_member_output_mutex;
+// Writing a member briefly reserves the whole partitioned data set. If several zowex worker threads
+// do that at the same time into the same library (e.g. pasting many members from Zowe Explorer), extra
+// reserves can fail (return code 4). We serialize these member writes in this process so only one runs.
+static std::mutex &zds_bpam_member_output_mutex()
+{
+  static std::mutex mtx;
+  return mtx;
+}
+
 const size_t MAX_VOLSER_LENGTH = 6u;
 // carriage return character, used for detecting CRLF line endings
 const char CR_CHAR = '\x0D';
@@ -1172,7 +1177,7 @@ static int write_asa_overflow_records(ZDS *zds, IO_CTRL *ioc, int overflow_count
  */
 static int zds_copy_member_streamed(ZDS *zds, const std::string &src_dsn, const std::string &dst_dsn)
 {
-  const std::lock_guard<std::mutex> bpam_member_lock(g_zds_bpam_member_output_mutex);
+  const std::lock_guard<std::mutex> bpam_member_lock(zds_bpam_member_output_mutex());
   int rc = 0;
   IO_CTRL *ioc = nullptr;
 
@@ -1230,7 +1235,7 @@ static int zds_copy_member_streamed(ZDS *zds, const std::string &src_dsn, const 
  */
 static int zds_write_member_bpam(ZDS *zds, const std::string &dsn, std::string &data)
 {
-  const std::lock_guard<std::mutex> bpam_member_lock(g_zds_bpam_member_output_mutex);
+  const std::lock_guard<std::mutex> bpam_member_lock(zds_bpam_member_output_mutex());
   int rc = 0;
   IO_CTRL *ioc = nullptr;
 
@@ -3718,7 +3723,7 @@ static int zds_write_sequential_streamed(ZDS *zds, const std::string &dsn, const
  */
 static int zds_write_member_bpam_streamed(ZDS *zds, const std::string &dsn, const std::string &pipe, size_t *content_len)
 {
-  const std::lock_guard<std::mutex> bpam_member_lock(g_zds_bpam_member_output_mutex);
+  const std::lock_guard<std::mutex> bpam_member_lock(zds_bpam_member_output_mutex());
   int rc = 0;
   IO_CTRL *ioc = nullptr;
 

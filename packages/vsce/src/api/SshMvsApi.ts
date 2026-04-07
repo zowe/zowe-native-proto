@@ -312,7 +312,7 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
     }
 
     public async allocateLikeDataSet(
-        dataSetName: string,
+        _dataSetName: string,
         likeDataSetName: string,
     ): Promise<zosfiles.IZosFilesResponse> {
         const listResponse = await (await this.client).ds.listDatasets({
@@ -347,12 +347,11 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
             );
         }
 
-        // Zowe Explorer paste calls allocateLikeDataSet then copy. Do not createDataset here:
-        // - PS: an empty pre-allocated target makes copy fail with "already exists" without --replace.
-        // - PO: createDataset uses explicit attrs (incl. dirblk heuristics); copy uses LIKE on the server and
-        //   matches CLI behavior. Pre-creating an empty PDS can also worsen RESERVE / enqueue contention on paste.
-        // copyDataset allocates missing targets (PS and PO) via the same paths as `zowe zssh copy ds`.
-        void dataSetName;
+        // Zowe Explorer runs allocateLikeDataSet, then copy. We intentionally do not create the target data set here.
+        // If we created an empty sequential data set first, the real copy would hit "already exists" unless replace is on.
+        // For libraries, the server copy uses LIKE (same shape as the source); our create path would pick different
+        // details (e.g. directory blocks) and could lock the data set longer than needed during paste.
+        // Missing targets are created inside copyDataset—the same flow as the zssh copy command.
         return this.buildZosFilesResponse({ success: true }, true);
     }
 
