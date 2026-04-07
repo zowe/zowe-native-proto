@@ -4,6 +4,10 @@ All notable changes to the native code for "zowe-native-proto" are documented in
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## Recent Changes
+
+- `c`: Fixed an issue where listing the members of a protected, partitioned data set resulted in an unclear error message. Now, the error messages are more specific and include information about insufficient permissions when applicable. [#297](https://github.com/zowe/zowe-native-proto/issues/297)
+
 ## `0.4.0`
 
 - `c`: Added `zowex uss issue` command and the `unixCommand` RPC for executing USS shell commands using `spawn()` with `_BPX_SHAREAS=YES` for efficient same-address-space execution. [#867](https://github.com/zowe/zowe-native-proto/pull/867)
