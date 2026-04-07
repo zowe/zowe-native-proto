@@ -970,8 +970,8 @@ public:
     for (char c : snippet)
       escaped += (c == '\n') ? "\\n" : std::string(1, c);
     std::string haystack = large
-      ? escaped + "...(truncated, total " + std::to_string(result.size()) + " chars)"
-      : escaped;
+                               ? escaped + "...(truncated, total " + std::to_string(result.size()) + " chars)"
+                               : escaped;
     if (inverse)
       fail_if(result.find(substring) != std::string::npos, "expected string '" + haystack + "' to NOT contain '" + substring + "'");
     else
@@ -1020,23 +1020,17 @@ public:
 
     std::memcpy(g.get_jmp_buf(), old_buf, sizeof(jmp_buf));
 
-    if (inverse)
+    if (inverse && abend)
     {
-      if (abend)
-      {
-        std::string error = "expected NOT to ABEND";
-        error += append_error_details();
-        throw std::runtime_error(error);
-      }
+      std::string error = "expected NOT to ABEND";
+      error += append_error_details();
+      throw std::runtime_error(error);
     }
-    else
+    else if (!abend)
     {
-      if (!abend)
-      {
-        std::string error = "expected to ABEND";
-        error += append_error_details();
-        throw std::runtime_error(error);
-      }
+      std::string error = "expected to ABEND";
+      error += append_error_details();
+      throw std::runtime_error(error);
     }
   }
 
@@ -1048,7 +1042,8 @@ public:
     copy.set_context(ctx);
     return copy;
   }
-  RESULT_CHECK(T r) : result(std::move(r)), inverse(false)
+  RESULT_CHECK(T r)
+      : result(std::move(r)), inverse(false)
   {
   }
   ~RESULT_CHECK()
@@ -1385,21 +1380,21 @@ inline void print_failed_tests()
           if (!test.fail_message.empty())
           {
             std::string main_error = test.fail_message;
-          std::string context;
-          size_t nl = main_error.find("\n");
-          if (nl != std::string::npos)
-          {
-            context = main_error.substr(nl + 1);
-            main_error = main_error.substr(0, nl);
-          }
-          std::cout << "    " << colors.arrow << " " << main_error << std::endl;
-          if (!context.empty())
-          {
-            std::istringstream ctx_lines(context);
-            std::string ctx_line;
-            while (std::getline(ctx_lines, ctx_line))
-              std::cout << "      " << ctx_line << std::endl;
-          }
+            std::string context;
+            size_t nl = main_error.find("\n");
+            if (nl != std::string::npos)
+            {
+              context = main_error.substr(nl + 1);
+              main_error = main_error.substr(0, nl);
+            }
+            std::cout << "    " << colors.arrow << " " << main_error << std::endl;
+            if (!context.empty())
+            {
+              std::istringstream ctx_lines(context);
+              std::string ctx_line;
+              while (std::getline(ctx_lines, ctx_line))
+                std::cout << "      " << ctx_line << std::endl;
+            }
           }
         }
       }

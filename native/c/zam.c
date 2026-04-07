@@ -726,8 +726,8 @@ static int write_flush(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
       }
 
       ioc->dcb.dcbblksi = ioc->bytes_in_buffer; // temporary update block size before writing
-      rc = write_sync(ioc, ioc->buffer);        // TODO(Kelosky): if we abend, we MUST restore the original block size before CLOSE
-      ioc->dcb.dcbblksi = blocksize;            // restore block size before we do anything else
+      rc = write_sync(ioc, ioc->buffer);
+      ioc->dcb.dcbblksi = blocksize; // restore block size before we do anything else
 
       if (handle_dcb_abend(diag, ioc, "WRITE"))
       {
@@ -942,7 +942,7 @@ static int close_data_set(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
       return RTNCD_FAILURE;
     }
 
-    if (0 != rc && 0 == diag->e_msg_len)
+    if (0 != rc && 0 == diag->e_msg_len) // only set error if no error message was already set
     {
       diag->service_rc = rc;
       strcpy(diag->service_name, "CLOSE");
@@ -1056,10 +1056,9 @@ int close_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
   // Write any remaining bytes in the buffer
   //
   rc = write_flush(diag, ioc);
-  if (0 != rc)
+  if (0 != rc && 0 == first_rc) // only set error if no error message was already set
   {
-    if (0 == first_rc)
-      first_rc = rc;
+    first_rc = rc;
   }
 
   //
@@ -1245,6 +1244,14 @@ static void setup_exit_list(IO_CTRL *ioc)
   void *PTR32 exlst = &ioc->exlst;
   memcpy(&ioc->dcb.dcbexlst, &exlst, sizeof(ioc->dcb.dcbexlst));
   ioc->dcb.dcbrecfm = recfm;
+}
+
+int read_input_jfcb(IO_CTRL *ioc)
+{
+  int rc = 0;
+  setup_exit_list(ioc);
+  RDJFCB(ioc->dcb, ioc->rdjfcb_pl, rc, INPUT);
+  return rc;
 }
 
 int read_output_jfcb(IO_CTRL *ioc)
