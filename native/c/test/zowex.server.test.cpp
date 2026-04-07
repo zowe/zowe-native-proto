@@ -213,5 +213,34 @@ void zowex_server_tests()
                   Expect(response).ToContain("\"success\":true");
                   Expect(response).ToContain("\"data\":");
                 });
+
+             it("should execute getInfo and return output",
+                []() -> void
+                {
+                  ServerHandle server = start_server(zowex_server_command, true);
+                  write_to_server(server, "{\"jsonrpc\":\"2.0\",\"method\":\"getInfo\",\"params\":{},\"id\":1}\n");
+                  std::string response = read_line_from_server(server);
+                  stop_server(server);
+
+                  Expect(response).ToContain("\"success\":true");
+
+                  // Version information
+                  static const std::regex rev(R"("version"\s*:\s*\"([^"]*)\")");
+                  std::smatch mv;
+
+                  Expect(std::regex_search(response, mv, rev)).ToBe(true);
+                  const std::string version = mv[1].str();
+
+                  Expect(version.length()).ToBeGreaterThanOrEqualTo(5); // X.X.X at minimum
+
+                  // Build date information
+                  static const std::regex red(R"("buildDate"\s*:\s*\"([^"]*)\")");
+                  std::smatch md;
+
+                  Expect(std::regex_search(response, md, red)).ToBe(true);
+                  const std::string buildDate = md[1].str();
+
+                  Expect(buildDate.length()).ToBeGreaterThanOrEqualTo(11); // MMM DD YYYY at minimum
+                });
            });
 }

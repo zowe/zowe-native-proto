@@ -99,6 +99,12 @@ int handle_version(plugin::InvocationContext &context)
   context.output_stream() << "Version: " << g_version << std::endl;
   context.output_stream() << "Build Date: " << BUILD_DATE << " " << BUILD_TIME << std::endl;
   context.output_stream() << "Copyright Contributors to the Zowe Project." << std::endl;
+
+  const auto result = ast::obj();
+  result->set("version", ast::str(g_version));
+  result->set("buildDate", ast::str(BUILD_DATE));
+  context.set_object(result);
+
   return 0;
 }
 
