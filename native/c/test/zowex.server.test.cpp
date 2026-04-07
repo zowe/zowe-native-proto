@@ -174,6 +174,23 @@ void zowex_server_tests()
 
                   unlink(checksums_file.c_str());
                 });
+             it("should print ready message with version",
+                []() -> void
+                {
+                  ServerHandle server = start_server(zowex_server_command);
+                  std::string response = read_line_from_server(server);
+                  stop_server(server);
+
+                  static const std::regex re(R"("version"\s*:\s*\"([^"]*)\")");
+                  std::smatch m;
+
+                  Expect(std::regex_search(response, m, re)).ToBe(true);
+                  const std::string version = m[1].str();
+
+                  Expect(version.length()).ToBeGreaterThanOrEqualTo(5); // X.X.X at minimum
+                  Expect(response).ToContain("\"message\":\"zowex server is ready to accept input\"");
+                  Expect(response).ToContain("\"status\":\"ready\"");
+                });
              it("should return error message for invalid JSON input",
                 []() -> void
                 {

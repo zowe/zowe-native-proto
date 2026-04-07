@@ -35,6 +35,11 @@ void set_version(const std::string &version)
   g_version = version;
 }
 
+const std::string &get_version()
+{
+  return g_version;
+}
+
 void set_plugin_manager(plugin::PluginManager *manager)
 {
   g_plugin_manager = manager;
@@ -205,10 +210,8 @@ Command &setup_root_command(char *argv[])
   // Core commands
   {
     auto version_cmd = command_ptr(new Command("version", "display version information"));
-    version_cmd->add_alias("--version");
-    version_cmd->add_alias("-v");
     version_cmd->set_handler(handle_version);
-    root_command.add_command(version_cmd);
+    root_command.add_command(version_cmd); // Should provide more info here, if command is enhanced later.
 
     auto plugins_cmd = command_ptr(new Command("plugins", "plug-in management commands"));
     auto list_cmd = command_ptr(new Command("list", "list available plug-ins"));

@@ -23,4 +23,5 @@ int execute_command(int argc, char *argv[]);
 void set_plugin_manager(plugin::PluginManager *manager);
 plugin::PluginManager *get_plugin_manager();
 void set_version(const std::string &version);
+const std::string &get_version();
 } // namespace core
