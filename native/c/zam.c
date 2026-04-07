@@ -732,6 +732,7 @@ int BLDLMEM(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc, BLDL_PL *PTR32 bldl_pl)
 static int update_ispf_statistics(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
 {
   int rc = 0;
+
   if (ioc->preserve_stow_user_data)
   {
     return RTNCD_SUCCESS;

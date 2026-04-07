@@ -48,6 +48,21 @@ const char CR_CHAR = '\x0D';
 // form feed character, used for stripping off lines in ASA mode
 const char FF_CHAR = '\x0C';
 
+#define RECLEN 254
+
+typedef struct
+{
+  unsigned short int count;
+  char rest[RECLEN];
+} RECORD;
+
+typedef struct
+{
+  char name[8];
+  unsigned char ttr[3];
+  unsigned char info;
+} RECORD_ENTRY;
+
 /**
  * Helper function to check if codepage encoding should be used.
  * Returns true if text mode is enabled and a codepage is specified.
@@ -930,6 +945,66 @@ static int write_asa_overflow_records(ZDS *zds, IO_CTRL *ioc, int overflow_count
   return RTNCD_SUCCESS;
 }
 
+static int get_stats(const std::string &base_dsn, const std::string &member, ISPF_STATS *out_stats, unsigned char *out_info)
+{
+  std::string dsn = "//'" + base_dsn + "'";
+  FILE *fp = fopen(dsn.c_str(), "rb,recfm=u");
+
+  if (!fp)
+    return -1;
+
+  char target[8];
+  memset(target, ' ', 8);
+  memcpy(target, member.c_str(), std::min((size_t)8, member.length()));
+
+  RECORD rec{};
+  bool found = false;
+
+  while (fread(&rec, sizeof(rec), 1, fp))
+  {
+    unsigned char *data = (unsigned char *)&rec;
+    data += sizeof(rec.count);
+
+    int len = 0;
+    for (int i = 0; i < rec.count; i += len)
+    {
+      RECORD_ENTRY entry{};
+      memcpy(&entry, data, sizeof(entry));
+
+      long long int end_marker = 0xFFFFFFFFFFFFFFFF;
+      if (memcmp(entry.name, &end_marker, sizeof(end_marker)) == 0)
+        break;
+
+      unsigned char user_data_halfwords = entry.info & 0x1F;
+      int user_data_len = user_data_halfwords * 2;
+
+      len = sizeof(entry) + user_data_len;
+
+      if (memcmp(entry.name, target, 8) == 0)
+      {
+        *out_info = entry.info;
+
+        if (user_data_len >= sizeof(ISPF_STATS))
+        {
+          memcpy(out_stats, data + sizeof(entry), sizeof(ISPF_STATS));
+          found = true;
+        }
+        break;
+      }
+
+      data += len;
+      int remainder = rec.count - (i + len);
+      if (remainder < (int)sizeof(entry))
+        break;
+    }
+    if (found)
+      break;
+  }
+
+  fclose(fp);
+  return found ? 0 : -1;
+}
+
 /**
  * Internal function to write to a PDS/PDSE member using BPAM (updates ISPF stats)
  */
@@ -1176,26 +1251,16 @@ zds_write_member_bpam(ZDS *zds, const std::string &dsn, std::string &data, const
 
   if (options.is_copy && !options.source_name.empty())
   {
-    IO_CTRL *source_ioc = nullptr;
-
-    std::string src = options.source_dsn + "(" + options.source_name + ")";
-    ZDS zds_src = {};
-    rc = zds_open_output_bpam(&zds_src, src, source_ioc);
+    ISPF_STATS src_stats = {0};
+    unsigned char entry_info = 0;
+    rc = get_stats(options.source_dsn, options.source_name, &src_stats, &entry_info);
 
     if (rc == RTNCD_SUCCESS)
     {
-      BLDL_PL bldl_pl = {0};
-      source_ioc->preserve_stow_user_data = 1;
-      rc = ZDSBLDL(&zds_src, source_ioc, &bldl_pl);
-
-      if (rc == RTNCD_SUCCESS)
-      {
-        ioc->stow_list.c = bldl_pl.list.c;
-        memcpy(ioc->stow_list.user_data, bldl_pl.list.user_data, sizeof(ISPF_STATS));
-        memcpy(ioc->stow_list.name, ioc->jfcb.jfcbelnm, sizeof(ioc->jfcb.jfcbelnm));
-        ioc->preserve_stow_user_data = 1;
-      }
-      zds_close_output_bpam(&zds_src, source_ioc);
+      ioc->stow_list.c = entry_info;
+      memcpy(ioc->stow_list.user_data, &src_stats, sizeof(ISPF_STATS));
+      memcpy(ioc->stow_list.name, ioc->jfcb.jfcbelnm, sizeof(ioc->jfcb.jfcbelnm));
+      ioc->preserve_stow_user_data = 1;
     }
   }
   else
@@ -1212,6 +1277,7 @@ zds_write_member_bpam(ZDS *zds, const std::string &dsn, std::string &data, const
 
   return rc;
 }
+
 static int copy_member_with_stats(ZDS *zds, const ZDSTypeInfo &src_info, const ZDSTypeInfo &dst_info)
 {
   std::string src_path = "//'" + src_info.base_dsn + "(" + src_info.member_name + ")'";
@@ -1654,20 +1720,6 @@ int zds_close_output_bpam(ZDS *zds, IO_CTRL *ioc)
 }
 
 // https://www.ibm.com/docs/en/zos/3.1.0?topic=examples-listing-partitioned-data-set-members
-#define RECLEN 254
-
-typedef struct
-{
-  unsigned short int count;
-  char rest[RECLEN];
-} RECORD;
-
-typedef struct
-{
-  char name[8];
-  unsigned char ttr[3];
-  unsigned char info;
-} RECORD_ENTRY;
 
 int alloc_and_free(const std::string &alloc_dd, const std::string &dsn, unsigned int *code, std::string &resp)
 {
