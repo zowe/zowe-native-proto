@@ -11,7 +11,6 @@
 
 #include "zdsm.h"
 #include "iggcsina.h"
-#include "zamtypes.h"
 #include "zdstype.h"
 #include "zmetal.h"
 #include "zdbg.h"
