@@ -14,7 +14,6 @@
 #include "zdstype.h"
 #include "zmetal.h"
 #include "zdbg.h"
-#include "zwto.h"
 #include "ztime.h"
 #include <ctype.h>
 #include <string.h>

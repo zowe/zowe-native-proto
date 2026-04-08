@@ -48,6 +48,21 @@ const char CR_CHAR = '\x0D';
 // form feed character, used for stripping off lines in ASA mode
 const char FF_CHAR = '\x0C';
 
+#define RECLEN 254
+
+typedef struct
+{
+  unsigned short int count;
+  char rest[RECLEN];
+} RECORD;
+
+typedef struct
+{
+  char name[8];
+  unsigned char ttr[3];
+  unsigned char info;
+} RECORD_ENTRY;
+
 /**
  * Helper function to check if codepage encoding should be used.
  * Returns true if text mode is enabled and a codepage is specified.
@@ -140,6 +155,10 @@ static std::vector<std::string> get_member_names(const std::string &pds_dsn)
   {
     std::string name = mem.name;
     zut_trim(name);
+    if (name.empty())
+    {
+      continue;
+    }
     names.push_back(name);
   }
   return names;
@@ -219,27 +238,7 @@ static int zds_get_type_info(const std::string &dsn, ZDSTypeInfo &info)
   return RTNCD_SUCCESS;
 }
 
-static int copy_sequential(ZDS *zds, const std::string &src_dsn, const std::string &dst_dsn);
-
-// PDS-to-PDS copy using member-by-member binary I/O.
-// This approach provides granular control for --replace semantics (skip/overwrite individual members)
-// and naturally supports --delete-target-members workflow.
-static int copy_pds_to_pds(ZDS *zds, const ZDSTypeInfo &src, const ZDSTypeInfo &dst, bool replace)
-{
-  std::vector<std::string> src_members = get_member_names(src.base_dsn);
-  for (size_t i = 0; i < src_members.size(); i++)
-  {
-    const std::string &member = src_members[i];
-    if (!replace && member_exists_in_pds(dst.base_dsn, member))
-      continue;
-    std::string src_mem_dsn = src.base_dsn + "(" + member + ")";
-    std::string dst_mem_dsn = dst.base_dsn + "(" + member + ")";
-    int rc = copy_sequential(zds, src_mem_dsn, dst_mem_dsn);
-    if (rc != RTNCD_SUCCESS)
-      return rc;
-  }
-  return RTNCD_SUCCESS;
-}
+// static int copy_sequential(ZDS *zds, const std::string &src_dsn, const std::string &dst_dsn);
 
 // Copy sequential data set or member using binary I/O
 // Note: RECFM=U data sets are not explicitly checked here because fldata() returns
@@ -284,6 +283,13 @@ static int copy_sequential(ZDS *zds, const std::string &src_dsn, const std::stri
   return RTNCD_SUCCESS;
 }
 
+struct ZDSWriteMemberOptions
+{
+  bool is_copy{false};
+  std::string source_name;
+  std::string source_dsn;
+};
+
 // Delete all members from a PDS
 static int delete_all_members(ZDS *zds, const std::string &pds_dsn)
 {
@@ -299,186 +305,6 @@ static int delete_all_members(ZDS *zds, const std::string &pds_dsn)
     }
   }
   return RTNCD_SUCCESS;
-}
-
-int zds_copy_dsn(ZDS *zds, const std::string &dsn1, const std::string &dsn2, ZDSCopyOptions *options)
-{
-  int rc = 0;
-  ZDSCopyOptions default_options;
-  ZDSCopyOptions *opts = options ? options : &default_options;
-  opts->target_created = false;
-  opts->member_created = false;
-  ZDSTypeInfo info1{};
-  ZDSTypeInfo info2{};
-
-  zds_get_type_info(dsn1, info1);
-  zds_get_type_info(dsn2, info2);
-
-  if (!info1.exists)
-  {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Source data set '%s' not found", info1.base_dsn.c_str());
-    return RTNCD_FAILURE;
-  }
-
-  // PDS -> Member is not allowed (can't copy entire PDS into a single member)
-  if (info1.type == ZDS_TYPE_PDS && !info2.member_name.empty())
-  {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg,
-                                  "Cannot copy entire PDS to a member. "
-                                  "Target must be a PDS.");
-    return RTNCD_FAILURE;
-  }
-
-  // Member -> PS is not supported (cross-type copy)
-  if (info1.type == ZDS_TYPE_MEMBER && info2.member_name.empty())
-  {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg,
-                                  "Cannot copy PDS member to a sequential data set. "
-                                  "Target must specify a member name.");
-    return RTNCD_FAILURE;
-  }
-
-  // PS -> Member is not supported (cross-type copy)
-  if (info1.type == ZDS_TYPE_PS && !info2.member_name.empty())
-  {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg,
-                                  "Cannot copy sequential data set to a PDS member. "
-                                  "Target must be a sequential data set.");
-    return RTNCD_FAILURE;
-  }
-
-  // PDS -> PS is not supported (cannot copy PDS to existing sequential data set)
-  if (info1.type == ZDS_TYPE_PDS && info2.type == ZDS_TYPE_PS)
-  {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg,
-                                  "Cannot copy PDS to a sequential data set. "
-                                  "Target must be a PDS.");
-    return RTNCD_FAILURE;
-  }
-
-  bool is_pds_full_copy = (info1.type == ZDS_TYPE_PDS && info2.member_name.empty());
-  bool target_is_member = !info2.member_name.empty();
-  bool target_base_exists = zds_dataset_exists(info2.base_dsn);
-
-  if (!target_base_exists)
-  {
-    // Create the target data set
-    ZDS create_zds{};
-    std::string create_resp;
-    DS_ATTRIBUTES attrs{};
-
-    // Common attributes for all data set types
-    attrs.recfm = info1.entry.recfm.c_str();
-    attrs.lrecl = info1.entry.lrecl;
-    attrs.blksize = info1.entry.blksize;
-
-    // Preserve space unit (CYLINDERS or TRACKS)
-    if (info1.entry.spacu == "CYLINDERS" || info1.entry.spacu == "CYL")
-    {
-      attrs.alcunit = "CYL";
-    }
-    else
-    {
-      attrs.alcunit = "TRACKS";
-    }
-
-    // Preserve primary/secondary allocation
-    if (info1.entry.primary >= 0 && info1.entry.secondary >= 0)
-    {
-      attrs.primary = info1.entry.primary > INT_MAX ? INT_MAX : static_cast<int>(info1.entry.primary);
-      attrs.secondary = info1.entry.secondary > INT_MAX ? INT_MAX : static_cast<int>(info1.entry.secondary);
-    }
-    else
-    {
-      attrs.primary = 1;
-      attrs.secondary = 1;
-    }
-
-    if (info1.type == ZDS_TYPE_PDS || info1.type == ZDS_TYPE_MEMBER)
-    {
-      // PDS -> PDS or Member -> Member: create PDS with source attributes
-      attrs.dsorg = "PO";
-      attrs.dirblk = 5;
-      attrs.dsntype = info1.entry.dsntype.c_str();
-    }
-    else
-    {
-      // PS -> PS: create sequential data set with source attributes
-      attrs.dsorg = "PS";
-    }
-
-    rc = zds_create_dsn(&create_zds, info2.base_dsn, attrs, create_resp);
-    if (rc != RTNCD_SUCCESS)
-    {
-      // Truncate detail message to avoid buffer overflow (leave room for prefix + dsn + ": ")
-      const char *detail = create_zds.diag.e_msg_len > 0 ? create_zds.diag.e_msg : create_resp.c_str();
-      char truncated_detail[128];
-      strncpy(truncated_detail, detail, sizeof(truncated_detail) - 1);
-      truncated_detail[sizeof(truncated_detail) - 1] = '\0';
-      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to create target data set '%s': %s",
-                                    info2.base_dsn.c_str(), truncated_detail);
-      return RTNCD_FAILURE;
-    }
-    opts->target_created = true;
-  }
-  // Track if target member exists (for member_created reporting)
-  bool target_member_exists = target_is_member && member_exists_in_pds(info2.base_dsn, info2.member_name);
-
-  if (!opts->replace && !is_pds_full_copy)
-  {
-    // For member targets, check if the specific member exists
-    // For non-member targets (sequential DS), check if the base data set existed before this call
-    bool target_actually_exists = target_is_member ? target_member_exists : target_base_exists;
-
-    if (target_actually_exists)
-    {
-      zds->diag.e_msg_len = sprintf(zds->diag.e_msg,
-                                    "Target '%s' already exists. Use --replace to overwrite.",
-                                    dsn2.c_str());
-      return RTNCD_FAILURE;
-    }
-  }
-
-  // Check if source and target are in the same PDS - need special handling
-  bool same_pds = (info1.type == ZDS_TYPE_MEMBER && target_is_member &&
-                   info1.base_dsn == info2.base_dsn);
-
-  // Delete all target members if requested (only for PDS-to-PDS copy)
-  if (opts->delete_target_members && is_pds_full_copy && target_base_exists)
-  {
-    rc = delete_all_members(zds, info2.base_dsn);
-    if (rc != RTNCD_SUCCESS)
-    {
-      return rc;
-    }
-  }
-
-  if (is_pds_full_copy)
-  {
-    // When delete_target_members is used, always replace since target is now empty
-    return copy_pds_to_pds(zds, info1, info2, opts->replace || opts->delete_target_members);
-  }
-  else
-  {
-    if (same_pds)
-    {
-      // Same PDS: copy member to member using binary I/O
-      std::string src_mem_dsn = info1.base_dsn + "(" + info1.member_name + ")";
-      std::string dst_mem_dsn = info2.base_dsn + "(" + info2.member_name + ")";
-      rc = copy_sequential(zds, src_mem_dsn, dst_mem_dsn);
-    }
-    else
-    {
-      rc = copy_sequential(zds, dsn1, dsn2);
-    }
-
-    // Report if a new member was created
-    if (rc == RTNCD_SUCCESS && target_is_member && !target_member_exists)
-    {
-      opts->member_created = true;
-    }
-    return rc;
-  }
 }
 
 bool zds_dataset_exists(const std::string &dsn)
@@ -1119,11 +945,73 @@ static int write_asa_overflow_records(ZDS *zds, IO_CTRL *ioc, int overflow_count
   return RTNCD_SUCCESS;
 }
 
+static int get_member_stats(const std::string &base_dsn, const std::string &member, ISPF_STATS *out_stats, unsigned char *out_info)
+{
+  std::string dsn = "//'" + base_dsn + "'";
+  FILE *fp = fopen(dsn.c_str(), "rb,recfm=u");
+
+  if (!fp)
+    return -1;
+
+  char target[8];
+  memset(target, ' ', 8);
+  memcpy(target, member.c_str(), std::min((size_t)8, member.length()));
+
+  RECORD rec{};
+  bool found = false;
+
+  while (fread(&rec, sizeof(rec), 1, fp))
+  {
+    unsigned char *data = (unsigned char *)&rec;
+    data += sizeof(rec.count);
+
+    int len = 0;
+    for (int i = 0; i < rec.count; i += len)
+    {
+      RECORD_ENTRY entry{};
+      memcpy(&entry, data, sizeof(entry));
+
+      long long int end_marker = 0xFFFFFFFFFFFFFFFF;
+      if (memcmp(entry.name, &end_marker, sizeof(end_marker)) == 0)
+        break;
+
+      unsigned char user_data_halfwords = entry.info & 0x1F;
+      int user_data_len = user_data_halfwords * 2;
+
+      len = sizeof(entry) + user_data_len;
+
+      if (memcmp(entry.name, target, 8) == 0)
+      {
+        *out_info = entry.info;
+
+        if (user_data_len >= sizeof(ISPF_STATS))
+        {
+          memcpy(out_stats, data + sizeof(entry), sizeof(ISPF_STATS));
+          found = true;
+        }
+        break;
+      }
+
+      data += len;
+      int remainder = rec.count - (i + len);
+      if (remainder < (int)sizeof(entry))
+        break;
+    }
+    if (found)
+      break;
+  }
+
+  fclose(fp);
+  return found ? 0 : -1;
+}
+
 /**
  * Internal function to write to a PDS/PDSE member using BPAM (updates ISPF stats)
  */
-static int zds_write_member_bpam(ZDS *zds, const std::string &dsn, std::string &data)
+static int
+zds_write_member_bpam(ZDS *zds, const std::string &dsn, std::string &data, const ZDSWriteMemberOptions &options = {})
 {
+
   int rc = 0;
   IO_CTRL *ioc = nullptr;
 
@@ -1167,66 +1055,85 @@ static int zds_write_member_bpam(ZDS *zds, const std::string &dsn, std::string &
   std::vector<std::pair<std::string, char>> lines_to_write; // std::pair of (encoded line, asa_char)
 
   // Parse data line by line
+  size_t pos = 0;
   if (!data.empty())
   {
-    size_t pos = 0;
-    size_t newline_pos;
-
-    while ((newline_pos = data.find(newline_char, pos)) != std::string::npos)
+    if (options.is_copy)
     {
-      std::string line = data.substr(pos, newline_pos - pos);
-
-      // Remove trailing CR if present (Windows line endings)
-      if (!line.empty() && line[line.size() - 1] == CR_CHAR)
+      while (pos < data.length())
       {
-        line.erase(line.size() - 1);
-      }
+        int line_len = std::min(int(data.size() - pos), max_len);
+        rc = ZDSWBPAM(zds, ioc, data.c_str() + pos, &line_len);
 
-      // Process ASA: determine control char, skip blank lines
-      char asa_char = '\0';
-      if (is_asa)
-      {
-        auto asa_result = asa_state.prepare_line(line);
-        if (asa_result.skip_line)
+        if (rc != RTNCD_SUCCESS)
         {
-          pos = newline_pos + 1;
-          continue;
-        }
-
-        // Add overflow blank lines as empty '-' records (for 3+ blank lines)
-        for (int i = 0; i < asa_result.overflow_records; i++)
-        {
-          lines_to_write.emplace_back(std::make_pair(std::string(), '-'));
-        }
-
-        asa_char = asa_result.asa_char;
-      }
-
-      line_num++;
-
-      // Encode line if needed
-      if (has_encoding)
-      {
-        try
-        {
-          line = zut_encode(line, iconv_guard.get(), zds->diag);
-        }
-        catch (std::exception &e)
-        {
-          zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from %s to %s", source_encoding.c_str(), codepage.c_str());
           zds_close_output_bpam(zds, ioc);
           return RTNCD_FAILURE;
         }
-      }
 
-      // Check if line will be truncated (account for ASA char if present)
-      if (static_cast<int>(line.length() + (is_asa ? 1 : 0)) > max_len)
+        pos = pos + line_len;
+      }
+    }
+    else
+    {
+      size_t newline_pos;
+
+      while ((newline_pos = data.find(newline_char, pos)) != std::string::npos)
       {
-        truncation.add_line(line_num);
-      }
+        std::string line = data.substr(pos, newline_pos - pos);
 
-      lines_to_write.emplace_back(std::make_pair(line, is_asa ? asa_char : '\0'));
-      pos = newline_pos + 1;
+        // Remove trailing CR if present (Windows line endings)
+        if (!line.empty() && line[line.size() - 1] == CR_CHAR)
+        {
+          line.erase(line.size() - 1);
+        }
+
+        // Process ASA: determine control char, skip blank lines
+        char asa_char = '\0';
+        if (is_asa)
+        {
+          auto asa_result = asa_state.prepare_line(line);
+          if (asa_result.skip_line)
+          {
+            pos = newline_pos + 1;
+            continue;
+          }
+
+          // Add overflow blank lines as empty '-' records (for 3+ blank lines)
+          for (int i = 0; i < asa_result.overflow_records; i++)
+          {
+            lines_to_write.emplace_back(std::make_pair(std::string(), '-'));
+          }
+
+          asa_char = asa_result.asa_char;
+        }
+
+        line_num++;
+
+        // Encode line if needed
+        if (has_encoding)
+        {
+          try
+          {
+            line = zut_encode(line, iconv_guard.get(), zds->diag);
+          }
+          catch (std::exception &e)
+          {
+            zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from %s to %s", source_encoding.c_str(), codepage.c_str());
+            zds_close_output_bpam(zds, ioc);
+            return RTNCD_FAILURE;
+          }
+        }
+
+        // Check if line will be truncated (account for ASA char if present)
+        if (static_cast<int>(line.length() + (is_asa ? 1 : 0)) > max_len)
+        {
+          truncation.add_line(line_num);
+        }
+
+        lines_to_write.emplace_back(std::make_pair(line, is_asa ? asa_char : '\0'));
+        pos = newline_pos + 1;
+      }
     }
 
     // Handle remaining content after last newline
@@ -1342,19 +1249,265 @@ static int zds_write_member_bpam(ZDS *zds, const std::string &dsn, std::string &
   // Finalize any pending range
   truncation.flush_range();
 
-  // Close the member (this updates ISPF stats and STOWs the directory entry)
+  if (options.is_copy && !options.source_name.empty())
+  {
+    ISPF_STATS src_stats = {0};
+    unsigned char entry_info = 0;
+    rc = get_member_stats(options.source_dsn, options.source_name, &src_stats, &entry_info);
+
+    if (rc == RTNCD_SUCCESS)
+    {
+      ioc->stow_list.c = entry_info;
+      memcpy(ioc->stow_list.user_data, &src_stats, sizeof(ISPF_STATS));
+      memcpy(ioc->stow_list.name, ioc->jfcb.jfcbelnm, sizeof(ioc->jfcb.jfcbelnm));
+      ioc->preserve_stow_user_data = 1;
+    }
+  }
+  else
+  {
+    if (truncation.count > 0 && rc == RTNCD_SUCCESS)
+    {
+      const auto warning_msg = truncation.get_warning_message();
+      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "%s", warning_msg.c_str());
+      zds->diag.detail_rc = ZDS_RSNCD_TRUNCATION_WARNING;
+      return RTNCD_WARNING;
+    }
+  }
   rc = zds_close_output_bpam(zds, ioc);
 
-  // Report truncation warning if lines were truncated and close succeeded
-  if (truncation.count > 0 && rc == RTNCD_SUCCESS)
+  return rc;
+}
+
+static int copy_member_with_stats(ZDS *zds, const ZDSTypeInfo &src_info, const ZDSTypeInfo &dst_info)
+{
+  std::string src_path = "//'" + src_info.base_dsn + "(" + src_info.member_name + ")'";
+  std::string dst_dsn = dst_info.base_dsn + "(" + dst_info.member_name + ")";
+
+  FILE *fin = fopen(src_path.c_str(), "rb");
+  if (!fin)
   {
-    const auto warning_msg = truncation.get_warning_message();
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "%s", warning_msg.c_str());
-    zds->diag.detail_rc = ZDS_RSNCD_TRUNCATION_WARNING;
-    return RTNCD_WARNING;
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open source member '%s'", src_path.c_str());
+    return RTNCD_FAILURE;
   }
 
-  return rc;
+  std::string member_data;
+  char buffer[32760];
+  size_t bytes_read;
+  while ((bytes_read = fread(buffer, 1, sizeof(buffer), fin)) > 0)
+  {
+    member_data.append(buffer, bytes_read);
+  }
+  fclose(fin);
+
+  ZDSWriteMemberOptions options;
+  options.is_copy = true;
+  options.source_name = src_info.member_name;
+  options.source_dsn = src_info.base_dsn;
+
+  return zds_write_member_bpam(zds, dst_dsn, member_data, options);
+}
+// PDS-to-PDS copy using member-by-member binary I/O.
+// This approach provides granular control for --replace semantics (skip/overwrite individual members)
+// and naturally supports --delete-target-members workflow.
+static int copy_pds_to_pds(ZDS *zds, const ZDSTypeInfo &src, const ZDSTypeInfo &dst, bool replace)
+{
+  std::vector<std::string> src_members = get_member_names(src.base_dsn);
+  for (size_t i = 0; i < src_members.size(); i++)
+  {
+    const std::string &member = src_members[i];
+    if (!replace && member_exists_in_pds(dst.base_dsn, member))
+      continue;
+
+    ZDSTypeInfo current_src = src;
+    ZDSTypeInfo current_dst = dst;
+    current_src.member_name = member;
+    current_dst.member_name = member;
+
+    int rc = copy_member_with_stats(zds, current_src, current_dst);
+    if (rc != RTNCD_SUCCESS)
+      return rc;
+  }
+  return RTNCD_SUCCESS;
+}
+
+int zds_copy_dsn(ZDS *zds, const std::string &dsn1, const std::string &dsn2, ZDSCopyOptions *options)
+{
+  int rc = 0;
+  ZDSCopyOptions default_options;
+  ZDSCopyOptions *opts = options ? options : &default_options;
+  opts->target_created = false;
+  opts->member_created = false;
+  ZDSTypeInfo info1{};
+  ZDSTypeInfo info2{};
+
+  zds_get_type_info(dsn1, info1);
+  zds_get_type_info(dsn2, info2);
+
+  if (!info1.exists)
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Source data set '%s' not found", info1.base_dsn.c_str());
+    return RTNCD_FAILURE;
+  }
+
+  // PDS -> Member is not allowed (can't copy entire PDS into a single member)
+  if (info1.type == ZDS_TYPE_PDS && !info2.member_name.empty())
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg,
+                                  "Cannot copy entire PDS to a member. "
+                                  "Target must be a PDS.");
+    return RTNCD_FAILURE;
+  }
+
+  // Member -> PS is not supported (cross-type copy)
+  if (info1.type == ZDS_TYPE_MEMBER && info2.member_name.empty())
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg,
+                                  "Cannot copy PDS member to a sequential data set. "
+                                  "Target must specify a member name.");
+    return RTNCD_FAILURE;
+  }
+
+  // PS -> Member is not supported (cross-type copy)
+  if (info1.type == ZDS_TYPE_PS && !info2.member_name.empty())
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg,
+                                  "Cannot copy sequential data set to a PDS member. "
+                                  "Target must be a sequential data set.");
+    return RTNCD_FAILURE;
+  }
+
+  // PDS -> PS is not supported (cannot copy PDS to existing sequential data set)
+  if (info1.type == ZDS_TYPE_PDS && info2.type == ZDS_TYPE_PS)
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg,
+                                  "Cannot copy PDS to a sequential data set. "
+                                  "Target must be a PDS.");
+    return RTNCD_FAILURE;
+  }
+
+  bool is_pds_full_copy = (info1.type == ZDS_TYPE_PDS && info2.member_name.empty());
+  bool target_is_member = !info2.member_name.empty();
+  bool target_base_exists = zds_dataset_exists(info2.base_dsn);
+
+  if (!target_base_exists)
+  {
+    // Create the target data set
+    ZDS create_zds{};
+    std::string create_resp;
+    DS_ATTRIBUTES attrs{};
+
+    // Common attributes for all data set types
+    attrs.recfm = info1.entry.recfm.c_str();
+    attrs.lrecl = info1.entry.lrecl;
+    attrs.blksize = info1.entry.blksize;
+
+    // Preserve space unit (CYLINDERS or TRACKS)
+    if (info1.entry.spacu == "CYLINDERS" || info1.entry.spacu == "CYL")
+    {
+      attrs.alcunit = "CYL";
+    }
+    else
+    {
+      attrs.alcunit = "TRACKS";
+    }
+
+    // Preserve primary/secondary allocation
+    if (info1.entry.primary >= 0 && info1.entry.secondary >= 0)
+    {
+      attrs.primary = info1.entry.primary > INT_MAX ? INT_MAX : static_cast<int>(info1.entry.primary);
+      attrs.secondary = info1.entry.secondary > INT_MAX ? INT_MAX : static_cast<int>(info1.entry.secondary);
+    }
+    else
+    {
+      attrs.primary = 1;
+      attrs.secondary = 1;
+    }
+
+    if (info1.type == ZDS_TYPE_PDS || info1.type == ZDS_TYPE_MEMBER)
+    {
+      // PDS -> PDS or Member -> Member: create PDS with source attributes
+      attrs.dsorg = "PO";
+      attrs.dirblk = 5;
+      attrs.dsntype = info1.entry.dsntype.c_str();
+    }
+    else
+    {
+      // PS -> PS: create sequential data set with source attributes
+      attrs.dsorg = "PS";
+    }
+
+    rc = zds_create_dsn(&create_zds, info2.base_dsn, attrs, create_resp);
+    if (rc != RTNCD_SUCCESS)
+    {
+      // Truncate detail message to avoid buffer overflow (leave room for prefix + dsn + ": ")
+      const char *detail = create_zds.diag.e_msg_len > 0 ? create_zds.diag.e_msg : create_resp.c_str();
+      char truncated_detail[128];
+      strncpy(truncated_detail, detail, sizeof(truncated_detail) - 1);
+      truncated_detail[sizeof(truncated_detail) - 1] = '\0';
+      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to create target data set '%s': %s",
+                                    info2.base_dsn.c_str(), truncated_detail);
+      return RTNCD_FAILURE;
+    }
+    opts->target_created = true;
+  }
+  // Track if target member exists (for member_created reporting)
+  bool target_member_exists = target_is_member && member_exists_in_pds(info2.base_dsn, info2.member_name);
+
+  if (!opts->replace && !is_pds_full_copy)
+  {
+    // For member targets, check if the specific member exists
+    // For non-member targets (sequential DS), check if the base data set existed before this call
+    bool target_actually_exists = target_is_member ? target_member_exists : target_base_exists;
+
+    if (target_actually_exists)
+    {
+      zds->diag.e_msg_len = sprintf(zds->diag.e_msg,
+                                    "Target '%s' already exists. Use --replace to overwrite.",
+                                    dsn2.c_str());
+      return RTNCD_FAILURE;
+    }
+  }
+
+  // Check if source and target are in the same PDS - need special handling
+  bool same_pds = (info1.type == ZDS_TYPE_MEMBER && target_is_member &&
+                   info1.base_dsn == info2.base_dsn);
+
+  // Delete all target members if requested (only for PDS-to-PDS copy)
+  if (opts->delete_target_members && is_pds_full_copy && target_base_exists)
+  {
+    rc = delete_all_members(zds, info2.base_dsn);
+    if (rc != RTNCD_SUCCESS)
+    {
+      return rc;
+    }
+  }
+
+  if (is_pds_full_copy)
+  {
+    // When delete_target_members is used, always replace since target is now empty
+    return copy_pds_to_pds(zds, info1, info2, opts->replace || opts->delete_target_members);
+  }
+  else
+  {
+    if (same_pds)
+    {
+      // Same PDS: copy member to member using binary I/O
+      std::string src_mem_dsn = info1.base_dsn + "(" + info1.member_name + ")";
+      std::string dst_mem_dsn = info2.base_dsn + "(" + info2.member_name + ")";
+      rc = copy_sequential(zds, src_mem_dsn, dst_mem_dsn);
+    }
+    else
+    {
+      rc = copy_sequential(zds, dsn1, dsn2);
+    }
+
+    // Report if a new member was created
+    if (rc == RTNCD_SUCCESS && target_is_member && !target_member_exists)
+    {
+      opts->member_created = true;
+    }
+    return rc;
+  }
 }
 
 /**
@@ -1567,20 +1720,6 @@ int zds_close_output_bpam(ZDS *zds, IO_CTRL *ioc)
 }
 
 // https://www.ibm.com/docs/en/zos/3.1.0?topic=examples-listing-partitioned-data-set-members
-#define RECLEN 254
-
-typedef struct
-{
-  unsigned short int count;
-  char rest[RECLEN];
-} RECORD;
-
-typedef struct
-{
-  char name[8];
-  unsigned char ttr[3];
-  unsigned char info;
-} RECORD_ENTRY;
 
 int alloc_and_free(const std::string &alloc_dd, const std::string &dsn, unsigned int *code, std::string &resp)
 {

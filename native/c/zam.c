@@ -23,7 +23,6 @@
 #include "zutm31.h"
 #include "ztime.h"
 #include "zio.h"
-#include "zwto.h"
 #include "zdbg.h"
 
 register FILE_CTRL *fc ASMREG("r8");
@@ -731,6 +730,11 @@ static int bldl_member(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc, BLDL_PL *PTR32 bld
 static int update_ispf_statistics(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
 {
   int rc = 0;
+
+  if (ioc->preserve_stow_user_data)
+  {
+    return RTNCD_SUCCESS;
+  }
 
   // Skip ISPF stats for undefined record format (RECFM=U)
   if ((ioc->dcb.dcbrecfm & dcbrecu) == dcbrecu)
