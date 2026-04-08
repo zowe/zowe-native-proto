@@ -147,6 +147,34 @@ typedef struct sdwarc4 SDWARC4;
 #define VRADATA_DATA(sdwa, key, data, len)
 #endif
 
+#if defined(__IBM_METAL__)
+#define ESTAEX_ESTABLISH(routine, parm, token, list)              \
+  __asm(                                                          \
+      "*                                                      \n" \
+      " ESTAEX (%1),PARAM=(%2),MF=(E,(%3))                    \n" \
+      " ST 0,%0                                               \n" \
+      "*                                                        " \
+      : "=m"(token)                                               \
+      : "r"(routine), "r"(parm), "r"(list)                        \
+      : "r0", "r1", "r14", "r15");
+#else
+#define ESTAEX_ESTABLISH(routine, parm, token, list)
+#endif
+
+#if defined(__IBM_METAL__)
+#define ESTAEX_CANCEL(token, list)                                \
+  __asm(                                                          \
+      "*                                                      \n" \
+      " L 0,%0                                                \n" \
+      " ESTAEX 0,TOKEN=(0),MF=(E,(%1))                        \n" \
+      "*                                                        " \
+      :                                                           \
+      : "m"(token), "r"(list)                                     \
+      : "r0", "r1", "r14", "r15");
+#else
+#define ESTAEX_CANCEL(token, list)
+#endif
+
 /**
  * TODO(Kelosky): features
  * - test for TRAP(ON,NOSPIE)
@@ -183,7 +211,7 @@ typedef struct
   SAVF4SA final_f4sa;
 
   ////////////////////////////////////////////////////////////////////////////////
-  // NOTE(Kelosky): end of fields are part of the programming interface
+  // NOTE(Kelosky): end of fields are not part of the programming interface
   ////////////////////////////////////////////////////////////////////////////////
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -206,6 +234,9 @@ typedef struct
   ////////////////////////////////////////////////////////////////////////////////
   // NOTE(Kelosky): end of fields are part of the programming interface
   ////////////////////////////////////////////////////////////////////////////////
+
+  unsigned int estaex_token;
+  unsigned int estaex_list[16];
 
 } ZRCVY_ENV;
 
@@ -356,6 +387,31 @@ static int enable_recovery(ZRCVY_ENV *PTR64 zenv)
   JUMP_ENV(zenv->final_f4sa, zenv->final_r13, 0);
 
   return 0; // NOTE(Kelosky): this never runs
+}
+
+// NOTE(Kelosky): this function may "return twice" like setjmp()
+// NOTE(Kelosky): we must not have this function inline so to save and return to the mainline
+#pragma reachable(enable_estaex)
+static int enable_estaex(ZRCVY_ENV *PTR64 zenv) ATTRIBUTE(noinline);
+static int enable_estaex(ZRCVY_ENV *PTR64 zenv)
+{
+  unsigned long long int r13 = 0;
+  GET_STACK_ENV(r13); // NOTE(Kelosky): this is the same as get_prev_r13() but will be inlined
+  unsigned char *save_area = (unsigned char *)r13;
+
+  memcpy(&zenv->f4sa, save_area, sizeof(SAVF4SA));
+  zenv->r13 = r13;
+
+  ESTAEX_ESTABLISH(ZRCVYARR, zenv, zenv->estaex_token, zenv->estaex_list);
+
+  return 0;
+}
+
+static int disable_estaex(ZRCVY_ENV *zenv) ATTRIBUTE(noinline);
+static int disable_estaex(ZRCVY_ENV *zenv)
+{
+  ESTAEX_CANCEL(zenv->estaex_token, zenv->estaex_list);
+  return 0;
 }
 
 #endif
