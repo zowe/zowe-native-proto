@@ -11,9 +11,9 @@
 
 import "./setup"; // installs vscode mock before any other imports
 import { PassThrough } from "node:stream";
+import { CreateDataSetTypeEnum, CreateDefaults } from "@zowe/zos-files-for-zowe-sdk";
 import { beforeAll, bench, describe } from "vitest";
 import { PREFIX, RANDOM_STR, setupTargets, targets } from "./setup";
-import { CreateDataSetTypeEnum, CreateDefaults } from "@zowe/zos-files-for-zowe-sdk";
 
 beforeAll(() => setupTargets(), 60000);
 
