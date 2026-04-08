@@ -4,6 +4,11 @@ All notable changes to the native code for "zowe-native-proto" are documented in
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## Recent Changes
+
+- `c`: Removed duplicate `-v` and `--version` aliases on the `zowex version` command. [#922](https://github.com/zowe/zowe-native-proto/pull/922)
+- `c`: Added the `getInfo` RPC to retrieve the middleware version and build information. [#922](https://github.com/zowe/zowe-native-proto/pull/922)
+
 ## `0.4.0`
 
 - `c`: Added `zowex uss issue` command and the `unixCommand` RPC for executing USS shell commands using `spawn()` with `_BPX_SHAREAS=YES` for efficient same-address-space execution. [#867](https://github.com/zowe/zowe-native-proto/pull/867)
