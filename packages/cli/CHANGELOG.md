@@ -4,8 +4,10 @@ All notable changes to the Client code for "zowe-native-proto-cli" are documente
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## `0.4.0`
+## Recent Changes
+- Added `zssh copy data-set` command to copy data sets and members with optional `--replace` and `--delete-target-members`. Supports PDS-to-PDS, member-to-member, and sequential-to-sequential copies. Note: RECFM=U data sets are not supported. [#778](https://github.com/zowe/zowe-native-proto/pull/778)
 
+## `0.4.0`
 - Added an `--attributes` flag to list ISPF statistics for member attributes. [#630](https://github.com/zowe/zowe-native-proto/issues/630)
 - Added the `zssh uss copy` command to the CLI. [#379](https://github.com/zowe/zowe-native-proto/pull/379).
 - Updated `stream` fields to match new requirements from the SDK. [#548](https://github.com/zowe/zowe-native-proto/issues/548)
