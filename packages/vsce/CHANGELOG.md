@@ -4,6 +4,10 @@ All notable changes to the "zowe-native-proto-vsce" extension will be documented
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## Recent Changes
+
+- Enhanced copy functionality with `copyDataSetMember` for member-to-member and full data set copies supporting `replace` and `deleteTargetMembers` options, plus `copyDataSet` wrapper for full data set operations. When the target data set does not exist, the server allocates it like the source then copies data. [#778](https://github.com/zowe/zowe-native-proto/pull/778)
+
 ## `0.4.0`
 
 - Added error correlation for expired z/OS password (`FOTS1668`/`FOTS1669`), surfacing actionable tips and documentation links in Zowe Explorer when SSH commands fail due to an expired password. [#867](https://github.com/zowe/zowe-native-proto/pull/867)
@@ -21,7 +25,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## `0.2.4`
 
-- Added the functionality for the **Rename Member** option. [#765] (https://github.com/zowe/zowe-native-proto/pull/765).
+- Added the functionality for the **Rename Member** option. [#765](https://github.com/zowe/zowe-native-proto/pull/765).
 - Added the `multivolume` (`mvol`) property when displaying data set attributes. [#782](https://github.com/zowe/zowe-native-proto/pull/782)
 - Fixed an issue where using the "Upload Member" option with an SSH profile in Zowe Explorer caused an error. Now, the member name is provided to the back end for each member that is uploaded. [#785](https://github.com/zowe/zowe-native-proto/issues/785)
 

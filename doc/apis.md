@@ -27,7 +27,7 @@
 | Delete migrated data set | ✅              | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
 | Rename data set          | ✅              | ✅  | ✅              | ✅         | ✅  | ✅  | ✅   |
 | Rename data set member   | ✅              | ✅  | ✅              | ✅         | ✅  | ✅  | ✅   |
-| Copy data set            | ✅              | ❌  | ✅              | ❌         | ❌  | ❌  | ❌   |
+| Copy data set            | ✅              | ❌  | ✅              | ✅         | ✅  | ✅  | ✅   |
 | Compress data set        | ➖              | ❌  | ✅              | ❌         | ❌  | ❌  | ❌   |
 | Search data sets         | 🚧 <sup>4</sup> | ❌  | 🚧 <sup>4</sup> | ❌         | ✅  | ❌  | ❌   |
 | Invoke AMS (VSAM)        | ✅              | ❌  | ❌              | ❌         | ❌  | ❌  | ➖   |
