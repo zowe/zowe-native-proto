@@ -1171,16 +1171,13 @@ static int write_asa_overflow_records(ZDS *zds, IO_CTRL *ioc, int overflow_count
 }
 
 /**
- * Stream copy a data set or member to a PDS member using BPAM
- * Each BPAM write is treated as a single z/OS record (fixed-length: pad or truncate to LRECL;
- * variable-length: pass payload only; BPAM adds a fresh per-record header). Reading the source as
- * one big binary blob splits records mid-stream and corrupts the copy. Open the source in record
- * mode so each read returns one full record. For variable-length sources, each read is
- * header+payload; strip the source header and pass only the payload to BPAM so the write path can
- * attach the correct header for the target.
+ * Streamed copy into a PDS member (BPAM): read one source record per step so we never split a record.
+ * Fixed-length: the whole read is user data. Variable-length: a short length tag, then data — we copy
+ * the data only and BPAM writes the correct tag for the target.
  */
 static int zds_copy_member_streamed(ZDS *zds, const std::string &src_dsn, const std::string &dst_dsn)
 {
+  // From the catalog: record format and max record size (so we know how big a read buffer to use).
   const DscbAttributes src_attrs = zds_get_dscb_attributes(src_dsn);
   if (src_attrs.recfm.empty() || src_attrs.lrecl <= 0)
   {
@@ -1197,16 +1194,19 @@ static int zds_copy_member_streamed(ZDS *zds, const std::string &src_dsn, const 
     return RTNCD_FAILURE;
   }
 
+  // One writer at a time per process: z/OS can fail if many threads update the same library at once.
   const std::lock_guard<std::mutex> bpam_member_lock(zds_bpam_member_output_mutex());
   int rc = 0;
   IO_CTRL *ioc = nullptr;
 
+  // Open the destination member for output.
   rc = zds_open_output_bpam(zds, dst_dsn, ioc);
   if (rc != RTNCD_SUCCESS)
   {
     return rc;
   }
 
+  // Hold one full source record; variable format needs room for the length prefix plus the data.
   const bool src_is_variable = src_attrs.recfm.find('V') != std::string::npos;
   const size_t buf_cap = static_cast<size_t>(src_attrs.lrecl);
   std::vector<char> buffer(buf_cap);
@@ -1217,6 +1217,7 @@ static int zds_copy_member_streamed(ZDS *zds, const std::string &src_dsn, const 
   src_path += src_dsn;
   src_path += '\'';
 
+  // Record mode: one fread = one whole record (plain binary mode would glue/split records wrong).
   FILE *fin = fopen(src_path.c_str(), "rb,type=record");
   if (!fin)
   {
@@ -1230,6 +1231,7 @@ static int zds_copy_member_streamed(ZDS *zds, const std::string &src_dsn, const 
   size_t bytes_read = 0;
   int write_error = 0;
 
+  // Each loop: copy one record. Strip the source length prefix on variable files; BPAM adds the target's.
   while ((bytes_read = fread(&buffer[0], 1, buffer.size(), fin)) > 0)
   {
     const char *rec_ptr = &buffer[0];
@@ -1237,24 +1239,26 @@ static int zds_copy_member_streamed(ZDS *zds, const std::string &src_dsn, const 
 
     if (src_is_variable)
     {
+      // Variable record: 4-byte prefix (first two bytes = total length of prefix + data), then the data.
       if (bytes_read < 4)
       {
         write_error = 1;
-        zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Short variable-length record reading '%s'", src_dsn.c_str());
+        zds->diag.e_msg_len = sprintf(
+            zds->diag.e_msg, "Incomplete record (missing length prefix) reading '%s'", src_dsn.c_str());
         break;
       }
-      const auto rdw_total =
+      const auto header_and_payload_len =
           (static_cast<unsigned int>(static_cast<unsigned char>(buffer[0])) << 8) |
           static_cast<unsigned int>(static_cast<unsigned char>(buffer[1]));
-      if (rdw_total < 4 || static_cast<size_t>(rdw_total) > bytes_read)
+      if (header_and_payload_len < 4 || static_cast<size_t>(header_and_payload_len) > bytes_read)
       {
         write_error = 1;
-        zds->diag.e_msg_len =
-            sprintf(zds->diag.e_msg, "Invalid RDW reading variable source '%s'", src_dsn.c_str());
+        zds->diag.e_msg_len = sprintf(
+            zds->diag.e_msg, "Bad length prefix on variable-length record reading '%s'", src_dsn.c_str());
         break;
       }
       rec_ptr = &buffer[4];
-      length = static_cast<int>(rdw_total) - 4;
+      length = static_cast<int>(header_and_payload_len) - 4;
     }
 
     rc = ZDSWBPAM(zds, ioc, rec_ptr, &length);
@@ -1269,6 +1273,7 @@ static int zds_copy_member_streamed(ZDS *zds, const std::string &src_dsn, const 
     }
   }
 
+  // Catch read failures that end the loop without a clear write error.
   if (ferror(fin) != 0)
   {
     const int err = errno;
@@ -1282,6 +1287,7 @@ static int zds_copy_member_streamed(ZDS *zds, const std::string &src_dsn, const 
 
   fclose(fin);
   zds_close_output_bpam(zds, ioc);
+  // Clear temporary allocation name now that BPAM is closed.
   memset(zds->ddname, 0, sizeof(zds->ddname));
 
   if (write_error)
