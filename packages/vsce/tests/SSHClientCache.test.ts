@@ -365,7 +365,7 @@ describe("SshClientCache", () => {
             const session = (cache as any).mClientSessionMap.get(clientId);
             expect(session.status).toBe(1); // ServerStatus.DOWN
             expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(
-                expect.stringContaining("stopped working unexpectedly"),
+                expect.stringContaining("stopped unexpectedly"),
                 "Reload",
                 "Reload and Retry",
                 "Close",
