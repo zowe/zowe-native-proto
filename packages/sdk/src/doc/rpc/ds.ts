@@ -229,9 +229,8 @@ export interface WriteDatasetResponse extends common.CommandResponse {
 }
 
 /**
- * Request to copy a data set or member.
- * Supports PDS-to-PDS, member-to-member, and sequential-to-sequential copies.
- * Note: RECFM=U data sets are not supported.
+ * JSON-RPC `copyDataset`: same parameters the zowex CLI maps from `data-set copy` (`source` / `target` / flags).
+ * Server-side copy behavior (including member ISPF statistics) may evolve without changing this contract.
  */
 export interface CopyDatasetRequest extends common.CommandRequest<"copyDataset"> {
     /**

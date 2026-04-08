@@ -5,7 +5,7 @@ All notable changes to the Client code for "zowe-native-proto-sdk" are documente
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
 ## Recent Changes
-- Added `copyDataset` to `RpcClientApi.ds` for copying data sets and members with optional `replace` and `deleteTargetMembers` options. [#778](https://github.com/zowe/zowe-native-proto/pull/778)
+- Added `copyDataset` to `RpcClientApi.ds`, matching the `zowex data-set copy` / server `copyDataset` RPC shape (`fromDataset`, `toDataset`, `replace`, `deleteTargetMembers`). [#778](https://github.com/zowe/zowe-native-proto/pull/778)
 - Added warning to `AbstractConfigManager.validateDeployPath` method when server path ends in `/c/build-out`, preventing developers from accidentally overwriting a dev deployment. [#912](https://github.com/zowe/zowe-native-proto/pull/912)
 
 ## `0.4.0`

@@ -4,8 +4,9 @@ All notable changes to the native code for "zowe-native-proto" are documented in
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## `0.4.0`
+## Recent Changes
 
+- `c`: Exposed `copyDataset` over JSON-RPC with the same arguments as `zowex data-set copy` (`fromDataset` / `toDataset` map to `source` / `target`). Copy execution remains the existing `zds_copy_dsn` implementation; response includes `success` and optional `targetCreated` / `memberCreated`.
 - `c`: Added `zowex uss issue` command and the `unixCommand` RPC for executing USS shell commands using `spawn()` with `_BPX_SHAREAS=YES` for efficient same-address-space execution. [#867](https://github.com/zowe/zowe-native-proto/pull/867)
 - `c`: Fixed an issue where submitting JCL from the VS Code editor with CRLF line endings caused job submission errors. [#882](https://github.com/zowe/zowe-native-proto/pull/882)
 - `c`: Fixed an issue where VSAM index or data components returned `*VSAM*` for the volume serial. Now, an accurate volume serial is returned for both component types. [#864](https://github.com/zowe/zowe-native-proto/pull/864)

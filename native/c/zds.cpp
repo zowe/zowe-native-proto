@@ -22,7 +22,6 @@
 #include <unistd.h>
 #include <cstdio>
 #include <cstdlib>
-#include <cerrno>
 #include <climits>
 #include <cstring>
 #include <fstream>
@@ -31,7 +30,6 @@
 #include <string>
 #include <iomanip>
 #include <algorithm>
-#include <mutex>
 #include "zds.hpp"
 #include "zdyn.h"
 #include "zdstype.h"
@@ -44,16 +42,6 @@
 #include "zamtypes.h"
 
 const size_t MAX_DS_LENGTH = 44u;
-
-// Writing a member briefly reserves the whole partitioned data set. If several zowex worker threads
-// do that at the same time into the same library (e.g. pasting many members from Zowe Explorer), extra
-// reserves can fail (return code 4). We serialize these member writes in this process so only one runs.
-static std::mutex &zds_bpam_member_output_mutex()
-{
-  static std::mutex mtx;
-  return mtx;
-}
-
 const size_t MAX_VOLSER_LENGTH = 6u;
 // carriage return character, used for detecting CRLF line endings
 const char CR_CHAR = '\x0D';
@@ -168,42 +156,6 @@ static bool member_exists_in_pds(const std::string &pds_dsn, const std::string &
   return false;
 }
 
-// Catalog-normalized name (uppercase base/member) for I/O paths; must match zds_create_dsn / list APIs.
-static std::string zds_canonical_dsn(const ZDSTypeInfo &info)
-{
-  if (!info.member_name.empty())
-  {
-    return info.base_dsn + "(" + info.member_name + ")";
-  }
-  return info.base_dsn;
-}
-
-// Use catalog DSORG for allocate-like; trim first (CSI/catalog fields may be padded).
-static bool zds_dsorg_string_is_po_family(const std::string &dsorg_raw)
-{
-  auto dsorg = dsorg_raw;
-  zut_trim(dsorg);
-  return dsorg.rfind(ZDS_DSORG_PO, 0) == 0;
-}
-
-// DSCB can report PS or PSU (sequential + unmovable); both are sequential for copy/allocate-like.
-static bool zds_dsorg_string_is_ps_family(const std::string &dsorg_raw)
-{
-  auto dsorg = dsorg_raw;
-  zut_trim(dsorg);
-  return dsorg.rfind(ZDS_DSORG_PS, 0) == 0;
-}
-
-// CSI must return the same data set name as requested; otherwise do not use DSORG from the row
-// (prefix / catalog edge cases can return one row that is not the requested DSN).
-static bool zds_catalog_entry_name_matches(const std::string &entry_name_raw, const std::string &base_dsn_upper)
-{
-  auto name = entry_name_raw;
-  zut_trim(name);
-  std::transform(name.begin(), name.end(), name.begin(), ::toupper);
-  return name == base_dsn_upper;
-}
-
 static int zds_get_type_info(const std::string &dsn, ZDSTypeInfo &info)
 {
   info.exists = false;
@@ -238,18 +190,14 @@ static int zds_get_type_info(const std::string &dsn, ZDSTypeInfo &info)
   if (rc == RTNCD_SUCCESS && entries.size() == 1)
   {
     ZDSEntry &entry = entries[0];
-    if (!zds_catalog_entry_name_matches(entry.name, info.base_dsn))
-    {
-      return RTNCD_SUCCESS;
-    }
     info.exists = true;
     info.entry = entry;
 
-    if (zds_dsorg_string_is_ps_family(entry.dsorg))
+    if (entry.dsorg == ZDS_DSORG_PS)
     {
       info.type = ZDS_TYPE_PS;
     }
-    else if (zds_dsorg_string_is_po_family(entry.dsorg))
+    else if (entry.dsorg.rfind(ZDS_DSORG_PO, 0) == 0)
     {
       if (!info.member_name.empty())
       {
@@ -293,33 +241,12 @@ static int copy_pds_to_pds(ZDS *zds, const ZDSTypeInfo &src, const ZDSTypeInfo &
   return RTNCD_SUCCESS;
 }
 
-// Forward declarations for static helper functions
-static bool zds_has_member(const std::string &dsn);
-static int zds_write_member_bpam(ZDS *zds, const std::string &dsn, std::string &data);
-static int zds_copy_member_streamed(ZDS *zds, const std::string &src_dsn, const std::string &dst_dsn);
-static int zds_create_dsn_like_model(const std::string &new_dsn, const std::string &model_dsn, bool catalog_as_ps,
-                                     const ZDSEntry *sms_from_model, std::string &response);
-static int zds_allocate_sequential_target(ZDS *zds, const std::string &new_dsn, const std::string &model_dsn,
-                                          const ZDSEntry &src_entry, std::string &response);
-
-// Copy sequential data set or member
-// For PDS members, uses BPAM with streaming to handle large members without OOM
-// For sequential data sets, uses binary I/O with chunked reading
+// Copy sequential data set or member using binary I/O
 // Note: RECFM=U data sets are not explicitly checked here because fldata() returns
 // unreliable RECFM information when files are opened in binary mode. The write
 // operation will fail naturally if the target is truly RECFM=U.
 static int copy_sequential(ZDS *zds, const std::string &src_dsn, const std::string &dst_dsn)
 {
-  // Check if destination is a PDS member
-  const auto dst_is_member = zds_has_member(dst_dsn);
-
-  if (dst_is_member)
-  {
-    // For PDS members: use streamed BPAM write to handle large members
-    return zds_copy_member_streamed(zds, src_dsn, dst_dsn);
-  }
-
-  // For sequential data sets: stream in 32KB chunks
   std::string src_path = "//'" + src_dsn + "'";
   std::string dst_path = "//'" + dst_dsn + "'";
 
@@ -330,40 +257,30 @@ static int copy_sequential(ZDS *zds, const std::string &src_dsn, const std::stri
     return RTNCD_FAILURE;
   }
 
-  // Use fopen for the target (not open+O_CREAT). z/OS C RTL reliably opens cataloged MVS PS files
-  // for record/binary I/O via fopen; open() on //'dsn' often fails even after ALLOC NEW CATALOG.
   FILE *fout = fopen(dst_path.c_str(), "wb");
   if (!fout)
   {
-    const int err = errno;
     fclose(fin);
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open target '%s' (errno=%d)", dst_dsn.c_str(), err);
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open target '%s'", dst_dsn.c_str());
     return RTNCD_FAILURE;
   }
 
   char buffer[32760];
   size_t bytes_read;
-  int write_error = 0;
   while ((bytes_read = fread(buffer, 1, sizeof(buffer), fin)) > 0)
   {
     size_t bytes_written = fwrite(buffer, 1, bytes_read, fout);
     if (bytes_written != bytes_read)
     {
-      write_error = 1;
-      break;
+      fclose(fin);
+      fclose(fout);
+      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Write error copying to '%s'", dst_dsn.c_str());
+      return RTNCD_FAILURE;
     }
   }
 
-  fflush(fout);
-  fclose(fout);
   fclose(fin);
-
-  if (write_error)
-  {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Write error copying to '%s'", dst_dsn.c_str());
-    return RTNCD_FAILURE;
-  }
-
+  fclose(fout);
   return RTNCD_SUCCESS;
 }
 
@@ -400,13 +317,6 @@ int zds_copy_dsn(ZDS *zds, const std::string &dsn1, const std::string &dsn2, ZDS
   if (!info1.exists)
   {
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Source data set '%s' not found", info1.base_dsn.c_str());
-    return RTNCD_FAILURE;
-  }
-
-  // RECFM=U data sets are not supported for copy operations
-  if (info1.entry.recfm == "U")
-  {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Copying RECFM=U data sets is not supported");
     return RTNCD_FAILURE;
   }
 
@@ -450,33 +360,58 @@ int zds_copy_dsn(ZDS *zds, const std::string &dsn1, const std::string &dsn2, ZDS
   bool target_is_member = !info2.member_name.empty();
   bool target_base_exists = zds_dataset_exists(info2.base_dsn);
 
-  if (info1.type == ZDS_TYPE_PS && info2.member_name.empty() && target_base_exists && info2.exists &&
-      (info2.type == ZDS_TYPE_PDS || info2.type == ZDS_TYPE_VSAM))
-  {
-    zds->diag.e_msg_len = sprintf(
-        zds->diag.e_msg,
-        "Cannot copy sequential data set to '%s': target is a partitioned or VSAM data set. "
-        "Use --replace to overwrite the target, or choose another name.",
-        info2.base_dsn.c_str());
-    return RTNCD_FAILURE;
-  }
-
   if (!target_base_exists)
   {
-    // Sequential new target: LIKE+DSORG(PS), then catalog verify. No remove() here if DSORG is wrong.
-    const bool allocate_target_as_ps = (info1.type == ZDS_TYPE_PS && info2.member_name.empty());
+    // Create the target data set
+    ZDS create_zds{};
     std::string create_resp;
-    if (allocate_target_as_ps)
+    DS_ATTRIBUTES attrs{};
+
+    // Common attributes for all data set types
+    attrs.recfm = info1.entry.recfm.c_str();
+    attrs.lrecl = info1.entry.lrecl;
+    attrs.blksize = info1.entry.blksize;
+
+    // Preserve space unit (CYLINDERS or TRACKS)
+    if (info1.entry.spacu == "CYLINDERS" || info1.entry.spacu == "CYL")
     {
-      rc = zds_allocate_sequential_target(zds, info2.base_dsn, info1.base_dsn, info1.entry, create_resp);
+      attrs.alcunit = "CYL";
     }
     else
     {
-      rc = zds_create_dsn_like_model(info2.base_dsn, info1.base_dsn, false, &info1.entry, create_resp);
+      attrs.alcunit = "TRACKS";
     }
+
+    // Preserve primary/secondary allocation
+    if (info1.entry.primary >= 0 && info1.entry.secondary >= 0)
+    {
+      attrs.primary = info1.entry.primary > INT_MAX ? INT_MAX : static_cast<int>(info1.entry.primary);
+      attrs.secondary = info1.entry.secondary > INT_MAX ? INT_MAX : static_cast<int>(info1.entry.secondary);
+    }
+    else
+    {
+      attrs.primary = 1;
+      attrs.secondary = 1;
+    }
+
+    if (info1.type == ZDS_TYPE_PDS || info1.type == ZDS_TYPE_MEMBER)
+    {
+      // PDS -> PDS or Member -> Member: create PDS with source attributes
+      attrs.dsorg = "PO";
+      attrs.dirblk = 5;
+      attrs.dsntype = info1.entry.dsntype.c_str();
+    }
+    else
+    {
+      // PS -> PS: create sequential data set with source attributes
+      attrs.dsorg = "PS";
+    }
+
+    rc = zds_create_dsn(&create_zds, info2.base_dsn, attrs, create_resp);
     if (rc != RTNCD_SUCCESS)
     {
-      const char *detail = create_resp.c_str();
+      // Truncate detail message to avoid buffer overflow (leave room for prefix + dsn + ": ")
+      const char *detail = create_zds.diag.e_msg_len > 0 ? create_zds.diag.e_msg : create_resp.c_str();
       char truncated_detail[128];
       strncpy(truncated_detail, detail, sizeof(truncated_detail) - 1);
       truncated_detail[sizeof(truncated_detail) - 1] = '\0';
@@ -504,6 +439,10 @@ int zds_copy_dsn(ZDS *zds, const std::string &dsn1, const std::string &dsn2, ZDS
     }
   }
 
+  // Check if source and target are in the same PDS - need special handling
+  bool same_pds = (info1.type == ZDS_TYPE_MEMBER && target_is_member &&
+                   info1.base_dsn == info2.base_dsn);
+
   // Delete all target members if requested (only for PDS-to-PDS copy)
   if (opts->delete_target_members && is_pds_full_copy && target_base_exists)
   {
@@ -521,7 +460,17 @@ int zds_copy_dsn(ZDS *zds, const std::string &dsn1, const std::string &dsn2, ZDS
   }
   else
   {
-    rc = copy_sequential(zds, zds_canonical_dsn(info1), zds_canonical_dsn(info2));
+    if (same_pds)
+    {
+      // Same PDS: copy member to member using binary I/O
+      std::string src_mem_dsn = info1.base_dsn + "(" + info1.member_name + ")";
+      std::string dst_mem_dsn = info2.base_dsn + "(" + info2.member_name + ")";
+      rc = copy_sequential(zds, src_mem_dsn, dst_mem_dsn);
+    }
+    else
+    {
+      rc = copy_sequential(zds, dsn1, dsn2);
+    }
 
     // Report if a new member was created
     if (rc == RTNCD_SUCCESS && target_is_member && !target_member_exists)
@@ -1171,139 +1120,10 @@ static int write_asa_overflow_records(ZDS *zds, IO_CTRL *ioc, int overflow_count
 }
 
 /**
- * Streamed copy into a PDS member (BPAM): read one source record per step so we never split a record.
- * Fixed-length: the whole read is user data. Variable-length: a short length tag, then data — we copy
- * the data only and BPAM writes the correct tag for the target.
- */
-static int zds_copy_member_streamed(ZDS *zds, const std::string &src_dsn, const std::string &dst_dsn)
-{
-  // From the catalog: record format and max record size (so we know how big a read buffer to use).
-  const DscbAttributes src_attrs = zds_get_dscb_attributes(src_dsn);
-  if (src_attrs.recfm.empty() || src_attrs.lrecl <= 0)
-  {
-    zds->diag.e_msg_len = sprintf(
-        zds->diag.e_msg,
-        "Could not read catalog attributes for source '%s' (copy to member requires RECFM and LRECL)",
-        src_dsn.c_str());
-    return RTNCD_FAILURE;
-  }
-  if (src_attrs.recfm.find('U') != std::string::npos)
-  {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg,
-                                  "Copying RECFM=U data to a partitioned data set member is not supported");
-    return RTNCD_FAILURE;
-  }
-
-  // One writer at a time per process: z/OS can fail if many threads update the same library at once.
-  const std::lock_guard<std::mutex> bpam_member_lock(zds_bpam_member_output_mutex());
-  int rc = 0;
-  IO_CTRL *ioc = nullptr;
-
-  // Open the destination member for output.
-  rc = zds_open_output_bpam(zds, dst_dsn, ioc);
-  if (rc != RTNCD_SUCCESS)
-  {
-    return rc;
-  }
-
-  // Hold one full source record; variable format needs room for the length prefix plus the data.
-  const bool src_is_variable = src_attrs.recfm.find('V') != std::string::npos;
-  const size_t buf_cap = static_cast<size_t>(src_attrs.lrecl);
-  std::vector<char> buffer(buf_cap);
-
-  std::string src_path;
-  src_path.reserve(4 + src_dsn.size());
-  src_path = "//'";
-  src_path += src_dsn;
-  src_path += '\'';
-
-  // Record mode: one fread = one whole record (plain binary mode would glue/split records wrong).
-  FILE *fin = fopen(src_path.c_str(), "rb,type=record");
-  if (!fin)
-  {
-    const int err = errno;
-    zds_close_output_bpam(zds, ioc);
-    zds->diag.e_msg_len =
-        sprintf(zds->diag.e_msg, "Could not open source '%s' (errno=%d)", src_dsn.c_str(), err);
-    return RTNCD_FAILURE;
-  }
-
-  size_t bytes_read = 0;
-  int write_error = 0;
-
-  // Each loop: copy one record. Strip the source length prefix on variable files; BPAM adds the target's.
-  while ((bytes_read = fread(&buffer[0], 1, buffer.size(), fin)) > 0)
-  {
-    const char *rec_ptr = &buffer[0];
-    auto length = static_cast<int>(bytes_read);
-
-    if (src_is_variable)
-    {
-      // Variable record: 4-byte prefix (first two bytes = total length of prefix + data), then the data.
-      if (bytes_read < 4)
-      {
-        write_error = 1;
-        zds->diag.e_msg_len = sprintf(
-            zds->diag.e_msg, "Incomplete record (missing length prefix) reading '%s'", src_dsn.c_str());
-        break;
-      }
-      const auto header_and_payload_len =
-          (static_cast<unsigned int>(static_cast<unsigned char>(buffer[0])) << 8) |
-          static_cast<unsigned int>(static_cast<unsigned char>(buffer[1]));
-      if (header_and_payload_len < 4 || static_cast<size_t>(header_and_payload_len) > bytes_read)
-      {
-        write_error = 1;
-        zds->diag.e_msg_len = sprintf(
-            zds->diag.e_msg, "Bad length prefix on variable-length record reading '%s'", src_dsn.c_str());
-        break;
-      }
-      rec_ptr = &buffer[4];
-      length = static_cast<int>(header_and_payload_len) - 4;
-    }
-
-    rc = ZDSWBPAM(zds, ioc, rec_ptr, &length);
-    if (rc != RTNCD_SUCCESS)
-    {
-      write_error = 1;
-      if (zds->diag.e_msg_len == 0)
-      {
-        zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to write to PDS member '%s'", dst_dsn.c_str());
-      }
-      break;
-    }
-  }
-
-  // Catch read failures that end the loop without a clear write error.
-  if (ferror(fin) != 0)
-  {
-    const int err = errno;
-    if (zds->diag.e_msg_len == 0)
-    {
-      zds->diag.e_msg_len =
-          sprintf(zds->diag.e_msg, "Read error on source '%s' (errno=%d)", src_dsn.c_str(), err);
-    }
-    write_error = 1;
-  }
-
-  fclose(fin);
-  zds_close_output_bpam(zds, ioc);
-  // Clear temporary allocation name now that BPAM is closed.
-  memset(zds->ddname, 0, sizeof(zds->ddname));
-
-  if (write_error)
-  {
-    return RTNCD_FAILURE;
-  }
-
-  return RTNCD_SUCCESS;
-}
-
-/**
  * Internal function to write to a PDS/PDSE member using BPAM (updates ISPF stats)
  */
 static int zds_write_member_bpam(ZDS *zds, const std::string &dsn, std::string &data)
 {
-  const std::lock_guard<std::mutex> bpam_member_lock(zds_bpam_member_output_mutex());
   int rc = 0;
   IO_CTRL *ioc = nullptr;
 
@@ -1772,45 +1592,6 @@ int alloc_and_free(const std::string &alloc_dd, const std::string &dsn, unsigned
   return rc;
 }
 
-// SMS re-evaluates on the new name if STORCLAS/DATACLAS/MGMTCLAS are omitted; that can force PO while LIKE+PS
-// matches a PS model. Pass the model's catalog classes so ACS uses the same path as the source.
-static void zds_append_sms_to_alloc_parm(std::string &parm, const ZDSEntry *entry)
-{
-  if (entry == nullptr)
-  {
-    return;
-  }
-  auto append_kw = [&parm](const char *kw, const std::string &raw)
-  {
-    auto s = raw;
-    zut_trim(s);
-    if (!s.empty())
-    {
-      parm += " ";
-      parm += kw;
-      parm += "(";
-      parm += s;
-      parm += ")";
-    }
-  };
-  append_kw("STORCLAS", entry->storclass);
-  append_kw("DATACLAS", entry->dataclass);
-  append_kw("MGMTCLAS", entry->mgmtclass);
-}
-
-static int zds_create_dsn_like_model(const std::string &new_dsn, const std::string &model_dsn, bool catalog_as_ps,
-                                     const ZDSEntry *sms_from_model, std::string &response)
-{
-  unsigned int code = 0;
-  std::string parm = "ALLOC DA('" + new_dsn + "') LIKE('" + model_dsn + "') NEW CATALOG";
-  if (catalog_as_ps)
-  {
-    parm += " DSORG(PS)";
-  }
-  zds_append_sms_to_alloc_parm(parm, sms_from_model);
-  return alloc_and_free(parm, new_dsn, &code, response);
-}
-
 // TODO(Kelosky): add attributues to ZDS and have other functions populate it
 int zds_create_dsn(ZDS *, const std::string &dsn, DS_ATTRIBUTES attributes, std::string &response)
 {
@@ -1904,45 +1685,6 @@ int zds_create_dsn(ZDS *, const std::string &dsn, DS_ATTRIBUTES attributes, std:
   }
 
   return alloc_and_free(parm, dsn, &code, response);
-}
-
-static int zds_allocate_sequential_target(ZDS *zds, const std::string &new_dsn, const std::string &model_dsn,
-                                          const ZDSEntry &src_entry, std::string &response)
-{
-  const int rc = zds_create_dsn_like_model(new_dsn, model_dsn, true, &src_entry, response);
-  if (rc != RTNCD_SUCCESS)
-  {
-    return rc;
-  }
-  ZDSTypeInfo verify{};
-  zds_get_type_info(new_dsn, verify);
-  if (!verify.exists || verify.type == ZDS_TYPE_PS || verify.type == ZDS_TYPE_UNKNOWN)
-  {
-    return RTNCD_SUCCESS;
-  }
-  if (verify.type == ZDS_TYPE_PDS || verify.type == ZDS_TYPE_VSAM)
-  {
-    const int del_rc = zds_delete_dsn(zds, new_dsn);
-    if (del_rc != RTNCD_SUCCESS)
-    {
-      char delete_err[256] = {0};
-      strncpy(delete_err, zds->diag.e_msg, sizeof(delete_err) - 1);
-      zds->diag.e_msg_len = sprintf(
-          zds->diag.e_msg,
-          "Allocation cataloged '%s' as partitioned or VSAM; sequential copy requires PS. "
-          "SMS or data class may have overridden DSORG. Automatic delete failed (%s). "
-          "Remove the data set manually, then retry with another name.",
-          new_dsn.c_str(), delete_err[0] != '\0' ? delete_err : "no detail");
-      return RTNCD_FAILURE;
-    }
-    zds->diag.e_msg_len = sprintf(
-        zds->diag.e_msg,
-        "Allocation cataloged '%s' as partitioned or VSAM; sequential copy requires PS. "
-        "SMS or data class may have overridden DSORG. The data set was removed; adjust rules or retry with another name.",
-        new_dsn.c_str());
-    return RTNCD_FAILURE;
-  }
-  return RTNCD_SUCCESS;
 }
 
 int zds_create_dsn_fb(ZDS *zds, const std::string &dsn, std::string &response)
@@ -3804,7 +3546,6 @@ static int zds_write_sequential_streamed(ZDS *zds, const std::string &dsn, const
  */
 static int zds_write_member_bpam_streamed(ZDS *zds, const std::string &dsn, const std::string &pipe, size_t *content_len)
 {
-  const std::lock_guard<std::mutex> bpam_member_lock(zds_bpam_member_output_mutex());
   int rc = 0;
   IO_CTRL *ioc = nullptr;
 

@@ -312,14 +312,11 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
     }
 
     /**
-     * Allocating is a 2 step process: allocate-like, then copy.
-     * - allocateLikeDataSet: the “like” data set must exist and must not be RECFM=U
-     * - copyDataset: the new target is created
-     * This two step process is necessary to avoid “already exists” error
-     * The first parameter is the target name for that next call and it is unused in this step.
+     * Zowe Explorer “allocate like” step before copy: validates the model data set exists and is not RECFM=U.
+     * Does not allocate; actual allocation happens on the server during `copyDataset` when the target is new.
      *
-     * @param _targetDataSetName Target name Explorer passes to copy; unused here.
-     * @param likeDataSetName Model data set name to validate (new target)
+     * @param _targetDataSetName Target name Explorer passes for the next step; unused here.
+     * @param likeDataSetName Model data set name to validate
      */
     public async allocateLikeDataSet(
         _targetDataSetName: string,
@@ -396,7 +393,7 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
         _enq?: string,
         replace?: boolean,
     ): Promise<zosfiles.IZosFilesResponse> {
-        // Note: _enq parameter is not currently used by the backend copy API
+        // _enq is a Zowe Explorer hook; the `copyDataset` RPC uses the same shape as `zowex data-set copy`.
         try {
             const response = await (await this.client).ds.copyDataset({
                 fromDataset: fromDataSetName,

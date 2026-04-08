@@ -46,7 +46,8 @@ void zut_tests()
                   shell_command = "";
                   rc = zut_spawn_shell_command(shell_command, stdout_response, stderr_response);
                   ExpectWithContext(rc, stdout_response).ToBe(-1);
-                  ExpectWithContext(stderr_response, "Expecting an error").ToContain("You must specify a program to run."); });
+                  ExpectWithContext(stderr_response, "Expecting an error").ToContain("You must specify a program to run.");});
+
 
              it("should run programs", []() -> void
                 {
@@ -124,9 +125,9 @@ void zut_tests()
                 {
                 std::string response;
                 std::vector<std::string> args = {"line1\nline2 | grep line > /tmp/hacked.txt"};
-
+              
                 int rc = zut_run_program("echo", args, response);
-
+              
                 // If vulnerable, this would create a file and output nothing. Instead we print everything
                 ExpectWithContext(rc, response).ToBe(0);
                 ExpectWithContext(response.find("| grep"), "Expected pipe and redirect to be treated as literal text").Not().ToBe(std::string::npos);

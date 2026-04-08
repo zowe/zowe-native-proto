@@ -1005,7 +1005,6 @@ int handle_data_set_copy(InvocationContext &context)
     context.output_stream() << "Data set '" << source << "' copied to '" << target << "'" << std::endl;
   }
   context.set_object(result);
-
   return RTNCD_SUCCESS;
 }
 
