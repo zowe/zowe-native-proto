@@ -48,6 +48,153 @@ const char CR_CHAR = '\x0D';
 // form feed character, used for stripping off lines in ASA mode
 const char FF_CHAR = '\x0C';
 
+/** Uppercase ASCII a-z only (like selective toupper); leaves @, #, $ and other bytes unchanged. */
+static void zds_mvs_ascii_toupper(std::string &s)
+{
+  for (size_t i = 0; i < s.size(); ++i)
+  {
+    const unsigned char c = static_cast<unsigned char>(s[i]);
+    if (c >= 'a' && c <= 'z')
+    {
+      s[i] = static_cast<char>(c - ('a' - 'A'));
+    }
+  }
+}
+
+/** One MVS name segment (data set qualifier or PDS member): 1-8 chars; first A-Z, @, #, or $; rest A-Z, 0-9, @, #, $. */
+static bool zds_mvs_name_segment_ok(const std::string &seg)
+{
+  if (seg.empty() || seg.length() > 8)
+  {
+    return false;
+  }
+  const unsigned char c0 = static_cast<unsigned char>(seg[0]);
+  if (!((c0 >= 'A' && c0 <= 'Z') || c0 == '@' || c0 == '#' || c0 == '$'))
+  {
+    return false;
+  }
+  for (size_t i = 1; i < seg.length(); ++i)
+  {
+    const unsigned char c = static_cast<unsigned char>(seg[i]);
+    if (!((c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '@' || c == '#' || c == '$'))
+    {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * Validate dot-separated qualifiers for a base data set name (no member).
+ * base must already be trimmed, contain no parentheses, and have zds_mvs_ascii_toupper() applied.
+ */
+static int zds_validate_mvs_base_after_ascii_toupper(ZDS *zds, const std::string &base)
+{
+  if (base.empty())
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Data set name must not be empty");
+    return RTNCD_FAILURE;
+  }
+  if (base.length() > MAX_DS_LENGTH)
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Data set name exceeds maximum length of %zu characters", MAX_DS_LENGTH);
+    return RTNCD_FAILURE;
+  }
+  size_t start = 0;
+  for (;;)
+  {
+    const size_t dot = base.find('.', start);
+    const std::string seg = dot == std::string::npos ? base.substr(start) : base.substr(start, dot - start);
+    if (seg.empty())
+    {
+      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Invalid data set name: empty qualifier");
+      return RTNCD_FAILURE;
+    }
+    if (!zds_mvs_name_segment_ok(seg))
+    {
+      zds->diag.e_msg_len = sprintf(
+          zds->diag.e_msg,
+          "Invalid data set name: each qualifier must start with A-Z, @, #, or $ and contain only A-Z, 0-9, @, #, $ (max 8 characters per qualifier)");
+      return RTNCD_FAILURE;
+    }
+    if (dot == std::string::npos)
+    {
+      break;
+    }
+    start = dot + 1;
+  }
+  return RTNCD_SUCCESS;
+}
+
+/**
+ * Trim, uppercase ASCII a-z, reject (member) syntax; validate base data set name. Updates base_io to normalized form on success.
+ */
+static int zds_validate_mvs_base_dsn(ZDS *zds, std::string &base_io)
+{
+  if (base_io.find('(') != std::string::npos || base_io.find(')') != std::string::npos)
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Data set name must not include a member in parentheses");
+    return RTNCD_FAILURE;
+  }
+  zut_trim(base_io);
+  zds_mvs_ascii_toupper(base_io);
+  return zds_validate_mvs_base_after_ascii_toupper(zds, base_io);
+}
+
+/**
+ * Validate full data set name, optional (member). Sets normalized_dsn to HLQ... or HLQ...(MEM) after trim and uppercasing ASCII a-z.
+ */
+static int zds_validate_mvs_qualified_dsn(ZDS *zds, const std::string &input, std::string &normalized_dsn)
+{
+  normalized_dsn.clear();
+  const size_t open = input.find('(');
+  if (open == std::string::npos)
+  {
+    normalized_dsn = input;
+    return zds_validate_mvs_base_dsn(zds, normalized_dsn);
+  }
+
+  std::string after = input.substr(open + 1);
+  const size_t close = after.find(')');
+  if (close == std::string::npos)
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Invalid data set name: missing ')'");
+    return RTNCD_FAILURE;
+  }
+  if (close + 1 < after.length())
+  {
+    std::string tail = after.substr(close + 1);
+    zut_trim(tail);
+    if (!tail.empty())
+    {
+      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Invalid data set name: unexpected text after ')'");
+      return RTNCD_FAILURE;
+    }
+  }
+
+  std::string mem = after.substr(0, close);
+  zut_trim(mem);
+  zds_mvs_ascii_toupper(mem);
+  if (!zds_mvs_name_segment_ok(mem))
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg,
+                                  "Member name must start with A-Z,#,@,$ and contain only A-Z,0-9,#,@,$ (max 8 chars)");
+    return RTNCD_FAILURE;
+  }
+
+  normalized_dsn = input.substr(0, open);
+  zut_trim(normalized_dsn);
+  zds_mvs_ascii_toupper(normalized_dsn);
+  if (0 != zds_validate_mvs_base_after_ascii_toupper(zds, normalized_dsn))
+  {
+    return RTNCD_FAILURE;
+  }
+  normalized_dsn += "(";
+  normalized_dsn += mem;
+  normalized_dsn += ")";
+  return RTNCD_SUCCESS;
+}
+
 /**
  * Helper function to check if codepage encoding should be used.
  * Returns true if text mode is enabled and a codepage is specified.
@@ -156,37 +303,38 @@ static bool member_exists_in_pds(const std::string &pds_dsn, const std::string &
   return false;
 }
 
-static int zds_get_type_info(const std::string &dsn, ZDSTypeInfo &info)
+static int zds_get_type_info(ZDS *zds, const std::string &dsn, ZDSTypeInfo &info)
 {
   info.exists = false;
   info.type = ZDS_TYPE_UNKNOWN;
-  info.base_dsn = dsn;
+  info.base_dsn = "";
   info.member_name = "";
 
-  size_t member_idx = dsn.find('(');
-  if (member_idx != std::string::npos)
+  std::string normalized_dsn;
+  if (0 != zds_validate_mvs_qualified_dsn(zds, dsn, normalized_dsn))
   {
-    info.base_dsn = dsn.substr(0, member_idx);
-    size_t end_idx = dsn.find(')', member_idx);
-    if (end_idx != std::string::npos && end_idx > member_idx + 1)
-    {
-      info.member_name = dsn.substr(member_idx + 1, end_idx - member_idx - 1);
-    }
+    return RTNCD_FAILURE;
   }
 
-  zut_trim(info.base_dsn);
-  std::transform(info.base_dsn.begin(), info.base_dsn.end(), info.base_dsn.begin(), ::toupper);
-  zut_trim(info.member_name);
-  std::transform(info.member_name.begin(), info.member_name.end(), info.member_name.begin(), ::toupper);
+  const size_t open = normalized_dsn.find('(');
+  if (open == std::string::npos)
+  {
+    info.base_dsn = normalized_dsn;
+  }
+  else
+  {
+    info.base_dsn = normalized_dsn.substr(0, open);
+    info.member_name = normalized_dsn.substr(open + 1, normalized_dsn.length() - open - 2);
+  }
 
   if (!zds_dataset_exists(info.base_dsn))
   {
     return RTNCD_SUCCESS;
   }
 
-  ZDS zds{};
+  ZDS list_zds{};
   std::vector<ZDSEntry> entries;
-  int rc = zds_list_data_sets(&zds, info.base_dsn, entries, true);
+  int rc = zds_list_data_sets(&list_zds, info.base_dsn, entries, true);
   if (rc == RTNCD_SUCCESS && entries.size() == 1)
   {
     ZDSEntry &entry = entries[0];
@@ -311,8 +459,14 @@ int zds_copy_dsn(ZDS *zds, const std::string &dsn1, const std::string &dsn2, ZDS
   ZDSTypeInfo info1{};
   ZDSTypeInfo info2{};
 
-  zds_get_type_info(dsn1, info1);
-  zds_get_type_info(dsn2, info2);
+  if (0 != zds_get_type_info(zds, dsn1, info1))
+  {
+    return RTNCD_FAILURE;
+  }
+  if (0 != zds_get_type_info(zds, dsn2, info2))
+  {
+    return RTNCD_FAILURE;
+  }
 
   if (!info1.exists)
   {
@@ -508,21 +662,10 @@ bool zds_member_exists(const std::string &dsn, const std::string &member_before)
 
 bool zds_is_valid_member_name(const std::string &name)
 {
-  if (name.length() > 8)
-    return false;
-
-  char first = name[0];
-  if (!(isalpha(first) || first == '#' || first == '@' || first == '$'))
-    return false;
-
-  for (size_t i = 1; i < name.length(); ++i)
-  {
-    char c = name[i];
-    if (!(isalnum(c) || c == '#' || c == '@' || c == '$'))
-      return false;
-  }
-
-  return true;
+  std::string s = name;
+  zut_trim(s);
+  zds_mvs_ascii_toupper(s);
+  return zds_mvs_name_segment_ok(s);
 }
 
 /**
@@ -668,11 +811,24 @@ int zds_read(const ZDSReadOpts &opts, std::string &response)
   }
 
   ZDS *zds = opts.zds;
-  const std::string dsname = zds_resolve_dsname(opts);
+  std::string unix_path;
+  std::string normalized_dsn;
   const auto is_dd = !opts.ddname.empty();
+  if (is_dd)
+  {
+    unix_path = "//DD:" + opts.ddname;
+  }
+  else
+  {
+    if (0 != zds_validate_mvs_qualified_dsn(zds, opts.dsname, normalized_dsn))
+    {
+      return RTNCD_FAILURE;
+    }
+    unix_path = "//'" + normalized_dsn + "'";
+  }
 
   // Check if ASA format - use record I/O to preserve ASA control characters
-  const DscbAttributes attrs = zds_resolve_dscb(opts);
+  const DscbAttributes attrs = is_dd ? zds_resolve_dscb(opts) : zds_get_dscb_attributes(normalized_dsn);
   const bool is_asa = attrs.is_asa && zds->encoding_opts.data_type != eDataTypeBinary;
 
   std::string fopen_flags;
@@ -690,10 +846,11 @@ int zds_read(const ZDSReadOpts &opts, std::string &response)
     fopen_flags = "r";
   }
 
-  FileGuard fp(dsname.c_str(), fopen_flags.c_str());
+  FileGuard fp(unix_path.c_str(), fopen_flags.c_str());
   if (!fp)
   {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open handle to %s '%s'", is_dd ? "DD" : "data set", dsname.c_str());
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open handle to %s '%s'", is_dd ? "DD" : "data set",
+                                  is_dd ? opts.ddname.c_str() : normalized_dsn.c_str());
     return RTNCD_FAILURE;
   }
 
@@ -1409,14 +1566,20 @@ int zds_validate_etag(ZDS *zds, const std::string &dsn, bool has_encoding)
 
 int zds_write_to_dsn(ZDS *zds, const std::string &dsn, std::string &data)
 {
-  if (!zds_dataset_exists(dsn))
+  std::string normalized_dsn;
+  if (0 != zds_validate_mvs_qualified_dsn(zds, dsn, normalized_dsn))
   {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not access '%s'", dsn.c_str());
     return RTNCD_FAILURE;
   }
 
-  const DscbAttributes attrs = zds_get_dscb_attributes(dsn);
-  const auto is_member = zds_has_member(dsn);
+  if (!zds_dataset_exists(normalized_dsn))
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not access '%s'", normalized_dsn.c_str());
+    return RTNCD_FAILURE;
+  }
+
+  const DscbAttributes attrs = zds_get_dscb_attributes(normalized_dsn);
+  const auto is_member = zds_has_member(normalized_dsn);
 
   if (zds_write_recfm_unsupported(attrs.recfm, !is_member))
   {
@@ -1427,7 +1590,7 @@ int zds_write_to_dsn(ZDS *zds, const std::string &dsn, std::string &data)
 
   const auto has_encoding = zds_use_codepage(zds);
 
-  if (std::strlen(zds->etag) > 0 && 0 != zds_validate_etag(zds, dsn, has_encoding))
+  if (std::strlen(zds->etag) > 0 && 0 != zds_validate_etag(zds, normalized_dsn, has_encoding))
   {
     return RTNCD_FAILURE;
   }
@@ -1437,13 +1600,13 @@ int zds_write_to_dsn(ZDS *zds, const std::string &dsn, std::string &data)
   // Use BPAM path for PDS/PDSE members (updates ISPF stats), fopen/fwrite for sequential
   if (is_member)
   {
-    rc = zds_write_member_bpam(zds, dsn, data);
+    rc = zds_write_member_bpam(zds, normalized_dsn, data);
     // Clear ddname after BPAM close since the DD was freed
     memset(zds->ddname, 0, sizeof(zds->ddname));
   }
   else
   {
-    rc = zds_write_sequential(zds, dsn, data, attrs);
+    rc = zds_write_sequential(zds, normalized_dsn, data, attrs);
   }
 
   if (rc == RTNCD_FAILURE)
@@ -1453,7 +1616,7 @@ int zds_write_to_dsn(ZDS *zds, const std::string &dsn, std::string &data)
 
   // Print new e-tag to stdout as response
   std::string saved_contents = "";
-  ZDSReadOpts read_opts{.zds = zds, .dsname = dsn};
+  ZDSReadOpts read_opts{.zds = zds, .dsname = normalized_dsn};
   const auto read_rc = zds_read(read_opts, saved_contents);
   if (0 != read_rc)
   {
@@ -1469,7 +1632,12 @@ int zds_write_to_dsn(ZDS *zds, const std::string &dsn, std::string &data)
 
 int zds_open_output_bpam(ZDS *zds, const std::string &dsname, IO_CTRL *&ioc)
 {
-  std::string alloc_cmd = "ALLOC DA('" + dsname + "') SHR"; // TODO(Kelosky): log this command
+  std::string normalized_dsn;
+  if (0 != zds_validate_mvs_qualified_dsn(zds, dsname, normalized_dsn))
+  {
+    return RTNCD_FAILURE;
+  }
+  std::string alloc_cmd = "ALLOC DA('" + normalized_dsn + "') SHR"; // TODO(Kelosky): log this command
   unsigned int code = 0;
   std::string resp = "";
   std::string ddname = "";
@@ -1477,7 +1645,7 @@ int zds_open_output_bpam(ZDS *zds, const std::string &dsname, IO_CTRL *&ioc)
   if (0 != rc)
   {
     strcpy(zds->diag.service_name, "BPXWDYN");
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to allocate with code '%08X' on data set '%s': %s", code, dsname.c_str(), resp.c_str());
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to allocate with code '%08X' on data set '%s': %s", code, normalized_dsn.c_str(), resp.c_str());
     zds->diag.detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
     zds->diag.service_rc = code;
     return RTNCD_FAILURE;
@@ -1593,10 +1761,15 @@ int alloc_and_free(const std::string &alloc_dd, const std::string &dsn, unsigned
 }
 
 // TODO(Kelosky): add attributues to ZDS and have other functions populate it
-int zds_create_dsn(ZDS *, const std::string &dsn, DS_ATTRIBUTES attributes, std::string &response)
+int zds_create_dsn(ZDS *zds, const std::string &dsn, DS_ATTRIBUTES attributes, std::string &response)
 {
+  std::string dsn_norm = dsn;
+  if (0 != zds_validate_mvs_base_dsn(zds, dsn_norm))
+  {
+    return RTNCD_FAILURE;
+  }
   unsigned int code = 0;
-  std::string parm = "ALLOC DA('" + dsn + "')";
+  std::string parm = "ALLOC DA('" + dsn_norm + "')";
   std::transform(attributes.alcunit.begin(), attributes.alcunit.end(), attributes.alcunit.begin(), ::toupper);
   if (attributes.alcunit.empty() || attributes.alcunit == "TRACKS" || attributes.alcunit == "TRK")
   {
@@ -1684,7 +1857,7 @@ int zds_create_dsn(ZDS *, const std::string &dsn, DS_ATTRIBUTES attributes, std:
     parm += " BLKSIZE(" + std::to_string(attributes.blksize) + ")";
   }
 
-  return alloc_and_free(parm, dsn, &code, response);
+  return alloc_and_free(parm, dsn_norm, &code, response);
 }
 
 int zds_create_dsn_fb(ZDS *zds, const std::string &dsn, std::string &response)
@@ -1750,15 +1923,20 @@ int zds_delete_dsn(ZDS *zds, std::string dsn)
 {
   int rc = 0;
 
-  dsn = "//'" + dsn + "'";
+  std::string normalized_dsn;
+  if (0 != zds_validate_mvs_qualified_dsn(zds, dsn, normalized_dsn))
+  {
+    return RTNCD_FAILURE;
+  }
+  const std::string path = "//'" + normalized_dsn + "'";
 
-  rc = remove(dsn.c_str());
+  rc = remove(path.c_str());
 
   if (0 != rc)
   {
     strcpy(zds->diag.service_name, "remove");
     zds->diag.service_rc = rc;
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not delete data set '%s', rc: '%d'", dsn.c_str(), rc);
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not delete data set '%s', rc: '%d'", normalized_dsn.c_str(), rc);
     zds->diag.detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
     return RTNCD_FAILURE;
   }
@@ -1769,14 +1947,12 @@ int zds_delete_dsn(ZDS *zds, std::string dsn)
 int zds_rename_dsn(ZDS *zds, std::string dsn_before, std::string dsn_after)
 {
   int rc = 0;
-  if (dsn_before.empty() || dsn_after.empty())
+  if (0 != zds_validate_mvs_base_dsn(zds, dsn_before))
   {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Data set names must be valid");
     return RTNCD_FAILURE;
   }
-  if (dsn_after.length() > 44)
+  if (0 != zds_validate_mvs_base_dsn(zds, dsn_after))
   {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Target data set name exceeds max character length of 44");
     return RTNCD_FAILURE;
   }
   if (!zds_dataset_exists(dsn_before))
@@ -1812,39 +1988,45 @@ int zds_rename_dsn(ZDS *zds, std::string dsn_before, std::string dsn_after)
 int zds_rename_members(ZDS *zds, const std::string &dsname, const std::string &member_before, const std::string &member_after)
 {
   int rc = 0;
-  if (dsname.empty())
+  std::string pds = dsname;
+  if (0 != zds_validate_mvs_base_dsn(zds, pds))
   {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Data set name must be valid");
     return RTNCD_FAILURE;
   }
-  if (member_before.empty() || member_after.empty())
+  std::string mb = member_before;
+  std::string ma = member_after;
+  zut_trim(mb);
+  zut_trim(ma);
+  zds_mvs_ascii_toupper(mb);
+  zds_mvs_ascii_toupper(ma);
+  if (mb.empty() || ma.empty())
   {
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Member name cannot be empty");
     return RTNCD_FAILURE;
   }
-  if (!zds_dataset_exists(dsname))
-  {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Data set does not exist");
-    return RTNCD_FAILURE;
-  }
-  if (!zds_member_exists(dsname, member_before))
-  {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Source member does not exist");
-    return RTNCD_FAILURE;
-  }
-  if (zds_member_exists(dsname, member_after))
-  {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Target member already exists");
-    return RTNCD_FAILURE;
-  }
-  if (!zds_is_valid_member_name(member_after) || !zds_is_valid_member_name(member_before))
+  if (!zds_is_valid_member_name(mb) || !zds_is_valid_member_name(ma))
   {
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Member name must start with A-Z,#,@,$ and contain only A-Z,0-9,#,@,$ (max 8 chars)");
     return RTNCD_FAILURE;
   }
+  if (!zds_dataset_exists(pds))
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Data set does not exist");
+    return RTNCD_FAILURE;
+  }
+  if (!zds_member_exists(pds, mb))
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Source member does not exist");
+    return RTNCD_FAILURE;
+  }
+  if (zds_member_exists(pds, ma))
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Target member already exists");
+    return RTNCD_FAILURE;
+  }
 
-  std::string source_member = "//'" + dsname + "(" + member_before + ")'";
-  std::string target_member = "//'" + dsname + "(" + member_after + ")'";
+  std::string source_member = "//'" + pds + "(" + mb + ")'";
+  std::string target_member = "//'" + pds + "(" + ma + ")'";
   errno = 0;
   rc = rename(source_member.c_str(), target_member.c_str());
 
@@ -1937,6 +2119,11 @@ int zds_list_members(ZDS *zds, std::string dsn, std::vector<ZDSMem> &members, co
 {
   // PO
   // PO-E (PDS)
+  if (0 != zds_validate_mvs_base_dsn(zds, dsn))
+  {
+    return RTNCD_FAILURE;
+  }
+  const std::string normalized_dsn = dsn;
   dsn = "//'" + dsn + "'";
 
   int total_entries = 0;
@@ -1957,7 +2144,7 @@ int zds_list_members(ZDS *zds, std::string dsn, std::vector<ZDSMem> &members, co
 
   if (!fp)
   {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open dsn '%s'", dsn.c_str());
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open dsn '%s'", normalized_dsn.c_str());
     return RTNCD_FAILURE;
   }
 
@@ -3142,11 +3329,24 @@ int zds_read_streamed(const ZDSReadOpts &opts, const std::string &pipe, size_t *
     return RTNCD_FAILURE;
   }
 
-  const std::string dsname = zds_resolve_dsname(opts);
+  std::string unix_path;
+  std::string normalized_dsn;
   const auto is_dd = !opts.ddname.empty();
+  if (is_dd)
+  {
+    unix_path = "//DD:" + opts.ddname;
+  }
+  else
+  {
+    if (0 != zds_validate_mvs_qualified_dsn(zds, opts.dsname, normalized_dsn))
+    {
+      return RTNCD_FAILURE;
+    }
+    unix_path = "//'" + normalized_dsn + "'";
+  }
 
   // Check if ASA format - use record I/O to preserve ASA control characters
-  const DscbAttributes attrs = zds_resolve_dscb(opts);
+  const DscbAttributes attrs = is_dd ? zds_resolve_dscb(opts) : zds_get_dscb_attributes(normalized_dsn);
   const bool is_asa = attrs.is_asa && zds->encoding_opts.data_type != eDataTypeBinary;
 
   std::string fopen_flags;
@@ -3164,10 +3364,11 @@ int zds_read_streamed(const ZDSReadOpts &opts, const std::string &pipe, size_t *
     fopen_flags = "r";
   }
 
-  FileGuard fin(dsname.c_str(), fopen_flags.c_str());
+  FileGuard fin(unix_path.c_str(), fopen_flags.c_str());
   if (!fin)
   {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open handle to %s '%s'", is_dd ? "DD" : "data set", dsname.c_str());
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open handle to %s '%s'", is_dd ? "DD" : "data set",
+                                  is_dd ? opts.ddname.c_str() : normalized_dsn.c_str());
     return RTNCD_FAILURE;
   }
 
@@ -3853,14 +4054,21 @@ int zds_write_to_dsn_streamed(ZDS *zds, const std::string &dsn, const std::strin
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "content_len must be a valid size_t pointer");
     return RTNCD_FAILURE;
   }
-  else if (!zds_dataset_exists(dsn))
+
+  std::string normalized_dsn;
+  if (0 != zds_validate_mvs_qualified_dsn(zds, dsn, normalized_dsn))
   {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not access '%s'", dsn.c_str());
     return RTNCD_FAILURE;
   }
 
-  const DscbAttributes attrs = zds_get_dscb_attributes(dsn);
-  const auto is_member = zds_has_member(dsn);
+  if (!zds_dataset_exists(normalized_dsn))
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not access '%s'", normalized_dsn.c_str());
+    return RTNCD_FAILURE;
+  }
+
+  const DscbAttributes attrs = zds_get_dscb_attributes(normalized_dsn);
+  const auto is_member = zds_has_member(normalized_dsn);
 
   if (zds_write_recfm_unsupported(attrs.recfm, !is_member))
   {
@@ -3871,7 +4079,7 @@ int zds_write_to_dsn_streamed(ZDS *zds, const std::string &dsn, const std::strin
 
   const auto has_encoding = zds_use_codepage(zds);
 
-  if (std::strlen(zds->etag) > 0 && 0 != zds_validate_etag(zds, dsn, has_encoding))
+  if (std::strlen(zds->etag) > 0 && 0 != zds_validate_etag(zds, normalized_dsn, has_encoding))
   {
     return RTNCD_FAILURE;
   }
@@ -3881,13 +4089,13 @@ int zds_write_to_dsn_streamed(ZDS *zds, const std::string &dsn, const std::strin
   // Use BPAM path for PDS/PDSE members (updates ISPF stats), fopen/fwrite for sequential
   if (is_member)
   {
-    rc = zds_write_member_bpam_streamed(zds, dsn, pipe, content_len);
+    rc = zds_write_member_bpam_streamed(zds, normalized_dsn, pipe, content_len);
     // Clear ddname after BPAM close since the DD was freed
     memset(zds->ddname, 0, sizeof(zds->ddname));
   }
   else
   {
-    rc = zds_write_sequential_streamed(zds, dsn, pipe, content_len, attrs);
+    rc = zds_write_sequential_streamed(zds, normalized_dsn, pipe, content_len, attrs);
   }
 
   if (rc == RTNCD_FAILURE)
@@ -3897,7 +4105,7 @@ int zds_write_to_dsn_streamed(ZDS *zds, const std::string &dsn, const std::strin
 
   // Update the etag
   std::string saved_contents = "";
-  ZDSReadOpts read_opts{.zds = zds, .dsname = dsn};
+  ZDSReadOpts read_opts{.zds = zds, .dsname = normalized_dsn};
   const auto read_rc = zds_read(read_opts, saved_contents);
   if (0 != read_rc)
   {

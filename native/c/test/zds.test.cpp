@@ -1018,12 +1018,12 @@ void zds_tests()
                              std::string target = get_random_ds(3);
                              int rc = zds_rename_dsn(&zds, "", target);
                              Expect(rc).ToBe(RTNCD_FAILURE);
-                             Expect(std::string(zds.diag.e_msg)).ToContain("Data set names must be valid");
+                             Expect(std::string(zds.diag.e_msg)).ToContain("Data set name must not be empty");
 
                              ZDS zds2 = {0};
                              rc = zds_rename_dsn(&zds2, "USER.TEST", "");
                              Expect(rc).ToBe(RTNCD_FAILURE);
-                             Expect(std::string(zds2.diag.e_msg)).ToContain("Data set names must be valid");
+                             Expect(std::string(zds2.diag.e_msg)).ToContain("Data set name must not be empty");
                            });
 
                         it("should fail if target data set name exceeds max length",
@@ -1034,7 +1034,7 @@ void zds_tests()
                              std::string source = get_random_ds(3);
                              int rc = zds_rename_dsn(&zds, source, longName);
                              Expect(rc).ToBe(RTNCD_FAILURE);
-                             Expect(std::string(zds.diag.e_msg)).ToContain("Target data set name exceeds max character length of 44");
+                             Expect(std::string(zds.diag.e_msg)).ToContain("maximum length of 44 characters");
                            });
 
                         it("should fail if source data set does not exist",
@@ -1122,7 +1122,7 @@ void zds_tests()
                              std::string ds = get_random_ds(3);
                              int rc = zds_rename_members(&zds, "", M1, M2);
                              Expect(rc).ToBe(RTNCD_FAILURE);
-                             Expect(std::string(zds.diag.e_msg)).ToContain("Data set name must be valid");
+                             Expect(std::string(zds.diag.e_msg)).ToContain("Data set name must not be empty");
                            });
 
                         it("should fail if member names are empty",
