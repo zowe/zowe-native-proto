@@ -1261,6 +1261,12 @@ static int zds_copy_member_streamed(ZDS *zds, const std::string &src_dsn, const 
       length = static_cast<int>(header_and_payload_len) - 4;
     }
 
+    // Avoids turning “header-only” segment (no payload) into a full blank fixed-length record (extra blank line)
+    if (src_is_variable && length <= 0)
+    {
+      continue;
+    }
+
     rc = ZDSWBPAM(zds, ioc, rec_ptr, &length);
     if (rc != RTNCD_SUCCESS)
     {
