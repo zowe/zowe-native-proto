@@ -91,7 +91,9 @@ int close_input_vsam(ZDIAG *PTR32, IO_CTRL *PTR32) ATTRIBUTE(amode31);
 #pragma map(read_output_jfcb, "ROJFCB")
 #endif
 
+// TODO: This function needs to be reworked to address some issues around opening a JFCB for input. Avoid using for now
 int read_input_jfcb(IO_CTRL *ioc) ATTRIBUTE(amode31);
+
 int read_output_jfcb(IO_CTRL *ioc) ATTRIBUTE(amode31);
 
 int bldl(IO_CTRL *, BLDL_PL *, int *rsn) ATTRIBUTE(amode31);

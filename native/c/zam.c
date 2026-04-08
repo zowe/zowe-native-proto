@@ -1056,7 +1056,7 @@ int close_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
   // Write any remaining bytes in the buffer
   //
   rc = write_flush(diag, ioc);
-  if (0 != rc && 0 == first_rc) // only set error if no error message was already set
+  if (0 != rc)
   {
     first_rc = rc;
   }
@@ -1246,6 +1246,7 @@ static void setup_exit_list(IO_CTRL *ioc)
   ioc->dcb.dcbrecfm = recfm;
 }
 
+// TODO: This function needs to be reworked to address some issues around opening a JFCB for input. Avoid using for now
 int read_input_jfcb(IO_CTRL *ioc)
 {
   int rc = 0;
