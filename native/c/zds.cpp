@@ -945,7 +945,7 @@ static int write_asa_overflow_records(ZDS *zds, IO_CTRL *ioc, int overflow_count
   return RTNCD_SUCCESS;
 }
 
-static int get_stats(const std::string &base_dsn, const std::string &member, ISPF_STATS *out_stats, unsigned char *out_info)
+static int get_member_stats(const std::string &base_dsn, const std::string &member, ISPF_STATS *out_stats, unsigned char *out_info)
 {
   std::string dsn = "//'" + base_dsn + "'";
   FILE *fp = fopen(dsn.c_str(), "rb,recfm=u");
@@ -1253,7 +1253,7 @@ zds_write_member_bpam(ZDS *zds, const std::string &dsn, std::string &data, const
   {
     ISPF_STATS src_stats = {0};
     unsigned char entry_info = 0;
-    rc = get_stats(options.source_dsn, options.source_name, &src_stats, &entry_info);
+    rc = get_member_stats(options.source_dsn, options.source_name, &src_stats, &entry_info);
 
     if (rc == RTNCD_SUCCESS)
     {
