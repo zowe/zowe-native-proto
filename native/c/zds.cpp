@@ -1170,6 +1170,24 @@ static int write_asa_overflow_records(ZDS *zds, IO_CTRL *ioc, int overflow_count
   return RTNCD_SUCCESS;
 }
 
+// True if every byte is space padding (EBCDIC 0x40 or ASCII 0x20). Used to drop a trailing dummy FB line.
+static bool zds_fixed_record_all_space_padding(const char *p, size_t n)
+{
+  if (n == 0)
+  {
+    return false;
+  }
+  for (size_t i = 0; i < n; ++i)
+  {
+    const auto c = static_cast<unsigned char>(p[i]);
+    if (c != 0x40 && c != 0x20)
+    {
+      return false;
+    }
+  }
+  return true;
+}
+
 /**
  * Streamed copy into a PDS member (BPAM): read one source record per step so we never split a record.
  * Fixed-length: the whole read is user data. Variable-length: a short length tag, then data — we copy
@@ -1209,7 +1227,8 @@ static int zds_copy_member_streamed(ZDS *zds, const std::string &src_dsn, const 
   // Hold one full source record; variable format needs room for the length prefix plus the data.
   const bool src_is_variable = src_attrs.recfm.find('V') != std::string::npos;
   const size_t buf_cap = static_cast<size_t>(src_attrs.lrecl);
-  std::vector<char> buffer(buf_cap);
+  std::vector<char> cur_buf(buf_cap);
+  std::vector<char> next_buf(buf_cap);
 
   std::string src_path;
   src_path.reserve(4 + src_dsn.size());
@@ -1228,19 +1247,23 @@ static int zds_copy_member_streamed(ZDS *zds, const std::string &src_dsn, const 
     return RTNCD_FAILURE;
   }
 
-  size_t bytes_read = 0;
   int write_error = 0;
 
-  // Each loop: copy one record. Strip the source length prefix on variable files; BPAM adds the target's.
-  while ((bytes_read = fread(&buffer[0], 1, buffer.size(), fin)) > 0)
+  // Two-buffer read: we peek one record ahead so fixed-length sources can omit a final all-space record (common
+  // trailer) without dropping blank lines that are followed by more data. Variable LL=4-only segments still skip.
+  size_t cur_len = fread(&cur_buf[0], 1, cur_buf.size(), fin);
+  while (cur_len > 0)
   {
-    const char *rec_ptr = &buffer[0];
-    auto length = static_cast<int>(bytes_read);
+    const size_t next_len = fread(&next_buf[0], 1, next_buf.size(), fin);
+    const bool has_following = (next_len > 0);
+
+    const char *rec_ptr = &cur_buf[0];
+    auto length = static_cast<int>(cur_len);
 
     if (src_is_variable)
     {
       // Variable record: 4-byte prefix (first two bytes = total length of prefix + data), then the data.
-      if (bytes_read < 4)
+      if (cur_len < 4)
       {
         write_error = 1;
         zds->diag.e_msg_len = sprintf(
@@ -1248,23 +1271,36 @@ static int zds_copy_member_streamed(ZDS *zds, const std::string &src_dsn, const 
         break;
       }
       const auto header_and_payload_len =
-          (static_cast<unsigned int>(static_cast<unsigned char>(buffer[0])) << 8) |
-          static_cast<unsigned int>(static_cast<unsigned char>(buffer[1]));
-      if (header_and_payload_len < 4 || static_cast<size_t>(header_and_payload_len) > bytes_read)
+          (static_cast<unsigned int>(static_cast<unsigned char>(cur_buf[0])) << 8) |
+          static_cast<unsigned int>(static_cast<unsigned char>(cur_buf[1]));
+      if (header_and_payload_len < 4 || static_cast<size_t>(header_and_payload_len) > cur_len)
       {
         write_error = 1;
         zds->diag.e_msg_len = sprintf(
             zds->diag.e_msg, "Bad length prefix on variable-length record reading '%s'", src_dsn.c_str());
         break;
       }
-      rec_ptr = &buffer[4];
+      rec_ptr = &cur_buf[4];
       length = static_cast<int>(header_and_payload_len) - 4;
     }
 
-    // Avoids turning “header-only” segment (no payload) into a full blank fixed-length record (extra blank line)
+    // Variable only: skip header-only segments (no payload). Does nothing for FB/FBA sources — they never hit this.
     if (src_is_variable && length <= 0)
     {
+      if (!has_following)
+      {
+        break;
+      }
+      cur_buf.swap(next_buf);
+      cur_len = next_len;
       continue;
+    }
+
+    // Fixed only: skip the last record when it is entirely space padding (avoids an extra blank line in editors).
+    if (!has_following && !src_is_variable &&
+        zds_fixed_record_all_space_padding(rec_ptr, static_cast<size_t>(length)))
+    {
+      break;
     }
 
     rc = ZDSWBPAM(zds, ioc, rec_ptr, &length);
@@ -1277,6 +1313,13 @@ static int zds_copy_member_streamed(ZDS *zds, const std::string &src_dsn, const 
       }
       break;
     }
+
+    if (!has_following)
+    {
+      break;
+    }
+    cur_buf.swap(next_buf);
+    cur_len = next_len;
   }
 
   // Catch read failures that end the loop without a clear write error.
