@@ -311,8 +311,18 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
         return this.buildZosFilesResponse(response, response.success);
     }
 
+    /**
+     * Allocating is a 2 step process: allocate-like, then copy.
+     * - allocateLikeDataSet: the “like” data set must exist and must not be RECFM=U
+     * - copyDataset: the new target is created
+     * This two step process is necessary to avoid “already exists” error
+     * The first parameter is the target name for that next call and it is unused in this step.
+     *
+     * @param _targetDataSetName Target name Explorer passes to copy; unused here.
+     * @param likeDataSetName Model data set name to validate.
+     */
     public async allocateLikeDataSet(
-        _dataSetName: string,
+        _targetDataSetName: string,
         likeDataSetName: string,
     ): Promise<zosfiles.IZosFilesResponse> {
         const listResponse = await (await this.client).ds.listDatasets({
@@ -347,11 +357,6 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
             );
         }
 
-        // Zowe Explorer runs allocateLikeDataSet, then copy. We intentionally do not create the target data set here.
-        // If we created an empty sequential data set first, the real copy would hit "already exists" unless replace is on.
-        // For libraries, the server copy uses LIKE (same shape as the source); our create path would pick different
-        // details (e.g. directory blocks) and could lock the data set longer than needed during paste.
-        // Missing targets are created inside copyDataset—the same flow as the zssh copy command.
         return this.buildZosFilesResponse({ success: true }, true);
     }
 
@@ -370,13 +375,18 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
                 deleteTargetMembers: options?.deleteTargetMembers ?? false,
             });
             if (!response.success) {
-                Gui.errorMessage(`Failed to copy "${fromDataset}" to "${toDataset}"`);
+                const msg = this.copyDatasetFailureMessage(fromDataset, toDataset, response);
+                Gui.errorMessage(msg);
             }
-            return this.buildZosFilesResponse(response, response.success);
+            return this.buildZosFilesResponse(
+                response,
+                response.success,
+                response.success ? undefined : this.copyDatasetFailureMessage(fromDataset, toDataset, response),
+            );
         } catch (error) {
             const errorDetails = error instanceof imperative.ImperativeError ? error.additionalDetails : String(error);
             Gui.errorMessage(`Failed to copy "${fromDataset}" to "${toDataset}": ${errorDetails}`);
-            return this.buildZosFilesResponse({ success: false }, false, errorDetails);
+            return this.buildZosFilesResponse({ success: false }, false, String(errorDetails));
         }
     }
 
@@ -394,13 +404,18 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
                 replace: replace ?? false,
             });
             if (!response.success) {
-                Gui.errorMessage(`Failed to copy "${fromDataSetName}" to "${toDataSetName}"`);
+                const msg = this.copyDatasetFailureMessage(fromDataSetName, toDataSetName, response);
+                Gui.errorMessage(msg);
             }
-            return this.buildZosFilesResponse(response, response.success);
+            return this.buildZosFilesResponse(
+                response,
+                response.success,
+                response.success ? undefined : this.copyDatasetFailureMessage(fromDataSetName, toDataSetName, response),
+            );
         } catch (error) {
             const errorDetails = error instanceof imperative.ImperativeError ? error.additionalDetails : String(error);
             Gui.errorMessage(`Failed to copy "${fromDataSetName}" to "${toDataSetName}": ${errorDetails}`);
-            return this.buildZosFilesResponse({ success: false }, false, errorDetails);
+            return this.buildZosFilesResponse({ success: false }, false, String(errorDetails));
         }
     }
 
@@ -462,6 +477,14 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
         return this.buildZosFilesResponse({
             success: response.success,
         });
+    }
+
+    /** User-visible copy failure line; includes stderr/message when the server adds them to the result object. */
+    private copyDatasetFailureMessage(fromDs: string, toDs: string, response: ds.CopyDatasetResponse): string {
+        const base = `Failed to copy "${fromDs}" to "${toDs}"`;
+        const r = response as ds.CopyDatasetResponse & { stderr?: string; message?: string };
+        const detail = r.stderr?.trim() || r.message?.trim();
+        return detail ? `${base}: ${detail}` : base;
     }
 
     // biome-ignore lint/suspicious/noExplicitAny: apiResponse has no strong type

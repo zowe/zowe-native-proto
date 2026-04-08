@@ -23,14 +23,22 @@ export default class CopyDataSetHandler extends SshBaseHandler {
         const response = await client.ds.copyDataset({ fromDataset, toDataset, replace, deleteTargetMembers });
 
         let dsMessage: string;
-        if (response.targetCreated) {
-            dsMessage = `Data set "${toDataset}" created and copied from "${fromDataset}"`;
-        } else if (deleteTargetMembers) {
-            dsMessage = `Target members deleted and data set "${toDataset}" replaced with contents of "${fromDataset}"`;
-        } else if (replace) {
-            dsMessage = `Data set "${toDataset}" updated with contents of "${fromDataset}"`;
+        if (response.success) {
+            if (response.targetCreated) {
+                dsMessage = `Data set "${toDataset}" created and copied from "${fromDataset}"`;
+            } else if (deleteTargetMembers) {
+                dsMessage = `Target members deleted and data set "${toDataset}" replaced with contents of "${fromDataset}"`;
+            } else if (replace) {
+                dsMessage = `Data set "${toDataset}" updated with contents of "${fromDataset}"`;
+            } else {
+                dsMessage = `Data set "${fromDataset}" copied to "${toDataset}"`;
+            }
         } else {
-            dsMessage = `Data set "${fromDataset}" copied to "${toDataset}"`;
+            const r = response as ds.CopyDatasetResponse & { stderr?: string; message?: string };
+            const detail = r.stderr?.trim() || r.message?.trim();
+            dsMessage = detail
+                ? `Copy failed: "${fromDataset}" to "${toDataset}": ${detail}`
+                : `Copy failed: "${fromDataset}" to "${toDataset}"`;
         }
 
         params.response.data.setMessage(dsMessage);

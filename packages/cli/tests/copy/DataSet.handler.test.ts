@@ -168,10 +168,25 @@ describe("CopyDataSetHandler", () => {
 
             await handler.processWithClient(mockParams, mockClient);
 
-            expect(mockParams.response.data.setMessage).toHaveBeenCalled();
+            const expected = 'Copy failed: "SOURCE.DATA.SET" to "TARGET.DATA.SET"';
+            expect(mockParams.response.data.setMessage).toHaveBeenCalledWith(expected);
             expect(mockParams.response.console.log).not.toHaveBeenCalled();
-            expect(mockParams.response.console.error).toHaveBeenCalled();
+            expect(mockParams.response.console.error).toHaveBeenCalledWith(expected);
             expect(mockParams.response.data.setExitCode).toHaveBeenCalledWith(1);
+        });
+
+        it("should append stderr or message when copy response is unsuccessful", async () => {
+            const mockResponse = {
+                success: false,
+                stderr: "  zowex: allocation failed  ",
+            } as ds.CopyDatasetResponse;
+            mockCopyDataset.mockResolvedValue(mockResponse);
+
+            await handler.processWithClient(mockParams, mockClient);
+
+            expect(mockParams.response.data.setMessage).toHaveBeenCalledWith(
+                'Copy failed: "SOURCE.DATA.SET" to "TARGET.DATA.SET": zowex: allocation failed',
+            );
         });
 
         it("should handle both replace and deleteTargetMembers options", async () => {
