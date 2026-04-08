@@ -298,7 +298,7 @@ static bool zds_has_member(const std::string &dsn);
 static int zds_write_member_bpam(ZDS *zds, const std::string &dsn, std::string &data);
 static int zds_copy_member_streamed(ZDS *zds, const std::string &src_dsn, const std::string &dst_dsn);
 static int zds_create_dsn_like_model(const std::string &new_dsn, const std::string &model_dsn, bool catalog_as_ps,
-                                   const ZDSEntry *sms_from_model, std::string &response);
+                                     const ZDSEntry *sms_from_model, std::string &response);
 static int zds_allocate_sequential_target(ZDS *zds, const std::string &new_dsn, const std::string &model_dsn,
                                           const ZDSEntry &src_entry, std::string &response);
 
@@ -1172,41 +1172,92 @@ static int write_asa_overflow_records(ZDS *zds, IO_CTRL *ioc, int overflow_count
 
 /**
  * Stream copy a data set or member to a PDS member using BPAM
- * Reads source in 32KB chunks and writes to target member using ZDSWBPAM
- * This avoids OOM errors on large members/data sets
+ * Each BPAM write is treated as a single z/OS record (fixed-length: pad or truncate to LRECL;
+ * variable-length: pass payload only; BPAM adds a fresh per-record header). Reading the source as
+ * one big binary blob splits records mid-stream and corrupts the copy. Open the source in record
+ * mode so each read returns one full record. For variable-length sources, each read is
+ * header+payload; strip the source header and pass only the payload to BPAM so the write path can
+ * attach the correct header for the target.
  */
 static int zds_copy_member_streamed(ZDS *zds, const std::string &src_dsn, const std::string &dst_dsn)
 {
+  const DscbAttributes src_attrs = zds_get_dscb_attributes(src_dsn);
+  if (src_attrs.recfm.empty() || src_attrs.lrecl <= 0)
+  {
+    zds->diag.e_msg_len = sprintf(
+        zds->diag.e_msg,
+        "Could not read catalog attributes for source '%s' (copy to member requires RECFM and LRECL)",
+        src_dsn.c_str());
+    return RTNCD_FAILURE;
+  }
+  if (src_attrs.recfm.find('U') != std::string::npos)
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg,
+                                  "Copying RECFM=U data to a partitioned data set member is not supported");
+    return RTNCD_FAILURE;
+  }
+
   const std::lock_guard<std::mutex> bpam_member_lock(zds_bpam_member_output_mutex());
   int rc = 0;
   IO_CTRL *ioc = nullptr;
 
-  // Open the destination member for BPAM output
   rc = zds_open_output_bpam(zds, dst_dsn, ioc);
   if (rc != RTNCD_SUCCESS)
   {
     return rc;
   }
 
-  // Open source for reading
-  std::string src_path = "//'" + src_dsn + "'";
-  FILE *fin = fopen(src_path.c_str(), "rb");
+  const bool src_is_variable = src_attrs.recfm.find('V') != std::string::npos;
+  const size_t buf_cap = static_cast<size_t>(src_attrs.lrecl);
+  std::vector<char> buffer(buf_cap);
+
+  std::string src_path;
+  src_path.reserve(4 + src_dsn.size());
+  src_path = "//'";
+  src_path += src_dsn;
+  src_path += '\'';
+
+  FILE *fin = fopen(src_path.c_str(), "rb,type=record");
   if (!fin)
   {
+    const int err = errno;
     zds_close_output_bpam(zds, ioc);
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open source '%s'", src_dsn.c_str());
+    zds->diag.e_msg_len =
+        sprintf(zds->diag.e_msg, "Could not open source '%s' (errno=%d)", src_dsn.c_str(), err);
     return RTNCD_FAILURE;
   }
 
-  // Stream read and write in chunks
-  std::vector<char> buffer(32760);
-  size_t bytes_read;
+  size_t bytes_read = 0;
   int write_error = 0;
 
   while ((bytes_read = fread(&buffer[0], 1, buffer.size(), fin)) > 0)
   {
-    int length = bytes_read;
-    rc = ZDSWBPAM(zds, ioc, &buffer[0], &length);
+    const char *rec_ptr = &buffer[0];
+    auto length = static_cast<int>(bytes_read);
+
+    if (src_is_variable)
+    {
+      if (bytes_read < 4)
+      {
+        write_error = 1;
+        zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Short variable-length record reading '%s'", src_dsn.c_str());
+        break;
+      }
+      const auto rdw_total =
+          (static_cast<unsigned int>(static_cast<unsigned char>(buffer[0])) << 8) |
+          static_cast<unsigned int>(static_cast<unsigned char>(buffer[1]));
+      if (rdw_total < 4 || static_cast<size_t>(rdw_total) > bytes_read)
+      {
+        write_error = 1;
+        zds->diag.e_msg_len =
+            sprintf(zds->diag.e_msg, "Invalid RDW reading variable source '%s'", src_dsn.c_str());
+        break;
+      }
+      rec_ptr = &buffer[4];
+      length = static_cast<int>(rdw_total) - 4;
+    }
+
+    rc = ZDSWBPAM(zds, ioc, rec_ptr, &length);
     if (rc != RTNCD_SUCCESS)
     {
       write_error = 1;
@@ -1216,6 +1267,17 @@ static int zds_copy_member_streamed(ZDS *zds, const std::string &src_dsn, const 
       }
       break;
     }
+  }
+
+  if (ferror(fin) != 0)
+  {
+    const int err = errno;
+    if (zds->diag.e_msg_len == 0)
+    {
+      zds->diag.e_msg_len =
+          sprintf(zds->diag.e_msg, "Read error on source '%s' (errno=%d)", src_dsn.c_str(), err);
+    }
+    write_error = 1;
   }
 
   fclose(fin);
@@ -1712,7 +1774,8 @@ static void zds_append_sms_to_alloc_parm(std::string &parm, const ZDSEntry *entr
   {
     return;
   }
-  auto append_kw = [&parm](const char *kw, const std::string &raw) {
+  auto append_kw = [&parm](const char *kw, const std::string &raw)
+  {
     auto s = raw;
     zut_trim(s);
     if (!s.empty())
@@ -1730,7 +1793,7 @@ static void zds_append_sms_to_alloc_parm(std::string &parm, const ZDSEntry *entr
 }
 
 static int zds_create_dsn_like_model(const std::string &new_dsn, const std::string &model_dsn, bool catalog_as_ps,
-                                   const ZDSEntry *sms_from_model, std::string &response)
+                                     const ZDSEntry *sms_from_model, std::string &response)
 {
   unsigned int code = 0;
   std::string parm = "ALLOC DA('" + new_dsn + "') LIKE('" + model_dsn + "') NEW CATALOG";
@@ -1853,11 +1916,23 @@ static int zds_allocate_sequential_target(ZDS *zds, const std::string &new_dsn, 
   }
   if (verify.type == ZDS_TYPE_PDS || verify.type == ZDS_TYPE_VSAM)
   {
+    const int del_rc = zds_delete_dsn(zds, new_dsn);
+    if (del_rc != RTNCD_SUCCESS)
+    {
+      char delete_err[256] = {0};
+      strncpy(delete_err, zds->diag.e_msg, sizeof(delete_err) - 1);
+      zds->diag.e_msg_len = sprintf(
+          zds->diag.e_msg,
+          "Allocation cataloged '%s' as partitioned or VSAM; sequential copy requires PS. "
+          "SMS or data class may have overridden DSORG. Automatic delete failed (%s). "
+          "Remove the data set manually, then retry with another name.",
+          new_dsn.c_str(), delete_err[0] != '\0' ? delete_err : "no detail");
+      return RTNCD_FAILURE;
+    }
     zds->diag.e_msg_len = sprintf(
         zds->diag.e_msg,
         "Allocation cataloged '%s' as partitioned or VSAM; sequential copy requires PS. "
-        "SMS or data class may have overridden DSORG—adjust allocation rules or remove the data set yourself, "
-        "then retry with another name.",
+        "SMS or data class may have overridden DSORG. The data set was removed; adjust rules or retry with another name.",
         new_dsn.c_str());
     return RTNCD_FAILURE;
   }
