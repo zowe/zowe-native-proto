@@ -319,7 +319,7 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
      * The first parameter is the target name for that next call and it is unused in this step.
      *
      * @param _targetDataSetName Target name Explorer passes to copy; unused here.
-     * @param likeDataSetName Model data set name to validate.
+     * @param likeDataSetName Model data set name to validate (new target)
      */
     public async allocateLikeDataSet(
         _targetDataSetName: string,
