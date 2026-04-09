@@ -2,7 +2,7 @@
   "name": "zowe-native-proto-vsce",
   "displayName": "Zowe Remote SSH",
   "description": "Zowe Native Proto VS Code Extension for Zowe Explorer",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "publisher": "Zowe",
   "repository": "https://github.com/zowe/zowe-native-proto-vsce/tree/main/packages/vsce",
   "engines": {
@@ -75,6 +75,13 @@
           "maximum": 50,
           "description": "Number of worker threads for the Zowe SSH server. Each worker runs as a separate process in its own address space."
         },
+        "zowe-native-proto-vsce.responseTimeout": {
+          "type": "number",
+          "default": 60,
+          "minimum": 1,
+          "maximum": 600,
+          "description": "Response timeout in seconds before the originating request is forcibly timed out. Set to a higher value if responses are expected to take longer to complete."
+        },
         "zowe-native-proto-vsce.requestTimeout": {
           "type": "number",
           "default": 60,
@@ -117,7 +124,7 @@
     "@zowe/core-for-zowe-sdk": "^8.11.0",
     "@zowe/zowe-explorer-api": "^3.3.0",
     "ssh2": "^1.16.0",
-    "zowe-native-proto-sdk": "0.3.0"
+    "zowe-native-proto-sdk": "0.4.0"
   },
   "devDependencies": {
     "@rspack/cli": "^1.7.6",

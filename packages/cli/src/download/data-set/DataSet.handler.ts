@@ -33,7 +33,7 @@ export default class DownloadDataSetHandler extends SshBaseHandler {
             localFilePath,
         );
         const response = await client.ds.readDataset({
-            stream: fs.createWriteStream(localFilePath),
+            stream: () => fs.createWriteStream(localFilePath),
             dsname: params.arguments.dataSet,
             encoding: params.arguments.binary ? "binary" : params.arguments.encoding,
             localEncoding: params.arguments.localEncoding,
