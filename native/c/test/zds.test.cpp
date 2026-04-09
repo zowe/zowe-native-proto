@@ -2003,6 +2003,66 @@ void zds_tests()
                                         Expect(content.find("longer than 20 characters") == std::string::npos).ToBe(true);
                                       });
                                  });
+
+                        describe("encoding support",
+                                 [&]() -> void
+                                 {
+                                   it("should handle text mode with default encoding",
+                                      [&]() -> void
+                                      {
+                                        DDTestContext ctx(created_dsns);
+                                        ctx.allocate_fb_dd("TEXTDD", 80);
+                                        
+                                        std::string text_data = "Text mode content with UTF-8 characters";
+                                        ZDS text_zds{};
+                                        text_zds.encoding_opts.data_type = eDataTypeText;
+                                        ZDSWriteOpts text_opts{.zds = &text_zds, .ddname = "TEXTDD"};
+                                        int rc = zds_write(text_opts, text_data);
+                                        ExpectWithContext(rc, text_zds.diag.e_msg).ToBe(0);
+                                        
+                                        Expect(ctx.verify_dd_content("TEXTDD", "Text mode content")).ToBe(true);
+                                      });
+
+                                   it("should handle binary mode without conversion",
+                                      [&]() -> void
+                                      {
+                                        DDTestContext ctx(created_dsns);
+                                        ctx.allocate_vb_dd("BINDD", 100);
+                                        
+                                        std::string binary_data = "Binary\x00\x01\x02\x03\xFF\xFE\xFD\xFCdata";
+                                        ZDS binary_zds{};
+                                        binary_zds.encoding_opts.data_type = eDataTypeBinary;
+                                        ZDSWriteOpts binary_opts{.zds = &binary_zds, .ddname = "BINDD"};
+                                        int rc = zds_write(binary_opts, binary_data);
+                                        ExpectWithContext(rc, binary_zds.diag.e_msg).ToBe(0);
+                                        
+                                        // Read back in binary mode
+                                        ZDS read_zds{};
+                                        read_zds.encoding_opts.data_type = eDataTypeBinary;
+                                        ZDSReadOpts read_opts{.zds = &read_zds, .ddname = "BINDD"};
+                                        std::string content;
+                                        rc = zds_read(read_opts, content);
+                                        ExpectWithContext(rc, read_zds.diag.e_msg).ToBe(0);
+                                        Expect(content.find("Binary") != std::string::npos).ToBe(true);
+                                      });
+
+                                   it("should handle mixed content scenarios",
+                                      [&]() -> void
+                                      {
+                                        DDTestContext ctx(created_dsns);
+                                        ctx.allocate_fb_dd("MIXEDDD", 120);
+                                        
+                                        std::string mixed_data = "Text content\nWith special chars: áéíóú\nAnd numbers: 12345";
+                                        ZDS mixed_zds{};
+                                        mixed_zds.encoding_opts.data_type = eDataTypeText;
+                                        ZDSWriteOpts mixed_opts{.zds = &mixed_zds, .ddname = "MIXEDDD"};
+                                        int rc = zds_write(mixed_opts, mixed_data);
+                                        ExpectWithContext(rc, mixed_zds.diag.e_msg).ToBe(0);
+                                        
+                                        Expect(ctx.verify_dd_content("MIXEDDD", "Text content")).ToBe(true);
+                                        Expect(ctx.verify_dd_content("MIXEDDD", "And numbers: 12345")).ToBe(true);
+                                      });
+                                 });
                       });
            });
 }
