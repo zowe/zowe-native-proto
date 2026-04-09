@@ -106,6 +106,7 @@ build-out/zds.test.o \
 build-out/zds.o \
 build-out/zdsm.o \
 build-out/zam.o \
+build-out/zam24.o \
 build-out/zjb.test.o \
 build-out/zjb.o \
 build-out/zjbm.o \
@@ -156,6 +157,9 @@ build-out/zdsm.o:
 
 build-out/zam.o:
 	ln -sf ../../build-out/zam.o build-out/zam.o
+
+build-out/zam24.o:
+	ln -sf ../../build-out/zam24.o build-out/zam24.o
 
 build-out/zjb.o:
 	ln -sf ../../build-out/zjb.o build-out/zjb.o
