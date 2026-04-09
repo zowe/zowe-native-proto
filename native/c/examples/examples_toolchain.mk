@@ -11,7 +11,8 @@
 
 # Common toolchain definitions for examples
 .INCLUDE: ../../toolchain.mk
-# WARNING: Since this file is meant to be included by other files, we need to use the relative path to the toolchain.mk file.
+# WARNING: Since this file is meant to be included by other files, 
+# we need to use the relative path to the toolchain.mk file.
 
 # Common directories for examples
 MACLIBS= -I../../../asmmac -I../../../asmchdr $(MACLIBS_BASE)
@@ -24,6 +25,7 @@ CPP_FLAGS_COMMON=-I../../chdsect -I../../../c
 # Build type handling for examples
 .IF $(BuildType) == DEBUG
 CPP_BND_FLAGS=$(CPP_BND_DEBUG_FLAGS) $(DEBUGGER_FLAGS)
+CPP_BND_FLAGS_AUTH=$(CPP_BND_DEBUG_FLAGS_AUTH) $(DEBUGGER_FLAGS)
 C_FLAGS=$(C_FLAGS_BASE) $(C_FLAGS_COMMON) $(DEBUGGER_FLAGS)
 CPP_FLAGS=$(CPP_FLAGS_BASE) $(CPP_FLAGS_COMMON) $(DEBUGGER_FLAGS)
 MTL_FLAGS+=$(DEBUGGER_FLAGS) $(OTHER_C_FLAGS)
@@ -31,6 +33,7 @@ MTL_FLAGS64+=$(DEBUGGER_FLAGS) $(OTHER_C_FLAGS)
 ASM_FLAGS+=--verbose
 .ELSIF $(BuildType) == RELEASE
 CPP_BND_FLAGS=$(CPP_BND_BASE_FLAGS)
+CPP_BND_FLAGS_AUTH=$(CPP_BND_BASE_FLAGS_AUTH)
 C_FLAGS=$(C_FLAGS_BASE) $(C_FLAGS_COMMON) $(RELEASE_FLAGS)
 CPP_FLAGS=$(CPP_FLAGS_BASE) $(CPP_FLAGS_COMMON) $(RELEASE_FLAGS)
 ASM_FLAGS+=--noverbose
@@ -38,6 +41,7 @@ MTL_FLAGS+=-g1
 MTL_FLAGS64+=-g1
 .ELSE
 CPP_BND_FLAGS=$(CPP_BND_BASE_FLAGS)
+CPP_BND_FLAGS_AUTH=$(CPP_BND_BASE_FLAGS_AUTH)
 C_FLAGS=$(C_FLAGS_BASE) $(C_FLAGS_COMMON) -g1
 CPP_FLAGS=$(CPP_FLAGS_BASE) $(CPP_FLAGS_COMMON) -g1
 ASM_FLAGS+=--noverbose
