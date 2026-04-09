@@ -1100,7 +1100,7 @@ static int zds_write_sequential(ZDS *zds, const std::string &dsn, std::string &d
       size_t bytes_written = fwrite(temp.c_str(), 1u, temp.length(), fp);
       if (bytes_written != temp.length())
       {
-        zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to write to '%s' (possibly out of space)", dsname.c_str());
+        zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to write all contents to '%s' (possibly out of space)", dsname.c_str());
         return RTNCD_FAILURE;
       }
     }
