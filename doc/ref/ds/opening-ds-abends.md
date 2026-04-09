@@ -15,7 +15,7 @@ This document describes how to:
 ## Creating an inaccessible data set
 
 In IBM's Resource Access Control Facility (RACF), a "private" data set is one
-that only the owner can access; all other users are denied access.
+that only the owner can access. All other users are denied access.
 
 ### Creating a profile with UACC(NONE)
 
