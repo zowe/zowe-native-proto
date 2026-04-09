@@ -108,6 +108,12 @@ int handle_version(plugin::InvocationContext &context)
   return 0;
 }
 
+int handle_version_simple(plugin::InvocationContext &context)
+{
+  context.output_stream() << g_version << std::endl;
+  return 0;
+}
+
 int handle_plugins_list(plugin::InvocationContext &context)
 {
   std::ostream &out = context.output_stream();
@@ -175,7 +181,7 @@ int handle_command(plugin::InvocationContext &context)
   const auto is_interactive = context.get<bool>("interactive", false);
   if (context.get<bool>("version", false))
   {
-    const auto version_rc = handle_version(context);
+    const auto version_rc = handle_version_simple(context);
     if (!is_interactive)
     {
       return version_rc;
