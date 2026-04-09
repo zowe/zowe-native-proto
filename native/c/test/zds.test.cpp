@@ -76,6 +76,64 @@ struct ListMembersTestContext : DataSetTestContextBase
   }
 };
 
+// Test context for DD allocation and management
+struct DDTestContext : DataSetTestContextBase
+{
+  std::vector<std::string> allocated_dds;
+  
+  explicit DDTestContext(std::vector<std::string> &list)
+      : DataSetTestContextBase(list) {}
+  
+  void allocate_fb_dd(const std::string &ddname, int lrecl, int blksize = 0)
+  {
+    if (blksize == 0) blksize = lrecl;
+    std::string alloc_cmd = "alloc dd(" + ddname + ") lrecl(" + std::to_string(lrecl) + 
+                           ") recfm(f,b) blksize(" + std::to_string(blksize) + ")";
+    allocated_dds.push_back(alloc_cmd);
+    
+    ZDIAG diag{};
+    int rc = zut_loop_dynalloc(diag, allocated_dds);
+    if (rc != 0) {
+      throw std::runtime_error("Failed to allocate DD " + ddname + ": " + std::string(diag.e_msg));
+    }
+  }
+  
+  void allocate_vb_dd(const std::string &ddname, int lrecl)
+  {
+    std::string alloc_cmd = "alloc dd(" + ddname + ") lrecl(" + std::to_string(lrecl) + 
+                           ") recfm(v,b) blksize(" + std::to_string(lrecl + 4) + ")";
+    allocated_dds.push_back(alloc_cmd);
+    
+    ZDIAG diag{};
+    int rc = zut_loop_dynalloc(diag, allocated_dds);
+    if (rc != 0) {
+      throw std::runtime_error("Failed to allocate VB DD " + ddname + ": " + std::string(diag.e_msg));
+    }
+  }
+  
+  void allocate_sysprint_dd()
+  {
+    allocate_fb_dd("SYSPRINT", 80);
+  }
+  
+  bool verify_dd_content(const std::string &ddname, const std::string &expected)
+  {
+    ZDS read_zds{};
+    ZDSReadOpts read_opts{.zds = &read_zds, .ddname = ddname};
+    std::string content;
+    int rc = zds_read(read_opts, content);
+    return (rc == 0) && (content.find(expected) != std::string::npos);
+  }
+  
+  ~DDTestContext()
+  {
+    if (!allocated_dds.empty()) {
+      ZDIAG diag{};
+      zut_free_dynalloc_dds(diag, allocated_dds);
+    }
+  }
+};
+
 // Test context for copy operations
 struct CopyTestContext : DataSetTestContextBase
 {
