@@ -1152,7 +1152,8 @@ void zds_tests()
                              created_dsns.push_back(ds);
                              int rc = zds_create_dsn(&zds, ds, attr, response);
                              std::string empty = "";
-                             rc = zds_write_to_dsn(&zds, ds + "(M1)", empty);
+                             ZDSWriteOpts write_opts{.zds = &zds, .dsname = ds + "(M1)"};
+                             rc = zds_write(write_opts, empty);
                              Expect(rc).ToBe(0);
                              rc = zds_rename_members(&zds, ds, M1, longName);
                              Expect(rc).ToBe(RTNCD_FAILURE);
@@ -1191,10 +1192,12 @@ void zds_tests()
                              int rc = zds_create_dsn(&zds, ds, attr, response);
 
                              std::string empty = "";
-                             rc = zds_write_to_dsn(&zds, ds + "(M1)", empty);
+                             ZDSWriteOpts write_opts{.zds = &zds, .dsname = ds + "(M1)"};
+                             rc = zds_write(write_opts, empty);
                              Expect(rc).ToBe(0);
                              memset(zds.etag, 0, 8);
-                             rc = zds_write_to_dsn(&zds, ds + "(M2)", empty);
+                             ZDSWriteOpts write_opts2{.zds = &zds, .dsname = ds + "(M2)"};
+                             rc = zds_write(write_opts2, empty);
                              Expect(rc).ToBe(0);
 
                              rc = zds_rename_members(&zds, ds, M1, M2);
@@ -1211,7 +1214,8 @@ void zds_tests()
                              int rc = zds_create_dsn(&zds, ds, attr, response);
 
                              std::string empty = "";
-                             rc = zds_write_to_dsn(&zds, ds + "(M1)", empty);
+                             ZDSWriteOpts write_opts{.zds = &zds, .dsname = ds + "(M1)"};
+                             rc = zds_write(write_opts, empty);
                              Expect(rc).ToBe(0);
 
                              rc = zds_rename_members(&zds, ds, M1, "M3");
@@ -1228,7 +1232,8 @@ void zds_tests()
                              int rc = zds_create_dsn(&zds, ds, attr, response);
 
                              std::string empty = "";
-                             rc = zds_write_to_dsn(&zds, ds + "(M1)", empty);
+                             ZDSWriteOpts write_opts{.zds = &zds, .dsname = ds + "(M1)"};
+                             rc = zds_write(write_opts, empty);
                              Expect(rc).ToBe(0);
 
                              rc = zds_rename_members(&zds, ds, M1, "123");
@@ -1618,7 +1623,8 @@ void zds_tests()
                              create_seq(&zds, dsn);
 
                              std::string data = "etag test data";
-                             int rc = zds_write_to_dsn(&zds, dsn, data);
+                             ZDSWriteOpts write_opts{.zds = &zds, .dsname = dsn};
+                             int rc = zds_write(write_opts, data);
                              ExpectWithContext(rc, zds.diag.e_msg).ToBe(0);
                              std::string write_etag(zds.etag);
                              Expect(write_etag.empty()).ToBe(false);
@@ -1644,21 +1650,24 @@ void zds_tests()
                              create_seq(&zds, dsn);
 
                              std::string data = "original content";
-                             int rc = zds_write_to_dsn(&zds, dsn, data);
+                             ZDSWriteOpts write_opts{.zds = &zds, .dsname = dsn};
+                             int rc = zds_write(write_opts, data);
                              ExpectWithContext(rc, zds.diag.e_msg).ToBe(0);
                              std::string valid_etag(zds.etag);
 
                              // Overwrite with new content (changes the actual etag on disk)
                              ZDS zds2 = {0};
                              std::string data2 = "modified content";
-                             rc = zds_write_to_dsn(&zds2, dsn, data2);
+                             ZDSWriteOpts write_opts2{.zds = &zds2, .dsname = dsn};
+                             rc = zds_write(write_opts2, data2);
                              ExpectWithContext(rc, zds2.diag.e_msg).ToBe(0);
 
                              // Attempt to write using the stale (first) etag — should fail
                              ZDS zds3 = {0};
                              strcpy(zds3.etag, valid_etag.c_str());
                              std::string data3 = "conflicting write";
-                             rc = zds_write_to_dsn(&zds3, dsn, data3);
+                             ZDSWriteOpts write_opts3{.zds = &zds3, .dsname = dsn};
+                             rc = zds_write(write_opts3, data3);
                              Expect(rc).Not().ToBe(0);
                              Expect(std::string(zds3.diag.e_msg)).ToContain("Etag mismatch");
                            });
@@ -1735,7 +1744,8 @@ void zds_tests()
                              ExpectWithContext(rc, diag.e_msg).ToBe(0);
 
                              ZDS write_zds{};
-                             rc = zds_write_to_dd(&write_zds, "SYSPRINT", expected);
+                             ZDSWriteOpts write_opts{.zds = &write_zds, .ddname = "SYSPRINT"};
+                             rc = zds_write(write_opts, expected);
                              ExpectWithContext(rc, write_zds.diag.e_msg).ToBe(0);
 
                              ZDS read_zds{};
