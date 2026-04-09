@@ -2063,6 +2063,90 @@ void zds_tests()
                                         Expect(ctx.verify_dd_content("MIXEDDD", "And numbers: 12345")).ToBe(true);
                                       });
                                  });
+
+                        describe("streaming operations",
+                                 [&]() -> void
+                                 {
+                                   it("should handle zds_write_streamed with pipe input",
+                                      [&]() -> void
+                                      {
+                                        DDTestContext ctx(created_dsns);
+                                        ctx.allocate_fb_dd("STREAMDD", 80);
+                                        
+                                        // Create a temporary file to simulate pipe input
+                                        std::string temp_file = "/tmp/zds_stream_test_" + std::to_string(getpid());
+                                        std::ofstream temp_out(temp_file);
+                                        temp_out << "Streamed line 1\nStreamed line 2\nStreamed line 3\n";
+                                        temp_out.close();
+                                        
+                                        size_t content_len = 0;
+                                        ZDS stream_zds{};
+                                        ZDSWriteOpts stream_opts{.zds = &stream_zds, .ddname = "STREAMDD"};
+                                        int rc = zds_write_streamed(stream_opts, temp_file, &content_len);
+                                        ExpectWithContext(rc, stream_zds.diag.e_msg).ToBe(0);
+                                        
+                                        // Verify content length was set
+                                        Expect(content_len > 0).ToBe(true);
+                                        
+                                        // Verify content was written
+                                        Expect(ctx.verify_dd_content("STREAMDD", "Streamed line 1")).ToBe(true);
+                                        Expect(ctx.verify_dd_content("STREAMDD", "Streamed line 3")).ToBe(true);
+                                        
+                                        // Cleanup
+                                        unlink(temp_file.c_str());
+                                      });
+
+                                   it("should validate content length parameter",
+                                      [&]() -> void
+                                      {
+                                        DDTestContext ctx(created_dsns);
+                                        ctx.allocate_vb_dd("LENDD", 255);
+                                        
+                                        std::string temp_file = "/tmp/zds_len_test_" + std::to_string(getpid());
+                                        std::string test_content = "Content length validation test data\nSecond line for length check\n";
+                                        std::ofstream temp_out(temp_file);
+                                        temp_out << test_content;
+                                        temp_out.close();
+                                        
+                                        size_t content_len = 0;
+                                        ZDS len_zds{};
+                                        ZDSWriteOpts len_opts{.zds = &len_zds, .ddname = "LENDD"};
+                                        int rc = zds_write_streamed(len_opts, temp_file, &content_len);
+                                        ExpectWithContext(rc, len_zds.diag.e_msg).ToBe(0);
+                                        
+                                        // Content length should match expected size
+                                        Expect(content_len).ToBe(test_content.length());
+                                        
+                                        unlink(temp_file.c_str());
+                                      });
+
+                                   it("should handle large data efficiently",
+                                      [&]() -> void
+                                      {
+                                        DDTestContext ctx(created_dsns);
+                                        ctx.allocate_vb_dd("LARGEDD", 32760);
+                                        
+                                        // Create larger test data
+                                        std::string temp_file = "/tmp/zds_large_test_" + std::to_string(getpid());
+                                        std::ofstream temp_out(temp_file);
+                                        for (int i = 0; i < 1000; i++) {
+                                          temp_out << "Large data test line " << i << " with substantial content to test streaming efficiency\n";
+                                        }
+                                        temp_out.close();
+                                        
+                                        size_t content_len = 0;
+                                        ZDS large_zds{};
+                                        ZDSWriteOpts large_opts{.zds = &large_zds, .ddname = "LARGEDD"};
+                                        int rc = zds_write_streamed(large_opts, temp_file, &content_len);
+                                        ExpectWithContext(rc, large_zds.diag.e_msg).ToBe(0);
+                                        
+                                        Expect(content_len > 50000).ToBe(true); // Should be substantial content
+                                        Expect(ctx.verify_dd_content("LARGEDD", "Large data test line 0")).ToBe(true);
+                                        Expect(ctx.verify_dd_content("LARGEDD", "Large data test line 999")).ToBe(true);
+                                        
+                                        unlink(temp_file.c_str());
+                                      });
+                                 });
                       });
            });
 }
