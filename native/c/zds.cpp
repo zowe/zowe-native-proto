@@ -220,6 +220,8 @@ static int zds_get_type_info(const std::string &dsn, ZDSTypeInfo &info)
 }
 
 static int copy_sequential(ZDS *zds, const std::string &src_dsn, const std::string &dst_dsn);
+static int zds_write_sequential_streamed(ZDS *zds, const std::string &dsn, const std::string &pipe, size_t *content_len, const DscbAttributes &attrs);
+static int zds_write_member_bpam_streamed(ZDS *zds, const std::string &dsn, const std::string &pipe, size_t *content_len);
 
 // PDS-to-PDS copy using member-by-member binary I/O.
 // This approach provides granular control for --replace semantics (skip/overwrite individual members)
@@ -637,6 +639,42 @@ static DscbAttributes zds_resolve_dscb(const ZDSReadOpts &opts)
   return opts.dsname.empty() ? DscbAttributes{} : zds_get_dscb_attributes(opts.dsname);
 }
 
+static std::string zds_resolve_write_target(const ZDSWriteOpts &opts)
+{
+  if (!opts.ddname.empty())
+  {
+    return "DD:" + opts.ddname;
+  }
+  return "//'" + opts.dsname + "'";
+}
+
+static DscbAttributes zds_resolve_write_dscb(const ZDSWriteOpts &opts)
+{
+  return opts.dsname.empty() ? DscbAttributes{} : zds_get_dscb_attributes(opts.dsname);
+}
+
+/**
+ * Validates the write options and returns an error code if the options are invalid.
+ *
+ * @param opts write options to validate
+ * @param caller name of the caller function
+ * @throw std::invalid_argument if the opts.zds pointer is nullptr
+ * @return RTNCD_SUCCESS if the options are valid, RTNCD_FAILURE otherwise
+ */
+static int zds_validate_write_opts(const ZDSWriteOpts &opts, const char *caller)
+{
+  if (opts.zds == nullptr)
+  {
+    throw std::invalid_argument(std::string(caller) + ": valid ZDS pointer is required in ZDSWriteOpts.zds");
+  }
+  if (opts.dsname.empty() && opts.ddname.empty())
+  {
+    opts.zds->diag.e_msg_len = sprintf(opts.zds->diag.e_msg, "Either a dsname or ddname must be provided");
+    return RTNCD_FAILURE;
+  }
+  return RTNCD_SUCCESS;
+}
+
 /**
  * Validates the read options and returns an error code if the options are invalid.
  *
@@ -822,23 +860,6 @@ int zds_read_vsam(ZDS *zds, std::string ddname, std::string &response)
   }
 
   return RTNCD_SUCCESS;
-}
-
-int zds_write_to_dd(ZDS *zds, std::string ddname, const std::string &data)
-{
-  ddname = "DD:" + ddname;
-  std::ofstream out(ddname.c_str());
-
-  if (!out.is_open())
-  {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open file '%s'", ddname.c_str());
-    return RTNCD_FAILURE;
-  }
-
-  out << data;
-  out.close();
-
-  return 0;
 }
 
 /**
@@ -1033,11 +1054,7 @@ static int zds_write_sequential(ZDS *zds, const std::string &dsn, std::string &d
   // Determine source encoding for encoding conversion
   const auto source_encoding = std::strlen(zds->encoding_opts.source_codepage) > 0 ? std::string(zds->encoding_opts.source_codepage) : "UTF-8";
 
-  std::string dsname = "//'" + dsn + "'";
-  if (std::strlen(zds->ddname) > 0)
-  {
-    dsname = "//DD:" + std::string(zds->ddname);
-  }
+  std::string dsname = dsn;
 
   TruncationTracker truncation;
   // Build fopen flags with actual recfm from DSCB
@@ -1407,8 +1424,30 @@ int zds_validate_etag(ZDS *zds, const std::string &dsn, bool has_encoding)
   return RTNCD_SUCCESS;
 }
 
-int zds_write_to_dsn(ZDS *zds, const std::string &dsn, std::string &data)
+int zds_write(const ZDSWriteOpts &opts, std::string &data)
 {
+  const int vrc = zds_validate_write_opts(opts, "zds_write");
+  if (vrc != RTNCD_SUCCESS)
+  {
+    return vrc;
+  }
+
+  ZDS *zds = opts.zds;
+  const auto is_dd = !opts.ddname.empty();
+
+  // DD writes: skip DSN validations, use sequential path, no etag
+  if (is_dd)
+  {
+    const std::string target = zds_resolve_write_target(opts);
+
+    // Use sequential write logic with DD target
+    const DscbAttributes empty_attrs{};
+    return zds_write_sequential(zds, target, data, empty_attrs);
+  }
+
+  // DSN writes: full validation and logic from zds_write_to_dsn
+  const std::string &dsn = opts.dsname;
+
   if (!zds_dataset_exists(dsn))
   {
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not access '%s'", dsn.c_str());
@@ -1434,7 +1473,7 @@ int zds_write_to_dsn(ZDS *zds, const std::string &dsn, std::string &data)
 
   int rc = 0;
 
-  // Use BPAM path for PDS/PDSE members (updates ISPF stats), fopen/fwrite for sequential
+  // Use BPAM path for PDS/PDSE members (updates ISPF stats), sequential for others
   if (is_member)
   {
     rc = zds_write_member_bpam(zds, dsn, data);
@@ -1443,7 +1482,94 @@ int zds_write_to_dsn(ZDS *zds, const std::string &dsn, std::string &data)
   }
   else
   {
-    rc = zds_write_sequential(zds, dsn, data, attrs);
+    rc = zds_write_sequential(zds, zds_resolve_write_target(opts), data, attrs);
+  }
+
+  if (rc == RTNCD_FAILURE)
+  {
+    return rc;
+  }
+
+  // Print new e-tag to stdout as response
+  std::string saved_contents = "";
+  ZDSReadOpts read_opts{.zds = zds, .dsname = dsn};
+  const auto read_rc = zds_read(read_opts, saved_contents);
+  if (0 != read_rc)
+  {
+    return RTNCD_FAILURE;
+  }
+
+  std::stringstream etag_stream;
+  etag_stream << std::hex << zut_calc_adler32_checksum(saved_contents);
+  strcpy(zds->etag, etag_stream.str().c_str());
+
+  return rc;
+}
+
+int zds_write_streamed(const ZDSWriteOpts &opts, const std::string &pipe, size_t *content_len)
+{
+  const int vrc = zds_validate_write_opts(opts, "zds_write_streamed");
+  if (vrc != RTNCD_SUCCESS)
+  {
+    return vrc;
+  }
+
+  ZDS *zds = opts.zds;
+
+  if (content_len == nullptr)
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "content_len must be a valid size_t pointer");
+    return RTNCD_FAILURE;
+  }
+
+  const auto is_dd = !opts.ddname.empty();
+
+  // DD writes: skip DSN validations, use sequential streamed path
+  if (is_dd)
+  {
+    // For DDs, we can't get DSCB attributes, so use empty attributes
+    const DscbAttributes empty_attrs{};
+    return zds_write_sequential_streamed(zds, zds_resolve_write_target(opts), pipe, content_len, empty_attrs);
+  }
+
+  // DSN writes: full validation and logic from zds_write_to_dsn_streamed
+  const std::string &dsn = opts.dsname;
+
+  if (!zds_dataset_exists(dsn))
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not access '%s'", dsn.c_str());
+    return RTNCD_FAILURE;
+  }
+
+  const DscbAttributes attrs = zds_get_dscb_attributes(dsn);
+  const auto is_member = zds_has_member(dsn);
+
+  if (zds_write_recfm_unsupported(attrs.recfm, !is_member))
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Writing to RECFM=%s data sets is not supported", attrs.recfm.c_str());
+    zds->diag.detail_rc = ZDS_RTNCD_UNSUPPORTED_RECFM;
+    return RTNCD_FAILURE;
+  }
+
+  const auto has_encoding = zds_use_codepage(zds);
+
+  if (std::strlen(zds->etag) > 0 && 0 != zds_validate_etag(zds, dsn, has_encoding))
+  {
+    return RTNCD_FAILURE;
+  }
+
+  int rc = 0;
+
+  // Use BPAM path for PDS/PDSE members, sequential for others
+  if (is_member)
+  {
+    rc = zds_write_member_bpam_streamed(zds, dsn, pipe, content_len);
+    // Clear ddname after BPAM close since the DD was freed
+    memset(zds->ddname, 0, sizeof(zds->ddname));
+  }
+  else
+  {
+    rc = zds_write_sequential_streamed(zds, zds_resolve_write_target(opts), pipe, content_len, attrs);
   }
 
   if (rc == RTNCD_FAILURE)
@@ -3348,11 +3474,7 @@ int zds_read_streamed(const ZDSReadOpts &opts, const std::string &pipe, size_t *
  */
 static int zds_write_sequential_streamed(ZDS *zds, const std::string &dsn, const std::string &pipe, size_t *content_len, const DscbAttributes &attrs)
 {
-  std::string dsname = "//'" + dsn + "'";
-  if (std::strlen(zds->ddname) > 0)
-  {
-    dsname = "//DD:" + std::string(zds->ddname);
-  }
+  std::string dsname = dsn;
 
   const auto has_encoding = zds_use_codepage(zds);
   const auto codepage = std::string(zds->encoding_opts.codepage);
@@ -3832,81 +3954,6 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const std::string &dsn, cons
     zds->diag.detail_rc = ZDS_RSNCD_TRUNCATION_WARNING;
     return RTNCD_WARNING;
   }
-
-  return rc;
-}
-
-/**
- * Writes data to a data set in streaming mode.
- *
- * @param zds pointer to a ZDS object
- * @param dsn name of the data set
- * @param pipe name of the input pipe
- * @param content_len pointer where the length of the data set contents will be stored
- *
- * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
- */
-int zds_write_to_dsn_streamed(ZDS *zds, const std::string &dsn, const std::string &pipe, size_t *content_len)
-{
-  if (content_len == nullptr)
-  {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "content_len must be a valid size_t pointer");
-    return RTNCD_FAILURE;
-  }
-  else if (!zds_dataset_exists(dsn))
-  {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not access '%s'", dsn.c_str());
-    return RTNCD_FAILURE;
-  }
-
-  const DscbAttributes attrs = zds_get_dscb_attributes(dsn);
-  const auto is_member = zds_has_member(dsn);
-
-  if (zds_write_recfm_unsupported(attrs.recfm, !is_member))
-  {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Writing to RECFM=%s data sets is not supported", attrs.recfm.c_str());
-    zds->diag.detail_rc = ZDS_RTNCD_UNSUPPORTED_RECFM;
-    return RTNCD_FAILURE;
-  }
-
-  const auto has_encoding = zds_use_codepage(zds);
-
-  if (std::strlen(zds->etag) > 0 && 0 != zds_validate_etag(zds, dsn, has_encoding))
-  {
-    return RTNCD_FAILURE;
-  }
-
-  int rc = 0;
-
-  // Use BPAM path for PDS/PDSE members (updates ISPF stats), fopen/fwrite for sequential
-  if (is_member)
-  {
-    rc = zds_write_member_bpam_streamed(zds, dsn, pipe, content_len);
-    // Clear ddname after BPAM close since the DD was freed
-    memset(zds->ddname, 0, sizeof(zds->ddname));
-  }
-  else
-  {
-    rc = zds_write_sequential_streamed(zds, dsn, pipe, content_len, attrs);
-  }
-
-  if (rc == RTNCD_FAILURE)
-  {
-    return rc;
-  }
-
-  // Update the etag
-  std::string saved_contents = "";
-  ZDSReadOpts read_opts{.zds = zds, .dsname = dsn};
-  const auto read_rc = zds_read(read_opts, saved_contents);
-  if (0 != read_rc)
-  {
-    return RTNCD_FAILURE;
-  }
-
-  std::stringstream etag_stream;
-  etag_stream << std::hex << zut_calc_adler32_checksum(saved_contents) << std::dec;
-  strcpy(zds->etag, etag_stream.str().c_str());
 
   return rc;
 }
