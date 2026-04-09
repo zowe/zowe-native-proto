@@ -238,7 +238,7 @@ export class SshClientCache extends vscode.Disposable {
              */
             // this.mClientSessionMap.delete(clientId);
             this.promptErrorAndReload(
-                "Zowe Remote SSH stopped working unexpectedly. Choose 'Reload' for a clean restart, or 'Reload and Retry' to restart and automatically resend your active requests.",
+                "Zowe Remote SSH stopped unexpectedly. Choose 'Reload' to restart it, or 'Reload and Retry' to restart and automatically resend your active requests.",
                 clientId,
             );
             return;
@@ -251,7 +251,7 @@ export class SshClientCache extends vscode.Disposable {
                 const isDown = clientSession?.status === ServerStatus.DOWN;
                 const msg = isDown
                     ? "A request timed out because the server is down. Click 'Reload' to restart it, or 'Reload and Retry' to restart and resend your active requests."
-                    : "A request timed out. If the issue persists, choose 'Reload' to restart the server, or 'Reload and Retry' to restart and resend your active requests.";
+                    : "A request timed out. If the issue persists, select 'Reload' to restart the server, or 'Reload and Retry' to restart and resend your active requests.";
 
                 this.promptErrorAndReload(msg, clientId);
             }

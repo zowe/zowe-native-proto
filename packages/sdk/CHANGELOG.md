@@ -6,6 +6,10 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Recent Changes
 
+- Added warning to `AbstractConfigManager.validateDeployPath` method when server path ends in `/c/build-out`, preventing developers from accidentally overwriting a dev deployment. [#912](https://github.com/zowe/zowe-native-proto/pull/912)
+
+## `0.4.0`
+
 - **Breaking:** `ZSshClient` (the SSH-based client for communicating with the z/OS server) now connects to `zowex server` (the embedded server subcommand of the `zowex` z/OS backend binary) instead of the standalone `zowed` binary. Users must re-deploy the server to update the binaries at their `serverPath` (the z/OS path where server binaries are deployed). [#846](https://github.com/zowe/zowe-native-proto/issues/846)
 - Updated `ZSshClient` so callers can now safely collect and replay in-flight requests when they detect an unrecoverable error. [#548](https://github.com/zowe/zowe-native-proto/issues/548)
 - Added support for issuing USS shell commands via `uss.issueCmd` (backed by the new `unixCommand` RPC). [#867](https://github.com/zowe/zowe-native-proto/pull/867)
