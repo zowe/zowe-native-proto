@@ -2147,6 +2147,76 @@ void zds_tests()
                                         unlink(temp_file.c_str());
                                       });
                                  });
+
+                        describe("error handling",
+                                 [&]() -> void
+                                 {
+                                   it("should reject empty DD names",
+                                      [&]() -> void
+                                      {
+                                        std::string test_data = "Test data for empty DD name";
+                                        ZDS error_zds{};
+                                        ZDSWriteOpts error_opts{.zds = &error_zds, .ddname = ""};
+                                        int rc = zds_write(error_opts, test_data);
+                                        
+                                        Expect(rc).Not().ToBe(0);
+                                        Expect(std::string(error_zds.diag.e_msg).length() > 0).ToBe(true);
+                                      });
+
+                                   it("should reject DD names that are too long",
+                                      [&]() -> void
+                                      {
+                                        std::string test_data = "Test data for long DD name";
+                                        ZDS error_zds{};
+                                        ZDSWriteOpts error_opts{.zds = &error_zds, .ddname = "VERYLONGDDNAMETHATEXCEEDSLIMIT"};
+                                        int rc = zds_write(error_opts, test_data);
+                                        
+                                        Expect(rc).Not().ToBe(0);
+                                        Expect(std::string(error_zds.diag.e_msg).length() > 0).ToBe(true);
+                                      });
+
+                                   it("should reject DD names with invalid characters",
+                                      [&]() -> void
+                                      {
+                                        std::string test_data = "Test data for invalid DD name";
+                                        
+                                        // Test lowercase letters
+                                        ZDS lower_zds{};
+                                        ZDSWriteOpts lower_opts{.zds = &lower_zds, .ddname = "lowercase"};
+                                        int rc = zds_write(lower_opts, test_data);
+                                        Expect(rc).Not().ToBe(0);
+                                        
+                                        // Test names starting with digits
+                                        ZDS digit_zds{};
+                                        ZDSWriteOpts digit_opts{.zds = &digit_zds, .ddname = "1INVALID"};
+                                        rc = zds_write(digit_opts, test_data);
+                                        Expect(rc).Not().ToBe(0);
+                                        
+                                        // Test invalid special characters
+                                        ZDS special_zds{};
+                                        ZDSWriteOpts special_opts{.zds = &special_zds, .ddname = "DD-NAME"};
+                                        rc = zds_write(special_opts, test_data);
+                                        Expect(rc).Not().ToBe(0);
+                                      });
+
+                                   it("should handle null content_len pointer in streamed operations",
+                                      [&]() -> void
+                                      {
+                                        std::string temp_file = "/tmp/zds_null_test_" + std::to_string(getpid());
+                                        std::ofstream temp_out(temp_file);
+                                        temp_out << "Test data for null pointer\n";
+                                        temp_out.close();
+                                        
+                                        ZDS null_zds{};
+                                        ZDSWriteOpts null_opts{.zds = &null_zds, .ddname = "TESTDD"};
+                                        int rc = zds_write_streamed(null_opts, temp_file, nullptr);
+                                        
+                                        Expect(rc).Not().ToBe(0);
+                                        Expect(std::string(null_zds.diag.e_msg).find("content_len") != std::string::npos).ToBe(true);
+                                        
+                                        unlink(temp_file.c_str());
+                                      });
+                                 });
                       });
            });
 }
