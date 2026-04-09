@@ -10,6 +10,8 @@
  */
 
 import Module from "node:module";
+import type { IProfArgAttrs, IProfMergedArg } from "@zowe/imperative";
+import type { MainframeInteraction } from "@zowe/zowe-explorer-api";
 import { createVSCodeMock } from "jest-mock-vscode";
 import { vi } from "vitest";
 
@@ -17,18 +19,20 @@ import { vi } from "vitest";
 // This module must be imported before any module that transitively requires vscode.
 const vscodeMock = createVSCodeMock(vi);
 const originalRequire = Module.prototype.require;
-(Module.prototype as any).require = function (id: string) {
-    if (id === "vscode") return vscodeMock;
-    return originalRequire.apply(this, arguments as any);
+// biome-ignore lint/suspicious/noExplicitAny: Patching Node.js module loader
+(Module.prototype as any).require = function (...args: any[]) {
+    if (args[0] === "vscode") return vscodeMock;
+    // biome-ignore lint/suspicious/noExplicitAny: Required for apply signature
+    return originalRequire.apply(this, args as any);
 };
 
 vi.mock("vscode", () => vscodeMock, { virtual: true });
 
 export interface BenchmarkTarget {
     name: string;
-    mvs: any;
-    uss: any;
-    jes: any;
+    mvs: MainframeInteraction.IMvs;
+    uss: MainframeInteraction.IUss;
+    jes: MainframeInteraction.IJes;
     dsName: string;
     ussFile: string;
     job?: { jobid: string; jobname: string };
@@ -61,8 +65,8 @@ export async function setupTargets(): Promise<void> {
     const sshAttrs = profileInfo.getDefaultProfile("ssh");
     if (!zosmfAttrs || !sshAttrs) throw new Error("Default zosmf or ssh profile not found");
 
-    const toProfile = (merged: any) =>
-        Object.fromEntries(merged.knownArgs.map((arg: any) => [arg.argName, arg.argValue]));
+    const toProfile = (merged: IProfMergedArg) =>
+        Object.fromEntries(merged.knownArgs.map((arg: IProfArgAttrs) => [arg.argName, arg.argValue]));
 
     const zosmfProfile = toProfile(profileInfo.mergeArgsForProfile(zosmfAttrs, { getSecureVals: true }));
     const sshProfile = toProfile(profileInfo.mergeArgsForProfile(sshAttrs, { getSecureVals: true }));
