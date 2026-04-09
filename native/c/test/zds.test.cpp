@@ -1770,7 +1770,7 @@ void zds_tests()
                              Expect(sizeof(DCB_ABEND_PL)).ToBe(16);
                            });
 
-                        it("should catch SE37 abend when using zds_write_to_dsn (BPAM) to a PDS past its max space",
+                        it("should catch abend when using zds_write_to_dsn (BPAM) to a PDS past its max space",
                            [&]() -> void
                            {
                              ZDS zds = {0};
@@ -1781,7 +1781,7 @@ void zds_tests()
                              attr.blksize = 6160;
                              attr.alcunit = "TRACKS";
                              attr.primary = 1;
-                             attr.secondary = 0; // No secondary space
+                             attr.secondary = 0;
                              attr.dirblk = 1;
 
                              std::string ds = get_random_ds(3);
@@ -1791,6 +1791,10 @@ void zds_tests()
                              int rc = zds_create_dsn(&zds, ds, attr, response);
                              ExpectWithContext(rc, response).ToBe(0);
 
+                             zds.encoding_opts.data_type = eDataTypeText;
+                             strcpy(zds.encoding_opts.codepage, "IBM-1047");
+                             strcpy(zds.encoding_opts.source_codepage, "IBM-1047");
+
                              std::string large_data;
                              large_data.reserve(81 * 1000);
                              for (int i = 0; i < 1000; i++)
@@ -1798,7 +1802,8 @@ void zds_tests()
                                large_data += std::string(80, 'A') + "\n";
                              }
 
-                             // This should fail with SE37, caught by DCB abend exit
+                             // This should fail with an abend. DCB abend exit runs as part of the member write process - no mocking available so we can't test the DCB exit itself,
+                             // this just verifies that the abend is percolated and handled by recovery
                              Expect([&]()
                                     { rc = zds_write_to_dsn(&zds, ds + "(M1)", large_data); })
                                  .ToAbend();
