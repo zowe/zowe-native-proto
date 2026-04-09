@@ -1918,6 +1918,91 @@ void zds_tests()
                                         Expect(content.find("Special chars: !@#$%^&*()") != std::string::npos).ToBe(true);
                                       });
                                  });
+
+                        describe("record format support",
+                                 [&]() -> void
+                                 {
+                                   it("should handle FB with various LRECL values",
+                                      [&]() -> void
+                                      {
+                                        DDTestContext ctx(created_dsns);
+                                        
+                                        // Test LRECL=80 (standard)
+                                        ctx.allocate_fb_dd("FB80", 80);
+                                        std::string data80 = "Standard 80-character record for typical mainframe usage";
+                                        ZDS zds80{};
+                                        ZDSWriteOpts opts80{.zds = &zds80, .ddname = "FB80"};
+                                        int rc = zds_write(opts80, data80);
+                                        ExpectWithContext(rc, zds80.diag.e_msg).ToBe(0);
+                                        
+                                        // Test LRECL=133 (wide reports)
+                                        ctx.allocate_fb_dd("FB133", 133);
+                                        std::string data133 = "Wide format record for reports that need more than 80 characters per line - this is commonly used for listings";
+                                        ZDS zds133{};
+                                        ZDSWriteOpts opts133{.zds = &zds133, .ddname = "FB133"};
+                                        rc = zds_write(opts133, data133);
+                                        ExpectWithContext(rc, zds133.diag.e_msg).ToBe(0);
+                                        
+                                        // Test LRECL=255 (maximum for FB)
+                                        ctx.allocate_fb_dd("FB255", 255);
+                                        std::string data255 = "Maximum length fixed-block record that can contain up to 255 characters of data which is useful for very wide reports or data transfer operations that need the maximum capacity available in fixed-block format";
+                                        ZDS zds255{};
+                                        ZDSWriteOpts opts255{.zds = &zds255, .ddname = "FB255"};
+                                        rc = zds_write(opts255, data255);
+                                        ExpectWithContext(rc, zds255.diag.e_msg).ToBe(0);
+                                        
+                                        Expect(ctx.verify_dd_content("FB80", "Standard 80-character")).ToBe(true);
+                                        Expect(ctx.verify_dd_content("FB133", "Wide format record")).ToBe(true);
+                                        Expect(ctx.verify_dd_content("FB255", "Maximum length fixed-block")).ToBe(true);
+                                      });
+
+                                   it("should handle VB with various LRECL values",
+                                      [&]() -> void
+                                      {
+                                        DDTestContext ctx(created_dsns);
+                                        
+                                        // Test VB with LRECL=80
+                                        ctx.allocate_vb_dd("VB80", 80);
+                                        std::string vb_data = "Variable block record\nShorter line\nThis is a longer line that demonstrates variable length";
+                                        ZDS vb_zds{};
+                                        ZDSWriteOpts vb_opts{.zds = &vb_zds, .ddname = "VB80"};
+                                        int rc = zds_write(vb_opts, vb_data);
+                                        ExpectWithContext(rc, vb_zds.diag.e_msg).ToBe(0);
+                                        
+                                        // Test VB with LRECL=32760 (maximum)
+                                        ctx.allocate_vb_dd("VB32K", 32760);
+                                        std::string large_vb = "Large variable block record that can handle very long lines";
+                                        ZDS large_zds{};
+                                        ZDSWriteOpts large_opts{.zds = &large_zds, .ddname = "VB32K"};
+                                        rc = zds_write(large_opts, large_vb);
+                                        ExpectWithContext(rc, large_zds.diag.e_msg).ToBe(0);
+                                        
+                                        Expect(ctx.verify_dd_content("VB80", "Variable block record")).ToBe(true);
+                                        Expect(ctx.verify_dd_content("VB32K", "Large variable block")).ToBe(true);
+                                      });
+
+                                   it("should handle record truncation behavior",
+                                      [&]() -> void
+                                      {
+                                        DDTestContext ctx(created_dsns);
+                                        ctx.allocate_fb_dd("TRUNCDD", 20); // Short LRECL for testing truncation
+                                        
+                                        std::string long_line = "This line is much longer than 20 characters and should be truncated";
+                                        ZDS trunc_zds{};
+                                        ZDSWriteOpts trunc_opts{.zds = &trunc_zds, .ddname = "TRUNCDD"};
+                                        int rc = zds_write(trunc_opts, long_line);
+                                        ExpectWithContext(rc, trunc_zds.diag.e_msg).ToBe(0);
+                                        
+                                        // Verify truncation occurred (should only contain first 20 chars)
+                                        ZDS read_zds{};
+                                        ZDSReadOpts read_opts{.zds = &read_zds, .ddname = "TRUNCDD"};
+                                        std::string content;
+                                        rc = zds_read(read_opts, content);
+                                        ExpectWithContext(rc, read_zds.diag.e_msg).ToBe(0);
+                                        Expect(content.find("This line is much lo") != std::string::npos).ToBe(true);
+                                        Expect(content.find("longer than 20 characters") == std::string::npos).ToBe(true);
+                                      });
+                                 });
                       });
            });
 }
