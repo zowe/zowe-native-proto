@@ -1834,9 +1834,12 @@ void zds_tests()
                                         int rc = zds_write(write_opts, test_data);
                                         ExpectWithContext(rc, write_zds.diag.e_msg).ToBe(0);
                                         
-                                        Expect(ctx.verify_dd_content("SYSPRINT", "Line 1: Basic text content")).ToBe(true);
-                                        Expect(ctx.verify_dd_content("SYSPRINT", "Line 2: More test data")).ToBe(true);
-                                        Expect(ctx.verify_dd_content("SYSPRINT", "Line 3: Final line")).ToBe(true);
+                                        bool has_line1 = ctx.verify_dd_content("SYSPRINT", "Line 1: Basic text content");
+                                        bool has_line2 = ctx.verify_dd_content("SYSPRINT", "Line 2: More test data");
+                                        bool has_line3 = ctx.verify_dd_content("SYSPRINT", "Line 3: Final line");
+                                        Expect(has_line1).ToBe(true);
+                                        Expect(has_line2).ToBe(true);
+                                        Expect(has_line3).ToBe(true);
                                       });
 
                                    it("should write binary data to VB DD",
@@ -1845,7 +1848,7 @@ void zds_tests()
                                         DDTestContext ctx(created_dsns);
                                         ctx.allocate_vb_dd("BINDD", 255);
                                         
-                                        std::string binary_data = "Binary\x00\x01\x02test\xFF\xFEdata";
+                                        std::string binary_data = "Binary\x00\x01\x02test\xFFXFEdata";
                                         ZDS write_zds{};
                                         write_zds.encoding_opts.data_type = eDataTypeBinary;
                                         ZDSWriteOpts write_opts{.zds = &write_zds, .ddname = "BINDD"};
@@ -1894,7 +1897,8 @@ void zds_tests()
                                         int rc = zds_write(write_opts, single_line);
                                         ExpectWithContext(rc, write_zds.diag.e_msg).ToBe(0);
                                         
-                                        Expect(ctx.verify_dd_content("TESTDD", "Single line without newline")).ToBe(true);
+                                        bool has_single_line = ctx.verify_dd_content("TESTDD", "Single line without newline");
+                                        Expect(has_single_line).ToBe(true);
                                       });
 
                                    it("should verify content round-trip accuracy",
@@ -1951,9 +1955,12 @@ void zds_tests()
                                         rc = zds_write(opts255, data255);
                                         ExpectWithContext(rc, zds255.diag.e_msg).ToBe(0);
                                         
-                                        Expect(ctx.verify_dd_content("FB80", "Standard 80-character")).ToBe(true);
-                                        Expect(ctx.verify_dd_content("FB133", "Wide format record")).ToBe(true);
-                                        Expect(ctx.verify_dd_content("FB255", "Maximum length fixed-block")).ToBe(true);
+                                        bool has_fb80 = ctx.verify_dd_content("FB80", "Standard 80-character");
+                                        bool has_fb133 = ctx.verify_dd_content("FB133", "Wide format record");
+                                        bool has_fb255 = ctx.verify_dd_content("FB255", "Maximum length fixed-block");
+                                        Expect(has_fb80).ToBe(true);
+                                        Expect(has_fb133).ToBe(true);
+                                        Expect(has_fb255).ToBe(true);
                                       });
 
                                    it("should handle VB with various LRECL values",
@@ -1977,8 +1984,10 @@ void zds_tests()
                                         rc = zds_write(large_opts, large_vb);
                                         ExpectWithContext(rc, large_zds.diag.e_msg).ToBe(0);
                                         
-                                        Expect(ctx.verify_dd_content("VB80", "Variable block record")).ToBe(true);
-                                        Expect(ctx.verify_dd_content("VB32K", "Large variable block")).ToBe(true);
+                                        bool has_vb80 = ctx.verify_dd_content("VB80", "Variable block record");
+                                        bool has_vb32k = ctx.verify_dd_content("VB32K", "Large variable block");
+                                        Expect(has_vb80).ToBe(true);
+                                        Expect(has_vb32k).ToBe(true);
                                       });
 
                                    it("should handle record truncation behavior",
@@ -2020,7 +2029,8 @@ void zds_tests()
                                         int rc = zds_write(text_opts, text_data);
                                         ExpectWithContext(rc, text_zds.diag.e_msg).ToBe(0);
                                         
-                                        Expect(ctx.verify_dd_content("TEXTDD", "Text mode content")).ToBe(true);
+                                        bool has_text_content = ctx.verify_dd_content("TEXTDD", "Text mode content");
+                                        Expect(has_text_content).ToBe(true);
                                       });
 
                                    it("should handle binary mode without conversion",
@@ -2029,7 +2039,7 @@ void zds_tests()
                                         DDTestContext ctx(created_dsns);
                                         ctx.allocate_vb_dd("BINDD", 100);
                                         
-                                        std::string binary_data = "Binary\x00\x01\x02\x03\xFF\xFE\xFD\xFCdata";
+                                        std::string binary_data = "Binary\x00\x01\x02\x03\xFFXFEXFDXFCdata";
                                         ZDS binary_zds{};
                                         binary_zds.encoding_opts.data_type = eDataTypeBinary;
                                         ZDSWriteOpts binary_opts{.zds = &binary_zds, .ddname = "BINDD"};
@@ -2059,8 +2069,10 @@ void zds_tests()
                                         int rc = zds_write(mixed_opts, mixed_data);
                                         ExpectWithContext(rc, mixed_zds.diag.e_msg).ToBe(0);
                                         
-                                        Expect(ctx.verify_dd_content("MIXEDDD", "Text content")).ToBe(true);
-                                        Expect(ctx.verify_dd_content("MIXEDDD", "And numbers: 12345")).ToBe(true);
+                                        bool has_mixed_text = ctx.verify_dd_content("MIXEDDD", "Text content");
+                                        bool has_mixed_numbers = ctx.verify_dd_content("MIXEDDD", "And numbers: 12345");
+                                        Expect(has_mixed_text).ToBe(true);
+                                        Expect(has_mixed_numbers).ToBe(true);
                                       });
                                  });
 
@@ -2089,8 +2101,10 @@ void zds_tests()
                                         Expect(content_len > 0).ToBe(true);
                                         
                                         // Verify content was written
-                                        Expect(ctx.verify_dd_content("STREAMDD", "Streamed line 1")).ToBe(true);
-                                        Expect(ctx.verify_dd_content("STREAMDD", "Streamed line 3")).ToBe(true);
+                                        bool has_stream_line1 = ctx.verify_dd_content("STREAMDD", "Streamed line 1");
+                                        bool has_stream_line3 = ctx.verify_dd_content("STREAMDD", "Streamed line 3");
+                                        Expect(has_stream_line1).ToBe(true);
+                                        Expect(has_stream_line3).ToBe(true);
                                         
                                         // Cleanup
                                         unlink(temp_file.c_str());
@@ -2141,8 +2155,10 @@ void zds_tests()
                                         ExpectWithContext(rc, large_zds.diag.e_msg).ToBe(0);
                                         
                                         Expect(content_len > 50000).ToBe(true); // Should be substantial content
-                                        Expect(ctx.verify_dd_content("LARGEDD", "Large data test line 0")).ToBe(true);
-                                        Expect(ctx.verify_dd_content("LARGEDD", "Large data test line 999")).ToBe(true);
+                                        bool has_large_line0 = ctx.verify_dd_content("LARGEDD", "Large data test line 0");
+                                        bool has_large_line999 = ctx.verify_dd_content("LARGEDD", "Large data test line 999");
+                                        Expect(has_large_line0).ToBe(true);
+                                        Expect(has_large_line999).ToBe(true);
                                         
                                         unlink(temp_file.c_str());
                                       });
