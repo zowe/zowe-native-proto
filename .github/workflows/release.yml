@@ -59,7 +59,7 @@ jobs:
       - name: Set Environment
         run: |
           RUN_ID=$([ -z "${{ inputs.version }}" ] && \
-            gh run list --branch=${{ github.ref }} --workflow=zos-build.yml --limit=1 --json=databaseId --jq='.[0].databaseId' || \
+            gh run list --branch=${{ github.ref_name }} --workflow=zos-build.yml --limit=1 --json=databaseId --jq='.[0].databaseId' || \
             echo "${{ github.run_id }}")
           DATESTAMP=$(date +"%Y-%m-%d-%H%M%S")
           NEW_VERSION=$([ -z "${{ inputs.version }}" ] && jq -r '.version' package.json || echo "${{ inputs.version }}")

@@ -1,4 +1,5 @@
 name: z/OS Build
+# Runs on PR when this file or native/** change; on push to main; or workflow_dispatch.
 
 on:
   pull_request:
