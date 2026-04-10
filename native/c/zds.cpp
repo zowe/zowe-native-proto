@@ -1745,13 +1745,58 @@ int zds_create_dsn_loadlib(ZDS *zds, const std::string &dsn, std::string &respon
   return zds_create_dsn(zds, dsn, attributes, response);
 }
 
-#define NUM_DELETE_TEXT_UNITS 2
+int zds_delete_member(ZDS *zds, std::string dsn, std::string member)
+{
+  std::vector<std::string> dds = {
+    "alloc dd(pds) da('" + dsn + "') shr",
+    "alloc dd(sysprint) lrecl(80) recfm(f,b) blksize(80)",
+    "alloc dd(sysin) lrecl(80) recfm(f,b) blksize(80)"
+  };
+
+  int rc = zut_loop_dynalloc(zds->diag, dds);
+  if (0 != rc)
+  {
+    return RTNCD_FAILURE;
+  }
+
+  std::string control_stmt = "  DELETE '" + dsn + "(" + member + ")' FILE(PDS)";
+  rc = zds_write_to_dd(zds, "sysin", control_stmt);
+  if (0 == rc)
+  {
+    rc = zut_run("IDCAMS");
+    if (0 != rc)
+    {
+      std::string output;
+      ZDSReadOpts idcams_read_opts{.zds = zds, .ddname = "SYSPRINT"};
+      zds_read(idcams_read_opts, output);
+      zds->diag.e_msg_len = snprintf(zds->diag.e_msg, sizeof(zds->diag.e_msg),
+                                     "IDCAMS failed to delete member '%s': %s", dsn.c_str(), output.c_str());
+      zds->diag.detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
+    }
+  }
+  zut_free_dynalloc_dds(zds->diag, dds);
+
+  if (0 != rc)
+  {
+    return RTNCD_FAILURE;
+  }
+  return 0;
+}
+
 int zds_delete_dsn(ZDS *zds, std::string dsn)
 {
   int rc = 0;
 
-  dsn = "//'" + dsn + "'";
+  // For PDS members, use IDCAMS to delete with DISP=SHR allocation
+  size_t member_idx_start = dsn.find('(');
+  if (member_idx_start != std::string::npos)
+  {
+    std::string pds_name = dsn.substr(0, member_idx_start);
+    std::string member_name = dsn.substr(member_idx_start + 1, dsn.length() - member_idx_start - 2);
+    return zds_delete_member(zds, pds_name, member_name);
+  }
 
+  dsn = "//'" + dsn + "'";
   rc = remove(dsn.c_str());
 
   if (0 != rc)

@@ -7,6 +7,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 ## Recent Changes
 
 - Added a DCB abend exit for handling edge cases around PDS member open, write, and close operations. When an abend is encountered, it is either delayed or ignored (when applicable) and an error is returned gracefully via the diagnostic structure (`ZDIAG`) rather than terminating the process. Refer to [DCB abend exits](doc/dcb-abend-exit.md) for more information on how and when abends are handled. **Note:** In the event of an end-of-space (end-of-volume) abend, the operating system closes the DCB if the ignore request is honored from the abend exit. However, the abend might still percolate during end-of-volume `CLOSE` routines. An ESTAE/ESTAEX recovery routine should be used to gracefully handle these cases. [#839](https://github.com/zowe/zowe-native-proto/issues/839)
+- `c`: Fixed an issue where members could not be deleted when their parent PDS is open in ISPF. [#916](https://github.com/zowe/zowe-native-proto/issues/916)
 
 ## `0.4.0`
 
