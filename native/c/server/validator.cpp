@@ -11,7 +11,6 @@
 
 #include "validator.hpp"
 #include "../zjson.hpp"
-#include <algorithm>
 #include <string_view>
 #include <unordered_set>
 
@@ -113,9 +112,7 @@ ValidationResult validate_schema(const zjson::Value &params,
   for (size_t i = 0; i < field_count; i++)
   {
     const FieldDescriptor &field = schema[i];
-    auto field_it = std::find_if(obj.begin(), obj.end(), [&field](const auto &pair) {
-      return pair.first == field.name;
-    });
+    auto field_it = obj.find(std::string(field.name));
 
     if (field_it == obj.end())
     {
@@ -192,8 +189,7 @@ ValidationResult validate_schema(const zjson::Value &params,
     {
       if (seen_fields.find(std::string_view(pair.first)) == seen_fields.end())
       {
-        std::string field_path = parent_field.empty() ? pair.first : parent_field + "." + pair.first;
-        return ValidationResult::error("Unknown field: " + field_path);
+        return ValidationResult::error("Unknown field: " + get_field_path(pair.first));
       }
     }
   }
