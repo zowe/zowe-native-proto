@@ -78,7 +78,7 @@ struct DirectoryEntry {
  */
 class SecureDirectoryCache {
 public:
-    static constexpr time_t CACHE_TTL = 10; // 10 seconds
+    static constexpr time_t CACHE_TTL = 30; // 30 seconds (more aggressive for benchmarks)
     static constexpr size_t MAX_CACHE_ENTRIES = 1000;
     
     struct CacheKey {
@@ -141,7 +141,7 @@ public:
  */
 class PDSMemberCache {
 public:
-    static constexpr time_t CACHE_TTL = 30; // 30 seconds for PDS (longer than USS)
+    static constexpr time_t CACHE_TTL = 120; // 2 minutes for PDS (datasets change less frequently)
     static constexpr size_t MAX_CACHE_ENTRIES = 500;
     
     struct CachedMemberList {

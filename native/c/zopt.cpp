@@ -20,7 +20,7 @@
 #include <cstring>
 
 bool zopt_batch_stat_available() {
-    // Check if fstatat is available (should be on z/OS USS)
+    // Batch stat is available but uses optimized individual stat calls on z/OS 2.5
     return true;
 }
 
@@ -29,25 +29,42 @@ int zopt_batch_stat_directory(const std::string &dir_path,
                              bool follow_symlinks) {
     entries.clear();
     
-#ifdef __MVS__
-    // z/OS implementation - use traditional approach if advanced functions not available
+    // Optimized implementation for z/OS 2.5 compatibility
     DIR *dir = opendir(dir_path.c_str());
     if (!dir) {
         return -1;
     }
     
+    // Pre-allocate vector to reduce reallocations
+    entries.reserve(128);
+    
+    // Pre-build directory path with separator to avoid repeated string operations
+    std::string dir_with_sep = dir_path;
+    if (!dir_with_sep.empty() && dir_with_sep.back() != '/') {
+        dir_with_sep += '/';
+    }
+    const size_t base_path_len = dir_with_sep.length();
+    
+    // Pre-allocate path buffer to avoid repeated allocations
+    std::string full_path;
+    full_path.reserve(base_path_len + 256); // Reserve space for typical filename
+    full_path = dir_with_sep;
+    
     struct dirent *entry;
     while ((entry = readdir(dir)) != nullptr) {
         // Skip . and ..
-        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+        if (entry->d_name[0] == '.' && 
+            (entry->d_name[1] == '\0' || 
+             (entry->d_name[1] == '.' && entry->d_name[2] == '\0'))) {
             continue;
         }
         
         BatchStatEntry stat_entry;
         stat_entry.name = entry->d_name;
         
-        // Build full path for stat
-        std::string full_path = dir_path + "/" + entry->d_name;
+        // Efficient path construction - reuse buffer
+        full_path.resize(base_path_len);
+        full_path += entry->d_name;
         
         // Use lstat or stat based on follow_symlinks
         int stat_result;
@@ -57,10 +74,8 @@ int zopt_batch_stat_directory(const std::string &dir_path,
             stat_result = lstat(full_path.c_str(), &stat_entry.stats);
         }
         
-        if (stat_result == 0) {
-            stat_entry.valid = true;
-        } else {
-            stat_entry.valid = false;
+        stat_entry.valid = (stat_result == 0);
+        if (!stat_entry.valid) {
             memset(&stat_entry.stats, 0, sizeof(stat_entry.stats));
         }
         
@@ -69,43 +84,6 @@ int zopt_batch_stat_directory(const std::string &dir_path,
     
     closedir(dir);
     return 0;
-#else
-    // POSIX implementation with fstatat
-    int dir_fd = open(dir_path.c_str(), O_RDONLY);
-    if (dir_fd == -1) {
-        return -1;
-    }
-    
-    DIR *dir = fdopendir(dir_fd);
-    if (!dir) {
-        close(dir_fd);
-        return -1;
-    }
-    
-    struct dirent *entry;
-    while ((entry = readdir(dir)) != nullptr) {
-        // Skip . and ..
-        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
-            continue;
-        }
-        
-        BatchStatEntry stat_entry;
-        stat_entry.name = entry->d_name;
-        
-        int flags = follow_symlinks ? 0 : AT_SYMLINK_NOFOLLOW;
-        if (fstatat(dir_fd, entry->d_name, &stat_entry.stats, flags) == 0) {
-            stat_entry.valid = true;
-        } else {
-            stat_entry.valid = false;
-            memset(&stat_entry.stats, 0, sizeof(stat_entry.stats));
-        }
-        
-        entries.push_back(stat_entry);
-    }
-    
-    closedir(dir); // Also closes dir_fd
-    return 0;
-#endif
 }
 
 size_t zusf_estimate_directory_size(const std::string &dir_path) {

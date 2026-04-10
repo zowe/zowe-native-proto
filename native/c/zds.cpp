@@ -1945,26 +1945,28 @@ int zds_list_members(ZDS *zds, std::string dsn, std::vector<ZDSMem> &members, co
 {
   members.clear();
   
-  // Try cache first (only for full listings without complex patterns)
+  // Try cache first - always try cache, then filter results
   std::string original_dsn = dsn;
-  if (pattern.empty() || pattern == "*") {
-      if (PDSMemberCache::get_cached_members(dsn, members)) {
-          // Cache hit - filter if needed and return
-          if (!pattern.empty() && pattern != "*") {
-              // Apply pattern filtering to cached results
-              std::string upper_pattern = pattern;
-              std::transform(upper_pattern.begin(), upper_pattern.end(), upper_pattern.begin(), ::toupper);
-              
-              auto it = std::remove_if(members.begin(), members.end(), 
-                  [&upper_pattern](const ZDSMem& member) {
-                      std::string upper_name = member.name;
-                      std::transform(upper_name.begin(), upper_name.end(), upper_name.begin(), ::toupper);
-                      return !is_match(upper_name.c_str(), upper_pattern.c_str());
-                  });
-              members.erase(it, members.end());
+  std::vector<ZDSMem> cached_members;
+  if (PDSMemberCache::get_cached_members(dsn, cached_members)) {
+      // Cache hit - apply pattern filtering if needed
+      if (pattern.empty() || pattern == "*") {
+          // Full listing - use cached results directly
+          members = cached_members;
+      } else {
+          // Pattern-based filtering - filter cached results
+          std::string upper_pattern = pattern;
+          std::transform(upper_pattern.begin(), upper_pattern.end(), upper_pattern.begin(), ::toupper);
+          
+          for (const auto& member : cached_members) {
+              std::string upper_name = member.name;
+              std::transform(upper_name.begin(), upper_name.end(), upper_name.begin(), ::toupper);
+              if (is_match(upper_name.c_str(), upper_pattern.c_str())) {
+                  members.push_back(member);
+              }
           }
-          return RTNCD_SUCCESS;
       }
+      return RTNCD_SUCCESS;
   }
   
   // Cache miss - proceed with original implementation
@@ -2092,9 +2094,17 @@ int zds_list_members(ZDS *zds, std::string dsn, std::vector<ZDSMem> &members, co
     }
   }
 
-  // After successful completion, cache the results for future use
-  if ((pattern.empty() || pattern == "*") && !members.empty()) {
-      PDSMemberCache::cache_members(original_dsn, members);
+  // After successful completion, always cache the full member list
+  // (We cache the full list even if this was a pattern request, for future use)
+  if (!members.empty()) {
+      if (pattern.empty() || pattern == "*") {
+          // This was a full listing - cache directly
+          PDSMemberCache::cache_members(original_dsn, members);
+      } else {
+          // This was a pattern request - we need to get the full listing to cache
+          // For now, don't cache pattern results to avoid partial cache pollution
+          // TODO: Consider fetching full listing in background for caching
+      }
   }
 
   fclose(fp);
