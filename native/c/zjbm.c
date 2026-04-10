@@ -24,6 +24,7 @@
 #include "ihapsa.h"
 #include "cvt.h"
 #include "iefjesct.h"
+#include <string.h>
 
 // TODO(Kelosky):
 // https://www.ibm.com/docs/en/zos/3.1.0?topic=79-putget-requests
@@ -297,20 +298,19 @@ int ZJBMVIEW(ZJB *zjb, ZJB_JOB_INFO **PTR64 job_info, int *entries)
   STAT stat = {0};
   init_stat(&stat);
 
-  if (zjb->jobid[0] != 0x00)
+  if (0x00 != zjb->jobid[0])
   {
     stat.statsel1 = stat.statsel1 | statsjbi; // real lookup
     memcpy(stat.statjbil, zjb->jobid, sizeof(stat.statjbil));
     memcpy(stat.statjbih, zjb->jobid, sizeof(stat.statjbih));
   }
-  else
+  else if (zjb->correlator != "" && 0 != strncmp(zjb->correlator, "                                                                ", sizeof(zjb->correlator)))
   {
     char correlator31[64] = {0};
     memcpy(correlator31, zjb->correlator, sizeof(zjb->correlator));
     stat.statsel5 = statscor;
     stat.statjcrp = &correlator31[0];
   }
-
   stat.stattype = statters;
 
   return ZJBMTCOM(zjb, &stat, job_info, entries);
@@ -328,7 +328,7 @@ int ZJBMLIST(ZJB *zjb, ZJB_JOB_INFO **PTR64 job_info, int *entries)
   stat.stattype = statters;
   memcpy(stat.statownr, zjb->owner_name, sizeof((stat.statownr)));
 
-  if (0 == strcmp(zjb->prefix_name, "        "))
+  if (0 == strncmp(zjb->prefix_name, "        ", sizeof(zjb->prefix_name)))
   {
     // do nothing
   }
@@ -338,7 +338,7 @@ int ZJBMLIST(ZJB *zjb, ZJB_JOB_INFO **PTR64 job_info, int *entries)
     memcpy(stat.statjobn, zjb->prefix_name, sizeof((stat.statjobn)));
   }
 
-  if (0 == strcmp(zjb->status_name, "ACTIVE  "))
+  if (0 == strncmp(zjb->status_name, "ACTIVE  ", sizeof(zjb->status_name)))
   {
     stat.statphaz = stat___onmain;
     stat.statsel3 |= statsphz;

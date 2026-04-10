@@ -16,6 +16,8 @@
 #include "zssitype.h"
 #include "iefjsqry.h"
 #include "zmetal.h"
+#include "zrecovery.h"
+#include "zdbg.h"
 
 #if defined(__IBM_METAL__)
 
@@ -128,11 +130,49 @@ static int iefssi_query(JQRY_HEADER *PTR32 *PTR32 area, int *PTR32 rsn, const ch
   return rc;
 }
 
+static void iefssreq_abexit(SDWA *PTR64 sdwa, void *PTR64 data)
+{
+  zut_print_debug("ARR caught ABEND!");
+}
+
+static void iefssreq_perc_exit(void *PTR64 data)
+{
+  zut_print_debug("ARR percolating ABEND up the recovery chain...");
+}
+
 // https://www.ibm.com/docs/en/zos/3.1.0?topic=subsystem-making-request-iefssreq-macro
 static int iefssreq(SSOB *PTR32 *PTR32 ssob)
 {
   int rc = 0;
+  ZRCVY_ENV zenv = {0};
+
+  zenv.abexit = iefssreq_abexit;
+  zenv.perc_exit = iefssreq_perc_exit;
+
+  enable_estaex(&zenv);
+
+  // ABEND: S0C9 (Divide by zero) - Handled gracefully by the compiler, so no ABEND will be triggered
+  // volatile int zero = 0;
+  // int crash = 1 / zero;
+
+  // ABEND: S0C4 (Protection Exception) - Handled internally by IEFSSREQ (RC=16)
+  // ssobp = (SSOB * PTR32)0x00000000;
+
+  // ------------------------------------------------------------
+
+  // ABEND: S0C1 (Operation Exception - Invalid Opcode)
+  // __asm(" DC F'0' ");
+
+  // ABEND: S0C4 (Protection Exception)
+  // int *bad_ptr = (int *)0x00000004;
+  // *bad_ptr = 123;
+
+  // ABEND: User ABEND (e.g., U1234)
+  // __asm(" ABEND 1234,DUMP ");
+
   IEFSSREQ(ssob, rc);
+
+  disable_estaex(&zenv);
   return rc;
 }
 
