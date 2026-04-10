@@ -4,6 +4,10 @@ All notable changes to the native code for "zowe-native-proto" are documented in
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## Recent Changes
+
+- `c`: Fixed an issue where members could not be deleted when their parent PDS is open in ISPF. [#916](https://github.com/zowe/zowe-native-proto/issues/916)
+
 ## `0.4.0`
 
 - `c`: Added `zowex uss issue` command and the `unixCommand` RPC for executing USS shell commands using `spawn()` with `_BPX_SHAREAS=YES` for efficient same-address-space execution. [#867](https://github.com/zowe/zowe-native-proto/pull/867)
