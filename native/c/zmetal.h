@@ -338,7 +338,7 @@ static void *PTR64 load_module(const char *name)
 
   auth_off(); // NOTE(Kelosky): force auth off before loading any module
 
-  unsigned char save_registers[88] = {0}; // Save all 8 bytes of registers 2-13 for PDSMAN/IEBCOPY
+  unsigned long long save_registers[11] = {0}; // Save 8 bytes for each register 2-13 for PDSMAN/IEBCOPY
   LOAD(name_truncated, ep, rc, rsn, save_registers[0]);
   if (0 != rc)
   {
