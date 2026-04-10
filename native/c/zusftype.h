@@ -25,6 +25,9 @@
 #define ZUSF_DEFAULT_MAX_JOBS 100
 #define ZUSF_DEFAULT_MAX_DDS 100
 
+#define ZUSF_ENABLE_BATCH_STAT 1
+#define ZUSF_BATCH_STAT_THRESHOLD 5  // Use batch stat for >5 entries
+
 ZNP_PACK_ON
 
 // NOTE(zFernand0): Figure out how to visualize the struct in memory

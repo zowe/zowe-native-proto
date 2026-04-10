@@ -177,13 +177,13 @@ $(OUT_DIR_SWIG)/zds.o: $(OUT_DIR_SWIG) zds.cpp
 	@echo 'Building $(OUT_DIR_SWIG)/zds.o with SWIG macro'
 	$(CXX) $(SWIG_FLAGS) -o $@ zds.cpp
 
-$(OUT_DIR)/libzds.so: $(OUT_DIR)/zds.o $(OUT_DIR)/zdsm.o $(OUT_DIR)/zam.o $(OUT_DIR)/zam24.o $(OUT_DIR)/libzut.a
+$(OUT_DIR)/libzds.so: $(OUT_DIR)/zds.o $(OUT_DIR)/zdsm.o $(OUT_DIR)/zam.o $(OUT_DIR)/zam24.o $(OUT_DIR)/zcache.o $(OUT_DIR)/libzut.a
 	@echo 'Building $(OUT_DIR)/libzds.so'
 	$(CXX) $(DLL_BND_FLAGS) -o $@ $^
 
 libzds.so: $(OUT_DIR) $(OUT_DIR)/libzds.so
 
-$(OUT_DIR)/libzds.a: $(OUT_DIR)/zds.o $(OUT_DIR)/zdsm.o $(OUT_DIR)/zam.o $(OUT_DIR)/zam24.o
+$(OUT_DIR)/libzds.a: $(OUT_DIR)/zds.o $(OUT_DIR)/zdsm.o $(OUT_DIR)/zam.o $(OUT_DIR)/zam24.o $(OUT_DIR)/zcache.o
 	@echo 'Building $(OUT_DIR)/libzds.a'
 	ar -rv $@ $^
 
@@ -265,17 +265,28 @@ $(OUT_DIR_SWIG)/zusf.o: $(OUT_DIR_SWIG) zusf.cpp
 	@echo 'Building $(OUT_DIR_SWIG)/zusf.o with SWIG macro'
 	$(CXX) $(SWIG_FLAGS) -o $@ zusf.cpp
 
-$(OUT_DIR)/libzusf.so: $(OUT_DIR)/zusf.o $(OUT_DIR)/libzut.a
+$(OUT_DIR)/libzusf.so: $(OUT_DIR)/zusf.o $(OUT_DIR)/zopt.o $(OUT_DIR)/zcache.o $(OUT_DIR)/libzut.a
 	@echo 'Building $(OUT_DIR)/libzusf.so'
 	$(CXX) $(DLL_BND_FLAGS) -o $@ $^
 
 libzusf.so: $(OUT_DIR) $(OUT_DIR)/libzusf.so
 
-$(OUT_DIR)/libzusf.a: $(OUT_DIR)/zusf.o
+$(OUT_DIR)/libzusf.a: $(OUT_DIR)/zusf.o $(OUT_DIR)/zopt.o $(OUT_DIR)/zcache.o
 	@echo 'Building $(OUT_DIR)/libzusf.a'
 	ar -rv $@ $^
 
 libzusf.a: $(OUT_DIR) $(OUT_DIR)/libzusf.a
+
+#
+# Optimization utilities
+#
+$(OUT_DIR)/zopt.o: zopt.cpp
+	@echo 'Building $(OUT_DIR)/zopt.o'
+	$(CXX) $(CPP_FLAGS) -o $@ $^
+
+$(OUT_DIR)/zcache.o: zcache.cpp
+	@echo 'Building $(OUT_DIR)/zcache.o'
+	$(CXX) $(CPP_FLAGS) -o $@ $^
 
 #
 # TSO

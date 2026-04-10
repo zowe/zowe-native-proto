@@ -46,6 +46,8 @@
 #include <cstdlib>
 #include <unordered_map>
 #include "zusf.hpp"
+#include "zopt.hpp"
+#include "zcache.hpp"
 #include "zdyn.h"
 #include "zusftype.h"
 #include "zut.hpp"
@@ -1147,7 +1149,129 @@ std::string zusf_format_file_entry(ZUSF *zusf, const struct stat &file_stats, co
  *
  * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
  */
-static int zusf_collect_directory_entries_recursive(ZUSF *zusf, const std::string &dir_path, std::vector<std::string> &entry_names, const ListOptions &options, int current_depth = 0)
+
+// Forward declarations
+static int zusf_collect_directory_entries_recursive(ZUSF *zusf, const std::string &dir_path, std::vector<std::string> &entry_names, const ListOptions &options, int current_depth = 0);
+static int zusf_collect_directory_entries_batch(ZUSF *zusf, const std::string &dir_path, std::vector<std::string> &entry_names, const ListOptions &options, int current_depth = 0);
+static int zusf_collect_directory_entries_cached(ZUSF *zusf, const std::string &dir_path, 
+                                                std::vector<std::string> &entry_names, 
+                                                const ListOptions &options, int current_depth = 0) {
+    
+    // Try cache first
+    std::vector<DirectoryEntry> cached_entries;
+    if (SecureDirectoryCache::get_cached_listing(dir_path, cached_entries)) {
+        // Cache hit - process cached entries
+        std::vector<std::string> current_entries;
+        
+        for (const auto& cached_entry : cached_entries) {
+            if (!cached_entry.valid) continue;
+            
+            const std::string& name = cached_entry.name;
+            
+            // Skip hidden files if not requested
+            if (name.at(0) == '.' && !options.all_files) {
+                continue;
+            }
+            
+            current_entries.push_back(name);
+        }
+        
+        // Sort and add to results
+        sort(current_entries.begin(), current_entries.end(), zut_string_compare_c);
+        
+        for (const auto &name : current_entries) {
+            entry_names.push_back(name);
+            
+            // Handle recursion for cached entries
+            if (options.max_depth > 1 && current_depth < (options.max_depth - 1)) {
+                auto cached_it = std::find_if(cached_entries.begin(), cached_entries.end(),
+                    [&name](const DirectoryEntry& e) { return e.name == name; });
+                
+                if (cached_it != cached_entries.end() && S_ISDIR(cached_it->stats.st_mode)) {
+                    std::string child_path = zusf_join_path(dir_path, name);
+                    std::vector<std::string> subdir_entries;
+                    if (zusf_collect_directory_entries_cached(zusf, child_path, subdir_entries, options, current_depth + 1) == RTNCD_SUCCESS) {
+                        for (const auto &subentry : subdir_entries) {
+                            entry_names.push_back(name + "/" + subentry);
+                        }
+                    }
+                }
+            }
+        }
+        
+        return RTNCD_SUCCESS;
+    }
+    
+    // Cache miss - use batch stat and cache results
+    return zusf_collect_directory_entries_batch(zusf, dir_path, entry_names, options, current_depth);
+}
+
+
+static int zusf_collect_directory_entries_batch(ZUSF *zusf, const std::string &dir_path, 
+                                               std::vector<std::string> &entry_names, 
+                                               const ListOptions &options, int current_depth) {
+    
+#if ZUSF_ENABLE_BATCH_STAT
+    // Use batch stat optimization for better performance
+    std::vector<BatchStatEntry> batch_entries;
+    int rc = zopt_batch_stat_directory(dir_path, batch_entries);
+    
+    if (rc == 0 && batch_entries.size() >= ZUSF_BATCH_STAT_THRESHOLD) {
+        // Process batch results and cache them
+        std::vector<std::string> current_entries;
+        std::vector<DirectoryEntry> entries_to_cache;
+        
+        for (const auto& batch_entry : batch_entries) {
+            if (!batch_entry.valid) continue;
+            
+            const std::string& name = batch_entry.name;
+            
+            // Add to cache data
+            entries_to_cache.emplace_back(name, batch_entry.stats, true);
+            
+            // Skip hidden files if not requested
+            if (name.at(0) == '.' && !options.all_files) {
+                continue;
+            }
+            
+            current_entries.push_back(name);
+        }
+        
+        // Cache the results for future use
+        SecureDirectoryCache::cache_listing(dir_path, entries_to_cache);
+        
+        // Continue with processing...
+        sort(current_entries.begin(), current_entries.end(), zut_string_compare_c);
+        
+        for (const auto &name : current_entries) {
+            entry_names.push_back(name);
+            
+            // Handle recursion
+            if (options.max_depth > 1 && current_depth < (options.max_depth - 1)) {
+                auto batch_it = std::find_if(batch_entries.begin(), batch_entries.end(),
+                    [&name](const BatchStatEntry& e) { return e.name == name; });
+                
+                if (batch_it != batch_entries.end() && S_ISDIR(batch_it->stats.st_mode)) {
+                    std::string child_path = zusf_join_path(dir_path, name);
+                    std::vector<std::string> subdir_entries;
+                    if (zusf_collect_directory_entries_cached(zusf, child_path, subdir_entries, options, current_depth + 1) == RTNCD_SUCCESS) {
+                        for (const auto &subentry : subdir_entries) {
+                            entry_names.push_back(name + "/" + subentry);
+                        }
+                    }
+                }
+            }
+        }
+        
+        return RTNCD_SUCCESS;
+    }
+#endif
+    
+    // Fall back to original implementation for small directories or if batch fails
+    return zusf_collect_directory_entries_recursive(zusf, dir_path, entry_names, options, current_depth);
+}
+
+static int zusf_collect_directory_entries_recursive(ZUSF *zusf, const std::string &dir_path, std::vector<std::string> &entry_names, const ListOptions &options, int current_depth)
 {
   DIR *dir;
   if ((dir = opendir(dir_path.c_str())) == nullptr)
@@ -1247,6 +1371,28 @@ int zusf_list_uss_file_path(ZUSF *zusf, const std::string &file, std::string &re
 
   response.clear();
 
+  // Pre-allocate response string for better memory efficiency
+  if (S_ISDIR(file_stats.st_mode) && options.max_depth > 0) {
+      size_t estimated_entries = zusf_estimate_directory_size(file);
+      
+      // Estimate bytes per entry based on format
+      size_t bytes_per_entry;
+      if (use_csv_format) {
+          bytes_per_entry = 150; // CSV format is more compact
+      } else if (options.long_format) {
+          bytes_per_entry = 200; // Long format with permissions, dates, etc.
+      } else {
+          bytes_per_entry = 50;  // Short format, just names
+      }
+      
+        // Pre-allocate with 25% buffer for safety, but cap at reasonable size
+        size_t estimated_size = estimated_entries * bytes_per_entry;
+        size_t buffered_size = static_cast<size_t>(estimated_size * 1.25);
+        size_t allocation_size = std::min(buffered_size, static_cast<size_t>(1024 * 1024)); // Cap at 1MB
+      
+      response.reserve(allocation_size);
+  }
+
   // Treat depth == 0 as "ls -d" behavior: show the directory itself, not its contents
   if (options.max_depth == 0)
   {
@@ -1276,7 +1422,7 @@ int zusf_list_uss_file_path(ZUSF *zusf, const std::string &file, std::string &re
 
   // Collect all directory entries (recursively if depth > 1)
   std::vector<std::string> entry_names;
-  if (zusf_collect_directory_entries_recursive(zusf, file, entry_names, options) != RTNCD_SUCCESS)
+  if (zusf_collect_directory_entries_cached(zusf, file, entry_names, options) != RTNCD_SUCCESS)
   {
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open directory '%s'", file.c_str());
     return RTNCD_FAILURE;
@@ -1956,14 +2102,12 @@ int zusf_delete_uss_item(ZUSF *zusf, const std::string &file, bool recursive)
 
 std::string zusf_get_owner_from_uid(uid_t uid)
 {
-  auto *meta = getpwuid(uid);
-  return meta && meta->pw_name ? meta->pw_name : std::string();
+  return UidGidCache::get_username(uid);
 }
 
 std::string zusf_get_group_from_gid(gid_t gid)
 {
-  auto *meta = getgrgid(gid);
-  return meta && meta->gr_name ? meta->gr_name : std::string();
+  return UidGidCache::get_groupname(gid);
 }
 
 short zusf_get_id_from_user_or_group(const std::string &user_or_group, bool is_user)

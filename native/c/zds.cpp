@@ -31,6 +31,7 @@
 #include <iomanip>
 #include <algorithm>
 #include "zds.hpp"
+#include "zcache.hpp"
 #include "zdyn.h"
 #include "zdstype.h"
 #include "zut.hpp"
@@ -456,7 +457,13 @@ int zds_copy_dsn(ZDS *zds, const std::string &dsn1, const std::string &dsn2, ZDS
   if (is_pds_full_copy)
   {
     // When delete_target_members is used, always replace since target is now empty
-    return copy_pds_to_pds(zds, info1, info2, opts->replace || opts->delete_target_members);
+    rc = copy_pds_to_pds(zds, info1, info2, opts->replace || opts->delete_target_members);
+    
+    // Invalidate cache for target PDS after successful copy
+    if (rc == RTNCD_SUCCESS) {
+      PDSMemberCache::invalidate_dataset(info2.base_dsn);
+    }
+    return rc;
   }
   else
   {
@@ -472,10 +479,11 @@ int zds_copy_dsn(ZDS *zds, const std::string &dsn1, const std::string &dsn2, ZDS
       rc = copy_sequential(zds, dsn1, dsn2);
     }
 
-    // Report if a new member was created
+    // Report if a new member was created and invalidate cache
     if (rc == RTNCD_SUCCESS && target_is_member && !target_member_exists)
     {
       opts->member_created = true;
+      PDSMemberCache::invalidate_dataset(info2.base_dsn);
     }
     return rc;
   }
@@ -1935,6 +1943,31 @@ bool is_match(const char *s, const char *p)
 
 int zds_list_members(ZDS *zds, std::string dsn, std::vector<ZDSMem> &members, const std::string &pattern, bool show_attributes)
 {
+  members.clear();
+  
+  // Try cache first (only for full listings without complex patterns)
+  std::string original_dsn = dsn;
+  if (pattern.empty() || pattern == "*") {
+      if (PDSMemberCache::get_cached_members(dsn, members)) {
+          // Cache hit - filter if needed and return
+          if (!pattern.empty() && pattern != "*") {
+              // Apply pattern filtering to cached results
+              std::string upper_pattern = pattern;
+              std::transform(upper_pattern.begin(), upper_pattern.end(), upper_pattern.begin(), ::toupper);
+              
+              auto it = std::remove_if(members.begin(), members.end(), 
+                  [&upper_pattern](const ZDSMem& member) {
+                      std::string upper_name = member.name;
+                      std::transform(upper_name.begin(), upper_name.end(), upper_name.begin(), ::toupper);
+                      return !is_match(upper_name.c_str(), upper_pattern.c_str());
+                  });
+              members.erase(it, members.end());
+          }
+          return RTNCD_SUCCESS;
+      }
+  }
+  
+  // Cache miss - proceed with original implementation
   // PO
   // PO-E (PDS)
   dsn = "//'" + dsn + "'";
@@ -2057,6 +2090,11 @@ int zds_list_members(ZDS *zds, std::string dsn, std::vector<ZDSMem> &members, co
           break;
       }
     }
+  }
+
+  // After successful completion, cache the results for future use
+  if ((pattern.empty() || pattern == "*") && !members.empty()) {
+      PDSMemberCache::cache_members(original_dsn, members);
   }
 
   fclose(fp);

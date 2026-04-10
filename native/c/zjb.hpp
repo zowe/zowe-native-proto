@@ -163,6 +163,15 @@ int zjb_read_syslog(ZJB *zjb, std::string &response, std::string &date, std::str
 int zjb_wait(ZJB *zjb, const std::string &status);
 
 /**
+ * @brief Wait for a job to reach a specific status with adaptive polling
+ *
+ * @param zjb job returned attributes and error information
+ * @param status job status to wait for
+ * @return int 0 for success; non zero otherwise
+ */
+int zjb_wait_adaptive(ZJB *zjb, const std::string &status);
+
+/**
  * @brief Return JCL for a job by input jobid
  *
  * @param zjb job returned attributes and error information

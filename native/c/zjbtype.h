@@ -34,6 +34,11 @@
 #define ZJB_DEFAULT_MAX_JOBS 1000
 #define ZJB_DEFAULT_MAX_DDS 100
 
+#define ZJB_POLL_INITIAL_MS 500     // Initial poll interval (more conservative)
+#define ZJB_POLL_MAX_MS 1000        // Maximum poll interval (more conservative) 
+#define ZJB_POLL_MAX_ATTEMPTS 60    // 1 minute timeout (more conservative)
+#define ZJB_ENABLE_ADAPTIVE_POLL 1
+
 #define ZJB_UNKNOWN_RC ""
 
 ZNP_PACK_ON

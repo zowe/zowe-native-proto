@@ -120,6 +120,9 @@ build-out/zmetal.test.o \
 build-out/zmetal.metal.test.o \
 build-out/zusf.test.o \
 build-out/zusf.o \
+build-out/zopt.test.o \
+build-out/zopt.o \
+build-out/zcache.o \
 build-out/zowex.ds.test.o \
 build-out/zowex.uss.test.o \
 build-out/zowex.job.test.o \
@@ -178,6 +181,12 @@ build-out/zcnm31.o:
 
 build-out/zusf.o:
 	ln -sf ../../build-out/zusf.o build-out/zusf.o
+
+build-out/zopt.o:
+	ln -sf ../../build-out/zopt.o build-out/zopt.o
+
+build-out/zcache.o:
+	ln -sf ../../build-out/zcache.o build-out/zcache.o
 
 build-out/zowex.ds.test.o: zowex.ds.test.cpp
 	$(CXX) $(CXXFLAGS) $(CPP_LIST_FLAG) -c $^ -o $@
@@ -258,6 +267,9 @@ build-out/zmetal.metal.test.o: build-out/zmetal.metal.test.s
 	$(ASM) $(ASM_FLAGS) $(ASM_LIST_FLAG) $(MACLIBS) -o $@ $^
 
 build-out/zusf.test.o: zusf.test.cpp
+	$(CXX) $(CXXFLAGS) $(CPP_LIST_FLAG) -c $^ -o $@
+
+build-out/zopt.test.o: zopt.test.cpp
 	$(CXX) $(CXXFLAGS) $(CPP_LIST_FLAG) -c $^ -o $@
 
 build-out/parser.test.o: parser.test.cpp

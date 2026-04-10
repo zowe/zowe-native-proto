@@ -381,33 +381,81 @@ int zjb_read_job_content_by_dsn(ZJB *zjb, const std::string &dsn, std::string &r
   return rc;
 }
 
+int zjb_wait_adaptive(ZJB *zjb, const std::string &status) {
+#if ZJB_ENABLE_ADAPTIVE_POLL
+    int rc = 0;
+    ZJob job{};
+    std::string jobid(zjb->jobid, sizeof(zjb->jobid));
+    const auto waiting_for_active = status == "ACTIVE";
+    
+    // Adaptive polling parameters
+    int poll_interval_ms = ZJB_POLL_INITIAL_MS;
+    const int max_interval_ms = ZJB_POLL_MAX_MS;
+    const int max_attempts = ZJB_POLL_MAX_ATTEMPTS;
+    int attempt_count = 0;
+    
+    do {
+        rc = zjb_view(zjb, jobid, job);
+        
+        // Sleep first (like original), then check return code
+        usleep(poll_interval_ms * 1000);
+        
+        if (0 != rc) {
+            return RTNCD_FAILURE;
+        }
+        
+        // Check completion conditions (like original)
+        if (waiting_for_active && job.status.find("OUTPUT") != std::string::npos) {
+            return RTNCD_SUCCESS;
+        }
+        
+        // Exponential backoff for first 5 attempts, then cap at max
+        if (attempt_count < 5) {
+            poll_interval_ms = std::min(poll_interval_ms * 2, max_interval_ms);
+        }
+        
+        attempt_count++;
+        
+    } while (job.status != status && attempt_count < max_attempts);
+    
+    return RTNCD_SUCCESS;
+#else
+    // Fall back to original implementation
+    return zjb_wait(zjb, status);
+#endif
+}
+
 int zjb_wait(ZJB *zjb, const std::string &status)
 {
-  int rc = 0;
-  ZJob job{};
-  std::string jobid(zjb->jobid, sizeof(zjb->jobid));
-  const auto waiting_for_active = status == "ACTIVE";
+#if ZJB_ENABLE_ADAPTIVE_POLL
+    return zjb_wait_adaptive(zjb, status);
+#else
+    // Keep original implementation for compatibility
+    int rc = 0;
+    ZJob job{};
+    std::string jobid(zjb->jobid, sizeof(zjb->jobid));
+    const auto waiting_for_active = status == "ACTIVE";
 
-  do
-  {
-    rc = zjb_view(zjb, jobid, job);
-
-    sleep(1); // TODO(Kelosky): make this interval smaller
-
-    if (0 != rc)
+    do
     {
-      return RTNCD_FAILURE;
-    }
-
-    // When waiting for ACTIVE, accept OUTPUT as a valid completion state
-    // (Job may complete before the waiting logic gets to it)
-    if (waiting_for_active && job.status.find("OUTPUT") != std::string::npos)
-    {
-      return RTNCD_SUCCESS;
-    }
-
-  } while (job.status != status);
-  return RTNCD_SUCCESS;
+        rc = zjb_view(zjb, jobid, job);
+        
+        sleep(1); // Original 1-second interval
+        
+        if (0 != rc)
+        {
+            return RTNCD_FAILURE;
+        }
+        
+        if (waiting_for_active && job.status.find("OUTPUT") != std::string::npos)
+        {
+            return RTNCD_SUCCESS;
+        }
+        
+    } while (job.status != status);
+    
+    return RTNCD_SUCCESS;
+#endif
 }
 
 int zjb_delete(ZJB *zjb, const std::string &jobid)
