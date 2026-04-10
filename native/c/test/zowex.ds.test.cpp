@@ -819,7 +819,7 @@ void zowex_ds_tests()
                              std::string command = zowex_command + " data-set lm " + ds;
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).Not().ToBe(0);
-                             Expect(response).ToContain("Error: could not list members: '" + ds + "'");
+                             Expect(response).ToContain("Error: Could not list members for '" + ds + "'");
                            });
                         it("should list members matching a specific pattern",
                            [&]() -> void
