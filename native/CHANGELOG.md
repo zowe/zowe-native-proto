@@ -6,6 +6,11 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Recent Changes
 
+- Added a DCB abend exit for handling edge cases around PDS member open, write, and close operations. When an abend is encountered, it is either delayed or ignored (when applicable) and an error is returned gracefully via the diagnostic structure (`ZDIAG`) rather than terminating the process. Refer to [DCB abend exits](doc/dcb-abend-exit.md) for more information on how and when abends are handled. **Note:** In the event of an end-of-space (end-of-volume) abend, the operating system closes the DCB if the ignore request is honored from the abend exit. However, the abend might still percolate during end-of-volume `CLOSE` routines. An ESTAE/ESTAEX recovery routine should be used to gracefully handle these cases. [#839](https://github.com/zowe/zowe-native-proto/issues/839)
+
+## `0.4.0`
+
+- `c`: Added `zowex uss issue` command and the `unixCommand` RPC for executing USS shell commands using `spawn()` with `_BPX_SHAREAS=YES` for efficient same-address-space execution. [#867](https://github.com/zowe/zowe-native-proto/pull/867)
 - `c`: Fixed an issue where submitting JCL from the VS Code editor with CRLF line endings caused job submission errors. [#882](https://github.com/zowe/zowe-native-proto/pull/882)
 - `c`: Fixed an issue where VSAM index or data components returned `*VSAM*` for the volume serial. Now, an accurate volume serial is returned for both component types. [#864](https://github.com/zowe/zowe-native-proto/pull/864)
 - `c`: Fixed an issue where listing data sets would fail with an "unsupported entry type" error if the pattern matched a VSAM PATH or alternate index (AIX). Now, matching VSAM PATH or AIX data sets are returned in the list results. [#841](https://github.com/zowe/zowe-native-proto/issues/841)

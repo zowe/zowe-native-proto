@@ -18,7 +18,7 @@ import { SshBaseHandler } from "../../SshBaseHandler";
 export default class UploadFileToDataSetHandler extends SshBaseHandler {
     public async processWithClient(params: IHandlerParameters, client: ZSshClient): Promise<ds.WriteDatasetResponse> {
         const response = await client.ds.writeDataset({
-            stream: fs.createReadStream(params.arguments.file),
+            stream: () => fs.createReadStream(params.arguments.file),
             dsname: params.arguments.dataSet,
             encoding: params.arguments.binary ? "binary" : params.arguments.encoding,
             localEncoding: params.arguments.localEncoding,

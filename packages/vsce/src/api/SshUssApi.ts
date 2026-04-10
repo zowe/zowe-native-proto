@@ -49,7 +49,7 @@ export class SshUssApi extends SshCommonApi implements MainframeInteraction.IUss
             fspath: ussFilePath,
             encoding: options.binary ? "binary" : options.encoding,
             // Pass stream if file is provided, otherwise use buffer to read into memory
-            stream: options.file ? writeStream : undefined,
+            stream: options.file ? () => writeStream : undefined,
         });
         if (options.stream != null) {
             options.stream.write(B64String.decode(response.data));
@@ -88,7 +88,7 @@ export class SshUssApi extends SshCommonApi implements MainframeInteraction.IUss
         const response = await (await this.client).uss.writeFile({
             fspath: ussFilePath,
             encoding: options?.encoding,
-            stream: createReadStream(inputFilePath),
+            stream: () => createReadStream(inputFilePath),
             etag: options?.etag,
         });
         return this.buildZosFilesResponse({ etag: response.etag });
@@ -121,7 +121,6 @@ export class SshUssApi extends SshCommonApi implements MainframeInteraction.IUss
         if (null == sourcePath) {
             throw new Error("Error: unix copy 'source' cannot be undefined");
         }
-
         const response = await (await this.client).uss.copyUss({
             srcFsPath: sourcePath,
             dstFsPath: outputPath,

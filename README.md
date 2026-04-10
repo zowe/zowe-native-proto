@@ -72,6 +72,14 @@ To test server changes without having to download artifacts and re-deploy them e
 
 To package client components with native binaries bundled, run `npm run z:artifacts && npm run package` which generates packages in the `dist` directory.
 
+### Rebuilding the SDK
+
+The SDK package contains both TypeScript client code and the native z/OS server binary (`bin/server.pax.Z`). How to rebuild depends on what changed:
+
+- **TypeScript only**: `npm run build --workspace=packages/sdk`
+- **Native only**: Run `npm run z:rebuild` and set `serverPath` in your SSH profile to the remote `<deployDir>/c/build-out` — no SDK repackage needed
+- **Full SDK package** (`.tgz` with bundled binaries): `npm run z:rebuild && npm run z:artifacts && npm run build --workspace=packages/sdk && mkdir -p dist && npm run package --workspace=packages/sdk`
+
 > [!TIP]
 > See the list below for more useful scripts like `watch` for incremental build.
 
