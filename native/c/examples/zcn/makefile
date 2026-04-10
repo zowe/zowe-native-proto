@@ -19,12 +19,12 @@ all: $(OUT_DIR) extattr run
 # Output directories
 #
 $(OUT_DIR):
-	@echo 'Creating build-out'
+	@echo 'Creating $(OUT_DIR)'
 	mkdir -p $(OUT_DIR)
 
 run: $(OUT_DIR)/demozcn
-	@echo 'Running ./build-out/demozcn'
-	export _BPXK_JOBLOG=STDERR && ./build-out/demozcn
+	@echo 'Running ./$(OUT_DIR)/demozcn'
+	export _BPXK_JOBLOG=STDERR && ./$(OUT_DIR)/demozcn
 
 $(OUT_DIR)/demozcn.o: demozcn.cpp
 	@echo 'Building $(OUT_DIR)/demozcn.o'

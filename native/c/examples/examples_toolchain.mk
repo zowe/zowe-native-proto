@@ -18,6 +18,8 @@
 MACLIBS= -I../../../asmmac -I../../../asmchdr $(MACLIBS_BASE)
 MTL_HEADERS=$(MTL_HEADERS_BASE) -I../../chdsect -I../../../c
 
+BIND=ld
+
 # Common flags for examples
 C_FLAGS_COMMON=-I../../chdsect -I../../../c
 CPP_FLAGS_COMMON=-I../../chdsect -I../../../c
@@ -32,10 +34,17 @@ MTL_BASE_OPTS=metal,\
  warn64,\
  optimize(2)
 
+# ----------------------------------------------------------------------------
+# Key differences between the toolchain.mk file and the examples_toolchain.mk file:
+# ----------------------------------------------------------------------------
+# Remove "inline," from the MTL_BASE_OPTS definition to avoid the following warning:
 # WARNING CCN3396 - Option INLINE is incompatible with option TEST/DEBUG and is ignored.
- # inline,\ 
+# 		inline,\ 
+# 
+# Add "NOGONUMBER" to the MTL_BASE_OPTS definition to avoid the following warning:
 # WARNING CCN0833 - "GONUMBER" is not compatible with "METAL". "NOGONUMBER" is being set.
 DEBUGGER_FLAGS=-g0 # This value was previously set to `-g` in the toolchain.mk file.
+# ----------------------------------------------------------------------------
 
 # Build type handling for examples
 .IF $(BuildType) == DEBUG

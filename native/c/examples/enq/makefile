@@ -17,7 +17,7 @@ all: $(OUT_DIR) run
 
 run: $(OUT_DIR)/runenq
 	@echo 'Running ./$(OUT_DIR)/runenq'
-	./$(OUT_DIR)/runenq
+	export _BPXK_JOBLOG=STDERR && ./$(OUT_DIR)/runenq
 
 $(OUT_DIR):
 	@echo 'Creating $(OUT_DIR)'
@@ -33,7 +33,7 @@ $(OUT_DIR)/runenq.o: $(OUT_DIR)/runenq.s
 
 $(OUT_DIR)/runenq: $(OUT_DIR)/runenq.o
 	@echo 'Building $(OUT_DIR)/runenq'
-	$(CXX) $(CPP_BND_FLAGS) -Wl,-eMAIN -o $@ $^
+	$(BIND) $(BIND_FLAGS_64) -V -eMAIN -o $@ $^ > $*.bind.lst
 
 clean:
 	rm -f *.o

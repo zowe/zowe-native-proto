@@ -13,12 +13,10 @@ OUT_DIR=build-out
 
 .INCLUDE: ../examples_toolchain.mk
 
-BIND=ld
-
 all: $(OUT_DIR) run
 
 $(OUT_DIR):
-	@echo 'Creating build-out'
+	@echo 'Creating $(OUT_DIR)'
 	mkdir -p $(OUT_DIR)
 
 run: $(OUT_DIR)/testtime

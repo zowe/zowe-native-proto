@@ -17,7 +17,7 @@ all: copy-mtl $(OUT_DIR) run
 
 run: $(OUT_DIR)/demometal
 	@echo 'Running ./$(OUT_DIR)/demometal'
-	./$(OUT_DIR)/demometal
+	export _BPXK_JOBLOG=STDERR && ./$(OUT_DIR)/demometal
 
 $(OUT_DIR):
 	@echo 'Creating $(OUT_DIR)'
@@ -45,7 +45,7 @@ $(OUT_DIR)/demometal.o: $(OUT_DIR)/demometal.s
 
 $(OUT_DIR)/demometal: $(OUT_DIR)/demometal.o
 	@echo 'Building $(OUT_DIR)/demometal'
-	$(CXX) $(CPP_BND_FLAGS) -Wl,-eMAIN -o $@ $^
+	$(BIND) $(BIND_FLAGS_64) -V -eMAIN -o $@ $^ > $*.bind.lst
 
 clean:
 	rm -f *.o

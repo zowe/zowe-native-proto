@@ -17,7 +17,7 @@ all: $(OUT_DIR) run
 
 run: $(OUT_DIR)/json
 	@echo 'Running ./$(OUT_DIR)/json'
-	./$(OUT_DIR)/json
+	export _BPXK_JOBLOG=STDERR && ./$(OUT_DIR)/json
 
 $(OUT_DIR):
 	@echo 'Creating $(OUT_DIR)'
@@ -38,7 +38,7 @@ $(OUT_DIR)/json.o: $(OUT_DIR)/json.s
 
 $(OUT_DIR)/json: $(OUT_DIR)/json.o
 	@echo 'Building $(OUT_DIR)/json'
-	$(CXX) $(CPP_BND_FLAGS) -o $@ $^
+	$(BIND) $(BIND_FLAGS_64) -V -eMAIN -o $@ $^ > $*.bind.lst
 
 clean:
 	rm -f *.o
