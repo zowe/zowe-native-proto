@@ -22,6 +22,21 @@ MTL_HEADERS=$(MTL_HEADERS_BASE) -I../../chdsect -I../../../c
 C_FLAGS_COMMON=-I../../chdsect -I../../../c
 CPP_FLAGS_COMMON=-I../../chdsect -I../../../c
 
+MTL_BASE_OPTS=metal,\
+ langlvl(extended),\
+ sscom,\
+ nolongname,\
+ genasm,\
+ csect,\
+ nose,\
+ warn64,\
+ optimize(2)
+
+# WARNING CCN3396 - Option INLINE is incompatible with option TEST/DEBUG and is ignored.
+ # inline,\ 
+# WARNING CCN0833 - "GONUMBER" is not compatible with "METAL". "NOGONUMBER" is being set.
+DEBUGGER_FLAGS=-g0 # This value was previously set to `-g` in the toolchain.mk file.
+
 # Build type handling for examples
 .IF $(BuildType) == DEBUG
 CPP_BND_FLAGS=$(CPP_BND_DEBUG_FLAGS) $(DEBUGGER_FLAGS)

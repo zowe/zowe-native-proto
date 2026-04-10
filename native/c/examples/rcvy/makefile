@@ -97,23 +97,23 @@ MTL_FLAGS+=-g1
 MTL_FLAGS64+=-g1
 .END
 
-all: build-out build-out/testrcvy
+all: $(OUT_DIR) $(OUT_DIR)/testrcvy
 
-testrcvy: build-out/testrcvy
+testrcvy: $(OUT_DIR)/testrcvy
 
-build-out:
-	@echo 'Creating build-out'
-	mkdir -p build-out
+$(OUT_DIR):
+	@echo 'Creating $(OUT_DIR)'
+	mkdir -p $(OUT_DIR)
 
-build-out/testrcvy.s: testrcvy.c
-	@echo 'Building build-out/testrcvy.s'
+$(OUT_DIR)/testrcvy.s: testrcvy.c
+	@echo 'Building $(OUT_DIR)/testrcvy.s'
 	$(CC) $(MTL_FLAGS64) -qlist=$*.mtl.lst $(MTL_HEADERS) -o $@ $^
 
-build-out/testrcvy.o: build-out/testrcvy.s
-	@echo 'Building build-out/testrcvy.s'
+$(OUT_DIR)/testrcvy.o: $(OUT_DIR)/testrcvy.s
+	@echo 'Building $(OUT_DIR)/testrcvy.s'
 	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
 
-build-out/testrcvy: build-out/testrcvy.o
+$(OUT_DIR)/testrcvy: $(OUT_DIR)/testrcvy.o
 	$(BIND) $(BIND_FLAGS_64) -V -eMAIN -o $@ $^ > $*.bind.lst
 
 clean:
@@ -124,4 +124,4 @@ clean:
 	rm -f *.x
 	rm -f *.lst
 	rm -f CEEDUMP.*
-	rm -rf build-out
+	rm -rf $(OUT_DIR)

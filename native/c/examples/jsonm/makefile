@@ -13,31 +13,31 @@ OUT_DIR=build-out
 
 .INCLUDE: ../examples_toolchain.mk
 
-all: build-out run
+all: $(OUT_DIR) run
 
-run: build-out/json
-	@echo 'Running ./build-out/json'
-	./build-out/json
+run: $(OUT_DIR)/json
+	@echo 'Running ./$(OUT_DIR)/json'
+	./$(OUT_DIR)/json
 
-build-out:
-	@echo 'Creating build-out'
-	mkdir -p build-out
+$(OUT_DIR):
+	@echo 'Creating $(OUT_DIR)'
+	mkdir -p $(OUT_DIR)
 
 copy-mtl:
 	cp ../../zmetal.h zmetal.h
 	cp ../../zwto.h zwto.h
 	cp ../../zjsonm31.h zjsonm31.h
 
-build-out/json.s: json.c
-	@echo 'Building build-out/json.s'
+$(OUT_DIR)/json.s: json.c
+	@echo 'Building $(OUT_DIR)/json.s'
 	$(CC) $(MTL_FLAGS64) -qlist=$*.mtl.lst $(MTL_HEADERS) -o $@ $^
 
-build-out/json.o: build-out/json.s
-	@echo 'Building build-out/json.s'
+$(OUT_DIR)/json.o: $(OUT_DIR)/json.s
+	@echo 'Building $(OUT_DIR)/json.s'
 	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
 
-build-out/json: build-out/json.o
-	@echo 'Building build-out/json'
+$(OUT_DIR)/json: $(OUT_DIR)/json.o
+	@echo 'Building $(OUT_DIR)/json'
 	$(CXX) $(CPP_BND_FLAGS) -o $@ $^
 
 clean:
@@ -48,4 +48,4 @@ clean:
 	rm -f *.x
 	rm -f *.lst
 	rm -f CEEDUMP.*
-	rm -rf build-out
+	rm -rf $(OUT_DIR)

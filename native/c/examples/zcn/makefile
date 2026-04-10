@@ -13,30 +13,30 @@ OUT_DIR=build-out
 
 .INCLUDE: ../examples_toolchain.mk
 
-all: build-out extattr run 
+all: $(OUT_DIR) extattr run 
 
 #
 # Output directories
 #
-build-out:
+$(OUT_DIR):
 	@echo 'Creating build-out'
-	mkdir -p build-out
+	mkdir -p $(OUT_DIR)
 
-run: build-out/demozcnx
-	@echo 'Running ./build-out/demozcnx'
-	export _BPXK_JOBLOG=STDERR && ./build-out/demozcnx
+run: $(OUT_DIR)/demozcn
+	@echo 'Running ./build-out/demozcn'
+	export _BPXK_JOBLOG=STDERR && ./build-out/demozcn
 
-build-out/demozcn.o: demozcn.cpp
+$(OUT_DIR)/demozcn.o: demozcn.cpp
 	@echo 'Building $(OUT_DIR)/demozcn.o'
-	cp ../../build-out/*.a build-out
+	cp ../../$(OUT_DIR)/*.a $(OUT_DIR)
 	$(CXX) $(CPP_FLAGS) -c $^ -o $@
 
-build-out/demozcnx: build-out/demozcn.o build-out/libzcn.a build-out/libzut.a
-	@echo 'Building demozcnx'
+$(OUT_DIR)/demozcn: $(OUT_DIR)/demozcn.o $(OUT_DIR)/libzcn.a $(OUT_DIR)/libzut.a
+	@echo 'Building demozcn'
 	$(CXX) $(CPP_BND_FLAGS_AUTH) -o $@ $^ > $*.bind.lst
 
-extattr:
-	extattr +ap build-out/demozcnx
+extattr: $(OUT_DIR)/demozcn
+	extattr +ap $(OUT_DIR)/demozcn
 
 clean:
 	rm -f *.o

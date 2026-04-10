@@ -15,25 +15,25 @@ OUT_DIR=build-out
 
 BIND=ld
 
-all: build-out run
+all: $(OUT_DIR) run
 
-build-out:
+$(OUT_DIR):
 	@echo 'Creating build-out'
-	mkdir -p build-out
+	mkdir -p $(OUT_DIR)
 
-run: build-out/testtime
-	@echo 'Running ./build-out/testtime'
-	export _BPXK_JOBLOG=STDERR && ./build-out/testtime
+run: $(OUT_DIR)/testtime
+	@echo 'Running ./$(OUT_DIR)/testtime'
+	export _BPXK_JOBLOG=STDERR && ./$(OUT_DIR)/testtime
 
-build-out/testtime.s: testtime.c
-	@echo 'Building build-out/testtime.s'
+$(OUT_DIR)/testtime.s: testtime.c
+	@echo 'Building $(OUT_DIR)/testtime.s'
 	$(CC) $(MTL_FLAGS64) -qlist=$*.mtl.lst $(MTL_HEADERS) -o $@ $^
 
-build-out/testtime.o: build-out/testtime.s
-	@echo 'Building build-out/testtime.s'
+$(OUT_DIR)/testtime.o: $(OUT_DIR)/testtime.s
+	@echo 'Building $(OUT_DIR)/testtime.s'
 	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
 
-build-out/testtime: build-out/testtime.o
+$(OUT_DIR)/testtime: $(OUT_DIR)/testtime.o
 	$(BIND) $(BIND_FLAGS_64) -V -eMAIN -o $@ $^ > $*.bind.lst
 
 clean:
@@ -44,4 +44,4 @@ clean:
 	rm -f *.x
 	rm -f *.lst
 	rm -f CEEDUMP.*
-	rm -rf build-out
+	rm -rf $(OUT_DIR)

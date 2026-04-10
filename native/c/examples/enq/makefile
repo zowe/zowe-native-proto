@@ -13,26 +13,26 @@ OUT_DIR=build-out
 
 .INCLUDE: ../examples_toolchain.mk
 
-all: build-out run
+all: $(OUT_DIR) run
 
-run: build-out/runenq
-	@echo 'Running ./build-out/runenq'
-	./build-out/runenq
+run: $(OUT_DIR)/runenq
+	@echo 'Running ./$(OUT_DIR)/runenq'
+	./$(OUT_DIR)/runenq
 
-build-out:
-	@echo 'Creating build-out'
-	mkdir -p build-out
+$(OUT_DIR):
+	@echo 'Creating $(OUT_DIR)'
+	mkdir -p $(OUT_DIR)
 
-build-out/runenq.s: runenq.c
-	@echo 'Building build-out/runenq.s'
+$(OUT_DIR)/runenq.s: runenq.c
+	@echo 'Building $(OUT_DIR)/runenq.s'
 	$(CC) $(MTL_FLAGS64) -qlist=$*.mtl.lst $(MTL_HEADERS) -o $@ $^
 
-build-out/runenq.o: build-out/runenq.s
-	@echo 'Building build-out/runenq.o'
+$(OUT_DIR)/runenq.o: $(OUT_DIR)/runenq.s
+	@echo 'Building $(OUT_DIR)/runenq.o'
 	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
 
-build-out/runenq: build-out/runenq.o
-	@echo 'Building build-out/runenq'
+$(OUT_DIR)/runenq: $(OUT_DIR)/runenq.o
+	@echo 'Building $(OUT_DIR)/runenq'
 	$(CXX) $(CPP_BND_FLAGS) -Wl,-eMAIN -o $@ $^
 
 clean:
@@ -43,4 +43,4 @@ clean:
 	rm -f *.x
 	rm -f *.lst
 	rm -f CEEDUMP.*
-	rm -rf build-out
+	rm -rf $(OUT_DIR)

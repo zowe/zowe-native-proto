@@ -13,35 +13,80 @@ OUT_DIR=build-out
 
 .INCLUDE: ../examples_toolchain.mk
 
-all: copy-mtl build-out run
+all: copy-mtl $(OUT_DIR) run
 
 #
 # Output directories
 #
-build-out:
-	@echo 'Creating build-out'
-	mkdir -p build-out
+$(OUT_DIR):
+	@echo 'Creating $(OUT_DIR)'
+	mkdir -p $(OUT_DIR)
 
-run: build-out/json
-	@echo 'Running ./build-out/json'
-	./build-out/json
+run: $(OUT_DIR)/json
+	@echo 'Running ./$(OUT_DIR)/json'
+	./$(OUT_DIR)/json
 
 copy-mtl:
 	cp ../../zjsonm.c zjsonm.c
+	cp ../../zam.c zam.c
+	cp ../../zam24.s zam24.s
+	cp ../../zutm.c zutm.c
+	cp ../../zutm31.c zutm31.c
+	cp ../../zlogger_metal.c zlogger_metal.c
 
-build-out/zjsonm.s: zjsonm.c
+$(OUT_DIR)/zjsonm.s: zjsonm.c
 	@echo 'Building $(OUT_DIR)/zjsonm.s'
 	$(CC) $(MTL_FLAGS64) -qlist=$*.mtl.lst $(MTL_HEADERS) -o $@ $^
 
-build-out/zjsonm.o: build-out/zjsonm.s
+$(OUT_DIR)/zjsonm.o: $(OUT_DIR)/zjsonm.s
 	@echo 'Building $(OUT_DIR)/zjsonm.o'
 	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
 
-build-out/json.o: json.cpp
+$(OUT_DIR)/zam.s: zam.c
+	@echo 'Building $(OUT_DIR)/zam.s'
+	$(CC) $(MTL_FLAGS) -qlist=$*.mtl.lst $(MTL_HEADERS) -o $@ $^
+
+$(OUT_DIR)/zam.o: $(OUT_DIR)/zam.s
+	@echo 'Building $(OUT_DIR)/zam.o'
+	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
+
+$(OUT_DIR)/zam24.s: zam24.s
+	@echo 'Copying $(OUT_DIR)/zam24.s'
+	cp ../../zam24.s $(OUT_DIR)/zam24.s
+
+$(OUT_DIR)/zam24.o: $(OUT_DIR)/zam24.s
+	@echo 'Building $(OUT_DIR)/zam24.o'
+	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
+
+$(OUT_DIR)/zutm.s: zutm.c
+	@echo 'Building $(OUT_DIR)/zutm.s'
+	$(CC) $(MTL_FLAGS64) -qlist=$*.mtl.lst $(MTL_HEADERS) -o $@ $^
+
+$(OUT_DIR)/zutm.o: $(OUT_DIR)/zutm.s
+	@echo 'Building $(OUT_DIR)/zutm.o'
+	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
+
+$(OUT_DIR)/zutm31.s: zutm31.c
+	@echo 'Building $(OUT_DIR)/zutm31.s'
+	$(CC) $(MTL_FLAGS) -qlist=$*.mtl.lst $(MTL_HEADERS) -o $@ $^
+
+$(OUT_DIR)/zutm31.o: $(OUT_DIR)/zutm31.s
+	@echo 'Building $(OUT_DIR)/zutm31.o'
+	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
+
+$(OUT_DIR)/zlogger_metal.s: zlogger_metal.c
+	@echo 'Building $(OUT_DIR)/zlogger_metal.s'
+	$(CC) $(MTL_FLAGS64) -qlist=$*.mtl.lst $(MTL_HEADERS) -o $@ $^
+
+$(OUT_DIR)/zlogger_metal.o: $(OUT_DIR)/zlogger_metal.s
+	@echo 'Building $(OUT_DIR)/zlogger_metal.o'
+	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
+
+$(OUT_DIR)/json.o: json.cpp
 	@echo 'Building $(OUT_DIR)/json.o'
 	$(CXX) $(CPP_FLAGS) -c $^ -o $@
 
-build-out/json: build-out/json.o build-out/zjsonm.o
+$(OUT_DIR)/json: $(OUT_DIR)/zjsonm.o $(OUT_DIR)/zam.o $(OUT_DIR)/zam24.o $(OUT_DIR)/zutm.o $(OUT_DIR)/zutm31.o $(OUT_DIR)/zlogger_metal.o $(OUT_DIR)/json.o
 	@echo 'Building json'
 	$(CXX) $(CPP_BND_FLAGS) -o $@ $^ > $*.bind.lst
 

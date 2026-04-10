@@ -13,38 +13,38 @@ OUT_DIR=build-out
 
 .INCLUDE: ../examples_toolchain.mk
 
-all: copy-mtl build-out run
+all: copy-mtl $(OUT_DIR) run
 
-run: build-out/demometal
-	@echo 'Running ./build-out/demometal'
-	./build-out/demometal
+run: $(OUT_DIR)/demometal
+	@echo 'Running ./$(OUT_DIR)/demometal'
+	./$(OUT_DIR)/demometal
 
-build-out:
-	@echo 'Creating build-out'
-	mkdir -p build-out
+$(OUT_DIR):
+	@echo 'Creating $(OUT_DIR)'
+	mkdir -p $(OUT_DIR)
 
 copy-mtl:
 	cp ../../zutm.c zutm.c
 	cp ../../ztime.h ztime.h
 
-build-out/zutm.s: zutm.c
+$(OUT_DIR)/zutm.s: zutm.c
 	@echo 'Building $(OUT_DIR)/zutm.s'
 	$(CC) $(MTL_FLAGS64) -qlist=$*.mtl.lst $(MTL_HEADERS) -o $@ $^
 
-build-out/zutm.o: build-out/zutm.s
+$(OUT_DIR)/zutm.o: $(OUT_DIR)/zutm.s
 	@echo 'Building $(OUT_DIR)/zutm.o'
 	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
 
-build-out/demometal.s: demometal.c
-	@echo 'Building build-out/demometal.s'
+$(OUT_DIR)/demometal.s: demometal.c
+	@echo 'Building $(OUT_DIR)/demometal.s'
 	$(CC) $(MTL_FLAGS64) -qlist=$*.mtl.lst $(MTL_HEADERS) -o $@ $^
 
-build-out/demometal.o: build-out/demometal.s
-	@echo 'Building build-out/demometal.s'
+$(OUT_DIR)/demometal.o: $(OUT_DIR)/demometal.s
+	@echo 'Building $(OUT_DIR)/demometal.s'
 	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
 
-build-out/demometal: build-out/demometal.o
-	@echo 'Building build-out/demometal'
+$(OUT_DIR)/demometal: $(OUT_DIR)/demometal.o
+	@echo 'Building $(OUT_DIR)/demometal'
 	$(CXX) $(CPP_BND_FLAGS) -Wl,-eMAIN -o $@ $^
 
 clean:
@@ -55,4 +55,4 @@ clean:
 	rm -f *.x
 	rm -f *.lst
 	rm -f CEEDUMP.*
-	rm -rf build-out
+	rm -rf $(OUT_DIR)
