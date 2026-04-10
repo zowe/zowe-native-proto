@@ -43,6 +43,8 @@ ZJSON_SCHEMA(IssueConsoleCmdRequest,
     FIELD_OPTIONAL(consoleName, STRING)
 );
 
+struct GetInfoRequest {};
+
 struct CreateDatasetRequest {};
 ZJSON_SCHEMA(CreateDatasetRequest,
     FIELD_REQUIRED(dsname, STRING),

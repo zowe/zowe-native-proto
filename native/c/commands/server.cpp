@@ -21,6 +21,7 @@
 #include <string>
 #include <thread>
 #include <unistd.h>
+#include "core.hpp"
 #include "server.hpp"
 #include "../zjson.hpp"
 #include "../zusf.hpp"
@@ -115,6 +116,7 @@ void ZServer::print_ready_message()
     checksums_obj.add_to_object(pair.first, zjson::Value(pair.second));
   }
   data.add_to_object("checksums", checksums.empty() ? zjson::Value() : checksums_obj);
+  data.add_to_object("version", zjson::Value(core::get_version()));
 
   StatusMessage status_msg{
       .status = "ready",
