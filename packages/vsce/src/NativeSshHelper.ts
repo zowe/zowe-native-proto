@@ -16,7 +16,7 @@ import * as vscode from "vscode";
 import { getVsceConfig } from "./Utilities";
 
 const sdkPackageJson = require("../../sdk/package.json");
-const RUSSH_VERSION: string = sdkPackageJson.optionalDependencies?.russh ?? "latest";
+const RUSSH_VERSION: string = sdkPackageJson.optionalDependencies!.russh;
 
 const NATIVE_TRIPLES: Record<string, Record<string, string>> = {
     win32: {
