@@ -101,20 +101,9 @@ void zowex_ds_tests()
                   Expect(response).ToContain("view");
                   Expect(response).ToContain("write"); });
 
-             bool is_pdsman_active = false;
              describe("compress",
                       [&]() -> void
                       {
-                        beforeAll(
-                            [&]() -> void
-                            {
-                              std::string response;
-                              int rc = execute_command_with_output(zowex_command + " job ls --owner \"*\" --prefix \"PDSMAN*\" --status ACTIVE", response);
-                              if (rc == 0)
-                              {
-                                is_pdsman_active = response.find("PDSMAN") != std::string::npos;
-                              }
-                            });
                         beforeEach(
                             [&]() -> void
                             {
@@ -157,10 +146,10 @@ void zowex_ds_tests()
                              Expect(response).ToContain("Error: data set '" + ds + "' is not a PDS");
                            });
 
-                        // TODO: Unskip test once incompatibility with PDSMAN is resolved
+                        // NOTE: This test may fail if we don't save/clear/restore registers for PDSMAN/IEBCOPY
                         // See https://github.com/zowe/zowe-native-proto/issues/790
-                        itif("should compress a data set", [&]() -> void
-                             {
+                        it("should compress a data set", [&]() -> void
+                           {
                              std::string ds = _ds.back();
                              _create_ds(ds, "--dsorg PO --dirblk 2");
 
@@ -169,7 +158,7 @@ void zowex_ds_tests()
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain("Data set");
-                             Expect(response).ToContain("compressed"); }, !is_pdsman_active);
+                             Expect(response).ToContain("compressed"); });
 
                         // TODO: https://github.com/zowe/zowe-native-proto/issues/666
                         xit("should error when the data set is VSAM", []() -> void {});
