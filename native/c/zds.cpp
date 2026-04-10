@@ -1747,11 +1747,11 @@ int zds_create_dsn_loadlib(ZDS *zds, const std::string &dsn, std::string &respon
 
 int zds_delete_member(ZDS *zds, std::string dsn, std::string member)
 {
-  std::vector<std::string> dds;
-  dds.reserve(3);
-  dds.push_back("alloc dd(pds) da('" + dsn + "') shr");
-  dds.push_back("alloc dd(sysprint) lrecl(80) recfm(f,b) blksize(80)");
-  dds.push_back("alloc dd(sysin) lrecl(80) recfm(f,b) blksize(80)");
+  std::vector<std::string> dds = {
+    "alloc dd(pds) da('" + dsn + "') shr",
+    "alloc dd(sysprint) lrecl(80) recfm(f,b) blksize(80)",
+    "alloc dd(sysin) lrecl(80) recfm(f,b) blksize(80)"
+  };
 
   int rc = zut_loop_dynalloc(zds->diag, dds);
   if (0 != rc)
