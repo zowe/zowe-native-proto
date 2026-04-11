@@ -1195,6 +1195,8 @@ public:
 
   void load_plugins();
 
+  std::string get_plugin_directory() const;
+
   const std::vector<LoadedPlugin> &get_loaded_plugins() const
   {
     return m_plugins;
@@ -1268,9 +1270,8 @@ inline bool PluginManager::is_display_name_in_use(const std::string &name) const
     return false;
   }
 
-  return std::any_of(m_plugins.begin(), m_plugins.end(), [&name](const auto &plugin) {
-    return plugin.metadata.display_name == name;
-  });
+  return std::any_of(m_plugins.begin(), m_plugins.end(), [&name](const auto &plugin)
+                     { return plugin.metadata.display_name == name; });
 }
 
 inline void PluginManager::discard_command_providers_from(std::size_t start_index)

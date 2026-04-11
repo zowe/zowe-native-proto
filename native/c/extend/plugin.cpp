@@ -207,16 +207,27 @@ private:
   std::vector<std::unique_ptr<CommandRecord>> m_records;
 };
 
+std::string PluginManager::get_plugin_directory() const
+{
+  const char *plugins_dir = std::getenv("ZOWEX_PLUGINS_DIR");
+
+  if (plugins_dir)
+  {
+    return std::string(plugins_dir);
+  }
+  return "./plugins";
+}
+
 void PluginManager::load_plugins()
 {
-  auto *plugins_dir = opendir("./plugins");
+  auto *plugins_dir = opendir(get_plugin_directory().c_str());
   if (plugins_dir != nullptr)
   {
     struct dirent *entry;
     void (*register_plugin)(plugin::PluginManager &);
     while ((entry = readdir(plugins_dir)) != nullptr)
     {
-      std::string plugin_path = std::string("./plugins/") + entry->d_name;
+      std::string plugin_path = std::string(get_plugin_directory() + "/") + entry->d_name;
       void *plugin = dlopen(plugin_path.c_str(), RTLD_LAZY);
       if (!plugin)
       {
