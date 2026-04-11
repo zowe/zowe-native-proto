@@ -10,7 +10,7 @@
  */
 
 #include "time_plugin.h"
-#include "../../c/ztso.hpp"
+#include "ztso.hpp"
 #include <iostream>
 #include <string>
 
@@ -19,7 +19,7 @@ int time_command(plugin::InvocationContext &context)
   std::string response;
   // Execute the TSO time command using the helper from ztso.cpp
   int rc = ztso_issue("time", response);
-  
+
   if (rc == 0)
   {
     context.println("Time command executed successfully:");
@@ -29,7 +29,8 @@ int time_command(plugin::InvocationContext &context)
   {
     std::string err = "Error executing time command. Return code: " + std::to_string(rc);
     context.println(err.c_str());
-    if (!response.empty()) {
+    if (!response.empty())
+    {
       context.println(response.c_str());
     }
   }
@@ -39,11 +40,11 @@ int time_command(plugin::InvocationContext &context)
 void BasicCommandRegistry::register_commands(CommandProviderImpl::CommandRegistrationContext &ctx)
 {
   auto root = ctx.get_root_command();
-  
+
   auto time_cmd = ctx.create_command("time", "Executes the TSO time command");
   ctx.add_alias(time_cmd, "t");
   ctx.set_handler(time_cmd, time_command);
-  
+
   ctx.add_subcommand(root, time_cmd);
 }
 
