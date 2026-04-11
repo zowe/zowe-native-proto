@@ -24,10 +24,6 @@ all: $(EXECUTABLES)
 %.o: %.s
 	$(AS) -a=$*.s.lst -o $@ $<
 
-# Clean target
-clean:
-	rm -f $(OBJECTS) $(EXECUTABLES)
-
 # Run target (example for testauth)
 run-testaut1: testaut1
 	./testaut1
@@ -40,4 +36,7 @@ run-testasm1: testasm1
 run-testasm4: testasm4
 	./testasm4
 
-.PHONY: all clean run-testaut1 run-testasm1 run-testasm4
+# Clean target
+clean:
+	rm -f $(OBJECTS) $(EXECUTABLES)
+

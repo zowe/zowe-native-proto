@@ -13,8 +13,6 @@ OUT_DIR=build-out
 
 .INCLUDE: ../examples_toolchain.mk
 
-BIND=ld
-
 all: $(OUT_DIR) run
 
 run: $(OUT_DIR)/testrcvy
