@@ -19,19 +19,22 @@ int time_command(plugin::InvocationContext &context)
   std::string response;
   // Execute the TSO time command using the helper from ztso.cpp
   int rc = ztso_issue("time", response);
-
   if (rc == 0)
   {
-    context.println("Time command executed successfully:");
-    context.println(response.c_str());
+    context.output_stream() << "Time command executed successfully:" << std::endl;
+    context.output_stream() << response.c_str() << std::endl;
+    // context.println("Time command executed successfully:");
+    // context.println(response.c_str());
   }
   else
   {
     std::string err = "Error executing time command. Return code: " + std::to_string(rc);
-    context.println(err.c_str());
+    context.error_stream() << err << std::endl;
+    // context.println(err.c_str());
     if (!response.empty())
     {
-      context.println(response.c_str());
+      // context.println(response.c_str());
+      context.output_stream() << response.c_str() << std::endl;
     }
   }
   return rc;
@@ -42,7 +45,7 @@ void BasicCommandRegistry::register_commands(CommandProviderImpl::CommandRegistr
   auto root = ctx.get_root_command();
 
   auto time_cmd = ctx.create_command("time", "Executes the TSO time command");
-  ctx.add_alias(time_cmd, "t");
+  // ctx.add_alias(time_cmd, "t");
   ctx.set_handler(time_cmd, time_command);
 
   ctx.add_subcommand(root, time_cmd);
