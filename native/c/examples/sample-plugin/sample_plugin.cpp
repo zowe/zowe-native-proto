@@ -24,6 +24,9 @@ int hello_command(plugin::InvocationContext &context)
   {
     context.println(str.c_str());
   }
+  auto result = ast::obj();
+  result->set("message", ast::str(str));
+  context.set_object(result);
   return 0;
 }
 
