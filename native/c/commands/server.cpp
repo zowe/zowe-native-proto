@@ -30,6 +30,7 @@
 #include "../server/dispatcher.hpp"
 #include "../server/logger.hpp"
 #include "../server/worker.hpp"
+#include "../server/plugin_bridge.hpp"
 
 using namespace parser;
 
@@ -162,6 +163,13 @@ void ZServer::run(const server::Options &opts)
 
   LOG_DEBUG("Registering command handlers");
   register_all_commands(dispatcher);
+
+  // Register plugin commands to middleware
+  if (auto *pm = core::get_plugin_manager())
+  {
+    LOG_DEBUG("Registering plugin commands to middleware");
+    plugin_bridge::register_plugin_commands(*pm, dispatcher);
+  }
 
   worker_pool.reset(new WorkerPool(options.num_workers, std::chrono::seconds(options.request_timeout)));
 

@@ -259,6 +259,7 @@ void PluginManager::load_plugins()
 
 void PluginManager::unload_plugins()
 {
+  m_command_providers.clear();
   for (auto it = m_plugins.begin(); it != m_plugins.end(); ++it)
   {
     if (it->handle)
