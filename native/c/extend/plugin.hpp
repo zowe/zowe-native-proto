@@ -826,36 +826,30 @@ public:
 
   void print(const char *s) const
   {
-    if (m_output_stream && s)
+    if (s)
     {
-      m_output_stream->write(s, std::strlen(s));
+      output_stream().write(s, std::strlen(s));
     }
   }
 
   void println(const char *s) const
   {
     print(s);
-    if (m_output_stream)
-    {
-      m_output_stream->put('\n');
-    }
+    output_stream().put('\n');
   }
 
   void err(const char *e) const
   {
-    if (m_error_stream && e)
+    if (e)
     {
-      m_error_stream->write(e, std::strlen(e));
+      error_stream().write(e, std::strlen(e));
     }
   }
 
   void errln(const char *e) const
   {
     err(e);
-    if (m_error_stream)
-    {
-      m_error_stream->put('\n');
-    }
+    error_stream().put('\n');
   }
 
   void to_err(const std::stringstream &sstr)
