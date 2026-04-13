@@ -6,6 +6,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Recent Changes
 
+- Added support for invoking the `getInfo` server command, which allows the client SDK to get version and build information from the server. [#922](https://github.com/zowe/zowe-native-proto/pull/922)
 - Added warning to `AbstractConfigManager.validateDeployPath` method when server path ends in `/c/build-out`, preventing developers from accidentally overwriting a dev deployment. [#912](https://github.com/zowe/zowe-native-proto/pull/912)
 
 ## `0.4.0`
