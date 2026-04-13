@@ -19,14 +19,14 @@ Access the latest version of the CLI plug-in from the GitHub Releases page.
 Install the CLI plug-in from the tarball:
 
 ```
-zowe plugins install zowe-native-proto-cli-*.tgz
+zowe plugins install zowex-cli-*.tgz
 ```
 
 Once complete, the Zowe CLI plug-in is installed and ready to use.
 
 ## Usage
 
-Run the `zowe plugins show-first-steps zowe-native-proto-cli` command to see the first steps for using the plug-in.
+Run the `zowe plugins show-first-steps zowex-cli` command to see the first steps for using the plug-in.
 
 ## Building from source
 
@@ -38,7 +38,7 @@ The plug-in is created and saved in the `dist` folder.
 Install the plug-in by running the following Zowe CLI command:
 
 ```
-zowe plugins install dist/zowe-native-proto-cli-*.tgz
+zowe plugins install dist/zowex-cli-*.tgz
 ```
 
 Zowe Native Protocol plug-in commands are accessible through the `zowe zssh` command group.

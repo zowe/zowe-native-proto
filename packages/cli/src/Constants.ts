@@ -10,7 +10,7 @@
  */
 
 import type { ICommandOptionDefinition } from "@zowe/imperative";
-import { ZSshClient } from "zowe-native-proto-sdk";
+import { ZSshClient } from "zowex-sdk";
 
 // biome-ignore lint/complexity/noStaticOnlyClass: Constants class has static properties
 export class Constants {

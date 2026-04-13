@@ -19,7 +19,7 @@ import {
     MESSAGE_TYPE,
     type PrivateKeyWarningOptions,
     ZSshClient,
-} from "zowe-native-proto-sdk";
+} from "zowex-sdk";
 import { ConfigUtils, VscePromptApi } from "../src/ConfigUtils";
 import { getVsceConfig } from "../src/Utilities";
 

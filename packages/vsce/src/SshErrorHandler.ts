@@ -12,7 +12,7 @@
 import { ImperativeError } from "@zowe/imperative";
 import { type ZoweExplorerApiType, ZoweVsCodeExtension } from "@zowe/zowe-explorer-api";
 import * as vscode from "vscode";
-import { RpcErrorCode, SshErrors } from "zowe-native-proto-sdk";
+import { RpcErrorCode, SshErrors } from "zowex-sdk";
 
 /**
  * Enhanced error handling utility for SSH operations using Zowe Explorer's ErrorCorrelator

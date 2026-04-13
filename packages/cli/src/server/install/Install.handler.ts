@@ -16,7 +16,7 @@ import {
     type ITaskWithStatus,
     TaskStage,
 } from "@zowe/imperative";
-import { ZSshClient, ZSshUtils } from "zowe-native-proto-sdk";
+import { ZSshClient, ZSshUtils } from "zowex-sdk";
 import { translateCliError } from "../../CliErrorUtils";
 import { SshBaseHandler } from "../../SshBaseHandler";
 

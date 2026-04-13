@@ -14,12 +14,12 @@ import * as path from "node:path";
 import type { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import { Gui, imperative, ZoweExplorerApiType, ZoweVsCodeExtension } from "@zowe/zowe-explorer-api";
 import * as vscode from "vscode";
-import { ZSshUtils } from "zowe-native-proto-sdk";
+import { ZSshUtils } from "zowex-sdk";
 import { ConfigUtils, VscePromptApi } from "./ConfigUtils";
 import { SshClientCache } from "./SshClientCache";
 import { SshErrorHandler } from "./SshErrorHandler";
 
-const EXTENSION_NAME = "zowe-native-proto-vsce";
+const EXTENSION_NAME = "zowex-vsce";
 
 export function deployWithProgress(session: SshSession, serverPath: string): Thenable<boolean> {
     return Gui.withProgress(
@@ -112,7 +112,7 @@ export function registerCommands(context: vscode.ExtensionContext): vscode.Dispo
             imperative.Logger.getAppLogger().trace("Running showLog command");
             await vscode.commands.executeCommand(
                 "vscode.open",
-                vscode.Uri.file(path.join(context.logUri.fsPath, "zowe-native-proto.log")),
+                vscode.Uri.file(path.join(context.logUri.fsPath, "zowex.log")),
             );
             await vscode.commands.executeCommand("workbench.action.files.setActiveEditorReadonlyInSession");
         }),

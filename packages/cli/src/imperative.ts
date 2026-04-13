@@ -15,7 +15,7 @@ const config: IImperativeConfig = {
     commandModuleGlobs: ["*/*.definition!(.d).*s"],
     rootCommandDescription: "Zowe Native Proto Plug-in for Zowe CLI",
     productDisplayName: "z/OS SSH Plug-in",
-    name: "zowe-native-proto",
+    name: "zowex",
     pluginAliases: ["zssh"],
     pluginSummary: "z/OS Files and jobs via SSH",
     pluginFirstSteps: `
