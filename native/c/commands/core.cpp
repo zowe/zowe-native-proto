@@ -206,7 +206,7 @@ int execute_command(int argc, char *argv[])
 
 Command &setup_root_command(char *argv[])
 {
-  g_arg_parser = std::make_shared<ArgumentParser>(argv[0], "Zowe Native CLI");
+  g_arg_parser = std::make_shared<ArgumentParser>(argv[0], "Zowe Remote SSH CLI");
   auto &root_command = g_arg_parser->get_root_command();
 
   root_command.add_keyword_arg("interactive",
