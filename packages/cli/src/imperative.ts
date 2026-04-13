@@ -13,7 +13,7 @@ import type { IImperativeConfig } from "@zowe/imperative";
 
 const config: IImperativeConfig = {
     commandModuleGlobs: ["*/*.definition!(.d).*s"],
-    rootCommandDescription: "Zowe Native Proto Plug-in for Zowe CLI",
+    rootCommandDescription: "Zowe Remote SSH Plug-in for Zowe CLI",
     productDisplayName: "z/OS SSH Plug-in",
     name: "zowex",
     pluginAliases: ["zssh"],
@@ -21,7 +21,7 @@ const config: IImperativeConfig = {
     pluginFirstSteps: `
 If you do not have a Zowe team configuration, run the \`zowe config init\` command to create one.
 Edit the team configuration file to add a SSH profile, including the hostname, port, and credentials. We recommend using a private key for authentication.
-Run the \`zowe zssh server install\` command to install the Zowe Native Protocol server.
+Run the \`zowe zssh server install\` command to install the Zowe Remote SSH server.
     `,
 };
 

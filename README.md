@@ -1,4 +1,4 @@
-# Zowe Native Protocol
+# Zowe Remote SSH
 
 An open-source, native protocol for z/OS mainframe operations via SSH with minimal server-side configuration.
 

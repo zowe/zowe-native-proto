@@ -1,6 +1,6 @@
-# Zowe Native Protocol plug-in for Zowe CLI
+# Zowe Remote SSH plug-in for Zowe CLI
 
-The Zowe Native Protocol plug-in for Zowe CLI interacts with the Zowe Native Protocol, enabling developers to work with mainframe resources from their command line.
+The Zowe Remote SSH plug-in for Zowe CLI enables developers to work with mainframe resources over SSH from their command line.
 
 ## Features
 
@@ -41,7 +41,7 @@ Install the plug-in by running the following Zowe CLI command:
 zowe plugins install dist/zowex-cli-*.tgz
 ```
 
-Zowe Native Protocol plug-in commands are accessible through the `zowe zssh` command group.
+Zowe Remote SSH plug-in commands are accessible through the `zowe zssh` command group.
 
 ```
 zowe zssh --help
