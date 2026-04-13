@@ -972,6 +972,89 @@ static int handle_truncation_result(ZDS *zds, int write_rc, const TruncationTrac
 }
 
 /**
+ * Initialize IconvGuard for encoding operations.
+ * Consolidates IconvGuard setup and validation logic.
+ * Note: IconvGuard must be created at the call site due to deleted assignment operator.
+ * 
+ * @param setup Encoding setup context
+ * @param diag Diagnostic context for error messages
+ * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on iconv setup failure
+ */
+static int validate_iconv_setup(const EncodingSetup &setup, const IconvGuard &iconv_guard, ZDIAG &diag)
+{
+  if (!setup.has_encoding) {
+    return RTNCD_SUCCESS;
+  }
+  
+  if (!iconv_guard.is_valid()) {
+    diag.e_msg_len = sprintf(diag.e_msg, "Cannot open converter from %s to %s", 
+                            setup.source_encoding.c_str(), setup.codepage.c_str());
+    return RTNCD_FAILURE;
+  }
+  return RTNCD_SUCCESS;
+}
+
+/**
+ * Encode a chunk of data using the provided encoding setup.
+ * Consolidates chunk encoding logic used in streaming functions.
+ * 
+ * @param chunk Pointer to chunk data (modified to point to encoded data)
+ * @param chunk_len Length of chunk (modified to encoded length)
+ * @param temp_encoded Buffer for encoded data (output parameter)
+ * @param setup Encoding setup context
+ * @param iconv_guard IconvGuard for encoding conversion
+ * @param diag Diagnostic context for error messages
+ * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on encoding failure
+ */
+static int encode_chunk_if_needed(const char *&chunk, int &chunk_len, std::vector<char> &temp_encoded,
+                                 const EncodingSetup &setup, IconvGuard &iconv_guard, ZDIAG &diag)
+{
+  if (!setup.has_encoding) {
+    return RTNCD_SUCCESS;
+  }
+  
+  try {
+    temp_encoded = zut_encode(chunk, chunk_len, iconv_guard.get(), diag);
+    chunk = &temp_encoded[0];
+    chunk_len = temp_encoded.size();
+    return RTNCD_SUCCESS;
+  } catch (std::exception &e) {
+    diag.e_msg_len = sprintf(diag.e_msg, "Failed to convert input data from %s to %s", 
+                            setup.source_encoding.c_str(), setup.codepage.c_str());
+    return RTNCD_FAILURE;
+  }
+}
+
+/**
+ * Flush encoding state and handle flush buffer.
+ * Consolidates encoding flush logic used across write functions.
+ * 
+ * @param setup Encoding setup context
+ * @param iconv_guard IconvGuard for encoding conversion
+ * @param diag Diagnostic context for error messages
+ * @param flush_buffer Output buffer for flush bytes
+ * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on flush failure
+ */
+static int flush_encoding_state(const EncodingSetup &setup, IconvGuard &iconv_guard, ZDIAG &diag, std::vector<char> &flush_buffer)
+{
+  if (!setup.has_encoding || !iconv_guard.is_valid()) {
+    return RTNCD_SUCCESS;
+  }
+  
+  try {
+    flush_buffer = zut_iconv_flush(iconv_guard.get(), diag);
+    if (flush_buffer.empty() && diag.e_msg_len > 0) {
+      return RTNCD_FAILURE;
+    }
+    return RTNCD_SUCCESS;
+  } catch (std::exception &e) {
+    diag.e_msg_len = sprintf(diag.e_msg, "Failed to flush encoding state");
+    return RTNCD_FAILURE;
+  }
+}
+
+
+/**
  * Encode a single line using the provided encoding setup.
  * Consolidates line encoding logic used in BPAM write functions.
  * 
@@ -1266,11 +1349,10 @@ static int zds_write_member_bpam(ZDS *zds, const std::string &dsn, std::string &
 
   // Open iconv descriptor once for all lines (for stateful encodings like IBM-939)
   IconvGuard iconv_guard(encoding.has_encoding ? encoding.codepage.c_str() : nullptr, encoding.has_encoding ? encoding.source_encoding.c_str() : nullptr);
-  if (encoding.has_encoding && !iconv_guard.is_valid())
-  {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Cannot open converter from %s to %s", encoding.source_encoding.c_str(), encoding.codepage.c_str());
+  rc = validate_iconv_setup(encoding, iconv_guard, zds->diag);
+  if (rc != RTNCD_SUCCESS) {
     zds_close_output_bpam(zds, ioc);
-    return RTNCD_FAILURE;
+    return rc;
   }
 
   // Collect all lines first, then write them (so we can append flush bytes to the last line)
@@ -1389,35 +1471,23 @@ static int zds_write_member_bpam(ZDS *zds, const std::string &dsn, std::string &
   }
 
   // Flush encoding state and append to last line if needed
-  if (encoding.has_encoding && iconv_guard.is_valid())
-  {
-    try
-    {
-      std::vector<char> flush_buffer = zut_iconv_flush(iconv_guard.get(), zds->diag);
-      if (flush_buffer.empty() && zds->diag.e_msg_len > 0)
-      {
-        zds_close_output_bpam(zds, ioc);
-        return RTNCD_FAILURE;
-      }
+  std::vector<char> flush_buffer;
+  rc = flush_encoding_state(encoding, iconv_guard, zds->diag, flush_buffer);
+  if (rc != RTNCD_SUCCESS) {
+    zds_close_output_bpam(zds, ioc);
+    return rc;
+  }
 
-      // Append flush bytes to the last non-empty line
-      if (!flush_buffer.empty() && !lines_to_write.empty())
-      {
-        for (auto it = lines_to_write.rbegin(); it != lines_to_write.rend(); ++it)
-        {
-          if (!it->first.empty())
-          {
-            it->first.append(flush_buffer.begin(), flush_buffer.end());
-            break;
-          }
-        }
-      }
-    }
-    catch (std::exception &e)
+  // Append flush bytes to the last non-empty line
+  if (!flush_buffer.empty() && !lines_to_write.empty())
+  {
+    for (auto it = lines_to_write.rbegin(); it != lines_to_write.rend(); ++it)
     {
-      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to flush encoding state");
-      zds_close_output_bpam(zds, ioc);
-      return RTNCD_FAILURE;
+      if (!it->first.empty())
+      {
+        it->first.append(flush_buffer.begin(), flush_buffer.end());
+        break;
+      }
     }
   }
 
@@ -1491,6 +1561,59 @@ int zds_validate_etag(ZDS *zds, const std::string &dsn, bool has_encoding)
   return RTNCD_SUCCESS;
 }
 
+/**
+ * Validate dataset existence.
+ * Consolidates dataset existence validation logic used in write entry points.
+ * 
+ * @param dsn Dataset name to validate
+ * @param diag Diagnostic context for error messages
+ * @return RTNCD_SUCCESS on success, RTNCD_FAILURE if dataset doesn't exist
+ */
+static int validate_dataset_exists(const std::string &dsn, ZDIAG &diag)
+{
+  if (!zds_dataset_exists(dsn)) {
+    diag.e_msg_len = sprintf(diag.e_msg, "Could not access '%s'", dsn.c_str());
+    return RTNCD_FAILURE;
+  }
+  return RTNCD_SUCCESS;
+}
+
+/**
+ * Validate RECFM support for writing.
+ * Consolidates RECFM validation logic used in write entry points.
+ * 
+ * @param attrs DSCB attributes containing RECFM
+ * @param is_member Whether this is a member write (affects standard format support)
+ * @param diag Diagnostic context for error messages
+ * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on unsupported RECFM
+ */
+static int validate_write_recfm(const DscbAttributes &attrs, bool is_member, ZDIAG &diag)
+{
+  if (zds_write_recfm_unsupported(attrs.recfm, !is_member)) {
+    diag.e_msg_len = sprintf(diag.e_msg, "Writing to RECFM=%s data sets is not supported", attrs.recfm.c_str());
+    diag.detail_rc = ZDS_RTNCD_UNSUPPORTED_RECFM;
+    return RTNCD_FAILURE;
+  }
+  return RTNCD_SUCCESS;
+}
+
+/**
+ * Validate etag if present.
+ * Consolidates etag validation logic used in write entry points.
+ * 
+ * @param zds ZDS context
+ * @param dsn Dataset name
+ * @param has_encoding Whether encoding is enabled
+ * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on validation failure
+ */
+static int validate_etag_if_present(ZDS *zds, const std::string &dsn, bool has_encoding)
+{
+  if (std::strlen(zds->etag) > 0 && 0 != zds_validate_etag(zds, dsn, has_encoding)) {
+    return RTNCD_FAILURE;
+  }
+  return RTNCD_SUCCESS;
+}
+
 int zds_write(const ZDSWriteOpts &opts, std::string &data)
 {
   const int vrc = zds_validate_write_opts(opts, "zds_write");
@@ -1513,30 +1636,25 @@ int zds_write(const ZDSWriteOpts &opts, std::string &data)
   // DSN writes: full validation and logic from zds_write_to_dsn
   const std::string &dsn = opts.dsname;
 
-  if (!zds_dataset_exists(dsn))
-  {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not access '%s'", dsn.c_str());
-    return RTNCD_FAILURE;
+  int rc = validate_dataset_exists(dsn, zds->diag);
+  if (rc != RTNCD_SUCCESS) {
+    return rc;
   }
 
   const DscbAttributes attrs = zds_get_dscb_attributes(dsn);
   const auto is_member = zds_has_member(dsn);
 
-  if (zds_write_recfm_unsupported(attrs.recfm, !is_member))
-  {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Writing to RECFM=%s data sets is not supported", attrs.recfm.c_str());
-    zds->diag.detail_rc = ZDS_RTNCD_UNSUPPORTED_RECFM;
-    return RTNCD_FAILURE;
+  rc = validate_write_recfm(attrs, is_member, zds->diag);
+  if (rc != RTNCD_SUCCESS) {
+    return rc;
   }
 
   const auto has_encoding = zds_use_codepage(zds);
 
-  if (std::strlen(zds->etag) > 0 && 0 != zds_validate_etag(zds, dsn, has_encoding))
-  {
-    return RTNCD_FAILURE;
+  rc = validate_etag_if_present(zds, dsn, has_encoding);
+  if (rc != RTNCD_SUCCESS) {
+    return rc;
   }
-
-  int rc = 0;
 
   // Use BPAM path for PDS/PDSE members (updates ISPF stats), sequential for others
   if (is_member)
@@ -1600,30 +1718,25 @@ int zds_write_streamed(const ZDSWriteOpts &opts, const std::string &pipe, size_t
   // DSN writes: full validation and logic from zds_write_to_dsn_streamed
   const std::string &dsn = opts.dsname;
 
-  if (!zds_dataset_exists(dsn))
-  {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not access '%s'", dsn.c_str());
-    return RTNCD_FAILURE;
+  int rc = validate_dataset_exists(dsn, zds->diag);
+  if (rc != RTNCD_SUCCESS) {
+    return rc;
   }
 
   const DscbAttributes attrs = zds_get_dscb_attributes(dsn);
   const auto is_member = zds_has_member(dsn);
 
-  if (zds_write_recfm_unsupported(attrs.recfm, !is_member))
-  {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Writing to RECFM=%s data sets is not supported", attrs.recfm.c_str());
-    zds->diag.detail_rc = ZDS_RTNCD_UNSUPPORTED_RECFM;
-    return RTNCD_FAILURE;
+  rc = validate_write_recfm(attrs, is_member, zds->diag);
+  if (rc != RTNCD_SUCCESS) {
+    return rc;
   }
 
   const auto has_encoding = zds_use_codepage(zds);
 
-  if (std::strlen(zds->etag) > 0 && 0 != zds_validate_etag(zds, dsn, has_encoding))
-  {
-    return RTNCD_FAILURE;
+  rc = validate_etag_if_present(zds, dsn, has_encoding);
+  if (rc != RTNCD_SUCCESS) {
+    return rc;
   }
-
-  int rc = 0;
 
   // Use BPAM path for PDS/PDSE members, sequential for others
   if (is_member)
@@ -3611,10 +3724,9 @@ static int zds_write_sequential_streamed(ZDS *zds, const std::string &dsn, const
 
     // Open iconv descriptor once for all chunks (for stateful encodings like IBM-939)
     IconvGuard iconv_guard(encoding.has_encoding ? encoding.codepage.c_str() : nullptr, encoding.has_encoding ? encoding.source_encoding.c_str() : nullptr);
-    if (encoding.has_encoding && !iconv_guard.is_valid())
-    {
-      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Cannot open converter from %s to %s", encoding.source_encoding.c_str(), encoding.codepage.c_str());
-      return RTNCD_FAILURE;
+    int rc = validate_iconv_setup(encoding, iconv_guard, zds->diag);
+    if (rc != RTNCD_SUCCESS) {
+      return rc;
     }
 
     // Write chunks directly - the C runtime handles ASA and record boundaries in text mode
@@ -3625,19 +3737,9 @@ static int zds_write_sequential_streamed(ZDS *zds, const std::string &dsn, const
       int chunk_len = temp_encoded.size();
       *content_len += chunk_len;
 
-      if (encoding.has_encoding)
-      {
-        try
-        {
-          temp_encoded = zut_encode(chunk, chunk_len, iconv_guard.get(), zds->diag);
-          chunk = &temp_encoded[0];
-          chunk_len = temp_encoded.size();
-        }
-        catch (std::exception &e)
-        {
-          zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from %s to %s", encoding.source_encoding.c_str(), encoding.codepage.c_str());
-          return RTNCD_FAILURE;
-        }
+      rc = encode_chunk_if_needed(chunk, chunk_len, temp_encoded, encoding, iconv_guard, zds->diag);
+      if (rc != RTNCD_SUCCESS) {
+        return rc;
       }
 
       // Check for truncated lines in text mode (post-encoding to handle multi-byte encodings correctly)
@@ -3696,30 +3798,19 @@ static int zds_write_sequential_streamed(ZDS *zds, const std::string &dsn, const
     truncation.flush_range();
 
     // Flush the shift state for stateful encodings after all chunks are processed
-    if (encoding.has_encoding && iconv_guard.is_valid())
-    {
-      try
-      {
-        std::vector<char> flush_buffer = zut_iconv_flush(iconv_guard.get(), zds->diag);
-        if (flush_buffer.empty() && zds->diag.e_msg_len > 0)
-        {
-          return RTNCD_FAILURE;
-        }
+    std::vector<char> flush_buffer;
+    rc = flush_encoding_state(encoding, iconv_guard, zds->diag, flush_buffer);
+    if (rc != RTNCD_SUCCESS) {
+      return rc;
+    }
 
-        // Write any shift sequence bytes that were generated
-        if (!flush_buffer.empty())
-        {
-          size_t bytes_written = fwrite(&flush_buffer[0], 1, flush_buffer.size(), fout);
-          if (bytes_written != flush_buffer.size())
-          {
-            write_failed = true;
-          }
-        }
-      }
-      catch (std::exception &e)
+    // Write any shift sequence bytes that were generated
+    if (!flush_buffer.empty())
+    {
+      size_t bytes_written = fwrite(&flush_buffer[0], 1, flush_buffer.size(), fout);
+      if (bytes_written != flush_buffer.size())
       {
-        zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to flush encoding state");
-        return RTNCD_FAILURE;
+        write_failed = true;
       }
     }
 
@@ -3788,11 +3879,10 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const std::string &dsn, cons
 
   // Open iconv descriptor once for all lines (for stateful encodings like IBM-939)
   IconvGuard iconv_guard(encoding.has_encoding ? encoding.codepage.c_str() : nullptr, encoding.has_encoding ? encoding.source_encoding.c_str() : nullptr);
-  if (encoding.has_encoding && !iconv_guard.is_valid())
-  {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Cannot open converter from %s to %s", encoding.source_encoding.c_str(), encoding.codepage.c_str());
+  rc = validate_iconv_setup(encoding, iconv_guard, zds->diag);
+  if (rc != RTNCD_SUCCESS) {
     zds_close_output_bpam(zds, ioc);
-    return RTNCD_FAILURE;
+    return rc;
   }
 
   std::vector<char> buf(FIFO_CHUNK_SIZE);
@@ -3957,29 +4047,17 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const std::string &dsn, cons
   }
 
   // Flush encoding state and append to the last line
-  if (encoding.has_encoding && iconv_guard.is_valid())
-  {
-    try
-    {
-      std::vector<char> flush_buffer = zut_iconv_flush(iconv_guard.get(), zds->diag);
-      if (flush_buffer.empty() && zds->diag.e_msg_len > 0)
-      {
-        zds_close_output_bpam(zds, ioc);
-        return RTNCD_FAILURE;
-      }
+  std::vector<char> flush_buffer;
+  rc = flush_encoding_state(encoding, iconv_guard, zds->diag, flush_buffer);
+  if (rc != RTNCD_SUCCESS) {
+    zds_close_output_bpam(zds, ioc);
+    return rc;
+  }
 
-      // Append flush bytes to the last line
-      if (!flush_buffer.empty() && has_prev_line)
-      {
-        prev_line.append(flush_buffer.begin(), flush_buffer.end());
-      }
-    }
-    catch (std::exception &e)
-    {
-      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to flush encoding state");
-      zds_close_output_bpam(zds, ioc);
-      return RTNCD_FAILURE;
-    }
+  // Append flush bytes to the last line
+  if (!flush_buffer.empty() && has_prev_line)
+  {
+    prev_line.append(flush_buffer.begin(), flush_buffer.end());
   }
 
   // Write the last buffered line
