@@ -2245,7 +2245,7 @@ void zds_tests()
                              Expect(sizeof(DCB_ABEND_PL)).ToBe(16);
                            });
 
-                        it("should catch abend when using zds_write_to_dsn (BPAM) to a PDS past its max space",
+                        it("should catch abend when writing past max space of a PDS",
                            [&]() -> void
                            {
                              ZDS zds = {0};
@@ -2277,10 +2277,12 @@ void zds_tests()
                                large_data += std::string(80, 'A') + "\n";
                              }
 
+                             ZDSWriteOpts write_opts{.zds = &zds, .dsname = ds + "(M1)"};
+
                              // This should fail with an abend. DCB abend exit runs as part of the member write process - no mocking available so we can't test the DCB exit itself,
                              // this just verifies that the abend is percolated and handled by recovery
                              Expect([&]()
-                                    { rc = zds_write_to_dsn(&zds, ds + "(M1)", large_data); })
+                                    { rc = zds_write(write_opts, large_data); })
                                  .ToAbend();
                            });
                       });
