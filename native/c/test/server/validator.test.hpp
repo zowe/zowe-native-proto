@@ -9,9 +9,9 @@
  *
  */
 
-#ifndef WORKER_TEST_HPP
-#define WORKER_TEST_HPP
+#ifndef VALIDATOR_TEST_HPP
+#define VALIDATOR_TEST_HPP
 
-void worker_tests();
+void server_validator_tests();
 
-#endif
+#endif // VALIDATOR_TEST_HPP

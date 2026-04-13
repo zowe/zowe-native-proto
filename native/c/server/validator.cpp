@@ -103,6 +103,7 @@ ValidationResult validate_schema(const zjson::Value &params,
 
   const auto &obj = params.as_object();
   std::unordered_set<std::string_view> seen_fields;
+  seen_fields.reserve(field_count);
 
   auto get_field_path = [&parent_field](std::string_view name) {
     return parent_field.empty() ? std::string(name) : parent_field + "." + std::string(name);
@@ -112,7 +113,8 @@ ValidationResult validate_schema(const zjson::Value &params,
   for (size_t i = 0; i < field_count; i++)
   {
     const FieldDescriptor &field = schema[i];
-    auto field_it = obj.find(std::string(field.name));
+    const std::string field_name_str(field.name);
+    auto field_it = obj.find(field_name_str);
 
     if (field_it == obj.end())
     {
