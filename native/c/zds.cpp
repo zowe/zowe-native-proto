@@ -3858,7 +3858,7 @@ static int zds_write_sequential_streamed(ZDS *zds, const std::string &dsn, const
     const int flush_rc = fflush(fout);
     if (write_failed || flush_rc != 0)
     {
-      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to write to '%s' (possibly out of space)", dsname.c_str());
+      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to write to '%44.44s' (possibly out of space)", dsname.c_str());
       return RTNCD_FAILURE;
     }
   }
