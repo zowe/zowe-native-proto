@@ -64,7 +64,7 @@ export class SshErrorHandler {
         const response = await vscode.window.showErrorMessage(`${contextPrefix}${errorMessage}`, ...actions);
 
         if (response === "Show Details") {
-            const outputChannel = vscode.window.createOutputChannel("Zowe SSH");
+            const outputChannel = vscode.window.createOutputChannel("Zowe Remote SSH");
             outputChannel.appendLine(`Error: ${errorMessage}`);
             if (error instanceof Error && error.stack) {
                 outputChannel.appendLine(`Stack: ${error.stack}`);

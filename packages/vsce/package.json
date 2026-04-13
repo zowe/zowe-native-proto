@@ -59,7 +59,7 @@
         "zowex-vsce.serverAutoUpdate": {
           "type": "boolean",
           "default": true,
-          "description": "Automatically re-deploys the Zowe SSH server if out of date."
+          "description": "Automatically re-deploys the Zowe Remote SSH server if out of date."
         },
         "zowex-vsce.serverInstallPath": {
           "type": "object",
@@ -73,7 +73,7 @@
           "default": 3,
           "minimum": 1,
           "maximum": 50,
-          "description": "Number of worker threads for the Zowe SSH server. Each worker runs as a separate process in its own address space."
+          "description": "Number of worker threads for the Zowe Remote SSH server. Each worker runs as a separate process in its own address space."
         },
         "zowex-vsce.responseTimeout": {
           "type": "number",
