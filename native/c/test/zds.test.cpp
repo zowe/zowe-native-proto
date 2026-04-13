@@ -2223,5 +2223,66 @@ void zds_tests()
                                             });
                                  });
                       });
+
+             describe("DCB abend",
+                      [&]() -> void
+                      {
+                        it("should validate constants around DCB abend use",
+                           [&]() -> void
+                           {
+                             Expect(DCB_ABEND_OPT_OK_TO_RECOVER).ToBe(0x08);
+                             Expect(DCB_ABEND_OPT_OK_TO_IGNORE).ToBe(0x04);
+                             Expect(DCB_ABEND_OPT_OK_TO_DELAY).ToBe(0x02);
+                             Expect(DCB_ABEND_RC_TERMINATE).ToBe(0);
+                             Expect(DCB_ABEND_RC_IGNORE).ToBe(4);
+                             Expect(DCB_ABEND_RC_DELAY).ToBe(8);
+                             Expect(DCB_ABEND_RC_IGNORE_QUIETLY).ToBe(20);
+                           });
+
+                        it("should validate the size of DCB_ABEND_PL struct",
+                           [&]() -> void
+                           {
+                             Expect(sizeof(DCB_ABEND_PL)).ToBe(16);
+                           });
+
+                        it("should catch abend when using zds_write_to_dsn (BPAM) to a PDS past its max space",
+                           [&]() -> void
+                           {
+                             ZDS zds = {0};
+                             DS_ATTRIBUTES attr{};
+                             attr.dsorg = "PO";
+                             attr.recfm = "FB";
+                             attr.lrecl = 80;
+                             attr.blksize = 6160;
+                             attr.alcunit = "TRACKS";
+                             attr.primary = 1;
+                             attr.secondary = 0;
+                             attr.dirblk = 1;
+
+                             std::string ds = get_random_ds(3);
+                             created_dsns.push_back(ds);
+
+                             std::string response;
+                             int rc = zds_create_dsn(&zds, ds, attr, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+
+                             zds.encoding_opts.data_type = eDataTypeText;
+                             strcpy(zds.encoding_opts.codepage, "IBM-1047");
+                             strcpy(zds.encoding_opts.source_codepage, "IBM-1047");
+
+                             std::string large_data;
+                             large_data.reserve(81 * 1000);
+                             for (int i = 0; i < 1000; i++)
+                             {
+                               large_data += std::string(80, 'A') + "\n";
+                             }
+
+                             // This should fail with an abend. DCB abend exit runs as part of the member write process - no mocking available so we can't test the DCB exit itself,
+                             // this just verifies that the abend is percolated and handled by recovery
+                             Expect([&]()
+                                    { rc = zds_write_to_dsn(&zds, ds + "(M1)", large_data); })
+                                 .ToAbend();
+                           });
+                      });
            });
 }

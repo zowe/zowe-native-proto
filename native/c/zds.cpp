@@ -2063,7 +2063,7 @@ int zds_list_members(ZDS *zds, std::string dsn, std::vector<ZDSMem> &members, co
 {
   // PO
   // PO-E (PDS)
-  dsn = "//'" + dsn + "'";
+  const auto formatted_dsn = "//'" + dsn + "'";
 
   int total_entries = 0;
 
@@ -2079,11 +2079,29 @@ int zds_list_members(ZDS *zds, std::string dsn, std::vector<ZDSMem> &members, co
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=pds-reading-directory-sequentially
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=pdse-reading-directory - long alias names omitted, use DESERV for those
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=pds-directory
-  FILE *fp = fopen(dsn.c_str(), "rb,recfm=u");
+  FILE *fp = fopen(formatted_dsn.c_str(), "rb,recfm=u");
 
   if (!fp)
   {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open dsn '%s'", dsn.c_str());
+    constexpr auto EABEND = 92;
+    if (errno == EABEND)
+    {
+      __amrc_type save_amrc = *__amrc;
+      const auto abend_code = save_amrc.__code.__abend.__syscode;
+      if (abend_code == 0x913)
+      {
+        // Insufficient permissions for this data set
+        zds->diag.e_msg_len = snprintf(zds->diag.e_msg, sizeof(zds->diag.e_msg), "Insufficient permissions for opening data set '%s' (S913 abend)", dsn.c_str());
+      }
+      else
+      {
+        zds->diag.e_msg_len = snprintf(zds->diag.e_msg, sizeof(zds->diag.e_msg), "Could not list members for '%s': %s (errno %d) abend code S%03X", dsn.c_str(), strerror(errno), errno, save_amrc.__code.__abend.__syscode);
+      }
+    }
+    else
+    {
+      zds->diag.e_msg_len = snprintf(zds->diag.e_msg, sizeof(zds->diag.e_msg), "Could not list members for '%s': %s (errno %d)", dsn.c_str(), strerror(errno), errno);
+    }
     return RTNCD_FAILURE;
   }
 
@@ -2135,7 +2153,7 @@ int zds_list_members(ZDS *zds, std::string dsn, std::vector<ZDSMem> &members, co
 
           if (total_entries > zds->max_entries)
           {
-            zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Reached maximum returned members requested %d", zds->max_entries);
+            zds->diag.e_msg_len = snprintf(zds->diag.e_msg, sizeof(zds->diag.e_msg), "Reached maximum returned members requested %d", zds->max_entries);
             zds->diag.detail_rc = ZDS_RSNCD_MAXED_ENTRIES_REACHED;
             fclose(fp);
             return RTNCD_WARNING;

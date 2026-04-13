@@ -657,8 +657,7 @@ int handle_data_set_list_members(InvocationContext &context)
   }
   if (RTNCD_SUCCESS != rc && RTNCD_WARNING != rc)
   {
-    context.error_stream() << "Error: could not list members: '" << dsn << "' rc: '" << rc << "'" << std::endl;
-    context.error_stream() << "  Details: " << zds.diag.e_msg << std::endl;
+    context.error_stream() << "Error: " << zds.diag.e_msg << std::endl;
     return RTNCD_FAILURE;
   }
 
