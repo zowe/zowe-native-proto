@@ -277,17 +277,10 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
             lrecl: 80,
             ...(options || {}),
         };
-        let response: ds.CreateDatasetResponse = { success: false };
-        try {
-            response = await (await this.client).ds.createDataset({
-                dsname: dataSetName,
-                attributes: datasetAttributes,
-            });
-        } catch (error) {
-            throw error instanceof imperative.ImperativeError
-                ? new Error(`${error.message}\n${error.additionalDetails}`)
-                : error;
-        }
+        const response = await (await this.client).ds.createDataset({
+            dsname: dataSetName,
+            attributes: datasetAttributes,
+        });
         return this.buildZosFilesResponse(response, response.success);
     }
 
