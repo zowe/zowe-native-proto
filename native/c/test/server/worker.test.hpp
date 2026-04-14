@@ -9,11 +9,9 @@
  *
  */
 
-export * from "./common";
-export * as console from "./console";
-export * as core from "./core";
-export * as ds from "./ds";
-export * as jobs from "./jobs";
-export * as tool from "./tool";
-export * as tso from "./tso";
-export * as uss from "./uss";
+#ifndef WORKER_TEST_HPP
+#define WORKER_TEST_HPP
+
+void server_worker_tests();
+
+#endif // WORKER_TEST_HPP

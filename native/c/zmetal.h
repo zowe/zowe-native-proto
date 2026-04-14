@@ -106,12 +106,17 @@ static int test_auth()
 #endif
 
 #if defined(__IBM_METAL__)
-#define LOAD(name, ep, rc, rsn)                                 \
+#define LOAD(name, ep, rc, rsn, save_regs)                      \
   __asm(                                                        \
       "*                                                    \n" \
-      " SLGR  2,2          Clear for PDSMAN/IEBCOPY         \n" \
+      "* This can be removed for testing S0C4 on compress   \n" \
+      "* Store registers for PDSMAN/IEBCOPY into save_high  \n" \
+      " STMG  2,13,%3      Store for PDSMAN/IEBCOPY         \n" \
       "*                                                    \n" \
-      " LOAD EPLOC=%3,"                                         \
+      "* Clear high-half of registers 2-15 for PDSMAN       \n" \
+      " LMH   2,15,=16F'0' Clear for PDSMAN/IEBCOPY         \n" \
+      "*                                                    \n" \
+      " LOAD EPLOC=%4,"                                         \
       "PLISTVER=MAX,"                                           \
       "ERRET=*+4+6+4+4+4                                    \n" \
       "*                                                    \n" \
@@ -124,14 +129,19 @@ static int test_auth()
       " STG 0,%0           Zero                             \n" \
       " ST 1,%1            r1 = rc                          \n" \
       " ST 15,%2           r15 = rsn                        \n" \
+      "*                                                    \n" \
+      "* Restore saved registers from save_regs             \n" \
+      " LMG   2,13,%3      Restore for PDSMAN/IEBCOPY       \n" \
+      "*                                                    \n" \
       "*                                                      " \
       : "=m"(ep),                                               \
         "=m"(rc),                                               \
-        "=m"(rsn)                                               \
+        "=m"(rsn),                                              \
+        "=m"(save_regs)                                         \
       : "m"(name)                                               \
       : "r0", "r1", "r2", "r14", "r15");
 #else
-#define LOAD(name, ep, rc, rsn)
+#define LOAD(name, ep, rc, rsn, save_regs)
 #endif
 
 #if defined(__IBM_METAL__)
@@ -328,7 +338,9 @@ static void *PTR64 load_module(const char *name)
 
   auth_off(); // NOTE(Kelosky): force auth off before loading any module
 
-  LOAD(name_truncated, ep, rc, rsn);
+  // Save 8 bytes for each register 2-13 (including 13) for PDSMAN/IEBCOPY
+  unsigned long long save_registers[12] = {0};
+  LOAD(name_truncated, ep, rc, rsn, save_registers[0]);
   if (0 != rc)
   {
     return NULL;

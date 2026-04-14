@@ -42,8 +42,8 @@
 // TODO(Kelosky): handle test not run
 // TODO(Kelosky): handle running individual test and/or suite
 
-#define Expect(x) [&]() -> RESULT_CHECK<typename std::remove_reference<decltype(x)>::type> { EXPECT_CONTEXT ctx = {__LINE__, __FILE__}; return expect(x, ctx); }()
-#define ExpectWithContext(x, context) [&]() -> RESULT_CHECK<typename std::remove_reference<decltype(x)>::type> { EXPECT_CONTEXT ctx = {__LINE__, __FILE__, std::string(context), true}; return expect(x, ctx); }()
+#define Expect(x) expect((x), EXPECT_CONTEXT{__LINE__, __FILE__, "", false})
+#define ExpectWithContext(x, context) expect((x), EXPECT_CONTEXT{__LINE__, __FILE__, std::string(context), true})
 #define TestLog(message) Globals::get_instance().test_log(message)
 #define TrimChars(str) Globals::get_instance().trim_chars(str)
 
@@ -970,8 +970,8 @@ public:
     for (char c : snippet)
       escaped += (c == '\n') ? "\\n" : std::string(1, c);
     std::string haystack = large
-      ? escaped + "...(truncated, total " + std::to_string(result.size()) + " chars)"
-      : escaped;
+                               ? escaped + "...(truncated, total " + std::to_string(result.size()) + " chars)"
+                               : escaped;
     if (inverse)
       fail_if(result.find(substring) != std::string::npos, "expected string '" + haystack + "' to NOT contain '" + substring + "'");
     else
@@ -992,16 +992,58 @@ public:
     return error;
   }
 
+  template <typename U = T>
+  auto ToAbend() -> decltype(std::declval<U>()(), void())
+  {
+    Globals &g = Globals::get_instance();
+    jmp_buf old_buf;
+    std::memcpy(old_buf, g.get_jmp_buf(), sizeof(jmp_buf));
+
+    bool abend = false;
+
+    if (0 != setjmp(g.get_jmp_buf()))
+    {
+      if (g.get_timeout_occurred())
+      {
+        std::memcpy(g.get_jmp_buf(), old_buf, sizeof(jmp_buf));
+        std::string error = "expected to ABEND, but timed out instead";
+        error += append_error_details();
+        throw std::runtime_error(error);
+      }
+      abend = true;
+    }
+
+    if (!abend)
+    {
+      result();
+    }
+
+    std::memcpy(g.get_jmp_buf(), old_buf, sizeof(jmp_buf));
+
+    if (inverse && abend)
+    {
+      std::string error = "expected NOT to ABEND";
+      error += append_error_details();
+      throw std::runtime_error(error);
+    }
+    else if (!abend)
+    {
+      std::string error = "expected to ABEND";
+      error += append_error_details();
+      throw std::runtime_error(error);
+    }
+  }
+
   RESULT_CHECK Not()
   {
-    RESULT_CHECK copy;
+    RESULT_CHECK copy(result);
     copy.set_inverse(true);
-    copy.result = result;
     set_inverse(false);
     copy.set_context(ctx);
     return copy;
   }
-  RESULT_CHECK()
+  RESULT_CHECK(T r)
+      : result(std::move(r)), inverse(false)
   {
   }
   ~RESULT_CHECK()
@@ -1168,13 +1210,11 @@ void itif(const std::string &description, Callable test, TEST_OPTIONS &opts, boo
 }
 
 template <typename T>
-RESULT_CHECK<T> expect(T val, EXPECT_CONTEXT ctx = {0})
+RESULT_CHECK<T> expect(T val, EXPECT_CONTEXT ctx = {0, "", "", false})
 {
-  RESULT_CHECK<T> result;
-  result.set_result(val);
-  result.set_inverse(false);
-  result.set_context(ctx);
-  return result;
+  RESULT_CHECK<T> res(std::move(val));
+  res.set_context(ctx);
+  return res;
 }
 
 // Hook registration functions
@@ -1340,21 +1380,21 @@ inline void print_failed_tests()
           if (!test.fail_message.empty())
           {
             std::string main_error = test.fail_message;
-          std::string context;
-          size_t nl = main_error.find("\n");
-          if (nl != std::string::npos)
-          {
-            context = main_error.substr(nl + 1);
-            main_error = main_error.substr(0, nl);
-          }
-          std::cout << "    " << colors.arrow << " " << main_error << std::endl;
-          if (!context.empty())
-          {
-            std::istringstream ctx_lines(context);
-            std::string ctx_line;
-            while (std::getline(ctx_lines, ctx_line))
-              std::cout << "      " << ctx_line << std::endl;
-          }
+            std::string context;
+            size_t nl = main_error.find("\n");
+            if (nl != std::string::npos)
+            {
+              context = main_error.substr(nl + 1);
+              main_error = main_error.substr(0, nl);
+            }
+            std::cout << "    " << colors.arrow << " " << main_error << std::endl;
+            if (!context.empty())
+            {
+              std::istringstream ctx_lines(context);
+              std::string ctx_line;
+              while (std::getline(ctx_lines, ctx_line))
+                std::cout << "      " << ctx_line << std::endl;
+            }
           }
         }
       }

@@ -109,9 +109,10 @@
   ],
   "scripts": {
     "build": "tsc -p . --noEmit",
+    "bench": "vitest bench",
     "clean": "rimraf bin out coverage",
     "compile": "rspack --mode development",
-    "lint": "npx @biomejs/biome check --write src",
+    "lint": "npx @biomejs/biome check --write src benchmarks tests",
     "package": "vsce package --out ../../dist",
     "test": "vitest run --coverage",
     "test:ui": "vitest --ui --coverage",
