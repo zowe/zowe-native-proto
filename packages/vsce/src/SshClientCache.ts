@@ -116,6 +116,7 @@ export class SshClientCache extends vscode.Disposable {
                     responseTimeout,
                     requests: replayRequests,
                     useNativeSsh,
+                    usePlainError: true,
                 });
                 imperative.Logger.getAppLogger().debug(
                     `Server checksums: ${JSON.stringify(newClient.serverChecksums)}`,
@@ -146,6 +147,7 @@ export class SshClientCache extends vscode.Disposable {
                     requestTimeout,
                     requests: replayRequests,
                     useNativeSsh,
+                    usePlainError: true,
                 });
             }
             this.mClientSessionMap.set(clientId, {

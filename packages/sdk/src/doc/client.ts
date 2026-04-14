@@ -59,6 +59,12 @@ export interface ClientOptions {
     useNativeSsh?: boolean;
 
     /**
+     * Use plain JS error handling instead of ImperativeError
+     * (default: false)
+     */
+    usePlainError?: boolean;
+
+    /**
      * Enable verbose logging from the server
      * (default: false)
      */

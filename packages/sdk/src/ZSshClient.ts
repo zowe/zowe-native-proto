@@ -36,6 +36,7 @@ export class ZSshClient extends RpcClientApi implements Disposable {
     private mSshClient: Client;
     private mSshStream: ClientChannel;
     private mStreamMgr: RpcStreamManager;
+    private mUsePlainError: boolean;
     private mPartialStderr = "";
     private mPartialStdout = "";
     private readonly mRequestMap: Map<number, ExistingClientRequest> = new Map();
@@ -57,6 +58,7 @@ export class ZSshClient extends RpcClientApi implements Disposable {
         const client = new ZSshClient();
         client.mErrHandler = opts.onError ?? ZSshClient.defaultErrHandler;
         client.mResponseTimeout = opts.responseTimeout ? opts.responseTimeout * 1000 : 60e3;
+        client.mUsePlainError = opts.usePlainError ?? false;
         client.mSshClient = createClient(opts.useNativeSsh);
         client.mSshStream = await new Promise((resolve, reject) => {
             client.mSshClient.on("error", (err) => {
@@ -326,11 +328,13 @@ export class ZSshClient extends RpcClientApi implements Disposable {
         if (response.error != null) {
             Logger.getAppLogger().error(`Error for response ID: ${response.id}\n${JSON.stringify(response.error)}`);
             this.mRequestMap.get(response.id).rpc.reject(
-                new ImperativeError({
-                    msg: response.error.message,
-                    errorCode: response.error.code.toString(),
-                    additionalDetails: response.error.data,
-                }),
+                this.mUsePlainError
+                    ? new Error(`${response.error.message}\n${response.error.data}`)
+                    : new ImperativeError({
+                          msg: response.error.message,
+                          errorCode: response.error.code.toString(),
+                          additionalDetails: response.error.data,
+                      }),
             );
         } else {
             this.mRequestMap.get(response.id).rpc.resolve(response.result);
