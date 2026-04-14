@@ -1230,6 +1230,75 @@ public:
 };
 
 /**
+ * Process trailing line content (without newline) for BPAM writes.
+ * Handles CR stripping, ASA processing, encoding, and truncation tracking.
+ * Returns RTNCD_SUCCESS on success or error code on failure.
+ */
+struct ProcessedLine
+{
+  std::string line;
+  char asa_char;
+  bool skip_line;
+  int overflow_records;
+
+  ProcessedLine()
+      : asa_char('\0'), skip_line(false), overflow_records(0)
+  {
+  }
+};
+
+static int process_bpam_trailing_line(std::string &line_content, bool is_asa, AsaStreamState &asa_state,
+                                      const EncodingSetup &encoding, IconvGuard &iconv_guard,
+                                      int max_len, int &line_num, TruncationTracker &truncation,
+                                      ProcessedLine &result, ZDIAG &diag)
+{
+  // Remove trailing carriage return if present
+  if (!line_content.empty() && line_content[line_content.size() - 1] == CR_CHAR)
+  {
+    line_content.erase(line_content.size() - 1);
+  }
+
+  if (line_content.empty())
+  {
+    result.skip_line = true;
+    return RTNCD_SUCCESS;
+  }
+
+  // Process ASA: determine control char
+  result.asa_char = '\0';
+  if (is_asa)
+  {
+    auto asa_result = asa_state.prepare_line(line_content);
+    if (asa_result.skip_line)
+    {
+      result.skip_line = true;
+      return RTNCD_SUCCESS;
+    }
+
+    result.overflow_records = asa_result.overflow_records;
+    result.asa_char = asa_result.asa_char;
+  }
+
+  line_num++;
+
+  // Encode line if needed
+  int rc = encode_line_if_needed(line_content, encoding, iconv_guard, diag);
+  if (rc != RTNCD_SUCCESS)
+  {
+    return rc;
+  }
+
+  // Check if line will be truncated (account for ASA char if present)
+  if (static_cast<int>(line_content.length() + (is_asa && result.asa_char != '\0' ? 1 : 0)) > max_len)
+  {
+    truncation.add_line(line_num);
+  }
+
+  result.line = line_content;
+  return RTNCD_SUCCESS;
+}
+
+/**
  * Helper function to check if a DSN contains a member name
  */
 static bool zds_has_member(const std::string &dsn)
@@ -1443,56 +1512,25 @@ static int zds_write_member_bpam(ZDS *zds, const std::string &dsn, const std::st
     if (pos < data.size())
     {
       std::string line = data.substr(pos);
+      ProcessedLine result;
 
-      // Remove trailing carriage return if present
-      if (!line.empty() && line[line.size() - 1] == CR_CHAR)
+      rc = process_bpam_trailing_line(line, is_asa, asa_state, encoding, iconv_guard,
+                                      max_len, line_num, truncation, result, zds->diag);
+      if (rc != RTNCD_SUCCESS)
       {
-        line.erase(line.size() - 1);
+        zds_close_output_bpam(zds, ioc);
+        return rc;
       }
 
-      if (!line.empty())
+      if (!result.skip_line)
       {
-        // Process ASA: determine control char
-        char asa_char = '\0';
-        if (is_asa)
+        // Add overflow blank lines as empty '-' records
+        for (int i = 0; i < result.overflow_records; i++)
         {
-          auto asa_result = asa_state.prepare_line(line);
-          if (asa_result.skip_line)
-          {
-            line.clear(); // Skip if it's a blank line
-          }
-          else
-          {
-            // Add overflow blank lines as empty '-' records
-            for (int i = 0; i < asa_result.overflow_records; i++)
-            {
-              lines_to_write.emplace_back(std::make_pair(std::string(), '-'));
-            }
-
-            asa_char = asa_result.asa_char;
-          }
+          lines_to_write.emplace_back(std::make_pair(std::string(), '-'));
         }
 
-        if (!line.empty())
-        {
-          line_num++;
-
-          // Encode line if needed
-          rc = encode_line_if_needed(line, encoding, iconv_guard, zds->diag);
-          if (rc != RTNCD_SUCCESS)
-          {
-            zds_close_output_bpam(zds, ioc);
-            return rc;
-          }
-
-          // Check if line will be truncated (account for ASA char if present)
-          if (static_cast<int>(line.length() + (is_asa && asa_char != '\0' ? 1 : 0)) > max_len)
-          {
-            truncation.add_line(line_num);
-          }
-
-          lines_to_write.emplace_back(std::make_pair(line, (is_asa && asa_char != '\0') ? asa_char : '\0'));
-        }
+        lines_to_write.emplace_back(std::make_pair(result.line, result.asa_char));
       }
     }
   }
@@ -4023,71 +4061,41 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const std::string &dsn, cons
   // Handle remaining content that didn't end with a newline
   if (!line_buffer.empty())
   {
-    // Remove trailing carriage return if present
-    if (line_buffer[line_buffer.size() - 1] == CR_CHAR)
+    ProcessedLine result;
+
+    rc = process_bpam_trailing_line(line_buffer, is_asa, asa_state, encoding, iconv_guard,
+                                    max_len, line_num, truncation, result, zds->diag);
+    if (rc != RTNCD_SUCCESS)
     {
-      line_buffer.erase(line_buffer.size() - 1);
+      zds_close_output_bpam(zds, ioc);
+      return rc;
     }
 
-    if (!line_buffer.empty())
+    if (!result.skip_line)
     {
-      // Process ASA: determine control char
-      char asa_char = '\0';
-      if (is_asa)
+      // Flush overflow blank lines as empty '-' records
+      rc = write_asa_overflow_records(zds, ioc, result.overflow_records);
+      if (rc != RTNCD_SUCCESS)
       {
-        auto asa_result = asa_state.prepare_line(line_buffer);
-        if (asa_result.skip_line)
-        {
-          line_buffer.clear(); // Skip if it's a blank line
-        }
-        else
-        {
-          // Flush overflow blank lines as empty '-' records
-          rc = write_asa_overflow_records(zds, ioc, asa_result.overflow_records);
-          if (rc != RTNCD_SUCCESS)
-          {
-            zds_close_output_bpam(zds, ioc);
-            return rc;
-          }
-
-          asa_char = asa_result.asa_char;
-        }
+        zds_close_output_bpam(zds, ioc);
+        return rc;
       }
 
-      if (!line_buffer.empty())
+      // Write previous line first
+      if (has_prev_line)
       {
-        line_num++;
-
-        // Encode line content
-        rc = encode_line_if_needed(line_buffer, encoding, iconv_guard, zds->diag);
+        rc = zds_write_output_bpam(zds, ioc, prev_line, prev_asa_char);
         if (rc != RTNCD_SUCCESS)
         {
+          DiagMsgGuard guard(&zds->diag);
           zds_close_output_bpam(zds, ioc);
           return rc;
         }
-
-        // Check if line will be truncated (account for ASA char if present)
-        if (static_cast<int>(line_buffer.length() + (is_asa && asa_char != '\0' ? 1 : 0)) > max_len)
-        {
-          truncation.add_line(line_num);
-        }
-
-        // Write previous line first
-        if (has_prev_line)
-        {
-          rc = zds_write_output_bpam(zds, ioc, prev_line, prev_asa_char);
-          if (rc != RTNCD_SUCCESS)
-          {
-            DiagMsgGuard guard(&zds->diag);
-            zds_close_output_bpam(zds, ioc);
-            return rc;
-          }
-        }
-
-        prev_line = line_buffer;
-        prev_asa_char = (is_asa && asa_char != '\0') ? asa_char : '\0';
-        has_prev_line = true;
       }
+
+      prev_line = result.line;
+      prev_asa_char = result.asa_char;
+      has_prev_line = true;
     }
   }
 
