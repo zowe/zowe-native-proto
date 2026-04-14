@@ -17,10 +17,8 @@
 #include <cctype>
 #include <algorithm>
 
-namespace plugin_bridge
+namespace plugin
 {
-
-using namespace plugin;
 
 // Forward declaration for recursion
 static void traverse_and_register_impl(parser::Command *cmd, std::string &path_prefix, CommandDispatcher &dispatcher, int depth);
@@ -145,27 +143,20 @@ static void traverse_and_register_impl(parser::Command *cmd, std::string &path_p
   }
 }
 
-void register_plugin_commands(PluginManager &pm, CommandDispatcher &dispatcher)
+void register_commands_with_server(PluginManager &pm, CommandDispatcher &dispatcher)
 {
-  parser::Command temp_root("_temp_root", "");
-
-  // Build the command tree using the existing implementation from plugin.cpp
-  // This reuses all the logic instead of duplicating it
-  pm.register_commands(temp_root);
-
-  // Get the commands map - the shared_ptrs will keep objects alive
-  const std::map<std::string, parser::command_ptr> &top_level_cmds = temp_root.get_commands();
-
-  // Traverse all top-level commands and register them to middleware
-  for (std::map<std::string, parser::command_ptr>::const_iterator it = top_level_cmds.begin();
-       it != top_level_cmds.end(); ++it)
+  const std::set<parser::command_ptr> &server_commands = pm.get_server_commands();
+  if (!server_commands.empty())
   {
-    LOG_DEBUG("Registering top-level plugin command: %s", it->first.c_str());
-    if (it->second) // Null check for safety
-    {
-      traverse_and_register(it->second.get(), it->first, dispatcher);
-    }
+    LOG_DEBUG("Registering plugin commands to middleware");
+  }
+
+  // Traverse top-level commands and register them to middleware
+  for (const auto &command : server_commands)
+  {
+    LOG_DEBUG("Registering top-level plugin command: %s", command->get_name().c_str());
+    traverse_and_register(command.get(), command->get_name(), dispatcher);
   }
 }
 
-} // namespace plugin_bridge
+} // namespace plugin

@@ -18,7 +18,7 @@
 // Forward declarations
 class CommandDispatcher;
 
-namespace plugin_bridge
+namespace plugin
 {
 
 /**
@@ -31,8 +31,8 @@ namespace plugin_bridge
  * @param pm The PluginManager containing loaded plugins
  * @param dispatcher The CommandDispatcher to register commands to
  */
-void register_plugin_commands(plugin::PluginManager &pm, CommandDispatcher &dispatcher);
+void register_commands_with_server(plugin::PluginManager &pm, CommandDispatcher &dispatcher);
 
-} // namespace plugin_bridge
+} // namespace plugin
 
 #endif

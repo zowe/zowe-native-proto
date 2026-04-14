@@ -42,6 +42,7 @@ void BasicCommandRegistry::register_commands(CommandProviderImpl::CommandRegistr
   ctx.set_handler(hello, hello_command);
   ctx.add_subcommand(sample_group, hello);
   ctx.add_subcommand(root, sample_group);
+  ctx.add_to_server(sample_group);
 }
 
 void register_plugin(plugin::PluginManager &pm)

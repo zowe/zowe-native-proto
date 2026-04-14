@@ -126,6 +126,20 @@ public:
     }
   }
 
+  void add_to_server(CommandHandle command)
+  {
+    CommandRecord *record = to_record(command);
+    if (!record)
+      return;
+
+    m_server_commands.insert(record->get_command_ptr());
+  }
+
+  const std::set<parser::command_ptr> &get_server_commands() const
+  {
+    return m_server_commands;
+  }
+
 private:
   struct CommandRecord
   {
@@ -205,6 +219,7 @@ private:
   parser::Command &m_root;
   CommandRecord m_root_record;
   std::vector<std::unique_ptr<CommandRecord>> m_records;
+  std::set<parser::command_ptr> m_server_commands;
 };
 
 void PluginManager::load_plugins()
@@ -304,6 +319,11 @@ void PluginManager::register_commands(parser::Command &rootCommand)
       continue;
 
     provider->register_commands(context);
+  }
+
+  for (const auto &command : context.get_server_commands())
+  {
+    m_server_commands.insert(command);
   }
 }
 } // namespace plugin

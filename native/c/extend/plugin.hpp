@@ -20,6 +20,7 @@
 #include <string>
 #include <vector>
 #include <cstddef>
+#include <set>
 
 #include <unordered_map>
 
@@ -429,6 +430,7 @@ inline Node nil()
 namespace parser
 {
 class Command;
+typedef std::shared_ptr<Command> command_ptr;
 } // namespace parser
 
 namespace plugin
@@ -1127,6 +1129,7 @@ public:
                                     const CommandDefaultValue *defaultValue) = 0;
     virtual void set_handler(CommandHandle command, CommandHandler handler) = 0;
     virtual void add_subcommand(CommandHandle parent, CommandHandle child) = 0;
+    virtual void add_to_server(CommandHandle command) = 0;
   };
 
   virtual ~CommandProviderImpl()
@@ -1194,6 +1197,11 @@ public:
     return m_plugins;
   }
 
+  const std::set<parser::command_ptr> &get_server_commands() const
+  {
+    return m_server_commands;
+  }
+
   PluginManager(const PluginManager &) = delete;
   PluginManager &operator=(const PluginManager &) = delete;
 
@@ -1204,6 +1212,7 @@ private:
   void discard_command_providers_from(std::size_t start_index);
 
   std::vector<std::unique_ptr<CommandProvider>> m_command_providers;
+  std::set<parser::command_ptr> m_server_commands;
   std::vector<LoadedPlugin> m_plugins;
   PluginMetadata m_pending_metadata;
   bool m_metadata_pending;
@@ -1262,9 +1271,8 @@ inline bool PluginManager::is_display_name_in_use(const std::string &name) const
     return false;
   }
 
-  return std::any_of(m_plugins.begin(), m_plugins.end(), [&name](const auto &plugin) {
-    return plugin.metadata.display_name == name;
-  });
+  return std::any_of(m_plugins.begin(), m_plugins.end(), [&name](const auto &plugin)
+                     { return plugin.metadata.display_name == name; });
 }
 
 inline void PluginManager::discard_command_providers_from(std::size_t start_index)
