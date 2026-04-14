@@ -394,13 +394,14 @@ int zut_substitute_symbol(const std::string &pattern, std::string &result)
   }
   memset(parms, 0x00, sizeof(SYMBOL_DATA));
 
-  if (pattern.size() > sizeof(parms->input))
+  if (pattern.size() >= sizeof(parms->input))
   {
     free(parms);
     return RTNCD_FAILURE;
   }
 
-  strcpy(parms->input, pattern.c_str());
+  strncpy(parms->input, pattern.c_str(), sizeof(parms->input) - 1);
+  parms->input[sizeof(parms->input) - 1] = '\0';
   parms->length = std::strlen(pattern.c_str());
   int rc = ZUTSYMBP(parms);
   if (RTNCD_SUCCESS != rc)
@@ -408,6 +409,7 @@ int zut_substitute_symbol(const std::string &pattern, std::string &result)
     free(parms);
     return rc;
   }
+  parms->output[sizeof(parms->output) - 1] = '\0';
   result += std::string(parms->output);
   free(parms);
   return RTNCD_SUCCESS;
