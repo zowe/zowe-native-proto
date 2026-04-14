@@ -2869,7 +2869,7 @@ int zds_list_data_sets(ZDS *zds, std::string dsn, std::vector<ZDSEntry> &dataset
   if (area == nullptr)
   {
     zds->diag.detail_rc = ZDS_RTNCD_INSUFFICIENT_BUFFER;
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to allocate 31-bit buffer for workarea to list %s", dsn.c_str());
+    zds->diag.e_msg_len = snprintf(zds->diag.e_msg, sizeof(zds->diag.e_msg), "Failed to allocate 31-bit buffer for workarea to list %s", dsn.c_str());
     return RTNCD_FAILURE;
   }
   memset(area, 0x00, zds->buffer_size);
