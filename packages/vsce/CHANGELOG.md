@@ -4,6 +4,10 @@ All notable changes to the "zowex-vsce" extension will be documented in this fil
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## Recent Changes
+
+- **Breaking:** Renamed contributed setting IDs from `zowe-native-proto` to `zowex`. All references to `zowe-native-proto` should be replaced with `zowex` in VS Code `settings.json` files. [#831](https://github.com/zowe/zowex/issues/831)
+
 ## `0.4.0`
 
 - Added error correlation for expired z/OS password (`FOTS1668`/`FOTS1669`), surfacing actionable tips and documentation links in Zowe Explorer when SSH commands fail due to an expired password. [#867](https://github.com/zowe/zowex/pull/867)
