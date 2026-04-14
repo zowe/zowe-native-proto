@@ -118,13 +118,13 @@ int ZDSDSCB1(ZDS *zds, const char *dsn, const char *volser, DSCBFormat1 *dscb)
   params.number_dscbs = MAX_DSCBS;
   params.option_flags = OPTION_EADSCB;
   // Allow lookup of format-1 or format-8 DSCB
-  char dsname[44] = {0};
+  char dsname[ZDS_MAX_DSNAME_LENGTH] = {0};
   memset(dsname, ' ', sizeof(dsname));
-  memcpy(dsname, dsn, strlen(dsn));
+  memcpy(dsname, dsn, min(strlen(dsn), ZDS_MAX_DSNAME_LENGTH));
   params.listname_addrx.dsname_ptr = dsname;
-  char volume[6] = {0};
+  char volume[ZDS_MAX_VOLSER_LENGTH] = {0};
   memset(volume, ' ', sizeof(volume));
-  memcpy(volume, volser, strlen(volser));
+  memcpy(volume, volser, min(strlen(volser), ZDS_MAX_VOLSER_LENGTH));
   params.listname_addrx.volume_ptr = volume;
   params.listname_addrx.workarea_ptr = workarea;
 

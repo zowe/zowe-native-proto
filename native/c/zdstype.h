@@ -70,6 +70,9 @@
 #define ZDS_DSORG_POU "POU"    // Partitioned Unmovable
 #define ZDS_DSORG_DA "DA"      // Direct Access
 
+#define ZDS_MAX_DSNAME_LENGTH 44
+#define ZDS_MAX_VOLSER_LENGTH 6
+
 // DSNTYPE values
 #define ZDS_DSNTYPE_PDS "PDS"         // Partitioned Data Set
 #define ZDS_DSNTYPE_LIBRARY "LIBRARY" // PDSE (Partitioned Data Set Extended)
@@ -160,8 +163,8 @@ typedef struct DSCBFormat1
 
 typedef struct IndexableDSCBFormat1
 {
-  char ds1dsnam[44]; // Data set name (used as key)
-  DSCBFormat1 dscb1; // Contents of DSCB-1
+  char ds1dsnam[ZDS_MAX_DSNAME_LENGTH]; // Data set name (used as key)
+  DSCBFormat1 dscb1;                    // Contents of DSCB-1
 } IndexableDSCBFormat1;
 
 ZNP_PACK_OFF
