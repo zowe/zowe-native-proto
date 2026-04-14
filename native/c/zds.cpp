@@ -1748,8 +1748,8 @@ int zds_create_dsn_loadlib(ZDS *zds, const std::string &dsn, std::string &respon
 int zds_delete_dsn(ZDS *zds, std::string dsn)
 {
   int rc = 0;
-  dsn = "//'" + dsn + "'";
-  rc = remove(dsn.c_str());
+  std::string dsname = "//'" + dsn + "'";
+  rc = remove(dsname.c_str());
 
   if (0 != rc)
   {
