@@ -10,9 +10,9 @@
  */
 
 #include "worker.test.hpp"
-#include "ztest.hpp"
-#include "../server/worker.hpp"
-#include "../server/logger.hpp"
+#include "../ztest.hpp"
+#include "../../server/worker.hpp"
+#include "../../server/logger.hpp"
 
 #include <string>
 #include <stdexcept>
@@ -163,7 +163,7 @@ bool wait_for(std::function<bool()> condition, std::chrono::milliseconds timeout
 /**
  * @brief Main function containing all test definitions for Worker and WorkerPool.
  */
-void worker_tests()
+void server_worker_tests()
 {
   // Global test state shared across tests in this file
   std::shared_ptr<WorkerPool> pool;

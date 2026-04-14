@@ -13,6 +13,7 @@
 #include "dispatcher.hpp"
 #include "schemas/requests.hpp"
 #include "schemas/responses.hpp"
+#include "../commands/core.hpp"
 #include "../commands/ds.hpp"
 #include "../commands/job.hpp"
 #include "../commands/tso.hpp"
@@ -204,8 +205,16 @@ void register_tool_commands(CommandDispatcher &dispatcher)
                                   .read_stdout("data", false));
 }
 
+void register_core_commands(CommandDispatcher &dispatcher)
+{
+  dispatcher.register_command("getInfo",
+                              CommandBuilder(core::handle_version)
+                                  .validate<GetInfoRequest, GetInfoResponse>());
+}
+
 void register_all_commands(CommandDispatcher &dispatcher)
 {
+  register_core_commands(dispatcher);
   register_ds_commands(dispatcher);
   register_job_commands(dispatcher);
   register_uss_commands(dispatcher);
