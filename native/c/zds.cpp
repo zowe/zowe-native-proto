@@ -1462,7 +1462,9 @@ int zds_write_to_dsn(ZDS *zds, const std::string &dsn, std::string &data)
 
   std::stringstream etag_stream;
   etag_stream << std::hex << zut_calc_adler32_checksum(saved_contents);
-  strcpy(zds->etag, etag_stream.str().c_str());
+  const auto etag_str = etag_stream.str();
+  strncpy(zds->etag, etag_str.c_str(), sizeof(zds->etag) - 1);
+  zds->etag[sizeof(zds->etag) - 1] = '\0';
 
   return rc;
 }

@@ -103,7 +103,7 @@ typedef struct
   int32_t len;              // future use
 
   ZEncode encoding_opts;
-  char etag[8];
+  char etag[9]; // 8 characters + null terminator
   char ddname[8];
 
   int32_t max_entries;
