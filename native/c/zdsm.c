@@ -120,11 +120,11 @@ int ZDSDSCB1(ZDS *zds, const char *dsn, const char *volser, DSCBFormat1 *dscb)
   // Allow lookup of format-1 or format-8 DSCB
   char dsname[ZDS_MAX_DSNAME_LENGTH] = {0};
   memset(dsname, ' ', sizeof(dsname));
-  memcpy(dsname, dsn, min(strlen(dsn), ZDS_MAX_DSNAME_LENGTH));
+  memcpy(dsname, dsn, ZMIN(strlen(dsn), ZDS_MAX_DSNAME_LENGTH));
   params.listname_addrx.dsname_ptr = dsname;
   char volume[ZDS_MAX_VOLSER_LENGTH] = {0};
   memset(volume, ' ', sizeof(volume));
-  memcpy(volume, volser, min(strlen(volser), ZDS_MAX_VOLSER_LENGTH));
+  memcpy(volume, volser, ZMIN(strlen(volser), ZDS_MAX_VOLSER_LENGTH));
   params.listname_addrx.volume_ptr = volume;
   params.listname_addrx.workarea_ptr = workarea;
 
