@@ -101,20 +101,9 @@ void zowex_ds_tests()
                   Expect(response).ToContain("view");
                   Expect(response).ToContain("write"); });
 
-             bool is_pdsman_active = false;
              describe("compress",
                       [&]() -> void
                       {
-                        beforeAll(
-                            [&]() -> void
-                            {
-                              std::string response;
-                              int rc = execute_command_with_output(zowex_command + " job ls --owner \"*\" --prefix \"PDSMAN*\" --status ACTIVE", response);
-                              if (rc == 0)
-                              {
-                                is_pdsman_active = response.find("PDSMAN") != std::string::npos;
-                              }
-                            });
                         beforeEach(
                             [&]() -> void
                             {
@@ -157,10 +146,10 @@ void zowex_ds_tests()
                              Expect(response).ToContain("Error: data set '" + ds + "' is not a PDS");
                            });
 
-                        // TODO: Unskip test once incompatibility with PDSMAN is resolved
-                        // See https://github.com/zowe/zowe-native-proto/issues/790
-                        itif("should compress a data set", [&]() -> void
-                             {
+                        // NOTE: This test may fail if we don't save/clear/restore registers for PDSMAN/IEBCOPY
+                        // See https://github.com/zowe/zowex/issues/790
+                        it("should compress a data set", [&]() -> void
+                           {
                              std::string ds = _ds.back();
                              _create_ds(ds, "--dsorg PO --dirblk 2");
 
@@ -169,9 +158,9 @@ void zowex_ds_tests()
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain("Data set");
-                             Expect(response).ToContain("compressed"); }, !is_pdsman_active);
+                             Expect(response).ToContain("compressed"); });
 
-                        // TODO: https://github.com/zowe/zowe-native-proto/issues/666
+                        // TODO: https://github.com/zowe/zowex/issues/666
                         xit("should error when the data set is VSAM", []() -> void {});
                         xit("should error when the data set is GDG", []() -> void {});
                         xit("should error when the data set is ALIAS", []() -> void {});
@@ -260,7 +249,7 @@ void zowex_ds_tests()
                              Expect(tokens[4]).ToBe("VB");
                            });
 
-                        // TODO: https://github.com/zowe/zowe-native-proto/pull/625
+                        // TODO: https://github.com/zowe/zowex/pull/625
                         it("should create a data set - dsorg: PO, primary: 10, secondary: 2, lrecl: 20, blksize:10, dirblk: 5, alcunit: CYL",
                            [&]() -> void
                            {
@@ -508,7 +497,7 @@ void zowex_ds_tests()
                              Expect(response).ToContain("Data set and/or member created");
                            });
 
-                        // TODO: https://github.com/zowe/zowe-native-proto/issues/643
+                        // TODO: https://github.com/zowe/zowex/issues/643
                         xit("should not overwrite existing members",
                             [&]() -> void
                             {
@@ -689,20 +678,20 @@ void zowex_ds_tests()
                         // TODO: What do?
                         xit("should fail to delete a data set that is currently in use", []() -> void {});
 
-                        // TODO: https://github.com/zowe/zowe-native-proto/issues/665
+                        // TODO: https://github.com/zowe/zowex/issues/665
                         xit("should delete multiple data sets specified in a list", []() -> void {});
 
-                        // TODO: https://github.com/zowe/zowe-native-proto/issues/664
+                        // TODO: https://github.com/zowe/zowex/issues/664
                         xit("should delete a data set using the force option even if it has members", []() -> void {});
                         xit("should not delete a data set with the force option if it is in use", []() -> void {});
 
-                        // TODO: https://github.com/zowe/zowe-native-proto/issues/666
+                        // TODO: https://github.com/zowe/zowex/issues/666
                         xit("should delete a VSAM KSDS data set", []() -> void {});
                         xit("should delete a VSAM ESDS data set", []() -> void {});
                         xit("should delete a VSAM RRDS data set", []() -> void {});
                         xit("should delete a VSAM LDS data set", []() -> void {});
 
-                        // TODO: https://github.com/zowe/zowe-native-proto/issues/666
+                        // TODO: https://github.com/zowe/zowex/issues/666
                         xit("should delete a generation data group (GDG) base when empty", []() -> void {});
                         xit("should delete a generation data group (GDG) base and all its generations", []() -> void {});
                         xit("should delete a specific generation of a GDG", []() -> void {});
@@ -785,13 +774,13 @@ void zowex_ds_tests()
                              Expect(response).ToContain("Error: data set pattern exceeds 44 character length limit");
                            });
 
-                        // TODO: https://github.com/zowe/zowe-native-proto/issues/666
+                        // TODO: https://github.com/zowe/zowex/issues/666
                         xit("should list information for a VSAM KSDS data set", []() -> void {});
                         xit("should list information for a VSAM ESDS data set", []() -> void {});
                         xit("should list information for a VSAM RRDS data set", []() -> void {});
                         xit("should list information for a VSAM LDS data set", []() -> void {});
 
-                        // TODO: https://github.com/zowe/zowe-native-proto/issues/666
+                        // TODO: https://github.com/zowe/zowex/issues/666
                         xit("should list generations of a generation data group (GDG) base", []() -> void {});
                         xit("should list specific generation of a GDG", []() -> void {});
                       });
@@ -833,7 +822,7 @@ void zowex_ds_tests()
                              std::string command = zowex_command + " data-set lm " + ds;
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).Not().ToBe(0);
-                             Expect(response).ToContain("Error: could not list members: '" + ds + "'");
+                             Expect(response).ToContain("Error: Could not list members for '" + ds + "'");
                            });
                         it("should list members matching a specific pattern",
                            [&]() -> void
@@ -884,7 +873,7 @@ void zowex_ds_tests()
                              Expect(response).ToContain("N");
                            });
                       });
-             // TODO: https://github.com/zowe/zowe-native-proto/issues/380
+             // TODO: https://github.com/zowe/zowex/issues/380
              xdescribe("restore",
                        [&]() -> void
                        {
@@ -1013,7 +1002,7 @@ void zowex_ds_tests()
                         // What do?
                         xit("should fail to view a data set if not authorized", []() -> void {});
 
-                        // TODO: https://github.com/zowe/zowe-native-proto/issues/666
+                        // TODO: https://github.com/zowe/zowex/issues/666
                         xit("should view the content of a VSAM KSDS data set", []() -> void {});
                         xit("should view the content of a VSAM ESDS data set", []() -> void {});
                         xit("should view the content of a VSAM RRDS data set", []() -> void {});
