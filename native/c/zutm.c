@@ -232,7 +232,7 @@ int ZUTSRCH(const char *parms)
   int rc = 0;
 
   PARMS p = {0};
-  p.len = sprintf(p.parms, "%s", parms);
+  p.len = sprintf(p.parms, "%.99s", parms);
 
   ISRSUPC search = (ISRSUPC)load_module31("ISRSUPC");
   rc = search(&p);
@@ -253,7 +253,7 @@ int ZUTRUN(ZDIAG *diag, const char *program, const char *parms)
   PARMS pstruct = {0};
   if (parms)
   {
-    pstruct.len = sprintf(pstruct.parms, "%s", parms);
+    pstruct.len = sprintf(pstruct.parms, "%.99s", parms);
   }
 
   PARMS *pptr = &pstruct;
