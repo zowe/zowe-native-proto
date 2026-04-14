@@ -1255,7 +1255,7 @@ static std::string zds_get_base_dsn(const std::string &dsn)
 /**
  * Internal function to write to a sequential data set using fopen/fwrite
  */
-static int zds_write_sequential(ZDS *zds, const std::string &dsn, std::string &data, const DscbAttributes &attrs)
+static int zds_write_sequential(ZDS *zds, const std::string &dsn, const std::string &data, const DscbAttributes &attrs)
 {
   EncodingSetup encoding;
   int rc = setup_encoding(zds, encoding);
@@ -1340,7 +1340,7 @@ static int write_asa_overflow_records(ZDS *zds, IO_CTRL *ioc, int overflow_count
 /**
  * Internal function to write to a PDS/PDSE member using BPAM (updates ISPF stats)
  */
-static int zds_write_member_bpam(ZDS *zds, const std::string &dsn, std::string &data)
+static int zds_write_member_bpam(ZDS *zds, const std::string &dsn, const std::string &data)
 {
   int rc = 0;
   IO_CTRL *ioc = nullptr;
@@ -1645,7 +1645,7 @@ static int validate_etag_if_present(ZDS *zds, const std::string &dsn, bool has_e
   return RTNCD_SUCCESS;
 }
 
-int zds_write(const ZDSWriteOpts &opts, std::string &data)
+int zds_write(const ZDSWriteOpts &opts, const std::string &data)
 {
   const int vrc = zds_validate_write_opts(opts, "zds_write");
   if (vrc != RTNCD_SUCCESS)

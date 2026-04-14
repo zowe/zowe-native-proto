@@ -171,7 +171,7 @@ struct ZDSWriteOpts
  * @param data data to write
  * @return int RTNCD_SUCCESS on success; RTNCD_FAILURE on failure
  */
-int zds_write(const ZDSWriteOpts &opts, std::string &data);
+int zds_write(const ZDSWriteOpts &opts, const std::string &data);
 
 /**
  * @brief Write data to a z/OS data set or DD in streaming mode.

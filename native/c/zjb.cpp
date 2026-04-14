@@ -498,8 +498,7 @@ int zjb_submit(ZJB *zjb, const std::string &contents, std::string &jobid)
   }
 
   ZDSWriteOpts write_opts{.zds = &zds, .ddname = ddname};
-  std::string mutable_contents = contents;  // Create non-const copy for zds_write
-  rc = zds_write(write_opts, mutable_contents);
+  rc = zds_write(write_opts, contents);
   if (0 != rc)
   {
     memcpy(&zjb->diag, &zds.diag, sizeof(ZDIAG));
