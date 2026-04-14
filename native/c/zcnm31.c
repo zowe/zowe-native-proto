@@ -119,6 +119,11 @@ MGCRE_MODEL(mgcre_model);
 #define MGCRE(id, message, cart, authcmdx, plist)
 #endif
 
+// MGCETXT	Command text - Table 2 "MGCRE mapping", structure "MGCETEXT" https://www.ibm.com/docs/en/zos/2.5.0?topic=rqe-mgcre-information
+#ifndef MGCRTEXT
+#define MGCRTEXT 126
+#endif
+
 // NOTE(Kelosky): this piece is permitted in AMODE64 - for consistency, it remains here
 int zcnm1put(ZCN *zcn, const char *command)
 {
@@ -131,16 +136,16 @@ int zcnm1put(ZCN *zcn, const char *command)
   MGCRE_MODEL(dsa_mgcre_model);
   dsa_mgcre_model = mgcre_model;
 
-  struct
+  struct MGCETEXT
   {
     short commandLen;
-    char command[256];
+    char command[MGCRTEXT];
   } commandBuffer = {0};
 
   unsigned short authcmdx = 0x8000; // 1000000000000000 - Master Authority - https://www.ibm.com/docs/en/zos/3.1.0?topic=commands-mgcre-execute-form
   unsigned short *authcmdxp = &authcmdx;
 
-  commandBuffer.commandLen = sprintf(commandBuffer.command, "%s", command);
+  commandBuffer.commandLen = snprintf(commandBuffer.command, sizeof(commandBuffer.command), "%s", command);
   char cart[8] = "ZOWECART";
 
   strcpy(zcn->diag.service_name, "MGCRE");
