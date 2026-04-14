@@ -508,7 +508,7 @@ bool zds_member_exists(const std::string &dsn, const std::string &member_before)
 
 bool zds_is_valid_member_name(const std::string &name)
 {
-  if (name.length() > 8)
+  if (name.empty() || name.length() > 8)
     return false;
 
   char first = name[0];
