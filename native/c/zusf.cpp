@@ -921,13 +921,14 @@ int zusf_copy_file_or_dir(ZUSF *zusf, const std::string &source_path, const std:
  * @param file name of the USS file
  * @param mode mode of the file or directory
  * @param createDir flag indicating whether to create a directory
+ * @param overwrite flag indicating whether to overwrite existing file
  *
  * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
  */
-int zusf_create_uss_file_or_dir(ZUSF *zusf, const std::string &file, mode_t mode, bool createDir)
+int zusf_create_uss_file_or_dir(ZUSF *zusf, const std::string &file, mode_t mode, bool createDir, bool overwrite)
 {
   struct stat file_stats;
-  if (stat(file.c_str(), &file_stats) != -1)
+  if (stat(file.c_str(), &file_stats) != -1 && !overwrite)
   {
     if (S_ISREG(file_stats.st_mode))
     {
