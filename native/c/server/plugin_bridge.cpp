@@ -16,6 +16,7 @@
 #include <string>
 #include <cctype>
 #include <algorithm>
+#include "../commands/core.hpp"
 
 namespace plugin
 {
@@ -143,9 +144,9 @@ static void traverse_and_register_impl(parser::Command *cmd, std::string &path_p
   }
 }
 
-void register_commands_with_server(PluginManager &pm, CommandDispatcher &dispatcher)
+void register_commands_with_server(CommandDispatcher &dispatcher)
 {
-  const std::set<parser::command_ptr> &server_commands = pm.get_server_commands();
+  const auto &server_commands = core::get_plugin_manager()->get_server_commands();
   if (!server_commands.empty())
   {
     LOG_DEBUG("Registering plugin commands to middleware");
