@@ -26,7 +26,7 @@ int zcn_activate(ZCN *zcn, const std::string &console_name)
   int rc = 0;
   zcn->diag.detail_rc = 0;
 
-  strcpy(zcn->eye, ZCN_EYE);
+  memcpy(zcn->eye, ZCN_EYE, sizeof(zcn->eye));
 
   zut_uppercase_pad_truncate(zcn->console_name, console_name, sizeof(zcn->console_name));
 
