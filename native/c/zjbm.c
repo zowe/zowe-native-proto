@@ -280,7 +280,7 @@ int ZJBMMOD(ZJB *zjb, int type, int flags)
     {
       zjb->diag.detail_rc = ZJB_RTNCD_CORRELATOR_NOT_FOUND;
       ZDIAG_SET_MSG(&zjb->diag, "No jobs found matching correlator '%.64s'",
-                  zjb->correlator);
+                    zjb->correlator);
     }
     return RTNCD_FAILURE;
   }
@@ -385,6 +385,8 @@ int ZJBMEMSG(ZJB *zjb, STAT *PTR64 stat, SSOB *PTR64 ssobp, int rc)
   {
     ZDIAG_SET_MSG(&zjb->diag, "IEFSSREQ rc was: '%d' SSOBRETN was: '%d', STATREAS was: '%d', STATREA2 was: '%d'", rc, ssobp->ssobretn, stat->statreas, stat->statrea2); // STATREAS contains the reason
   }
+
+  return rc;
 }
 
 int ZJBMTCOM(ZJB *zjb, STAT *PTR64 stat, ZJB_JOB_INFO **PTR64 job_info, int *entries)
@@ -561,7 +563,7 @@ int ZJBMLSDS(ZJB *PTR64 zjb, STATSEVB **PTR64 sysoutInfo, int *entries)
     {
       zjb->diag.detail_rc = ZJB_RTNCD_CORRELATOR_NOT_FOUND;
       ZDIAG_SET_MSG(&zjb->diag, "No jobs found matching correlator '%.64s'",
-                  zjb->correlator);
+                    zjb->correlator);
     }
 
     stat.stattype = statmem; // free storage
@@ -581,10 +583,10 @@ int ZJBMLSDS(ZJB *PTR64 zjb, STATSEVB **PTR64 sysoutInfo, int *entries)
     zjb->diag.service_rsn = stat.statreas;
     zjb->diag.service_rsn_secondary = stat.statrea2;
     ZDIAG_SET_MSG(&zjb->diag,
-                "IEFSSREQ rc was: '%d' SSOBRETN was: '%d', STATREAS was: '%d', "
-                "STATREA2 was: '%d'",
-                rc, ssob.ssobretn, stat.statreas,
-                stat.statrea2); // STATREAS contains the reason
+                  "IEFSSREQ rc was: '%d' SSOBRETN was: '%d', STATREAS was: '%d', "
+                  "STATREA2 was: '%d'",
+                  rc, ssob.ssobretn, stat.statreas,
+                  stat.statrea2); // STATREAS contains the reason
     return RTNCD_FAILURE;
   }
 
@@ -608,7 +610,7 @@ int ZJBMLSDS(ZJB *PTR64 zjb, STATSEVB **PTR64 sysoutInfo, int *entries)
     {
       zjb->diag.detail_rc = ZJB_RTNCD_CORRELATOR_NOT_FOUND;
       ZDIAG_SET_MSG(&zjb->diag, "No jobs found matching correlator '%.64s'",
-                  zjb->correlator);
+                    zjb->correlator);
     }
     zjb->diag.detail_rc = ZJB_RTNCD_JOB_NOT_FOUND;
     stat.stattype = statmem; // free storage
