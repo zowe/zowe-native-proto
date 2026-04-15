@@ -102,13 +102,14 @@ typedef struct _ZEncode
 #define FIFO_CHUNK_SIZE 32768
 
 // Safe diagnostic message macro to prevent buffer overflow
-#define ZDIAG_SET_MSG(diag, fmt, ...) \
-  do { \
+#define ZDIAG_SET_MSG(diag, fmt, ...)                                                         \
+  {                                                                                           \
     (diag)->e_msg_len = snprintf((diag)->e_msg, sizeof((diag)->e_msg), (fmt), ##__VA_ARGS__); \
-    if ((diag)->e_msg_len >= sizeof((diag)->e_msg)) { \
-      (diag)->e_msg_len = sizeof((diag)->e_msg) - 1; \
-      (diag)->e_msg[sizeof((diag)->e_msg) - 1] = '\0'; \
-    } \
-  } while (0)
+    if ((diag)->e_msg_len >= sizeof((diag)->e_msg))                                           \
+    {                                                                                         \
+      (diag)->e_msg_len = sizeof((diag)->e_msg) - 1;                                          \
+      (diag)->e_msg[sizeof((diag)->e_msg) - 1] = '\0';                                        \
+    }                                                                                         \
+  }
 
 #endif
