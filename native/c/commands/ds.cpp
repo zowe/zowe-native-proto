@@ -979,7 +979,7 @@ int handle_data_set_copy(InvocationContext &context)
     return RTNCD_FAILURE;
   }
 
-  if (options.target_created)
+  if (!options.target_exists)
   {
     context.output_stream() << "New data set '" << target << "' created and copied from '" << source << "'" << std::endl;
   }
