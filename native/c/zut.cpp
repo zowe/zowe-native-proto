@@ -759,14 +759,14 @@ size_t zut_iconv(iconv_t cd, ZConvData &data, ZDIAG &diag, bool flush_state)
   // If an error occurred, throw an exception with iconv's return code and errno
   if (-1 == rc)
   {
-    diag.e_msg_len = sprintf(diag.e_msg, "[zut_iconv] Error when converting characters. rc=%zu,errno=%d", rc, errno);
+    ZDIAG_SET_MSG(&diag, "[zut_iconv] Error when converting characters. rc=%zu,errno=%d", rc, errno);
     return -1;
   }
 
   // "If the input conversion is stopped... the value pointed to by inbytesleft will be nonzero and errno is set to indicate the condition"
   if (0 != input_bytes_remaining)
   {
-    diag.e_msg_len = sprintf(diag.e_msg, "[zut_iconv] Failed to convert all input bytes. rc=%zu,errno=%d", rc, errno);
+    ZDIAG_SET_MSG(&diag, "[zut_iconv] Failed to convert all input bytes. rc=%zu,errno=%d", rc, errno);
     return -1;
   }
 
@@ -776,7 +776,7 @@ size_t zut_iconv(iconv_t cd, ZConvData &data, ZDIAG &diag, bool flush_state)
     size_t flush_rc = iconv(cd, nullptr, nullptr, &data.output_iter, &output_bytes_remaining);
     if (-1 == flush_rc)
     {
-      diag.e_msg_len = sprintf(diag.e_msg, "[zut_iconv] Error flushing shift state. rc=%zu,errno=%d", flush_rc, errno);
+      ZDIAG_SET_MSG(&diag, "[zut_iconv] Error flushing shift state. rc=%zu,errno=%d", flush_rc, errno);
       return -1;
     }
   }
@@ -804,7 +804,7 @@ std::vector<char> zut_iconv_flush(iconv_t cd, ZDIAG &diag)
   size_t flush_rc = iconv(cd, nullptr, nullptr, &output_iter, &output_bytes_remaining);
   if (-1 == flush_rc)
   {
-    diag.e_msg_len = sprintf(diag.e_msg, "[zut_iconv_flush] Error flushing shift state. rc=%zu,errno=%d", flush_rc, errno);
+    ZDIAG_SET_MSG(&diag, "[zut_iconv_flush] Error flushing shift state. rc=%zu,errno=%d", flush_rc, errno);
     return std::vector<char>(); // Return empty vector on error
   }
 
@@ -850,7 +850,7 @@ std::vector<char> zut_encode(const char *input_str, const size_t input_size, con
   iconv_t cd = iconv_open(to_encoding.c_str(), from_encoding.c_str());
   if (cd == (iconv_t)(-1))
   {
-    diag.e_msg_len = sprintf(diag.e_msg, "Cannot open converter from %s to %s", from_encoding.c_str(), to_encoding.c_str());
+    ZDIAG_SET_MSG(&diag, "Cannot open converter from %s to %s", from_encoding.c_str(), to_encoding.c_str());
     return std::vector<char>();
   }
 
@@ -978,7 +978,7 @@ int zut_loop_dynalloc(ZDIAG &diag, const std::vector<std::string> &list)
       diag.detail_rc = ZUT_RTNCD_SERVICE_FAILURE;
       diag.service_rc = rc;
       strcpy(diag.service_name, "bpxwdyn");
-      diag.e_msg_len = sprintf(diag.e_msg, "bpxwdyn failed with '%s' rc: '%d', emsg: '%s'", diag.service_name, rc, alloc.c_str());
+      ZDIAG_SET_MSG(&diag, "bpxwdyn failed with '%s' rc: '%d', emsg: '%s'", diag.service_name, rc, alloc.c_str());
       return RTNCD_FAILURE;
     }
   }
@@ -997,13 +997,13 @@ int zut_free_dynalloc_dds(ZDIAG &diag, const std::vector<std::string> &list)
     const auto dd_start = alloc_dd.find("dd(");
     if (dd_start == std::string::npos)
     {
-      diag.e_msg_len = sprintf(diag.e_msg, "Invalid format in DD alloc string: %s", entry.c_str());
+      ZDIAG_SET_MSG(&diag, "Invalid format in DD alloc string: %s", entry.c_str());
       return RTNCD_FAILURE;
     }
     const auto paren_end = alloc_dd.find(")", dd_start + 3);
     if (paren_end == std::string::npos)
     {
-      diag.e_msg_len = sprintf(diag.e_msg, "Invalid format in DD alloc string: %s", entry.c_str());
+      ZDIAG_SET_MSG(&diag, "Invalid format in DD alloc string: %s", entry.c_str());
       return RTNCD_FAILURE;
     }
     free_dds.push_back("free " + alloc_dd.substr(dd_start, paren_end - dd_start + 1));

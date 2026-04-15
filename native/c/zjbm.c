@@ -117,7 +117,7 @@ int ZJBSYMB(ZJB *zjb, const char *symbol, char *value)
   {
     // TODO(Kelosky): read jsymerad for errors
     strcpy(zjb->diag.service_name, "iazsymbl");
-    zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "IAZSYMBL RC was: '%d', JSYMRETN was: '%d', JSYMREAS: %d", rc, jsym.jsymretn, jsym.jsymreas);
+    ZDIAG_SET_MSG(&zjb->diag, "IAZSYMBL RC was: '%d', JSYMRETN was: '%d', JSYMREAS: %d", rc, jsym.jsymretn, jsym.jsymreas);
     zjb->diag.detail_rc = ZJB_RTNCD_SERVICE_FAILURE;
     return RTNCD_FAILURE;
   }
@@ -190,11 +190,11 @@ int ZJBMMOD(ZJB *zjb, int type, int flags)
     zjb->diag.detail_rc = rc;
     if (ZJB_RTNCD_JES3_NOT_SUPPORTED == rc)
     {
-      zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "JES3 is not supported");
+      ZDIAG_SET_MSG(&zjb->diag, "JES3 is not supported");
     }
     else
     {
-      zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "Failed to get SSIBSSNM");
+      ZDIAG_SET_MSG(&zjb->diag, "Failed to get SSIBSSNM");
     }
     return RTNCD_FAILURE;
   }
@@ -262,7 +262,7 @@ int ZJBMMOD(ZJB *zjb, int type, int flags)
     zjb->diag.service_rsn = ssjm.ssjmretn;
     zjb->diag.service_rsn_secondary = ssjm.ssjmret2;
     // Understanding reason codes from this SSOB: https://www.ibm.com/docs/en/zos/3.1.0?topic=85-output-parameters
-    zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "IEFSSREQ rc was: '%d' SSOBRETN was: '%d', SSJMRETN was: '%d', SSJMRET2 was: '%d'", rc, ssob.ssobretn, ssjm.ssjmretn, ssjm.ssjmret2);
+    ZDIAG_SET_MSG(&zjb->diag, "IEFSSREQ rc was: '%d' SSOBRETN was: '%d', SSJMRETN was: '%d', SSJMRET2 was: '%d'", rc, ssob.ssobretn, ssjm.ssjmretn, ssjm.ssjmret2);
     return RTNCD_FAILURE;
   }
 
@@ -279,8 +279,7 @@ int ZJBMMOD(ZJB *zjb, int type, int flags)
     else
     {
       zjb->diag.detail_rc = ZJB_RTNCD_CORRELATOR_NOT_FOUND;
-      zjb->diag.e_msg_len =
-          sprintf(zjb->diag.e_msg, "No jobs found matching correlator '%.64s'",
+      ZDIAG_SET_MSG(&zjb->diag, "No jobs found matching correlator '%.64s'",
                   zjb->correlator);
     }
     return RTNCD_FAILURE;
@@ -380,11 +379,11 @@ int ZJBMEMSG(ZJB *zjb, STAT *PTR64 stat, SSOB *PTR64 ssobp, int rc)
 #define STATLERR 8
   if (STATLERR == ssobp->ssobretn && statrojb == stat->statreas) // skip if invalid job id
   {
-    zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "Job ID '%.8s' was not valid", stat->statojbi); // STATREAS contains the reason
+    ZDIAG_SET_MSG(&zjb->diag, "Job ID '%.8s' was not valid", stat->statojbi); // STATREAS contains the reason
   }
   else
   {
-    zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "IEFSSREQ rc was: '%d' SSOBRETN was: '%d', STATREAS was: '%d', STATREA2 was: '%d'", rc, ssobp->ssobretn, stat->statreas, stat->statrea2); // STATREAS contains the reason
+    ZDIAG_SET_MSG(&zjb->diag, "IEFSSREQ rc was: '%d' SSOBRETN was: '%d', STATREAS was: '%d', STATREA2 was: '%d'", rc, ssobp->ssobretn, stat->statreas, stat->statrea2); // STATREAS contains the reason
   }
 }
 
@@ -433,7 +432,7 @@ int ZJBMTCOM(ZJB *zjb, STAT *PTR64 stat, ZJB_JOB_INFO **PTR64 job_info, int *ent
     if (loop_control >= zjb->jobs_max)
     {
       zjb->diag.detail_rc = ZJB_RSNCD_MAX_JOBS_REACHED;
-      zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "Reached maximum returned jobs requested %d", zjb->jobs_max);
+      ZDIAG_SET_MSG(&zjb->diag, "Reached maximum returned jobs requested %d", zjb->jobs_max);
       stat->stattype = statmem; // free storage
       rc = iefssreq(&ssobp);
       return RTNCD_WARNING;
@@ -456,7 +455,7 @@ int ZJBMTCOM(ZJB *zjb, STAT *PTR64 stat, ZJB_JOB_INFO **PTR64 job_info, int *ent
         strcpy(zjb->diag.service_name, "iaztlkup");
         // For information about the reason code, look for `tlkretcd` in "native/c/chdsect/iaztlkdf.h"
         // https://www.ibm.com/docs/en/zos/3.1.0?topic=80-text-lookup-service-iaztlkup
-        zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "IAZTLKUP RC: '%d' reason: '%d'", statjqtrsp->statjqtr.sttrjid, rc, zjb->diag.detail_rc);
+        ZDIAG_SET_MSG(&zjb->diag, "IAZTLKUP RC: '%d' reason: '%d'", statjqtrsp->statjqtr.sttrjid, rc, zjb->diag.detail_rc);
         zjb->diag.detail_rc = ZJB_RTNCD_SERVICE_FAILURE;
         storage_free64(statjqtrsp);
         return RTNCD_FAILURE;
@@ -561,8 +560,7 @@ int ZJBMLSDS(ZJB *PTR64 zjb, STATSEVB **PTR64 sysoutInfo, int *entries)
     else
     {
       zjb->diag.detail_rc = ZJB_RTNCD_CORRELATOR_NOT_FOUND;
-      zjb->diag.e_msg_len =
-          sprintf(zjb->diag.e_msg, "No jobs found matching correlator '%.64s'",
+      ZDIAG_SET_MSG(&zjb->diag, "No jobs found matching correlator '%.64s'",
                   zjb->correlator);
     }
 
@@ -582,8 +580,7 @@ int ZJBMLSDS(ZJB *PTR64 zjb, STATSEVB **PTR64 sysoutInfo, int *entries)
     zjb->diag.service_rc = ssob.ssobretn;
     zjb->diag.service_rsn = stat.statreas;
     zjb->diag.service_rsn_secondary = stat.statrea2;
-    zjb->diag.e_msg_len =
-        sprintf(zjb->diag.e_msg,
+    ZDIAG_SET_MSG(&zjb->diag,
                 "IEFSSREQ rc was: '%d' SSOBRETN was: '%d', STATREAS was: '%d', "
                 "STATREA2 was: '%d'",
                 rc, ssob.ssobretn, stat.statreas,
@@ -610,8 +607,7 @@ int ZJBMLSDS(ZJB *PTR64 zjb, STATSEVB **PTR64 sysoutInfo, int *entries)
     else
     {
       zjb->diag.detail_rc = ZJB_RTNCD_CORRELATOR_NOT_FOUND;
-      zjb->diag.e_msg_len =
-          sprintf(zjb->diag.e_msg, "No jobs found matching correlator '%.64s'",
+      ZDIAG_SET_MSG(&zjb->diag, "No jobs found matching correlator '%.64s'",
                   zjb->correlator);
     }
     zjb->diag.detail_rc = ZJB_RTNCD_JOB_NOT_FOUND;
@@ -638,7 +634,7 @@ int ZJBMLSDS(ZJB *PTR64 zjb, STATSEVB **PTR64 sysoutInfo, int *entries)
         stat.stattype = statmem; // free storage
         rc = iefssreq(&ssobp);   // TODO(Kelosky): recovery
         zjb->diag.detail_rc = ZJB_RSNCD_MAX_JOBS_REACHED;
-        zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "max DDs reached '%d', results truncated", zjb->dds_max);
+        ZDIAG_SET_MSG(&zjb->diag, "max DDs reached '%d', results truncated", zjb->dds_max);
         return RTNCD_WARNING;
       }
 
@@ -693,7 +689,7 @@ int ZJBMLPRC(ZJB *zjb, char *buffer, int *buffer_size, int *entries)
   if (NULL == buffer || *buffer_size < MAX_DSN_ENTRY_SIZE)
   {
     zjb->diag.detail_rc = ZJB_RTNCD_INSUFFICIENT_BUFFER;
-    zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "buffer is NULL or buffer size is less than '%d'", MAX_DSN_ENTRY_SIZE);
+    ZDIAG_SET_MSG(&zjb->diag, "buffer is NULL or buffer size is less than '%d'", MAX_DSN_ENTRY_SIZE);
     return RTNCD_FAILURE;
   }
 
@@ -727,7 +723,7 @@ int ZJBMLPRC(ZJB *zjb, char *buffer, int *buffer_size, int *entries)
     strcpy(zjb->diag.service_name, "IEFSSREQ"); // TODO(Kelosky): recovery
     zjb->diag.service_rc = ssob.ssobretn;
     zjb->diag.service_rsn = ssjp.ssjpretn;
-    zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "IEFSSREQ rc was: '%d' SSOBRETN was: '%d', SSJPRETN was: '%d'", rc, ssob.ssobretn, ssjp.ssjpretn);
+    ZDIAG_SET_MSG(&zjb->diag, "IEFSSREQ rc was: '%d' SSOBRETN was: '%d', SSJPRETN was: '%d'", rc, ssob.ssobretn, ssjp.ssjpretn);
     return RTNCD_FAILURE;
   }
 
@@ -749,7 +745,7 @@ int ZJBMLPRC(ZJB *zjb, char *buffer, int *buffer_size, int *entries)
       if (*entries > MAX_DSN_ENTRIES)
       {
         zjb->diag.detail_rc = ZJB_RTNCD_INSUFFICIENT_BUFFER;
-        zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "max DSN entries reached '%d', results truncated", MAX_DSN_ENTRIES);
+        ZDIAG_SET_MSG(&zjb->diag, "max DSN entries reached '%d', results truncated", MAX_DSN_ENTRIES);
         rc = RTNCD_FAILURE;
         break;
       }

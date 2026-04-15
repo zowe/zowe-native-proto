@@ -283,7 +283,7 @@ int ZUTRUN(ZDIAG *diag, const char *program, const char *parms)
   }
   else
   {
-    diag->e_msg_len = sprintf(diag->e_msg, "Load failure for program '%s', not found", name_truncated);
+    ZDIAG_SET_MSG(diag, "Load failure for program '%s', not found", name_truncated);
     diag->detail_rc = ZUT_RTNCD_LOAD_FAILURE;
     return RTNCD_FAILURE;
   }
@@ -393,7 +393,7 @@ int ZUTSSIQ(ZDIAG *diag, JQRY_HEADER **area, const char *filter)
   rc = iefssi_query(&area31, &rsn, filter);
   if (0 != rc)
   {
-    diag->e_msg_len = sprintf(diag->e_msg, "IEFSSI_QUERY rc was: '%d', RSN was: '%d'", rc, rsn);
+    ZDIAG_SET_MSG(diag, "IEFSSI_QUERY rc was: '%d', RSN was: '%d'", rc, rsn);
     diag->detail_rc = ZUT_RTNCD_SERVICE_FAILURE;
     return RTNCD_FAILURE;
   }
