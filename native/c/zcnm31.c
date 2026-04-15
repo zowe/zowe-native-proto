@@ -292,6 +292,9 @@ static void extract_control_info(unsigned int alet, unsigned char *offset, ZCN *
   char *FAR reply_id = __set_far_ALET_offset(0, zcn->reply_id);
 
   zcn->reply_id_len = mdbscp->mdbcrpyl;
+  if (zcn->reply_id_len > 8) {
+    zcn->reply_id_len = 8;
+  }
   __far_memcpy(reply_id, mdbscp->mdbcrpyi, zcn->reply_id_len);
 }
 
@@ -302,6 +305,10 @@ static int extract_text(unsigned int alet, unsigned char *offset, int len, char 
 
   char b[256] = {0};
   char *FAR bp = __set_far_ALET_offset(0, b);
+
+  if (len > 256) {
+    len = 256;
+  }
 
   __far_memcpy(bp, text, len);
 
