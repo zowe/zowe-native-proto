@@ -213,7 +213,7 @@ static int ZLGWRWTO(int level, const char *message)
                               ? g_level_strings[level]
                               : "UNKNOWN";
 
-  wto_buf.len = sprintf(wto_buf.msg, "ZOWEX %s: %.100s", level_str, message);
+  wto_buf.len = sprintf(wto_buf.msg, "ZOWEX %.6s: %.100s", level_str, message);
 
   if (wto_buf.len >= (short)sizeof(wto_buf.msg))
   {
@@ -309,7 +309,12 @@ int ZLGINIT(const char *log_file_path, int *min_level)
     return 0;
   }
 
-  strcpy(logger->log_path, log_file_path);
+  strncpy(logger->log_path, log_file_path, sizeof(logger->log_path) - 1);
+  logger->log_path[sizeof(logger->log_path) - 1] = '\0';
+  if (strlen(log_file_path) >= sizeof(logger->log_path))
+  {
+    return -1;
+  }
 
   logger->min_level = *min_level;
   logger->use_wto = 1;
@@ -330,7 +335,14 @@ int ZLGINIT(const char *log_file_path, int *min_level)
   BPXWDYN_PARM *bparm = (BPXWDYN_PARM *)p;
   BPXWDYN_RESPONSE *response = (BPXWDYN_RESPONSE *)(p + sizeof(BPXWDYN_PARM));
 
-  bparm->len = sprintf(bparm->str, "%s", alloc_cmd);
+  int cmd_result = snprintf(bparm->str, sizeof(bparm->str), "%s", alloc_cmd);
+  if (cmd_result >= sizeof(bparm->str))
+  {
+    storage_release(size, p);
+    return -1;
+  }
+  bparm->len = cmd_result;
+
   int rc = ZUTWDYN(bparm, response);
 
   if (rc != 0)
@@ -374,8 +386,12 @@ int ZLGWRITE(int *level, const char *message)
                   : "UNKNOWN";
 
   /* Format complete message */
-  sprintf(formatted_msg, "[%s] [%s] %s",
-          timestamp, level_str, message);
+  int format_result = snprintf(formatted_msg, sizeof(formatted_msg), "[%s] [%s] %s",
+                               timestamp, level_str, message);
+  if (format_result >= sizeof(formatted_msg))
+  {
+    formatted_msg[sizeof(formatted_msg) - 1] = '\0';
+  }
 
   /* Try DD writing first if available */
   if (logger->use_dd)
