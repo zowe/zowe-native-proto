@@ -19,6 +19,7 @@
 
 #pragma prolog(ZCNACT, " ZWEPROLG NEWDSA=(YES,128) ")
 #pragma epilog(ZCNACT, " ZWEEPILG ")
+// #pragma option_override(ZCNACT, "opt(level,0)")
 int ZCNACT(ZCN *zcn)
 {
   int rc = 0;
@@ -31,16 +32,31 @@ int ZCNACT(ZCN *zcn)
     return RTNCD_FAILURE;
   }
 
-  ZCN zcn31 = {0};
-  memcpy(&zcn31, zcn, sizeof(ZCN));
-  rc = zcnm1act(&zcn31);
-  memcpy(zcn, &zcn31, sizeof(ZCN));
+  ZRCVY_ENV zenv = {0};
+  // zwto_debug("@TEST zenv address is: %p", &zenv);
 
-  if (0 != rc)
+  if (0 == enable_recovery(&zenv))
   {
-    zcn->diag.e_msg_len = sprintf(zcn->diag.e_msg, "Error activating console, service: %s, rc: %d, service_rc: %d, service_rsn: %d", zcn->diag.service_name, rc, zcn->diag.service_rc, zcn->diag.service_rsn);
-    return RTNCD_FAILURE;
+    // zwto_debug("@TEST calling zcnm1act, arr_return is: %llx", zenv.arr_return);
+    ZCN zcn31 = {0};
+    memcpy(&zcn31, zcn, sizeof(ZCN));
+    rc = zcnm1act(&zcn31);
+    memcpy(zcn, &zcn31, sizeof(ZCN));
+    if (0 != rc)
+    {
+      zcn->diag.e_msg_len = sprintf(zcn->diag.e_msg, "Error activating console, service: %s, rc: %d, service_rc: %d, service_rsn: %d", zcn->diag.service_name, rc, zcn->diag.service_rc, zcn->diag.service_rsn);
+      rc = RTNCD_FAILURE;
+    }
   }
+  else
+  {
+    zcn->diag.e_msg_len = sprintf(zcn->diag.e_msg, "Unexpected abend occurred during activation");
+    rc = RTNCD_FAILURE;
+  }
+
+  // zwto_debug("@TEST rc before disable recovery is: %d", rc);
+  disable_recovery(&zenv);
+  // zwto_debug("@TEST rc after disable recovery is: %d", rc);
 
   return rc;
 }
