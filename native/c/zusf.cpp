@@ -883,7 +883,7 @@ int zusf_copy_file_or_dir(ZUSF *zusf, const std::string &source_path, const std:
   }
 
   std::vector<std::string> command_parameters;
-  command_parameters.reserve(6);
+  command_parameters.reserve(7);
 
   if (options.recursive)
   {
@@ -901,6 +901,7 @@ int zusf_copy_file_or_dir(ZUSF *zusf, const std::string &source_path, const std:
   {
     command_parameters.emplace_back("-f");
   }
+  command_parameters.emplace_back("--");
   command_parameters.emplace_back(source_path);
   command_parameters.emplace_back(destination_path);
 
@@ -1066,7 +1067,7 @@ int zusf_move_uss_file_or_dir(ZUSF *zusf, const std::string &source, const std::
 
   // TODO(zFernand0): Use std::filesystem::rename instead of rename when C++17 is available
   std::string stdout_resp, stderr_resp;
-  int rc = zut_run_program("mv", {source, target}, stdout_resp, stderr_resp);
+  int rc = zut_run_program("mv", {"--", source, target}, stdout_resp, stderr_resp);
   if (rc != 0)
   {
     ZDIAG_SET_MSG(&zusf->diag, "Failed to move file or directory from '%s' to '%s', errno: %d", truncated_source.c_str(), truncated_target.c_str(), rc);
