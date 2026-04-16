@@ -55,7 +55,6 @@ int ZCNACT(ZCN *zcn)
 
   // zwto_debug("@TEST rc before disable recovery is: %d", rc);
   disable_recovery(&zenv);
-  // zwto_debug("@TEST rc after disable recovery is: %d", rc);
 
   return rc;
 }
