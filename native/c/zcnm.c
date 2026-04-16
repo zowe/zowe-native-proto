@@ -36,7 +36,6 @@ int ZCNACT(ZCN *zcn)
 
   if (0 == enable_recovery(&zenv))
   {
-    // zwto_debug("@TEST calling zcnm1act, arr_return is: %llx", zenv.arr_return);
     ZCN zcn31 = {0};
     memcpy(&zcn31, zcn, sizeof(ZCN));
     rc = zcnm1act(&zcn31);
