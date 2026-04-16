@@ -32,7 +32,10 @@
 .*
 .*       SAVE=[SA,BAKR]
 .*         SA: (default) save input regs
+.*       SAVE=[SA,BAKR,NO]
+.*         SA: (default) save input regs
 .*         BAKR: save registers on linkage stack
+.*         NO: do not save save input registers
 .*
 .*       USENAB=[NO,YES]
 .*         NO: (default) do not attempt to use NAB
