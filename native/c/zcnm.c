@@ -19,6 +19,7 @@
 
 #pragma prolog(ZCNACT, " ZWEPROLG NEWDSA=(YES,128) ")
 #pragma epilog(ZCNACT, " ZWEEPILG ")
+// #pragma option_override(ZCNACT, "opt(level,0)")
 int ZCNACT(ZCN *zcn)
 {
   int rc = 0;
