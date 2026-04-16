@@ -32,7 +32,10 @@
 .*
 .*       SAVE=[SA,BAKR]
 .*         SA: (default) save input regs
+.*       SAVE=[SA,BAKR,NO]
+.*         SA: (default) save input regs
 .*         BAKR: save registers on linkage stack
+.*         NO: do not save save input registers
 .*
 .*       USENAB=[NO,YES]
 .*         NO: (default) do not attempt to use NAB
@@ -192,6 +195,8 @@
          LGR   15,13            Copy SA
          LG    13,136(,13)      Get NAB
          STG   15,128(,13)      Chain
+         AGO   .CONT500
+.*
 .CONT500 ANOP  ,
          AIF   (NOT &GETDSA).EXIT
 .*
