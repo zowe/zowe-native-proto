@@ -32,7 +32,6 @@ int ZCNACT(ZCN *zcn)
   }
 
   ZRCVY_ENV zenv = {0};
-  // zwto_debug("@TEST zenv address is: %p", &zenv);
 
   if (0 == enable_recovery(&zenv))
   {
