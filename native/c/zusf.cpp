@@ -920,15 +920,14 @@ int zusf_copy_file_or_dir(ZUSF *zusf, const std::string &source_path, const std:
  * @param zusf pointer to a ZUSF object
  * @param file name of the USS file
  * @param mode mode of the file or directory
- * @param createDir flag indicating whether to create a directory
- * @param overwrite flag indicating whether to overwrite existing file
+ * @param options create options
  *
  * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
  */
-int zusf_create_uss_file_or_dir(ZUSF *zusf, const std::string &file, mode_t mode, bool createDir, bool overwrite)
+int zusf_create_uss_file_or_dir(ZUSF *zusf, const std::string &file, mode_t mode, const CreateOptions &options)
 {
   struct stat file_stats;
-  if (stat(file.c_str(), &file_stats) != -1 && !overwrite)
+  if (stat(file.c_str(), &file_stats) != -1 && !options.overwrite)
   {
     if (S_ISREG(file_stats.st_mode))
     {
@@ -945,7 +944,7 @@ int zusf_create_uss_file_or_dir(ZUSF *zusf, const std::string &file, mode_t mode
     return RTNCD_FAILURE;
   }
 
-  if (createDir)
+  if (options.create_dir)
   {
     const auto last_trailing_slash = file.find_last_of("/");
     if (last_trailing_slash != std::string::npos)
@@ -954,7 +953,7 @@ int zusf_create_uss_file_or_dir(ZUSF *zusf, const std::string &file, mode_t mode
       const auto exists = stat(parent_path.c_str(), &file_stats) == 0;
       if (!exists)
       {
-        const auto rc = zusf_create_uss_file_or_dir(zusf, parent_path, mode, true);
+        const auto rc = zusf_create_uss_file_or_dir(zusf, parent_path, mode, CreateOptions(true));
         if (0 != rc)
         {
           return rc;

@@ -79,7 +79,7 @@ int handle_uss_create_file(InvocationContext &context)
   }
 
   ZUSF zusf{};
-  rc = zusf_create_uss_file_or_dir(&zusf, file_path, cf_mode, false, overwrite);
+  rc = zusf_create_uss_file_or_dir(&zusf, file_path, cf_mode, CreateOptions(false, overwrite));
   if (0 != rc)
   {
     context.error_stream() << "Error: could not create USS file: '" << file_path << "' rc: '" << rc << "'" << std::endl;
@@ -120,7 +120,7 @@ int handle_uss_create_dir(InvocationContext &context)
   }
 
   ZUSF zusf{};
-  rc = zusf_create_uss_file_or_dir(&zusf, file_path, cf_mode, true);
+  rc = zusf_create_uss_file_or_dir(&zusf, file_path, cf_mode, CreateOptions(true));
   if (0 != rc)
   {
     context.error_stream() << "Error: could not create USS directory: '" << file_path << "' rc: '" << rc << "'" << std::endl;
