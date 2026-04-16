@@ -941,7 +941,7 @@ int zusf_create_uss_file_or_dir(ZUSF *zusf, const std::string &file, mode_t mode
     {
       zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Path '%s' already exists! Mode: '%08o'", file.c_str(), file_stats.st_mode);
     }
-    return RTNCD_FAILURE;
+    return RTNCD_WARNING;
   }
 
   if (options.create_dir)

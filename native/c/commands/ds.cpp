@@ -312,9 +312,8 @@ int handle_data_set_create_member(InvocationContext &context)
     bool overwrite = context.get<bool>("overwrite", false);
     if (!overwrite && zds_member_exists(dataset_name, member_name))
     {
-      context.error_stream() << "Error: could not create data set member: '" << member_name << "' rc: '" << RTNCD_FAILURE << "'" << std::endl;
-      context.error_stream() << "  Details: Data set member already exists: '" << dsn << "'" << std::endl;
-      return RTNCD_FAILURE;
+      context.error_stream() << "Warning: Data set member already exists: '" << dsn << "'" << std::endl;
+      return RTNCD_WARNING;
     }
 
     std::string data = "";
