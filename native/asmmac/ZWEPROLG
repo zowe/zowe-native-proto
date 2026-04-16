@@ -186,7 +186,7 @@
          AIF   (&IS_64).UNAB64
          LR    15,13            Copy SA
          L     13,8(,13)        Get previous SA
-         ST    13,4(,15)        Chain
+         ST    15,4(,13)        Chain
          AGO   .CONT500
 .UNAB64  ANOP
          LGR   15,13            Copy SA
