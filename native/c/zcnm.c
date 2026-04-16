@@ -51,7 +51,6 @@ int ZCNACT(ZCN *zcn)
     rc = RTNCD_FAILURE;
   }
 
-  // zwto_debug("@TEST rc before disable recovery is: %d", rc);
   disable_recovery(&zenv);
 
   return rc;
