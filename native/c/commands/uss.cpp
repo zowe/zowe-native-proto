@@ -80,7 +80,12 @@ int handle_uss_create_file(InvocationContext &context)
 
   ZUSF zusf{};
   rc = zusf_create_uss_file_or_dir(&zusf, file_path, cf_mode, CreateOptions(false, overwrite));
-  if (0 != rc)
+  if (RTNCD_WARNING == rc)
+  {
+    context.error_stream() << "Warning: " << zusf.diag.e_msg << std::endl;
+    return RTNCD_WARNING;
+  }
+  else if (0 != rc)
   {
     context.error_stream() << "Error: could not create USS file: '" << file_path << "' rc: '" << rc << "'" << std::endl;
     context.error_stream() << "  Details: " << zusf.diag.e_msg << std::endl;
