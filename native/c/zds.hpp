@@ -111,16 +111,15 @@ extern "C"
  */
 struct ZDSCopyOptions
 {
-  // Input options
-  bool replace;               // Replace flag for PS -> PS & PDS -> PDS
-  bool delete_target_members; // Delete all members from target PDS before copying (PDS-to-PDS only)
+  bool replace;                  // Replace flag for PS -> PS & PDS -> PDS
+  bool overwrite;                // Overwrite entire target PDS
+  bool replace_matching_members; // replace like named members in target
 
-  // Output results
   bool target_exists;  // Set to true if target already exists
   bool member_created; // Set to true if target member was created
 
   ZDSCopyOptions()
-      : replace(false), delete_target_members(false), target_exists(false), member_created(false)
+      : replace(false), overwrite(false), replace_matching_members(false), target_exists(false), member_created(false)
   {
   }
 };

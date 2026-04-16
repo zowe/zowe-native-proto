@@ -488,7 +488,7 @@ static int copy_sequential(ZDS *zds, const std::string &dsn1, const std::string 
   if (options->target_exists && !options->replace)
   {
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg,
-                                  "Target data set '%s' already exists. Use --replace to overwrite.", dsn2.c_str());
+                                  "Target data set '%s' already exists. Use --replace (-r) to replace the target's contents", dsn2.c_str());
     return RTNCD_FAILURE;
   }
 
@@ -526,33 +526,43 @@ static int copy_sequential(ZDS *zds, const std::string &dsn1, const std::string 
   return rc;
 }
 
-static int copy_partitioned(ZDS *zds, const std::string &dsn1, const std::string &dsn2, ZDSCopyOptions *options)
+static int copy_partitioned(ZDS *zds, ZDSTypeInfo &sourceInfo, ZDSTypeInfo &targetInfo, ZDSCopyOptions *options)
 {
-  if (options->target_exists && !options->replace && !options->delete_target_members)
+  bool sourceIsPds = sourceInfo.member_name.empty();
+  bool targetIsPds = targetInfo.member_name.empty();
+
+  if (options->target_exists && !options->replace && !options->overwrite)
   {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg,
-                                  "Target data set '%s' already exists. Use --replace or --delete-target-members flags to proceed.", dsn2.c_str());
+    if (targetIsPds)
+    {
+      zds->diag.e_msg_len = sprintf(zds->diag.e_msg,
+                                    "Target data set '%s' already exists. Use --replace-matching-members (-rmm) flag to replace like-named members or --overwrite to replace the entire partitioned data set", targetInfo.base_dsn.c_str());
+    }
+    else
+    {
+      zds->diag.e_msg_len = sprintf(zds->diag.e_msg,
+                                    "Target member '%s' already exists. Use --replace (-r) flag to replace the target's contents", targetInfo.member_name.c_str());
+    }
     return RTNCD_FAILURE;
   }
 
-  // if target is not big enough, should we delete target and allocate like? or should we just delete all members and add source members to target?
-  //  if (options.delete_target_members)
-  //  {
-  //    unsigned int code;
-  //    std::string resp;
-  //    // Delete target
-  //    zut_bpxwdyn("delete da('" + target + "')", &code, resp);
-  //    // Recreate it empty
-  //    std::string create = "alloc da('" + target + "') like('" + source + "') new catalog";
-  //    zut_bpxwdyn(create, &code, resp);
-  //    zut_bpxwdyn("free da('" + target + "')", &code, resp);
-  //  }
+  if (options->overwrite && sourceIsPds && targetIsPds)
+  {
+    unsigned int code;
+    std::string resp;
+    // Delete target
+    zut_bpxwdyn("delete da('" + targetInfo.base_dsn + "')", &code, resp);
+    // Recreate it empty
+    std::string create = "alloc da('" + targetInfo.base_dsn + "') like('" + sourceInfo.base_dsn + "') new catalog";
+    zut_bpxwdyn(create, &code, resp);
+    zut_bpxwdyn("free da('" + targetInfo.base_dsn + "')", &code, resp);
+  }
 
   int rc = 0;
   std::vector<std::string> dds;
 
-  dds.push_back("alloc dd(SYSUT1) da('" + dsn1 + "') shr");
-  dds.push_back("alloc dd(SYSUT2) da('" + dsn2 + "') shr");
+  dds.push_back("alloc dd(SYSUT1) da('" + sourceInfo.base_dsn + "') shr");
+  dds.push_back("alloc dd(SYSUT2) da('" + targetInfo.base_dsn + "') shr");
   dds.push_back("alloc dd(sysin) lrecl(80) recfm(f,b) blksize(800)");
   dds.push_back("alloc dd(sysprint) lrecl(121) recfm(f,b,a) blksize(1210)");
 
@@ -560,8 +570,29 @@ static int copy_partitioned(ZDS *zds, const std::string &dsn1, const std::string
   if (rc != RTNCD_SUCCESS)
     return RTNCD_FAILURE;
 
-  std::string control_stmt = options->replace ? "        COPY OUTDD=SYSUT2,INDD=((SYSUT1,R))"
-                                              : "        COPY OUTDD=SYSUT2,INDD=SYSUT1";
+  std::string control_stmt;
+  std::string replace_flag = options->replace ? ",R" : "";
+
+  if (!sourceInfo.member_name.empty() && !targetInfo.member_name.empty())
+  {
+    if (!member_exists_in_pds(targetInfo.base_dsn, targetInfo.member_name))
+    {
+      options->member_created = true;
+    }
+    control_stmt = "  COPY OUTDD=SYSUT2,INDD=SYSUT1\n";
+    control_stmt += "  SELECT MEMBER=((" + sourceInfo.member_name + "," + targetInfo.member_name + replace_flag + "))";
+  }
+  else
+  {
+    if (options->replace)
+    {
+      control_stmt = "  COPY OUTDD=SYSUT2,INDD=((SYSUT1,R))";
+    }
+    else
+    {
+      control_stmt = "  COPY OUTDD=SYSUT2,INDD=SYSUT1";
+    }
+  }
   rc = zds_write_to_dd(zds, "sysin", control_stmt);
   if (rc != 0)
   {
@@ -570,6 +601,7 @@ static int copy_partitioned(ZDS *zds, const std::string &dsn1, const std::string
   }
 
   rc = zut_run("IEBCOPY");
+
   if (rc != RTNCD_SUCCESS)
   {
     std::string output;
@@ -598,7 +630,6 @@ int zds_copy_dsn(ZDS *zds, const std::string &dsn1, const std::string &dsn2, ZDS
   zds_get_type_info(dsn1, info1);
   zds_get_type_info(dsn2, info2);
 
-  // if the target's type is unknown, then check if there is a member name. if there is, then set target to type member, if not, set target to source's type
   ZDS_TYPE target_type = info2.type;
   if (target_type == ZDS_TYPE_UNKNOWN)
   {
@@ -608,10 +639,6 @@ int zds_copy_dsn(ZDS *zds, const std::string &dsn1, const std::string &dsn2, ZDS
       target_type = info1.type;
   }
 
-  // IMMEDIATE FAILURE SCENARIOS
-  // ----------------------------------------------------------------------------------------------------------------------------------
-
-  // if source does not exist, throw error
   if (!info1.exists)
   {
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Source data set '%s' not found", info1.base_dsn.c_str());
@@ -631,8 +658,7 @@ int zds_copy_dsn(ZDS *zds, const std::string &dsn1, const std::string &dsn2, ZDS
   if (info1.type == ZDS_TYPE_MEMBER && target_type == ZDS_TYPE_PS)
   {
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg,
-                                  "Cannot copy partitioned data set member to a data set. "
-                                  "Target member name must be specified.");
+                                  "Cannot copy partitioned data set member to a sequential data set. Target must be a data set member");
     return RTNCD_FAILURE;
   }
 
@@ -640,7 +666,7 @@ int zds_copy_dsn(ZDS *zds, const std::string &dsn1, const std::string &dsn2, ZDS
   if (info1.type == ZDS_TYPE_PS && target_type == ZDS_TYPE_MEMBER)
   {
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg,
-                                  "Cannot copy sequential data set to a partitioned data set member. "
+                                  "Cannot copy sequential data set to a data set member. "
                                   "Target must be a sequential data set.");
     return RTNCD_FAILURE;
   }
@@ -650,11 +676,9 @@ int zds_copy_dsn(ZDS *zds, const std::string &dsn1, const std::string &dsn2, ZDS
   {
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg,
                                   "Cannot copy a partitioned data set to a sequential data set. "
-                                  "Target must be a PDS.");
+                                  "Target must be a partitioned data set.");
     return RTNCD_FAILURE;
   }
-
-  // ----------------------------------------------------------------------------------------------------------------------------------
 
   options->target_exists = zds_dataset_exists(dsn2);
 
@@ -662,31 +686,27 @@ int zds_copy_dsn(ZDS *zds, const std::string &dsn1, const std::string &dsn2, ZDS
   {
     unsigned int code = 0;
     std::string create_resp;
-    std::string parm = "ALLOC DA('" + dsn2 + "') LIKE('" + dsn1 + "') NEW CATALOG";
+    std::string create = "ALLOC DA('" + info2.base_dsn + "') LIKE('" + info1.base_dsn + "') NEW CATALOG";
 
-    rc = zut_bpxwdyn(parm, &code, create_resp);
+    rc = zut_bpxwdyn(create, &code, create_resp);
     if (rc != RTNCD_SUCCESS)
     {
       zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to create target data set '%s' using LIKE('%s'): %s",
                                     dsn2.c_str(), dsn1.c_str(), create_resp.c_str());
       return RTNCD_FAILURE;
     }
-    std::string free_parm = "FREE DA('" + dsn2 + "')";
-    zut_bpxwdyn(free_parm, &code, create_resp);
+    std::string free = "FREE DA('" + dsn2 + "')";
+    zut_bpxwdyn(free, &code, create_resp);
   }
 
   if (info1.type == ZDS_TYPE_PS && target_type == ZDS_TYPE_PS)
   {
     return copy_sequential(zds, dsn1, dsn2, options);
   }
-  else if (info1.type == ZDS_TYPE_PDS && target_type == ZDS_TYPE_PDS)
+  else if ((info1.type == ZDS_TYPE_PDS && target_type == ZDS_TYPE_PDS) || (info1.type == ZDS_TYPE_MEMBER && target_type == ZDS_TYPE_MEMBER))
   {
-    return copy_partitioned(zds, dsn1, dsn2, options);
+    return copy_partitioned(zds, info1, info2, options);
   }
-  // else if (info1.type == ZDS_TYPE_MEMBER && target_type == ZDS_TYPE_MEMBER)
-  // {
-  //   return copy_member(zds, dsn1, dsn2);
-  // }
   else
   {
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Copy between these types is not supported.");
