@@ -965,10 +965,8 @@ int handle_data_set_copy(InvocationContext &context)
   ZDS zds{};
   ZDSCopyOptions options;
   options.overwrite = context.get<bool>("overwrite", false);
-  bool replace = context.get<bool>("replace", false);
-  bool replace_matching_members = context.get<bool>("replace-matching-members", false);
+  options.replace = context.get<bool>("replace", false);
 
-  options.replace = replace || replace_matching_members;
   int rc = zds_copy_dsn(&zds, source, target, &options);
 
   if (rc != RTNCD_SUCCESS)
@@ -981,7 +979,7 @@ int handle_data_set_copy(InvocationContext &context)
     return RTNCD_FAILURE;
   }
 
-  if (!options.target_exists)
+  if (!options.target_exists && !options.member_created)
   {
     context.output_stream() << "New data set '" << target << "' created and copied from '" << source << "'" << std::endl;
   }
@@ -1165,14 +1163,11 @@ void register_commands(parser::Command &root_command)
   auto ds_copy_cmd = command_ptr(new Command("copy", "copy data set (RECFM=U not supported)"));
   ds_copy_cmd->add_positional_arg("source", "source data set to copy from", ArgType_Single, true);
   ds_copy_cmd->add_positional_arg("target", "target data set to copy to", ArgType_Single, true);
-  ds_copy_cmd->add_keyword_arg("replace-matching-members", make_aliases("-rmm"),
-                               "replace matching members in target partitioned data set with source members (keeps non-matching target members)",
-                               ArgType_Flag, false, ArgValue(false));
   ds_copy_cmd->add_keyword_arg("overwrite", make_aliases("-o"),
                                "Replace the entire target partitioned data set with the source data set. All members including like named members will be overwritten",
                                ArgType_Flag, false, ArgValue(false));
   ds_copy_cmd->add_keyword_arg("replace", make_aliases("--replace", "-r"),
-                               "Replace the target sequential/member contents with the source's contents",
+                               "Replaces target sequential/member content with source content or replaces matching members in a partitioned data set with source members (keeps non-matching target members)",
                                ArgType_Flag, false, ArgValue(false));
   ds_copy_cmd->set_handler(handle_data_set_copy);
   data_set_cmd->add_command(ds_copy_cmd);
