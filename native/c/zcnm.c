@@ -38,7 +38,7 @@ int ZCNACT(ZCN *zcn)
 
   if (0 != rc)
   {
-    ZDIAG_SET_MSG(&zcn->diag, "Error activating console, service: %s, rc: %d, service_rc: %d, service_rsn: %d", zcn->diag.service_name, rc, zcn->diag.service_rc, zcn->diag.service_rsn);
+    ZDIAG_SET_MSG(&zcn->diag, "Error activating console, service: %.16s, rc: %d, service_rc: %d, service_rsn: %d", zcn->diag.service_name, rc, zcn->diag.service_rc, zcn->diag.service_rsn);
     return RTNCD_FAILURE;
   }
 
@@ -67,7 +67,7 @@ int ZCNPUT(ZCN *zcn, const char *command)
 
   if (0 != rc)
   {
-    ZDIAG_SET_MSG(&zcn->diag, "Error writting data to console, service: %s, rc: %d, service_rc: %d, service_rsn: %d", zcn->diag.service_name, rc, zcn->diag.service_rc, zcn->diag.service_rsn);
+    ZDIAG_SET_MSG(&zcn->diag, "Error writting data to console, service: %.16s, rc: %d, service_rc: %d, service_rsn: %d", zcn->diag.service_name, rc, zcn->diag.service_rc, zcn->diag.service_rsn);
     return RTNCD_FAILURE;
   }
 
@@ -128,7 +128,7 @@ int ZCNGET(ZCN *zcn, char *response)
 
   if (0 != rc)
   {
-    ZDIAG_SET_MSG(&zcn->diag, "Error getting data from console, service: %s, rc: %d, service_rc: %d, service_rsn: %d", zcn->diag.service_name, rc, zcn->diag.service_rc, zcn->diag.service_rsn);
+    ZDIAG_SET_MSG(&zcn->diag, "Error getting data from console, service: %.16s, rc: %d, service_rc: %d, service_rsn: %d", zcn->diag.service_name, rc, zcn->diag.service_rc, zcn->diag.service_rsn);
     return RTNCD_FAILURE;
   }
 
@@ -157,7 +157,7 @@ int ZCNDACT(ZCN *zcn)
 
   if (0 != rc)
   {
-    ZDIAG_SET_MSG(&zcn->diag, "Error deactivating console, service: %s, rc: %d, service_rc: %d, service_rsn: %d", zcn->diag.service_name, rc, zcn->diag.service_rc, zcn->diag.service_rsn);
+    ZDIAG_SET_MSG(&zcn->diag, "Error deactivating console, service: %.16s, rc: %d, service_rc: %d, service_rsn: %d", zcn->diag.service_name, rc, zcn->diag.service_rc, zcn->diag.service_rsn);
     return RTNCD_FAILURE;
   }
 

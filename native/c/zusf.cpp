@@ -1636,8 +1636,8 @@ int zusf_write_to_uss_file(ZUSF *zusf, const std::string &file, std::string &dat
   struct stat new_stats;
   if (stat(file.c_str(), &new_stats) == -1)
   {
-    zusf->diag.e_msg_len = sprintf(
-        zusf->diag.e_msg,
+    zusf->diag.e_msg_len = snprintf(
+        zusf->diag.e_msg, sizeof(zusf->diag.e_msg),
         "Could not stat file '%s' after writing",
         file.c_str());
     return RTNCD_FAILURE;

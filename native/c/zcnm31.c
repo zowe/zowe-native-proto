@@ -145,7 +145,8 @@ int zcnm1put(ZCN *zcn, const char *command)
   unsigned short authcmdx = 0x8000; // 1000000000000000 - Master Authority - https://www.ibm.com/docs/en/zos/3.1.0?topic=commands-mgcre-execute-form
   unsigned short *authcmdxp = &authcmdx;
 
-  commandBuffer.commandLen = snprintf(commandBuffer.command, sizeof(commandBuffer.command), "%s", command);
+  /* Use precision specifier %.*s as snprintf is unavailable in Metal C */
+  commandBuffer.commandLen = sprintf(commandBuffer.command, "%.*s", (int)(sizeof(commandBuffer.command) - 1), command);
   char cart[8] = "ZOWECART";
 
   strcpy(zcn->diag.service_name, "MGCRE");

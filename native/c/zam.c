@@ -63,7 +63,7 @@ static int handle_dcb_abend(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc, const char *P
     if (0 == diag->e_msg_len)
     {
       strcpy(diag->service_name, operation);
-      ZDIAG_SET_MSG(diag, "DCB abend during %s for %8.8s data set: %44.44s",
+      ZDIAG_SET_MSG(diag, "DCB abend during %.16s for %8.8s data set: %44.44s",
                                 operation, ioc->ddname, ioc->jfcb.jfcbdsnm);
       diag->detail_rc = ZDS_RTNCD_DCB_ABEND_ERROR;
     }
@@ -86,7 +86,7 @@ static int validate_jfcb_attributes(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
   // ensure member name (e.g. is a partitioned data set)
   if (ioc->jfcb.jfcbelnm[0] == ' ')
   {
-    ZDIAG_SET_MSG(diag, "DDname: %8.8s data set: %44.44s is not a partitioned data set: %s", ioc->dcb.dcbddnam, ioc->jfcb.jfcbdsnm, ioc->jfcb.jfcbelnm);
+    ZDIAG_SET_MSG(diag, "DDname: %8.8s data set: %44.44s is not a partitioned data set: %.8s", ioc->dcb.dcbddnam, ioc->jfcb.jfcbdsnm, ioc->jfcb.jfcbelnm);
     diag->detail_rc = ZDS_RTNCD_UNSUPPORTED_DSORG;
     return RTNCD_FAILURE;
   }
@@ -626,7 +626,8 @@ static void copy_variable_record(IO_CTRL *PTR32 ioc, const char *PTR32 data, int
   ioc->lines_written++;
   RDW *PTR32 rdw_ptr = (RDW * PTR32) ioc->free_location;
   rdw_ptr->unused = 0;
-  rdw_ptr->len = sprintf(ioc->free_location + sizeof(RDW), "%.*s", length, data) + sizeof(RDW);
+  memcpy(ioc->free_location + sizeof(RDW), data, length);
+  rdw_ptr->len = length + sizeof(RDW);
   ioc->bytes_in_buffer += rdw_ptr->len;
   ioc->free_location += rdw_ptr->len;
 }

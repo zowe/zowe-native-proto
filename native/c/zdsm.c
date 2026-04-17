@@ -132,7 +132,7 @@ int ZDSDSCB1(ZDS *zds, const char *dsn, const char *volser, DSCBFormat1 *dscb)
   if (0 != rc)
   {
     strcpy(zds->diag.service_name, "OBTAIN");
-    ZDIAG_SET_MSG(&zds->diag, "OBTAIN SVC failed for %s on %s with rc=%d, workarea_ptr=%p",
+    ZDIAG_SET_MSG(&zds->diag, "OBTAIN SVC failed for %.44s on %.6s with rc=%d, workarea_ptr=%p",
                 dsn, volser, rc, workarea);
     zds->diag.service_rc = rc;
     zds->diag.detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
@@ -157,8 +157,7 @@ int ZDSDSCB1(ZDS *zds, const char *dsn, const char *volser, DSCBFormat1 *dscb)
   }
 
   strcpy(zds->diag.service_name, "OBTAIN");
-  zds->diag.e_msg_len = sprintf(
-      zds->diag.e_msg, "Could not find Format-1 or Format-8 DSCB, OBTAIN rc=%d, sizeof(dscb)=%d", rc, sizeof(IndexableDSCBFormat1));
+  ZDIAG_SET_MSG(&zds->diag, "Could not find Format-1 or Format-8 DSCB, OBTAIN rc=%d, sizeof(dscb)=%d", rc, sizeof(IndexableDSCBFormat1));
   zds->diag.detail_rc = ZDS_RTNCD_UNEXPECTED_ERROR;
   return RTNCD_FAILURE;
 }

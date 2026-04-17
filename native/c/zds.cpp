@@ -324,8 +324,8 @@ int zds_copy_dsn(ZDS *zds, const std::string &dsn1, const std::string &dsn2, ZDS
   if (info1.type == ZDS_TYPE_PDS && !info2.member_name.empty())
   {
     ZDIAG_SET_MSG(&zds->diag,
-                                  "Cannot copy entire PDS to a member. "
-                                  "Target must be a PDS.");
+                  "Cannot copy entire PDS to a member. "
+                  "Target must be a PDS.");
     return RTNCD_FAILURE;
   }
 
@@ -333,8 +333,8 @@ int zds_copy_dsn(ZDS *zds, const std::string &dsn1, const std::string &dsn2, ZDS
   if (info1.type == ZDS_TYPE_MEMBER && info2.member_name.empty())
   {
     ZDIAG_SET_MSG(&zds->diag,
-                                  "Cannot copy PDS member to a sequential data set. "
-                                  "Target must specify a member name.");
+                  "Cannot copy PDS member to a sequential data set. "
+                  "Target must specify a member name.");
     return RTNCD_FAILURE;
   }
 
@@ -342,8 +342,8 @@ int zds_copy_dsn(ZDS *zds, const std::string &dsn1, const std::string &dsn2, ZDS
   if (info1.type == ZDS_TYPE_PS && !info2.member_name.empty())
   {
     ZDIAG_SET_MSG(&zds->diag,
-                                  "Cannot copy sequential data set to a PDS member. "
-                                  "Target must be a sequential data set.");
+                  "Cannot copy sequential data set to a PDS member. "
+                  "Target must be a sequential data set.");
     return RTNCD_FAILURE;
   }
 
@@ -351,8 +351,8 @@ int zds_copy_dsn(ZDS *zds, const std::string &dsn1, const std::string &dsn2, ZDS
   if (info1.type == ZDS_TYPE_PDS && info2.type == ZDS_TYPE_PS)
   {
     ZDIAG_SET_MSG(&zds->diag,
-                                  "Cannot copy PDS to a sequential data set. "
-                                  "Target must be a PDS.");
+                  "Cannot copy PDS to a sequential data set. "
+                  "Target must be a PDS.");
     return RTNCD_FAILURE;
   }
 
@@ -416,7 +416,7 @@ int zds_copy_dsn(ZDS *zds, const std::string &dsn1, const std::string &dsn2, ZDS
       strncpy(truncated_detail, detail, sizeof(truncated_detail) - 1);
       truncated_detail[sizeof(truncated_detail) - 1] = '\0';
       ZDIAG_SET_MSG(&zds->diag, "Failed to create target data set '%s': %s",
-                                    info2.base_dsn.c_str(), truncated_detail);
+                    info2.base_dsn.c_str(), truncated_detail);
       return RTNCD_FAILURE;
     }
     opts->target_created = true;
@@ -433,8 +433,8 @@ int zds_copy_dsn(ZDS *zds, const std::string &dsn1, const std::string &dsn2, ZDS
     if (target_actually_exists)
     {
       ZDIAG_SET_MSG(&zds->diag,
-                                    "Target '%s' already exists. Use --replace to overwrite.",
-                                    dsn2.c_str());
+                    "Target '%s' already exists. Use --replace to overwrite.",
+                    dsn2.c_str());
       return RTNCD_FAILURE;
     }
   }
@@ -1384,7 +1384,7 @@ int zds_validate_etag(ZDS *zds, const std::string &dsn, bool has_encoding)
     strncpy(truncated_detail, read_zds.diag.e_msg, sizeof(truncated_detail) - 1);
     truncated_detail[sizeof(truncated_detail) - 1] = '\0';
     ZDIAG_SET_MSG(&zds->diag,
-                                  "Failed to read contents of data set for e-tag comparison: %s", truncated_detail);
+                  "Failed to read contents of data set for e-tag comparison: %s", truncated_detail);
     return RTNCD_FAILURE;
   }
 
@@ -1887,7 +1887,7 @@ void parse_packed_time(
   }
 
   char buffer[9];
-  sprintf(buffer, "%02d:%02d:%02d", hh, mm, ss);
+  snprintf(buffer, sizeof(buffer), "%02d:%02d:%02d", hh, mm, ss);
   *time_out = buffer;
 }
 
@@ -2305,7 +2305,7 @@ void load_date_from_dscb(const char *date_in, std::string *date_out, bool is_exp
 
   // Format as "YYYY/MM/DD"
   char buffer[11];
-  sprintf(buffer, "%04d/%02d/%02d", year, month, day);
+  snprintf(buffer, sizeof(buffer), "%04d/%02d/%02d", year, month, day);
   *date_out = buffer;
 }
 
@@ -2926,9 +2926,9 @@ int zds_list_data_sets(ZDS *zds, std::string dsn, std::vector<ZDSEntry> &dataset
       ZDSDEL(zds);
       zds->diag.detail_rc = ZDS_RTNCD_UNEXPECTED_ERROR;
       ZDIAG_SET_MSG(&zds->diag,
-                  "Unexpected work area field response preset len %d and "
-                  "return len %d are not equal",
-                  number_fields, number_of_fields);
+                    "Unexpected work area field response preset len %d and "
+                    "return len %d are not equal",
+                    number_fields, number_of_fields);
       return RTNCD_FAILURE;
     }
 

@@ -129,7 +129,7 @@ int ZJBSYMB(ZJB *zjb, const char *symbol, char *value, int value_size)
   if (jsymbolEntry->jsyevals >= value_size)
   {
     strcpy(zjb->diag.service_name, "ZJBSYMB");
-    ZDIAG_SET_MSG(&zjb->diag, "Symbol value size (%d) exceeds buffer capacity (%d) for symbol '%s'", 
+    ZDIAG_SET_MSG(&zjb->diag, "Symbol value size (%d) exceeds buffer capacity (%d) for symbol '%.32s'", 
                   jsymbolEntry->jsyevals, value_size, symbol);
     zjb->diag.detail_rc = ZJB_RTNCD_INSUFFICIENT_BUFFER;
     return RTNCD_FAILURE;
@@ -289,8 +289,7 @@ int ZJBMMOD(ZJB *zjb, int type, int flags)
     if (zjb->jobid[0] != 0x00)
     {
       zjb->diag.detail_rc = ZJB_RTNCD_JOB_NOT_FOUND;
-      zjb->diag.e_msg_len = sprintf(
-          zjb->diag.e_msg, "No jobs found matching jobid '%.8s'", zjb->jobid);
+      ZDIAG_SET_MSG(&zjb->diag, "No jobs found matching jobid '%.8s'", zjb->jobid);
     }
     else
     {
@@ -572,8 +571,7 @@ int ZJBMLSDS(ZJB *PTR64 zjb, STATSEVB **PTR64 sysoutInfo, int *entries)
     if (zjb->jobid[0] != 0x00)
     {
       zjb->diag.detail_rc = ZJB_RTNCD_JOB_NOT_FOUND;
-      zjb->diag.e_msg_len = sprintf(
-          zjb->diag.e_msg, "No jobs found matching jobid '%.8s'", zjb->jobid);
+      ZDIAG_SET_MSG(&zjb->diag, "No jobs found matching jobid '%.8s'", zjb->jobid);
     }
     else
     {
@@ -619,8 +617,7 @@ int ZJBMLSDS(ZJB *PTR64 zjb, STATSEVB **PTR64 sysoutInfo, int *entries)
     if (zjb->jobid[0] != 0x00)
     {
       zjb->diag.detail_rc = ZJB_RTNCD_JOB_NOT_FOUND;
-      zjb->diag.e_msg_len = sprintf(
-          zjb->diag.e_msg, "No jobs found matching jobid '%.8s'", zjb->jobid);
+      ZDIAG_SET_MSG(&zjb->diag, "No jobs found matching jobid '%.8s'", zjb->jobid);
     }
     else
     {

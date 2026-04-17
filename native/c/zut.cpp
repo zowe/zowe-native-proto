@@ -457,7 +457,7 @@ int zut_bpxwdyn_common(const std::string &parm, unsigned int *code, std::string 
     bparm->rtdsn = 1; // set bit flag indicating we want to return the DS name
   }
 
-  bparm->len = sprintf(bparm->str, "%s", parm.c_str());
+  bparm->len = snprintf(bparm->str, sizeof(bparm->str), "%s", parm.c_str());
   int rc = ZUTWDYN(bparm, response);
 
   if (bparm->rtdd)
@@ -678,11 +678,11 @@ void zut_print_string_as_bytes(std::string &input, std::ostream *out_stream)
   {
     if (p == (input.data() + input.length() - 1))
     {
-      sprintf(buf, "%02x", (unsigned char)*p);
+      snprintf(buf, sizeof(buf), "%02x", (unsigned char)*p);
     }
     else
     {
-      sprintf(buf, "%02x ", (unsigned char)*p);
+      snprintf(buf, sizeof(buf), "%02x ", (unsigned char)*p);
     }
     output_stream << buf;
   }
