@@ -964,8 +964,8 @@ int handle_data_set_copy(InvocationContext &context)
 
   ZDS zds{};
   ZDSCopyOptions options;
+  options.overwrite = context.get<bool>("overwrite", false);
   options.replace = context.get<bool>("replace", false);
-  options.delete_target_members = context.get<bool>("delete-target-members", false);
 
   int rc = zds_copy_dsn(&zds, source, target, &options);
 
@@ -979,7 +979,7 @@ int handle_data_set_copy(InvocationContext &context)
     return RTNCD_FAILURE;
   }
 
-  if (options.target_created)
+  if (!options.target_exists && !options.member_created)
   {
     context.output_stream() << "New data set '" << target << "' created and copied from '" << source << "'" << std::endl;
   }
@@ -987,9 +987,9 @@ int handle_data_set_copy(InvocationContext &context)
   {
     context.output_stream() << "New member '" << target << "' created and copied from '" << source << "'" << std::endl;
   }
-  else if (options.delete_target_members)
+  else if (options.overwrite)
   {
-    context.output_stream() << "Target members deleted and data set '" << target << "' replaced with contents of '" << source << "'" << std::endl;
+    context.output_stream() << "Target data set '" << target << "' was overwritten with the attributes and contents of '" << source << "'" << std::endl;
   }
   else if (options.replace)
   {
@@ -1163,11 +1163,11 @@ void register_commands(parser::Command &root_command)
   auto ds_copy_cmd = command_ptr(new Command("copy", "copy data set (RECFM=U not supported)"));
   ds_copy_cmd->add_positional_arg("source", "source data set to copy from", ArgType_Single, true);
   ds_copy_cmd->add_positional_arg("target", "target data set to copy to", ArgType_Single, true);
-  ds_copy_cmd->add_keyword_arg("replace", make_aliases("--replace", "-r"),
-                               "replace matching members in target PDS with source members (keeps non-matching target members)",
+  ds_copy_cmd->add_keyword_arg("overwrite", make_aliases("-o"),
+                               "Replace the entire target partitioned data set with the source data set. All members including like named members will be overwritten",
                                ArgType_Flag, false, ArgValue(false));
-  ds_copy_cmd->add_keyword_arg("delete-target-members", make_aliases("--delete-target-members", "-d"),
-                               "delete all members from target PDS before copying (PDS-to-PDS copy only, makes target match source exactly)",
+  ds_copy_cmd->add_keyword_arg("replace", make_aliases("--replace", "-r"),
+                               "Replaces target sequential/member content with source content or replaces matching members in a partitioned data set with source members (keeps non-matching target members)",
                                ArgType_Flag, false, ArgValue(false));
   ds_copy_cmd->set_handler(handle_data_set_copy);
   data_set_cmd->add_command(ds_copy_cmd);

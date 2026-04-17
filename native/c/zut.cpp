@@ -89,7 +89,7 @@ int zut_private_run_program(const std::string &program, const std::vector<std::s
     close(stdout_pipe[1]);
     close(stderr_pipe[0]);
     close(stderr_pipe[1]);
-    return RTNCD_FAILURE; 
+    return RTNCD_FAILURE;
   }
 
   std::vector<char *> argv_vec;
@@ -123,27 +123,31 @@ int zut_private_run_program(const std::string &program, const std::vector<std::s
   struct inheritance inherit = {};
 
   pid_t pid = spawnp(program.c_str(), fd_count, fd_map, &inherit, (const char **)argv_vec.data(), env_vec.data());
-  
+
   close(devnull_fd); // close /dev/null fd right away; child has a clone
 
   if (pid == -1)
   {
     int spawn_error = errno;
     std::string error_message;
-    if (spawn_error == ENOENT) 
+    if (spawn_error == ENOENT)
     {
       error_message = "zut_private_run_program: " + program + ": command not found";
-    } 
+    }
     else if (spawn_error == EACCES)
     {
       error_message = "zut_private_run_program: Permission denied when trying to execute '" + program + "'.";
     }
-    else {
+    else
+    {
       error_message = "zut_private_run_program: error running " + program + ": " + std::string(strerror(spawn_error));
     }
-    if (merge_streams) {
+    if (merge_streams)
+    {
       stdout_response = error_message;
-    } else {
+    }
+    else
+    {
       stderr_response = error_message;
     }
     close(stdout_pipe[0]);
@@ -299,14 +303,15 @@ static bool zut_private_command_requires_noshareas(const std::string &command)
   return false;
 }
 
-static std::string zut_private_get_shell() {
+static std::string zut_private_get_shell()
+{
   std::string shell_path = "/bin/sh";
 
   // Check if /bin/sh exists AND is executable by the current user
   if (access(shell_path.c_str(), X_OK) != 0)
   {
     // otherwise, try env. If it's empty, we leave shell_path=/bin/sh
-    const char* env_shell = std::getenv("SHELL");
+    const char *env_shell = std::getenv("SHELL");
     if (env_shell != nullptr && env_shell[0] != '\0')
     {
       shell_path = env_shell;
@@ -349,7 +354,7 @@ int zut_spawn_shell_command(const std::string &command, std::string &stdout_resp
   stderr_response.clear();
 
   if (0 == command.size())
-  {  
+  {
     stderr_response = "Error: You must specify a program to run.";
     return RTNCD_FAILURE;
   }
@@ -446,6 +451,7 @@ int zut_bpxwdyn_common(const std::string &parm, unsigned int *code, std::string 
   }
 
   bparm->len = sprintf(bparm->str, "%s", parm.c_str());
+
   int rc = ZUTWDYN(bparm, response);
 
   if (bparm->rtdd)
@@ -966,7 +972,7 @@ int zut_loop_dynalloc(ZDIAG &diag, const std::vector<std::string> &list)
       diag.detail_rc = ZUT_RTNCD_SERVICE_FAILURE;
       diag.service_rc = rc;
       strcpy(diag.service_name, "bpxwdyn");
-      diag.e_msg_len = sprintf(diag.e_msg, "bpxwdyn failed with '%s' rc: '%d', emsg: '%s'", diag.service_name, rc, alloc.c_str());
+      diag.e_msg_len = sprintf(diag.e_msg, "bpxwdyn failed with '%s' rc: '%d', emsg: '%s'", diag.service_name, rc, response.c_str());
       return RTNCD_FAILURE;
     }
   }
