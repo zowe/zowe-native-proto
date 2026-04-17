@@ -635,6 +635,20 @@ void zowex_ds_tests()
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain("Data set '" + ds + "' deleted");
                            });
+                        it("should delete a member of a partitioned data set",
+                           [&]() -> void
+                           {
+                             std::string ds = _ds.back();
+                             _create_ds(ds, "--dsorg PO --dirblk 2");
+
+                             std::string response;
+                             execute_command_with_output(zowex_command + " data-set create-member '" + ds + "(TESTMEM)'", response);
+
+                             std::string command = zowex_command + " data-set delete '" + ds + "(TESTMEM)'";
+                             int rc = execute_command_with_output(command, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+                             Expect(response).ToContain("Data set '" + ds + "(TESTMEM)' deleted");
+                           });
 
                         it("should fail to delete a non-existent data set",
                            [&]() -> void

@@ -1745,20 +1745,26 @@ int zds_create_dsn_loadlib(ZDS *zds, const std::string &dsn, std::string &respon
   return zds_create_dsn(zds, dsn, attributes, response);
 }
 
-#define NUM_DELETE_TEXT_UNITS 2
 int zds_delete_dsn(ZDS *zds, std::string dsn)
 {
   int rc = 0;
-
-  dsn = "//'" + dsn + "'";
-
-  rc = remove(dsn.c_str());
+  std::string dsname = "//'" + dsn + "'";
+  rc = remove(dsname.c_str());
 
   if (0 != rc)
   {
+    constexpr auto EOPEN = 91;
     strcpy(zds->diag.service_name, "remove");
-    zds->diag.service_rc = rc;
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not delete data set '%s', rc: '%d'", dsn.c_str(), rc);
+    zds->diag.service_rc = errno;
+    if (errno == EOPEN)
+    {
+      // Data set is open in another process so allocating with DISP=OLD failed
+      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to allocate data set '%s' for deletion (errno=91). It may be in use by another process.", dsn.c_str());
+    }
+    else
+    {
+      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not delete data set '%s', rc: '%d'", dsn.c_str(), errno);
+    }
     zds->diag.detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
     return RTNCD_FAILURE;
   }
