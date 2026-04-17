@@ -129,7 +129,7 @@ int ZJBSYMB(ZJB *zjb, const char *symbol, char *value, int value_size)
   if (jsymbolEntry->jsyevals >= value_size)
   {
     strcpy(zjb->diag.service_name, "ZJBSYMB");
-    ZDIAG_SET_MSG(&zjb->diag, "Symbol value size (%d) exceeds buffer capacity (%d) for symbol '%.32s'", 
+    ZDIAG_SET_MSG(&zjb->diag, "Symbol value size (%d) exceeds buffer capacity (%d) for symbol '%.32s'",
                   jsymbolEntry->jsyevals, value_size, symbol);
     zjb->diag.detail_rc = ZJB_RTNCD_INSUFFICIENT_BUFFER;
     return RTNCD_FAILURE;
@@ -137,7 +137,7 @@ int ZJBSYMB(ZJB *zjb, const char *symbol, char *value, int value_size)
 
   p = p + jsymbolEntry->jsyevalo;
   memcpy(value, p, jsymbolEntry->jsyevals);
-  
+
   // Null-terminate the string if there's space
   if (jsymbolEntry->jsyevals < value_size)
   {
@@ -472,7 +472,7 @@ int ZJBMTCOM(ZJB *zjb, STAT *PTR64 stat, ZJB_JOB_INFO **PTR64 job_info, int *ent
         strcpy(zjb->diag.service_name, "iaztlkup");
         // For information about the reason code, look for `tlkretcd` in "native/c/chdsect/iaztlkdf.h"
         // https://www.ibm.com/docs/en/zos/3.1.0?topic=80-text-lookup-service-iaztlkup
-        ZDIAG_SET_MSG(&zjb->diag, "IAZTLKUP RC: '%d' reason: '%d'", statjqtrsp->statjqtr.sttrjid, rc, zjb->diag.detail_rc);
+        ZDIAG_SET_MSG(&zjb->diag, "IAZTLKUP RC: '%d' reason: '%d'", rc, zjb->diag.detail_rc);
         zjb->diag.detail_rc = ZJB_RTNCD_SERVICE_FAILURE;
         storage_free64(statjqtrsp);
         return RTNCD_FAILURE;
