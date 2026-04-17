@@ -227,7 +227,7 @@ static int copy_sequential(ZDS *zds, const std::string &dsn1, const std::string 
   if (options->target_exists && !options->replace)
   {
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg,
-                                  "Target data set '%s' already exists. Use --replace (-r) to replace the target's contents", dsn2.c_str());
+                                  "Target data set '%s' already exists. Use --replace (-r) flag to replace the target's contents", dsn2.c_str());
     return RTNCD_FAILURE;
   }
 
@@ -275,7 +275,7 @@ static int copy_partitioned(ZDS *zds, ZDSTypeInfo &sourceInfo, ZDSTypeInfo &targ
     if (targetIsPds)
     {
       zds->diag.e_msg_len = sprintf(zds->diag.e_msg,
-                                    "Target data set '%s' already exists. Use --replace replace like-named members or --overwrite to replace the entire partitioned data set", targetInfo.base_dsn.c_str());
+                                    "Target data set '%s' already exists. Use --replace (-r) flag to replace like-named members or --overwrite to replace the entire partitioned data set", targetInfo.base_dsn.c_str());
     }
     else
     {
@@ -287,7 +287,6 @@ static int copy_partitioned(ZDS *zds, ZDSTypeInfo &sourceInfo, ZDSTypeInfo &targ
 
   if (options->overwrite && sourceIsPds && targetIsPds)
   {
-    fprintf(stderr, "DEBUG: ENTERING OVERWRITE %s\n", targetInfo.base_dsn.c_str());
     unsigned int code;
     std::string resp;
     std::string create_resp;
