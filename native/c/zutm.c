@@ -383,7 +383,7 @@ void ZUTDBGMG(const char *msg)
   IO_CTRL *sysprintIoc = open_output_assert("ZOWEXDBG", 132, 132, dcbrecf + dcbrecbr);
   char writeBuf[132] = {0};
   memset(writeBuf, ' ', sizeof(writeBuf));
-  int len = sprintf(writeBuf, "%.131s", msg);
+  sprintf(writeBuf, "%.131s", msg);
 
   write_sync(sysprintIoc, writeBuf);
   close_assert(sysprintIoc);
