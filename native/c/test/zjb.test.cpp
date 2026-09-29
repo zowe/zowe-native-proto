@@ -158,12 +158,11 @@ void zjb_tests()
       {
         return dd.is_asa;
       });
-      if (asa_dd == dds.end())
-      {
-        std::string err_log;
+      std::string err_log;
+      if (asa_dd == dds.end()) {
         zjb_read_job_content_by_key(&zjb, correlator, 2, err_log);
       }
-      Expect(asa_dd != dds.end()).ToBe(true);
+      ExpectWithContext(asa_dd != dds.end(), err_log).ToBe(true);
 
       std::string content;
       memset(&zjb, 0, sizeof(zjb));

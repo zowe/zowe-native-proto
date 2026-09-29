@@ -87,7 +87,7 @@ void zo_uss_server_tests()
         execute_command_with_output(zo_command + " uss create-file " + uss_path, response);
       });
 
-      it("should properly chown a file via RPC", [&]() -> void
+      itif("should properly chown a file via RPC", [&]() -> void
       {
         // Get current user ID for chown operation
         std::string resp;
@@ -114,7 +114,7 @@ void zo_uss_server_tests()
         username_resp.erase(username_resp.find_last_not_of(" \t\r\n") + 1); // trim whitespace
 
         ExpectWithContext(ls_response, "File should be owned by the user").ToContain(username_resp);
-      });
+      }, getuid() == 0);
     });
 
     describe("chtag", [&]() -> void
