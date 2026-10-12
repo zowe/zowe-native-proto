@@ -912,8 +912,8 @@ void register_commands(parser::Command &parent)
   import_cmd->add_keyword_arg("password", make_aliases("--password", "-p"), "PKCS#12 passphrase", ArgType_Single, true);
   import_cmd->add_keyword_arg("skip-refresh", make_aliases("--skip-refresh"), "do not automatically REFRESH the DIGTCERT class if the ESM reports it is required (by default the refresh is issued so the change takes effect)", ArgType_Flag, false, ArgValue(false));
   import_cmd->set_handler(handle_cert_import);
-import_cmd->add_example("Import a personal certificate", "zo system cert import USER01 RING02 -l CERT03 -u PERSONAL -f ./file.p12 -p secret");
-import_cmd->add_example("Import a personal certificate from a data set", "zo system cert import USER01 RING02 -l CERT03 -u PERSONAL -p secret --dsn USER01.CERT03.P12");
+  import_cmd->add_example("Import a personal certificate", "zo system cert import USER01 RING02 -l CERT03 -u PERSONAL -f ./file.p12 -p secret");
+  import_cmd->add_example("Import a personal certificate from a data set", "zo system cert import USER01 RING02 -l CERT03 -u PERSONAL -p secret --dsn USER01.CERT03.P12");
   certops_cmd->add_command(import_cmd);
 
   // cert delete <owner> [keyring] --label L [--database]
