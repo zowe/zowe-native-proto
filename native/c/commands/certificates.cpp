@@ -151,6 +151,7 @@ int read_cert_dsn(const std::string &dsn, std::string &data, std::string &err)
 //                        text mode -- one line per record.
 int write_cert_dsn(const std::string &dsn, const std::string &data, bool is_binary, std::string &err)
 {
+  std::string created_dsn; // set only when this call allocated the data set, so a failed write can roll it back
   if (!zds_dataset_exists(dsn))
   {
     const auto open_paren = dsn.find('(');
@@ -189,6 +190,7 @@ int write_cert_dsn(const std::string &dsn, const std::string &data, bool is_bina
       err = "Could not create data set '" + base_dsn + "': " + response;
       return RTNCD_FAILURE;
     }
+    created_dsn = base_dsn;
   }
 
   ZDS zds{}; // eDataTypeText + empty codepage -> zds_use_codepage() is false -> no iconv for PEM
@@ -198,6 +200,12 @@ int write_cert_dsn(const std::string &dsn, const std::string &data, bool is_bina
   if (rc != RTNCD_SUCCESS)
   {
     err = zds.diag.e_msg;
+    if (!created_dsn.empty())
+    {
+      ZDS cleanup{};
+      if (zds_delete_dsn(&cleanup, created_dsn) != RTNCD_SUCCESS)
+        err += "; could not remove partially written data set '" + created_dsn + "'";
+    }
     return RTNCD_FAILURE;
   }
   return RTNCD_SUCCESS;
