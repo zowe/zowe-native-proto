@@ -169,7 +169,8 @@ int write_cert_dsn(const std::string &dsn, const std::string &data, bool is_bina
       }
     }
 
-    // RACDCERT FORMAT(PKCS12DER) parity: PS/VB/LRECL(84)/BLKSIZE(27998).
+    // RACDCERT EXPORT parity: PS/VB/LRECL(84)/BLKSIZE(27998). Used for PEM too: the
+    // 64-column Base64 lines fit, and VB keeps the text byte-exact (FB would blank-pad).
     DS_ATTRIBUTES a{}; // zero-init: zds_create_dsn preserves 0, only negative means "unset"
     a.dsorg = has_member ? "PO" : "PS";
     a.recfm = "V,B"; // mandatory -- FB pads records with blanks, which would change the byte count
