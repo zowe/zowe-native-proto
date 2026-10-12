@@ -88,6 +88,14 @@ std::string to_lower(const std::string &in)
   return out;
 }
 
+std::string to_upper(const std::string &in)
+{
+  std::string out(in);
+  for (size_t i = 0; i < out.size(); ++i)
+    out[i] = static_cast<char>(std::toupper(static_cast<unsigned char>(out[i])));
+  return out;
+}
+
 // A one-shot ring/cert action that only reports success or a SAF diagnostic.
 // A non-fatal SAF warning (rc 4) is surfaced on stdout and in the response.
 int run_simple(InvocationContext &context, int rc, ZKR &zkr, const std::string &message)
@@ -290,7 +298,7 @@ int handle_cert_export(InvocationContext &context)
   opts.label = context.get<std::string>("label", "");
   opts.password = context.get<std::string>("password", "");
   const std::string file = context.get<std::string>("file", "");
-  const std::string dsn = context.get<std::string>("dsn", "");
+  const std::string dsn = to_upper(context.get<std::string>("dsn", ""));
 
   if (opts.label.empty())
   {
@@ -393,7 +401,7 @@ int handle_cert_import(InvocationContext &context)
   opts.label = context.get<std::string>("label", "");
   opts.usage = context.get<std::string>("usage", "");
   opts.p12_path = context.get<std::string>("file", "");
-  const std::string dsn = context.get<std::string>("dsn", "");
+  const std::string dsn = to_upper(context.get<std::string>("dsn", ""));
   opts.password = context.get<std::string>("password", "");
   opts.skip_refresh = context.get<bool>("skip-refresh", false);
 
