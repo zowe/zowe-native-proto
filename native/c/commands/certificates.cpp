@@ -119,17 +119,24 @@ int run_simple(InvocationContext &context, int rc, ZKR &zkr, const std::string &
 }
 
 // Read a PKCS#12 blob out of a sequential data set or PDS/E member. Binary mode so
-// LE concatenates V-format record data with no RDWs and no code-page conversion --
-// byte-identical to `cp -B "//'DSN'"`.
+// LE concatenates record data with no RDWs and no code-page conversion --
+// byte-identical to `cp -B "//'DSN'"`. Fixed-format sources are accepted:IBM's GSK
+// (Global Security Kit) ignores the record padding that follows the PKCS#12 DER structure.
 int read_cert_dsn(const std::string &dsn, std::string &data, std::string &err)
 {
+  ZDS zds{};
+  // zds_dataset_exists() OPENs the data set, which would hang on a password prompt.
+  if (zds_validate_no_password(&zds, dsn, false) != RTNCD_SUCCESS)
+  {
+    err = zds.diag.e_msg;
+    return RTNCD_FAILURE;
+  }
   if (!zds_dataset_exists(dsn))
   {
     err = "Could not access data set: " + dsn;
     return RTNCD_FAILURE;
   }
 
-  ZDS zds{};
   zut_prepare_encoding("binary", &zds.encoding_opts);
   const int rc = zds_read(ZDSReadOpts{.zds = &zds, .dsname = dsn}, data);
   if (rc != RTNCD_SUCCESS)
@@ -152,6 +159,13 @@ int read_cert_dsn(const std::string &dsn, std::string &data, std::string &err)
 int write_cert_dsn(const std::string &dsn, const std::string &data, bool is_binary, std::string &err)
 {
   std::string created_dsn; // set only when this call allocated the data set, so a failed write can roll it back
+  ZDS check{};
+  // zds_dataset_exists() OPENs the data set, which would hang on a password prompt.
+  if (zds_validate_no_password(&check, dsn, true) != RTNCD_SUCCESS)
+  {
+    err = check.diag.e_msg;
+    return RTNCD_FAILURE;
+  }
   if (!zds_dataset_exists(dsn))
   {
     const auto open_paren = dsn.find('(');
@@ -890,9 +904,9 @@ void register_commands(parser::Command &parent)
   export_cmd->add_keyword_arg("format", make_aliases("--format", "-F"), "export format: pem (certificate) or p12 (certificate + private key)", ArgType_Single, false, ArgValue(std::string("pem")));
   export_cmd->add_keyword_arg("file", make_aliases("--file", "-f"), "output file path (p12 requires --file or --dsn; PEM prints to stdout when neither is supplied); mutually exclusive with --dsn", ArgType_Single, false);
   export_cmd->add_keyword_arg("dsn", make_aliases("--dsn"),
-      "output data set (sequential or PDS/E member), created if absent; mutually exclusive with --file. "
-      "Protection is the RACF DATASET profile, not file permissions.",
-      ArgType_Single, false);
+                              "output data set (sequential or PDS/E member), created if absent; mutually exclusive with --file. "
+                              "Protection is the RACF DATASET profile, not file permissions.",
+                              ArgType_Single, false);
   export_cmd->add_keyword_arg("password", make_aliases("--password", "-p"), "PKCS#12 passphrase (required with --format p12)", ArgType_Single, false);
   export_cmd->set_handler(handle_cert_export);
   export_cmd->add_example("Export a certificate as PEM", "zo system cert export USER01 RING02 -l CERT03 -f ./CERT03.pem");
@@ -908,8 +922,8 @@ void register_commands(parser::Command &parent)
   import_cmd->add_keyword_arg("usage", make_aliases("--usage", "-u"), "certificate usage: PERSONAL or CERTAUTH", ArgType_Single, true);
   import_cmd->add_keyword_arg("file", make_aliases("--file", "-f"), "path to the source PKCS#12 file; mutually exclusive with --dsn", ArgType_Single, false);
   import_cmd->add_keyword_arg("dsn", make_aliases("--dsn"),
-      "source PKCS#12 data set (sequential or PDS/E member); mutually exclusive with --file",
-      ArgType_Single, false);
+                              "source PKCS#12 data set (sequential or PDS/E member); mutually exclusive with --file",
+                              ArgType_Single, false);
   import_cmd->add_keyword_arg("password", make_aliases("--password", "-p"), "PKCS#12 passphrase", ArgType_Single, true);
   import_cmd->add_keyword_arg("skip-refresh", make_aliases("--skip-refresh"), "do not automatically REFRESH the DIGTCERT class if the ESM reports it is required (by default the refresh is issued so the change takes effect)", ArgType_Flag, false, ArgValue(false));
   import_cmd->set_handler(handle_cert_import);
