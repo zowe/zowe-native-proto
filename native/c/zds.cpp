@@ -3228,6 +3228,7 @@ void load_general_attrs_from_dscb(const DSCBFormat1 *dscb, ZDSEntry &entry)
   // https://www.ibm.com/docs/en/zos/3.2.0?topic=types-format-1-format-8-dscbs
   // DS1IND10 (0x10) in ds1dsind indicates that the dataset is password protected
   entry.write_password = (dscb->ds1dsind & DS1IND10_MASK) != 0;
+  // DS1IND04 (0x04) in ds1dsind indicates write-only password protection for write-only
   entry.read_password = entry.write_password && (dscb->ds1dsind & DS1IND04_MASK) == 0;
 
   // Load primary and secondary allocations (part of General Data in ISPF)
