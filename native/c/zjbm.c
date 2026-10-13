@@ -555,14 +555,14 @@ int ZJBMTCOM(ZJB *zjb, STAT *PTR64 stat, ZJB_JOB_INFO **PTR64 job_info, int *ent
         return rc;
       }
 
-      STATVE *PTR32 statvep = (STATVE *PTR32)statjqp->stjqvrbo;
+      STATVE *PTR32 statvep = (STATVE * PTR32) statjqp->stjqvrbo;
       if (statvep != NULL)
       {
-        STATJVHD *PTR32 statjvhdp = (STATJVHD *PTR32)((unsigned char *PTR32)statvep + statvep->stveohdr);
+        STATJVHD *PTR32 statjvhdp = (STATJVHD * PTR32)((unsigned char *PTR32)statvep + statvep->stveohdr);
         const size_t execution_end = offsetof(STATJQVB, stvbjusr);
         if (statjvhdp->stjvlen >= sizeof(STATJVHD) + execution_end)
         {
-          STATJQVB *PTR32 statjqvbp = (STATJQVB *PTR32)((unsigned char *PTR32)statjvhdp + sizeof(STATJVHD));
+          STATJQVB *PTR32 statjqvbp = (STATJQVB * PTR32)((unsigned char *PTR32)statjvhdp + sizeof(STATJVHD));
           if (statjqvbp->stvblen >= execution_end && !(statjqvbp->stvbflg1 & stvb1err))
             memcpy(&statjqtrsp->execution, &statjqvbp->stvbrte, sizeof(statjqtrsp->execution));
         }
