@@ -89,6 +89,14 @@ std::string to_lower(const std::string &in)
   return out;
 }
 
+std::string to_upper(const std::string &in)
+{
+  std::string out(in);
+  for (size_t i = 0; i < out.size(); ++i)
+    out[i] = static_cast<char>(std::toupper(static_cast<unsigned char>(out[i])));
+  return out;
+}
+
 // A one-shot ring/cert action that only reports success or a SAF diagnostic.
 // A non-fatal SAF warning (rc 4) is surfaced on stdout and in the response.
 int run_simple(InvocationContext &context, int rc, ZKR &zkr, const std::string &message)
@@ -112,17 +120,24 @@ int run_simple(InvocationContext &context, int rc, ZKR &zkr, const std::string &
 }
 
 // Read a PKCS#12 blob out of a sequential data set or PDS/E member. Binary mode so
-// LE concatenates V-format record data with no RDWs and no code-page conversion --
-// byte-identical to `cp -B "//'DSN'"`.
+// LE concatenates record data with no RDWs and no code-page conversion --
+// byte-identical to `cp -B "//'DSN'"`. Fixed-format sources are accepted:IBM's GSK
+// (Global Security Kit) ignores the record padding that follows the PKCS#12 DER structure.
 int read_cert_dsn(const std::string &dsn, std::string &data, std::string &err)
 {
+  ZDS zds{};
+  // zds_dataset_exists() OPENs the data set, which would hang on a password prompt.
+  if (zds_validate_no_password(&zds, dsn, false) != RTNCD_SUCCESS)
+  {
+    err = zds.diag.e_msg;
+    return RTNCD_FAILURE;
+  }
   if (!zds_dataset_exists(dsn))
   {
     err = "Could not access data set: " + dsn;
     return RTNCD_FAILURE;
   }
 
-  ZDS zds{};
   zut_prepare_encoding("binary", &zds.encoding_opts);
   const int rc = zds_read(ZDSReadOpts{.zds = &zds, .dsname = dsn}, data);
   if (rc != RTNCD_SUCCESS)
@@ -144,6 +159,14 @@ int read_cert_dsn(const std::string &dsn, std::string &data, std::string &err)
 //                        text mode -- one line per record.
 int write_cert_dsn(const std::string &dsn, const std::string &data, bool is_binary, std::string &err)
 {
+  std::string created_dsn; // set only when this call allocated the data set, so a failed write can roll it back
+  ZDS check{};
+  // zds_dataset_exists() OPENs the data set, which would hang on a password prompt.
+  if (zds_validate_no_password(&check, dsn, true) != RTNCD_SUCCESS)
+  {
+    err = check.diag.e_msg;
+    return RTNCD_FAILURE;
+  }
   if (!zds_dataset_exists(dsn))
   {
     const auto open_paren = dsn.find('(');
@@ -161,7 +184,8 @@ int write_cert_dsn(const std::string &dsn, const std::string &data, bool is_bina
       }
     }
 
-    // RACDCERT FORMAT(PKCS12DER) parity: PS/VB/LRECL(84)/BLKSIZE(27998).
+    // RACDCERT EXPORT parity: PS/VB/LRECL(84)/BLKSIZE(27998). Used for PEM too: the
+    // 64-column Base64 lines fit, and VB keeps the text byte-exact (FB would blank-pad).
     DS_ATTRIBUTES a{}; // zero-init: zds_create_dsn preserves 0, only negative means "unset"
     a.dsorg = has_member ? "PO" : "PS";
     a.recfm = "V,B"; // mandatory -- FB pads records with blanks, which would change the byte count
@@ -182,6 +206,7 @@ int write_cert_dsn(const std::string &dsn, const std::string &data, bool is_bina
       err = "Could not create data set '" + base_dsn + "': " + response;
       return RTNCD_FAILURE;
     }
+    created_dsn = base_dsn;
   }
 
   ZDS zds{}; // eDataTypeText + empty codepage -> zds_use_codepage() is false -> no iconv for PEM
@@ -191,6 +216,12 @@ int write_cert_dsn(const std::string &dsn, const std::string &data, bool is_bina
   if (rc != RTNCD_SUCCESS)
   {
     err = zds.diag.e_msg;
+    if (!created_dsn.empty())
+    {
+      ZDS cleanup{};
+      if (zds_delete_dsn(&cleanup, created_dsn) != RTNCD_SUCCESS)
+        err += "; could not remove partially written data set '" + created_dsn + "'";
+    }
     return RTNCD_FAILURE;
   }
   return RTNCD_SUCCESS;
@@ -291,7 +322,7 @@ int handle_cert_export(InvocationContext &context)
   opts.label = context.get<std::string>("label", "");
   opts.password = context.get<std::string>("password", "");
   const std::string file = context.get<std::string>("file", "");
-  const std::string dsn = context.get<std::string>("dsn", "");
+  const std::string dsn = to_upper(context.get<std::string>("dsn", ""));
 
   if (opts.label.empty())
   {
@@ -394,7 +425,7 @@ int handle_cert_import(InvocationContext &context)
   opts.label = context.get<std::string>("label", "");
   opts.usage = context.get<std::string>("usage", "");
   opts.p12_path = context.get<std::string>("file", "");
-  const std::string dsn = context.get<std::string>("dsn", "");
+  const std::string dsn = to_upper(context.get<std::string>("dsn", ""));
   opts.password = context.get<std::string>("password", "");
   opts.skip_refresh = context.get<bool>("skip-refresh", false);
 

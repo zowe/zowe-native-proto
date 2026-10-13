@@ -952,6 +952,48 @@ void zkr_tests()
         ExpectWithContext(rc, out).ToBe(0);
       },
           cert_opts, run_cert);
+
+      // A binary upload to RECFM=FB pads the last record past the DER
+      // SEQUENCE; import must still accept it (GSK ignores the trailing pad).
+      itif(
+          "imports a PKCS#12 bundle from a record-padded FB data set",
+          [&]() -> void
+      {
+        const std::string ring = "ZKRUT.FB." + zkr_unique();
+        cleanup_rings.push_back(ring);
+        ZKR z{};
+        ExpectWithContext(zkr_new_ring(&z, owner, ring), z.diag.e_msg).ToBe(0);
+
+        const std::string fb_dsn = owner + ".ZKRUT.T" + zkr_unique().substr(1) + ".FB";
+        cleanup_dsns.push_back(fb_dsn);
+        DS_ATTRIBUTES a{};
+        a.dsorg = "PS";
+        a.recfm = "F,B";
+        a.lrecl = 80;
+        a.blksize = 27920;
+        a.alcunit = "TRK";
+        a.primary = 5;
+        a.secondary = 5;
+        std::string response;
+        ExpectWithContext(zds_create_dsn(nullptr, fb_dsn, a, response), response).ToBe(0);
+
+        std::string out;
+        int rc = execute_command_with_output("cp -B " + p12 + " \"//'" + fb_dsn + "'\"", out);
+        ExpectWithContext(rc, out).ToBe(0);
+
+        rc = execute_command_with_output(
+            zo_command + " system cert import " + owner + " " + ring + " -l ZKRUTN" + zkr_unique() +
+                " -u PERSONAL -p " + p12pass + " --dsn " + fb_dsn,
+            out);
+        ExpectWithContext(rc, out).ToBe(0);
+
+        std::vector<ZKRCertInfo> certs;
+        ExpectWithContext(zkr_list_ring(&z, owner, ring, certs), z.diag.e_msg).ToBe(0);
+        for (const auto &c : certs)
+          cleanup_labels.push_back(c.label);
+        Expect(certs.size()).ToBeGreaterThanOrEqualTo(static_cast<size_t>(1));
+      },
+          cert_opts, run_cert);
     });
   });
 }

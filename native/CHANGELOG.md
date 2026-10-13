@@ -7,10 +7,15 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 ## Recent Changes
 
 - `c`: Corrected PDS directory used-count handling so full 256-byte blocks, including those in `SYS1.PARMLIB`, list successfully and member parsing stays within the active entry bytes. [#1181](https://github.com/zowe/zowex/pull/1181)
+- `c`: Guard against OPEN hanging on a password-protected data set (legacy MVS password protection issues a WTOR with no console to answer it) by failing fast, pre-OPEN, in `zds_read`, `zds_read_streamed`, `zds_write`, `zds_write_streamed`, `zds_write_binary`, the BPAM write path, and `zo system cert export`/`import --dsn`. [#1126](https://github.com/zowe/zowex/pull/1126)
+- `c`: Fixed BPAM writes to blocked V-format members silently dropping a record that exactly fills the remaining block space (for example, 80-byte records in a VB LRECL 84 BLKSIZE 88 member). [#1126](https://github.com/zowe/zowex/pull/1126)
+
+## `1.0.2`
+
 - `c`: Added `--dsn` to `zo system cert import`/`export`, letting a certificate be read from or written to a sequential data set or PDS/E member instead of a USS file. [#1126](https://github.com/zowe/zowex/pull/1126)
 - `c`: Added `zds_write_binary`, a byte-exact data set writer (BPAM for members, binary `fopen` for sequential) with no code-page conversion or line splitting; requires a V-format target. [#1126](https://github.com/zowe/zowex/pull/1126)
-- `c`: Guard against OPEN hanging on a password-protected data set (legacy MVS password protection issues a WTOR with no console to answer it) by failing fast, pre-OPEN, in the BPAM write path. [#1126](https://github.com/zowe/zowex/pull/1126)
 - `c`: Fixed the `--encoding` help text for `zo data-set write`, `zo uss write`, and `zo job submit-jcl`, which described reading contents instead of converting the input. [#649](https://github.com/zowe/zowex/issues/649)
+- `c`: Clarified the `zo ds create-member` success message to indicate it creates only the member and not the data set. [#639](https://github.com/zowe/zowex/issues/639)
 - `c`: `ResultTable` columns are now named (`add_column("name", width)`), and `data-set list`, `data-set list-members`, `job list`, `job list-files`, and `job view-status` accept a new `--response-format-header`/`--rfh` option that prints those names as a header row in table and CSV output.
 - `c`: Added a `--json` option to `zo` commands, which prints the command's result to stdout as a single line of JSON (`success`, `exitCode`, `data`, `stderr`) so callers can parse it without starting `zo server`. [#837](https://github.com/zowe/zowex/issues/837)
 - `c`: Fixed `zo job list-files --response-format-csv` repeating every preceding record's fields at the start of each row, so only the first row had the documented five fields.
@@ -42,6 +47,9 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - `c`: Adjusted the size of the `etag` field to improve compatibility with z/OS UNIX files. [#1140](https://github.com/zowe/zowex/pull/1140)
 - `c`: Rejected oversized data set etags before copying them into request storage. [#1140](https://github.com/zowe/zowex/pull/1140)
 - `c`: Rejected oversized USS file etags before copying them into request storage. [#1140](https://github.com/zowe/zowex/pull/1140)
+- `python`: Added `package_precompiled.py` tool to package precompiled binary assets (equivalent to Python wheels) into `zbind_bin_dist.tar.gz` for instant compiler-free installation. [#968](https://github.com/zowe/zowex/pull/968)
+- `python`: Added `package_zbind.py` tool to package a clean, self-contained source-based distribution bundle (`zbind_src_dist.tar.gz`) containing all necessary headers, sources, and objects to build the bindings on any z/OS host without SWIG. [#968](https://github.com/zowe/zowex/pull/968)
+- `python`: Fixed compilation of Python bindings on z/OS by passing required Language Environment feature macros `_EXT` and `_OPEN_SYS_FILE_EXT` to the compiler in `setup.py`. [#968](https://github.com/zowe/zowex/pull/968)
 
 ## `1.0.0`
 

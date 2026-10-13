@@ -677,8 +677,26 @@ static DscbAttributes zds_get_dscb_attributes(const std::string &dsn)
   attrs.lrecl = datasets[0].lrecl;
   attrs.blksize = datasets[0].blksize;
   attrs.is_asa = attrs.recfm.find('A') != std::string::npos;
+  attrs.read_password = datasets[0].read_password;
+  attrs.write_password = datasets[0].write_password;
 
   return attrs;
+}
+
+static int validate_no_password(const DscbAttributes &attrs, const std::string &dsn, bool for_write, ZDIAG &diag)
+{
+  if (for_write ? attrs.write_password : attrs.read_password)
+  {
+    ZDIAG_SET_MSG(&diag, "Data set '%s' is password protected; copy it to an unprotected data set first", dsn.c_str());
+    diag.detail_rc = ZDS_RTNCD_UNSUPPORTED_DATA_SET;
+    return RTNCD_FAILURE;
+  }
+  return RTNCD_SUCCESS;
+}
+
+int zds_validate_no_password(ZDS *zds, const std::string &dsn, bool for_write)
+{
+  return validate_no_password(zds_get_dscb_attributes(dsn), dsn, for_write, zds->diag);
 }
 
 static std::string zds_build_text_write_flags(const DscbAttributes &attrs)
@@ -865,6 +883,10 @@ int zds_read(const ZDSReadOpts &opts, std::string &response)
 
   // Check if ASA format - use record I/O to preserve ASA control characters
   const DscbAttributes attrs = zds_resolve_dscb(opts);
+  if (!is_dd && validate_no_password(attrs, opts.dsname, false, zds->diag) != RTNCD_SUCCESS)
+  {
+    return RTNCD_FAILURE;
+  }
   const bool is_asa = attrs.is_asa && zds->encoding_opts.data_type != eDataTypeBinary;
 
   std::string fopen_flags;
@@ -1844,13 +1866,19 @@ int zds_write(const ZDSWriteOpts &opts, const std::string &data)
   // DSN writes: full validation and logic from zds_write_to_dsn
   const std::string &dsn = opts.dsname;
 
-  int rc = validate_dataset_exists(dsn, zds->diag);
+  // Before validate_dataset_exists: its fopen() would hit the password prompt.
+  const DscbAttributes attrs = zds_get_dscb_attributes(dsn);
+  int rc = validate_no_password(attrs, dsn, true, zds->diag);
   if (rc != RTNCD_SUCCESS)
   {
     return rc;
   }
 
-  const DscbAttributes attrs = zds_get_dscb_attributes(dsn);
+  rc = validate_dataset_exists(dsn, zds->diag);
+  if (rc != RTNCD_SUCCESS)
+  {
+    return rc;
+  }
   const auto is_member = zds_has_member(dsn);
 
   rc = validate_write_recfm(attrs, is_member, zds->diag);
@@ -1911,13 +1939,19 @@ int zds_write_binary(const ZDSWriteOpts &opts, const std::string &data)
   ZDS *zds = opts.zds;
   const std::string &dsn = opts.dsname;
 
-  int rc = validate_dataset_exists(dsn, zds->diag);
+  // Before validate_dataset_exists: its fopen() would hit the password prompt.
+  const DscbAttributes attrs = zds_get_dscb_attributes(dsn);
+  int rc = validate_no_password(attrs, dsn, true, zds->diag);
   if (rc != RTNCD_SUCCESS)
   {
     return rc;
   }
 
-  const DscbAttributes attrs = zds_get_dscb_attributes(dsn);
+  rc = validate_dataset_exists(dsn, zds->diag);
+  if (rc != RTNCD_SUCCESS)
+  {
+    return rc;
+  }
   if (attrs.recfm.find(ZDS_RECFM_V) == std::string::npos)
   {
     // Fixed-format records are blank-padded on write (handle_fixed_record), which
@@ -1992,13 +2026,19 @@ int zds_write_streamed(const ZDSWriteOpts &opts, const std::string &pipe, size_t
   // DSN writes: full validation and logic from zds_write_to_dsn_streamed
   const std::string &dsn = opts.dsname;
 
-  int rc = validate_dataset_exists(dsn, zds->diag);
+  // Before validate_dataset_exists: its fopen() would hit the password prompt.
+  const DscbAttributes attrs = zds_get_dscb_attributes(dsn);
+  int rc = validate_no_password(attrs, dsn, true, zds->diag);
   if (rc != RTNCD_SUCCESS)
   {
     return rc;
   }
 
-  const DscbAttributes attrs = zds_get_dscb_attributes(dsn);
+  rc = validate_dataset_exists(dsn, zds->diag);
+  if (rc != RTNCD_SUCCESS)
+  {
+    return rc;
+  }
   const auto is_member = zds_has_member(dsn);
 
   rc = validate_write_recfm(attrs, is_member, zds->diag);
@@ -2821,6 +2861,8 @@ ZNP_PACK_OFF
 #define DS1ACBM_MASK 0x0008  // VSAM: Bit 13 is set
 #define DS1PDSE_MASK 0x10    // PDSE: Bit 4 in ds1smsfg
 #define DS1ENCRP_MASK 0x04   // Encrypted: Bit 5 in ds1flag1
+#define DS1IND10_MASK 0x10   // Password protected: Bit 3 in ds1dsind
+#define DS1IND04_MASK 0x04   // With DS1IND10, password needed to write but not read: Bit 5 in ds1dsind
 
 void load_dsorg_from_dscb(const DSCBFormat1 *dscb, std::string *dsorg)
 {
@@ -3188,6 +3230,11 @@ void load_general_attrs_from_dscb(const DSCBFormat1 *dscb, ZDSEntry &entry)
   // Check if dataset is encrypted
   // DS1ENCRP (0x04) in ds1flag1 indicates access method encrypted dataset
   entry.encrypted = (dscb->ds1flag1 & DS1ENCRP_MASK) != 0;
+  // https://www.ibm.com/docs/en/zos/3.2.0?topic=types-format-1-format-8-dscbs
+  // DS1IND10 (0x10) in ds1dsind indicates that the dataset is password protected
+  entry.write_password = (dscb->ds1dsind & DS1IND10_MASK) != 0;
+  // DS1IND04 (0x04) in ds1dsind indicates write-only password protection for write-only
+  entry.read_password = entry.write_password && (dscb->ds1dsind & DS1IND04_MASK) == 0;
 
   // Load primary and secondary allocations (part of General Data in ISPF)
   load_primary_secondary_from_dscb(dscb, entry);
@@ -3817,6 +3864,10 @@ int zds_read_streamed(const ZDSReadOpts &opts, const std::string &pipe, size_t *
 
   // Check if ASA format - use record I/O to preserve ASA control characters
   const DscbAttributes attrs = zds_resolve_dscb(opts);
+  if (!is_dd && validate_no_password(attrs, opts.dsname, false, zds->diag) != RTNCD_SUCCESS)
+  {
+    return RTNCD_FAILURE;
+  }
   const bool is_asa = attrs.is_asa && zds->encoding_opts.data_type != eDataTypeBinary;
 
   std::string fopen_flags;
