@@ -89,11 +89,11 @@
 
 | Field | Meaning |
 | --- | --- |
-| `exec-system` | z/OS system on which the job ran |
-| `exec-member` | JES2 member on which the job ran |
-| `exec-submitted` | Submission timestamp (JES input end time); submitted-date sort key |
-| `exec-started` | Execution start timestamp |
-| `exec-ended` | Execution end timestamp; completed-date sort key |
+| `execSystem` | z/OS system on which the job ran |
+| `execMember` | JES2 member on which the job ran |
+| `execSubmitted` | Submission timestamp (JES input end time); submitted-date sort key |
+| `execStarted` | Execution start timestamp |
+| `execEnded` | Execution end timestamp; completed-date sort key |
 
 Timestamps use UTC ISO 8601 format (`YYYY-MM-DDTHH:mm:ss.SSSZ`) and preserve JES centisecond precision.
 They can be compared lexicographically for chronological sorting. Unavailable fields are omitted;

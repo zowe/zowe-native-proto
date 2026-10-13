@@ -6,7 +6,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Recent Changes
 
-- Added optional z/OSMF-compatible execution fields to job list and status response types, including `exec-submitted` and `exec-ended` for submitted-date and completed-date sorting.
+- Added optional z/OSMF-compatible execution fields to job list and status response types, including `execSubmitted` and `execEnded` for submitted-date and completed-date sorting.
 
 ## `1.0.2`
 

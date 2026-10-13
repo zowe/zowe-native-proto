@@ -107,7 +107,7 @@ function extractInterfaces(filePath: string): ExtractedInterface[] {
             // Extract properties
             for (const member of node.members) {
                 if (ts.isPropertySignature(member) && member.name) {
-                    const propName = ts.isStringLiteral(member.name) ? member.name.text : member.name.getText(sourceFile);
+                    const propName = member.name.getText(sourceFile);
                     const propType = member.type?.getText(sourceFile) || "any";
                     const optional = !!member.questionToken;
 
@@ -241,13 +241,7 @@ function generateSchemaFields(iface: ExtractedInterface): string[] {
                 schemaFields.push(`FIELD_${requirement}_OBJECT(${prop.name}, ${stripNamespace(prop.type)})`);
             } else {
                 // Primitive type
-                if (/^[A-Za-z_]\w*$/.test(prop.name)) {
-                    schemaFields.push(`FIELD_${requirement}(${prop.name}, ${fieldType})`);
-                } else {
-                    schemaFields.push(
-                        `validator::FieldDescriptor(${JSON.stringify(prop.name)}, validator::FieldType::TYPE_${fieldType}, ${!prop.optional})`,
-                    );
-                }
+                schemaFields.push(`FIELD_${requirement}(${prop.name}, ${fieldType})`);
             }
         }
     }

@@ -361,23 +361,23 @@ export interface Job {
     /**
      * z/OS system on which the job ran (undefined if execution data is unavailable)
      */
-    "exec-system"?: string;
+    execSystem?: string;
     /**
      * JES2 member on which the job ran (undefined if execution data is unavailable)
      */
-    "exec-member"?: string;
+    execMember?: string;
     /**
      * Submission time (JES input end time) in UTC, formatted as YYYY-MM-DDTHH:mm:ss.SSSZ
      */
-    "exec-submitted"?: string;
+    execSubmitted?: string;
     /**
      * Execution start time in UTC, formatted as YYYY-MM-DDTHH:mm:ss.SSSZ (undefined before execution)
      */
-    "exec-started"?: string;
+    execStarted?: string;
     /**
      * Execution end time in UTC, formatted as YYYY-MM-DDTHH:mm:ss.SSSZ (undefined before completion)
      */
-    "exec-ended"?: string;
+    execEnded?: string;
 }
 
 export interface Spool {

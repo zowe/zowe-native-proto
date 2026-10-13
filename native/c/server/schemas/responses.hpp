@@ -82,11 +82,11 @@ ZJSON_SCHEMA(Job,
     FIELD_OPTIONAL(correlator, STRING),
     FIELD_REQUIRED(phase, NUMBER),
     FIELD_REQUIRED(phaseName, STRING),
-    validator::FieldDescriptor("exec-system", validator::FieldType::TYPE_STRING, false),
-    validator::FieldDescriptor("exec-member", validator::FieldType::TYPE_STRING, false),
-    validator::FieldDescriptor("exec-submitted", validator::FieldType::TYPE_STRING, false),
-    validator::FieldDescriptor("exec-started", validator::FieldType::TYPE_STRING, false),
-    validator::FieldDescriptor("exec-ended", validator::FieldType::TYPE_STRING, false)
+    FIELD_OPTIONAL(execSystem, STRING),
+    FIELD_OPTIONAL(execMember, STRING),
+    FIELD_OPTIONAL(execSubmitted, STRING),
+    FIELD_OPTIONAL(execStarted, STRING),
+    FIELD_OPTIONAL(execEnded, STRING)
 );
 
 struct Spool {};
@@ -366,11 +366,11 @@ ZJSON_SCHEMA(GetJobStatusResponse,
     FIELD_OPTIONAL(correlator, STRING),
     FIELD_REQUIRED(phase, NUMBER),
     FIELD_REQUIRED(phaseName, STRING),
-    validator::FieldDescriptor("exec-system", validator::FieldType::TYPE_STRING, false),
-    validator::FieldDescriptor("exec-member", validator::FieldType::TYPE_STRING, false),
-    validator::FieldDescriptor("exec-submitted", validator::FieldType::TYPE_STRING, false),
-    validator::FieldDescriptor("exec-started", validator::FieldType::TYPE_STRING, false),
-    validator::FieldDescriptor("exec-ended", validator::FieldType::TYPE_STRING, false)
+    FIELD_OPTIONAL(execSystem, STRING),
+    FIELD_OPTIONAL(execMember, STRING),
+    FIELD_OPTIONAL(execSubmitted, STRING),
+    FIELD_OPTIONAL(execStarted, STRING),
+    FIELD_OPTIONAL(execEnded, STRING)
 );
 
 struct HoldJobResponse {};

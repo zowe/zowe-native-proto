@@ -29,15 +29,15 @@ namespace job
 static void add_job_execution_data(const ZJob &job, const ast::Node &result)
 {
   if (!job.exec_system.empty())
-    result->set("exec-system", str(job.exec_system));
+    result->set("execSystem", str(job.exec_system));
   if (!job.exec_member.empty())
-    result->set("exec-member", str(job.exec_member));
+    result->set("execMember", str(job.exec_member));
   if (!job.exec_submitted.empty())
-    result->set("exec-submitted", str(job.exec_submitted));
+    result->set("execSubmitted", str(job.exec_submitted));
   if (!job.exec_started.empty())
-    result->set("exec-started", str(job.exec_started));
+    result->set("execStarted", str(job.exec_started));
   if (!job.exec_ended.empty())
-    result->set("exec-ended", str(job.exec_ended));
+    result->set("execEnded", str(job.exec_ended));
 }
 
 /**
