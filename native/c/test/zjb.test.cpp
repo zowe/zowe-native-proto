@@ -146,8 +146,8 @@ void zjb_tests()
       ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
 
       std::string correlator = std::string(zjb.correlator, sizeof(zjb.correlator));
+      zjb_wait(&zjb, "OUTPUT");
 
-      sleep(1);
       std::vector<ZJobDD> dds;
       memset(&zjb, 0, sizeof(zjb));
       rc = zjb_list_dds(&zjb, correlator, dds);
