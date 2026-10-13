@@ -663,7 +663,8 @@ static int handle_variable_record(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc, const c
     int bytes_remaining = blocksize - ioc->bytes_in_buffer;
 
     // if the remaining bytes are not enough to fit the record and rdw OR it is not blocked, we need to write the record and reinit
-    if (length + sizeof(RDW) >= bytes_remaining || !(ioc->dcb.dcbrecfm & dcbrecbr))
+    // a record that exactly fills the remaining space still fits (e.g. VB LRECL 84 BLKSIZE 88 with an 80-byte record)
+    if (length + (int)sizeof(RDW) > bytes_remaining || !(ioc->dcb.dcbrecfm & dcbrecbr))
     {
       rc = write_variable_record(diag, ioc, data, length);
       if (0 != rc)
@@ -676,7 +677,7 @@ static int handle_variable_record(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc, const c
     bytes_remaining = blocksize - ioc->bytes_in_buffer;
 
     // add this record to the buffer (which may have just been written)
-    if (length + sizeof(RDW) < bytes_remaining)
+    if (length + (int)sizeof(RDW) <= bytes_remaining)
     {
       copy_variable_record(ioc, data, length);
     }

@@ -49,6 +49,8 @@ struct ZDSEntry
   std::string dsntype;
   std::string edate;
   bool encrypted;
+  bool read_password;  // legacy MVS password required to read (DS1IND10 without DS1IND04)
+  bool write_password; // legacy MVS password required to write (DS1IND10)
   int lrecl;
   std::string mgmtclass;
   bool migrated;
@@ -97,6 +99,8 @@ struct DscbAttributes
   int lrecl = 0;
   int blksize = 0;
   bool is_asa = false;
+  bool read_password = false;
+  bool write_password = false;
 };
 
 #ifdef SWIG
@@ -157,6 +161,19 @@ bool zds_member_exists(const std::string &dsn, const std::string &member);
  * @return true if it is a syntactically valid member name; false otherwise
  */
 bool zds_is_valid_member_name(const std::string &name);
+
+/**
+ * @brief Reject a data set protected by a legacy MVS password. OPEN on such a data
+ *        set issues a WTOR and waits on the operator console, which hangs a caller
+ *        with no console (e.g. zo server). Uses the VTOC (no OPEN), so call it before
+ *        anything that opens the data set, including zds_dataset_exists.
+ *
+ * @param zds receives the diagnostic on failure
+ * @param dsn data set name; a member name is ignored
+ * @param for_write true to reject a write password as well as a read password
+ * @return RTNCD_SUCCESS if the data set can be opened without a password prompt
+ */
+int zds_validate_no_password(ZDS *zds, const std::string &dsn, bool for_write);
 
 /**
  * @brief Options for reading a z/OS data set or DD
