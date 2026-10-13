@@ -26,6 +26,20 @@ using namespace commands::format;
 namespace job
 {
 
+static void add_job_execution_data(const ZJob &job, const ast::Node &result)
+{
+  if (!job.exec_system.empty())
+    result->set("exec-system", str(job.exec_system));
+  if (!job.exec_member.empty())
+    result->set("exec-member", str(job.exec_member));
+  if (!job.exec_submitted.empty())
+    result->set("exec-submitted", str(job.exec_submitted));
+  if (!job.exec_started.empty())
+    result->set("exec-started", str(job.exec_started));
+  if (!job.exec_ended.empty())
+    result->set("exec-ended", str(job.exec_ended));
+}
+
 /**
  * @brief Parse a string to determine if it's a regex pattern
  *
@@ -99,6 +113,7 @@ int handle_job_list(InvocationContext &context)
         entry->set("correlator", str(trimmed_name));
       entry->set("phase", i64(job.phase));
       entry->set("phaseName", str(job.full_status));
+      add_job_execution_data(job, entry);
 
       table.row()
           .add(job.jobid)
@@ -254,6 +269,7 @@ int handle_job_view_status(InvocationContext &context)
     result->set("correlator", str(trimmed_name));
   result->set("phase", i64(job.phase));
   result->set("phaseName", str(job.full_status));
+  add_job_execution_data(job, result);
   context.set_object(result);
 
   return 0;
