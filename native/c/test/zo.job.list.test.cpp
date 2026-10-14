@@ -27,6 +27,20 @@ void zo_job_list_tests(std::vector<std::string> &_jobs, std::vector<std::string>
 {
   describe("list", [&]() -> void
   {
+    beforeAll([&]() -> void
+    {
+      // Submit a job with a known prefix
+      std::string jcl = "//IEFBR14 JOB (IZUACCT),TEST,REGION=0M\n//RUN EXEC PGM=IEFBR14";
+      std::string command = "printf \"" + jcl + "\" | " + zo_command + " job submit-jcl --only-jobid --wait output";
+      std::string stdout_output, stderr_output;
+      int rc = execute_command(command, stdout_output, stderr_output);
+      std::string jobid = TrimChars(stdout_output);
+      _jobs.push_back(jobid);
+      if (0 != rc) {
+        throw std::runtime_error("Failed to submit job with error: " + stderr_output);
+      }
+    });
+
     it("should list jobs", []()
     {
       int rc = 0;
@@ -278,22 +292,13 @@ void zo_job_list_tests(std::vector<std::string> &_jobs, std::vector<std::string>
 
     it("should validate prefix filter actually works", [&]()
     {
-      // Submit a job with a known prefix
-      std::string jcl = "//IEFBR14 JOB (IZUACCT),TEST,REGION=0M\n//RUN EXEC PGM=IEFBR14";
-      std::string command = "printf \"" + jcl + "\" | " + zo_command + " job submit-jcl --only-jobid --wait output";
-      std::string stdout_output, stderr_output;
-      int rc = execute_command(command, stdout_output, stderr_output);
-      std::string jobid = TrimChars(stdout_output);
-      ExpectWithContext(rc, stderr_output).ToBe(0);
-      _jobs.push_back(jobid);
-
       // Extract job name from jobid (first part before the number)
       std::string job_name = "IEFBR14";
       std::string prefix = job_name.substr(0, 3) + "*"; // Use first 3 chars as prefix
 
       // List jobs with prefix filter using --rfc for easier parsing
       std::string response;
-      rc = execute_command_with_output(
+      int rc = execute_command_with_output(
           zo_command + " job list --prefix " + prefix + " --rfc --max-entries 50 --no-warn", response);
       ExpectWithContext(rc, response).ToBe(0);
 
@@ -471,6 +476,7 @@ void zo_job_list_tests(std::vector<std::string> &_jobs, std::vector<std::string>
       std::string stdout_output, stderr_output;
       int rc = execute_command(command, stdout_output, stderr_output);
       std::string jobid = TrimChars(stdout_output);
+      _jobs.push_back(jobid);
 
       rc = execute_command_with_output(zo_command + " job del " + jobid, stdout_output);
       ExpectWithContext(rc, stdout_output).ToBe(0);

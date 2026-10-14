@@ -1164,8 +1164,8 @@ void zo_job_manage_tests(std::vector<std::string> &_jobs, std::vector<std::strin
       ExpectWithContext(rc, stderr_output).ToBe(0);
       _jobs.push_back(jobid);
 
-      // Wait briefly for job to start executing
-      sleep(2);
+      // Wait for job to be visible in JES
+      Expect(wait_for_job(jobid)).ToBe(true);
 
       // Get correlator from the running job
       std::string response;
