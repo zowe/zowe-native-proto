@@ -717,26 +717,34 @@ void zo_ds_tests()
         });
       }
 
-      it("should accept lowercase cluster names and return JSON", []() -> void
+      it("should accept lowercase cluster names", []() -> void
       {
         TestVsamGuard cluster;
         std::string lower_name = cluster.name();
         std::transform(lower_name.begin(), lower_name.end(), lower_name.begin(), [](unsigned char c)
         { return std::tolower(c); });
         std::string response;
-        const int rc = execute_command_with_output(zo_command + " delete vsam '" + lower_name + "' --json", response);
+        const int rc = execute_command_with_output(zo_command + " delete vsam '" + lower_name + "'", response);
         ExpectWithContext(rc, response).ToBe(0);
-        Expect(response).ToContain("\"success\":true");
-        Expect(response).ToContain("\"data\":{}");
+        Expect(response).ToContain("VSAM cluster '" + cluster.name() + "' deleted");
       });
 
-      it("should require purge to delete a retained cluster", []() -> void
+      it("should forward erase options to IDCAMS and require purge for a retained cluster", []() -> void
       {
         TestVsamGuard cluster("NONINDEXED", true);
         std::string response;
         int rc = execute_command_with_output(zo_command + " delete vsam '" + cluster.name() + "'", response);
         ExpectWithContext(rc, response).Not().ToBe(0);
         Expect(response).ToContain("IDCAMS returned nonzero RC");
+        Expect(response).ToContain(" NOERASE -");
+        Expect(response).Not().ToContain(" ERASE -");
+
+        rc = execute_command_with_output(zo_command + " delete vsam '" + cluster.name() + "' --erase", response);
+        ExpectWithContext(rc, response).Not().ToBe(0);
+        Expect(response).ToContain("IDCAMS returned nonzero RC");
+        Expect(response).ToContain(" ERASE -");
+        Expect(response).Not().ToContain(" NOERASE -");
+
         rc = execute_command_with_output(zo_command + " delete vsam '" + cluster.name() + "' --purge", response);
         ExpectWithContext(rc, response).ToBe(0);
       });

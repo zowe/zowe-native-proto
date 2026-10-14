@@ -351,23 +351,20 @@ void zo_ds_server_tests()
 
     describe("delete VSAM", [&]() -> void
     {
-      for (const std::string options : {"", ",\"erase\":true", ",\"purge\":true", ",\"erase\":true,\"purge\":true", ",\"erase\":false,\"purge\":false"})
+      it("should delete a VSAM cluster via RPC with default options", [&]() -> void
       {
-        it("should delete a VSAM cluster via RPC with options " + options, [&, options]() -> void
-        {
-          TestVsamGuard cluster;
-          int req_id;
-          const std::string request = make_rpc_request("deleteVsam", "{\"dsname\":\"" + cluster.name() + "\"" + options + "}", req_id);
-          write_to_server(server, request);
-          const std::string response = read_rpc_response(server);
-          Expect(response).ToContain("\"success\":true");
-          Expect(response).ToContain("\"id\":" + std::to_string(req_id));
+        TestVsamGuard cluster;
+        int req_id;
+        const std::string request = make_rpc_request("deleteVsam", "{\"dsname\":\"" + cluster.name() + "\"}", req_id);
+        write_to_server(server, request);
+        const std::string response = read_rpc_response(server);
+        Expect(response).ToContain("\"success\":true");
+        Expect(response).ToContain("\"id\":" + std::to_string(req_id));
 
-          std::string list_response;
-          const int rc = execute_command_with_output(zo_command + " ds list '" + cluster.name() + "' --exact-match", list_response);
-          ExpectWithContext(rc, list_response).Not().ToBe(0);
-        });
-      }
+        std::string list_response;
+        const int rc = execute_command_with_output(zo_command + " ds list '" + cluster.name() + "' --exact-match", list_response);
+        ExpectWithContext(rc, list_response).Not().ToBe(0);
+      });
 
       it("should return IDCAMS diagnostics when deletion fails", [&]() -> void
       {
