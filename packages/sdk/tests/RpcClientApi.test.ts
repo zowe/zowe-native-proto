@@ -117,6 +117,25 @@ describe("RpcClientApi", () => {
         });
     });
 
+    it.each([{}, { erase: true }, { purge: true }, { erase: true, purge: true }, { erase: false, purge: false }])(
+        "should delete VSAM clusters with options %j",
+        async (options) => {
+            const response = await client.ds.deleteVsam({ dsname: "USER.VSAM", ...options });
+            expect(client.request).toHaveBeenCalledWith({
+                command: "deleteVsam",
+                dsname: "USER.VSAM",
+                ...options,
+            });
+            expect(response).toEqual({ success: true });
+        },
+    );
+
+    it("should propagate VSAM deletion failures", async () => {
+        const error = new Error("IDCAMS returned nonzero RC: 8");
+        client.request.mockRejectedValueOnce(error);
+        await expect(client.ds.deleteVsam({ dsname: "USER.VSAM" })).rejects.toBe(error);
+    });
+
     it("should route jobs commands correctly", async () => {
         await client.jobs.cancelJob({ jobname: "JOB", jobid: "JOB00001" });
         expect(client.request).toHaveBeenCalledWith({
