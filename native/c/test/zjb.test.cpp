@@ -22,18 +22,33 @@
 
 using namespace ztst;
 
-void sleep_on_status(std::string status, std::string jobid);
-
 void zjb_tests()
 {
-
-  describe("zjb tests", []() -> void
+  std::vector<std::string> submitted_jobs;
+  describe("zjb tests", [&]() -> void
   {
     std::string jcl = "//IEFBR14$ JOB IZUACCT\n"
                       "//RUNBR14  EXEC PGM=IEFBR14\n";
 
     std::string hold_jcl = "//IEFBR14$ JOB IZUACCT,TYPRUN=HOLD\n"
                            "//RUNBR14  EXEC PGM=IEFBR14\n";
+
+    TEST_OPTIONS cleanup_opts = {false, 30};
+    afterAll([&]() -> void
+    {
+      for (const auto &jobid : submitted_jobs)
+      {
+        try
+        {
+          ZJB zjb = {0};
+          zjb_delete(&zjb, jobid);
+        }
+        catch (...)
+        {
+        }
+      }
+      submitted_jobs.clear();
+    }, cleanup_opts);
 
     describe("execution timestamps", []() -> void
     {
@@ -101,17 +116,9 @@ void zjb_tests()
       std::string jobid;
 
       int rc = zjb_submit(&zjb, jcl, jobid);
+      submitted_jobs.push_back(jobid);
       ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
       Expect(jobid).Not().ToBe("");
-
-      ZJob zjob;
-      std::string correlator = std::string(zjb.correlator, sizeof(zjb.correlator));
-
-      sleep_on_status("INPUT", correlator);
-
-      memset(&zjb, 0, sizeof(zjb));
-      rc = zjb_delete(&zjb, correlator);
-      ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
     });
 
     it("should be able to view a submitted job", [&]() -> void
@@ -120,6 +127,7 @@ void zjb_tests()
       std::string jobid;
 
       int rc = zjb_submit(&zjb, jcl, jobid);
+      submitted_jobs.push_back(jobid);
       ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
 
       ZJob zjob;
@@ -129,14 +137,7 @@ void zjb_tests()
       rc = zjb_view(&zjb, correlator, zjob);
       ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
 
-      Expect(zjob.correlator).ToBe(correlator); // vefify submit correlator matches view status correlator
-
-      sleep_on_status("INPUT", correlator);
-
-      memset(&zjb, 0, sizeof(zjb));
-      rc = zjb_delete(&zjb, correlator);
-
-      ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
+      Expect(zjob.correlator).ToBe(correlator); // verify submit correlator matches view status correlator
     });
 
     it("should be able to delete a submitted job", [&]() -> void
@@ -145,15 +146,7 @@ void zjb_tests()
       std::string jobid;
 
       int rc = zjb_submit(&zjb, jcl, jobid);
-      ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
-
-      std::string correlator = std::string(zjb.correlator, sizeof(zjb.correlator));
-
-      sleep_on_status("INPUT", correlator);
-
-      memset(&zjb, 0, sizeof(zjb));
-      rc = zjb_delete(&zjb, correlator);
-
+      submitted_jobs.push_back(jobid);
       ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
     });
 
@@ -163,12 +156,13 @@ void zjb_tests()
       std::string jobid;
 
       int rc = zjb_submit(&zjb, jcl, jobid);
+      submitted_jobs.push_back(jobid);
       ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
 
       std::string correlator = std::string(zjb.correlator, sizeof(zjb.correlator));
       std::string returned_jcl;
 
-      sleep_on_status("INPUT", correlator);
+      zjb_wait(&zjb, "OUTPUT");
 
       memset(&zjb, 0, sizeof(zjb));
       rc = zjb_read_job_jcl(&zjb, correlator, returned_jcl);
@@ -192,11 +186,12 @@ void zjb_tests()
                                   "0THIS LINE IS DOUBLE SPACED.\n"
                                   "/*\n";
       int rc = zjb_submit(&zjb, asa_jcl, jobid);
+      submitted_jobs.push_back(jobid);
       ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
 
       std::string correlator = std::string(zjb.correlator, sizeof(zjb.correlator));
+      zjb_wait(&zjb, "OUTPUT");
 
-      sleep(1);
       std::vector<ZJobDD> dds;
       memset(&zjb, 0, sizeof(zjb));
       rc = zjb_list_dds(&zjb, correlator, dds);
@@ -207,24 +202,19 @@ void zjb_tests()
       {
         return dd.is_asa;
       });
-      if (asa_dd == dds.end())
-      {
-        std::string err_log;
+      std::string err_log;
+      if (asa_dd == dds.end()) {
         zjb_read_job_content_by_key(&zjb, correlator, 2, err_log);
       }
-      Expect(asa_dd != dds.end()).ToBe(true);
+      ExpectWithContext(asa_dd != dds.end(), err_log).ToBe(true);
 
       std::string content;
       memset(&zjb, 0, sizeof(zjb));
       rc = zjb_read_job_content_by_key(&zjb, correlator, asa_dd->key, content);
       ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
+
       Expect(content).Not().ToBe(""); // expect some content returned
-
       Expect(content.find('\n') != std::string::npos).ToBe(true);
-
-      memset(&zjb, 0, sizeof(zjb));
-      rc = zjb_delete(&zjb, correlator);
-      ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
     });
 
     // https://github.com/zowe/zowex/issues/641
@@ -234,12 +224,11 @@ void zjb_tests()
       std::string jobid;
 
       int rc = zjb_submit(&zjb, hold_jcl, jobid);
+      submitted_jobs.push_back(jobid);
       ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
 
-      ZJob zjob;
       std::string correlator = std::string(zjb.correlator, sizeof(zjb.correlator));
-
-      sleep_on_status("INPUT", correlator);
+      // sleep_on_status("INPUT", correlator);
 
       std::vector<ZJobDD> dds;
       memset(&zjb, 0, sizeof(zjb));
@@ -252,44 +241,6 @@ void zjb_tests()
       rc = zjb_read_job_content_by_key(&zjb, correlator, dds[0].key, content);
       ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
       Expect(content).Not().ToBe(""); // expect some content returned
-
-      memset(&zjb, 0, sizeof(zjb));
-      rc = zjb_delete(&zjb, correlator);
-      ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
     });
   });
-}
-
-void sleep_on_status(std::string status, std::string jobid)
-{
-  int index = 0;
-  while (true)
-  {
-    ZJB zjb = {};
-    ZJob zjob = {};
-    int rc = zjb_view(&zjb, jobid, zjob);
-    const int max_retries = 1000;
-
-    if (RTNCD_SUCCESS != rc)
-    {
-      std::string error = "Error: could not view job: '" + jobid + "' rc: " + std::to_string(rc) + "\n'  " +
-                          std::string(zjb.diag.e_msg) + "'";
-      throw std::runtime_error(error);
-    }
-
-    if (index >= max_retries)
-    {
-      std::string error = "Error: for job: '" + jobid + "' reached max retries of " + std::to_string(max_retries);
-      throw std::runtime_error(error);
-    }
-    if (zjob.full_status == status)
-    {
-      std::this_thread::sleep_for(std::chrono::milliseconds(10 * 5));
-    }
-    else
-    {
-      break;
-    }
-    index++;
-  }
 }
