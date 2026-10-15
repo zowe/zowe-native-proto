@@ -6,8 +6,8 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Recent Changes
 
-- `c`: Added z/OSMF-compatible `execSystem`, `execMember`, `execSubmitted`, `execStarted`, and `execEnded` fields to job list and status JSON responses, enabling submitted-date and completed-date sorting.
-- `python`: Exposed job execution metadata and UTC timestamps through the job bindings.
+- `c`: Added z/OSMF-compatible `execSystem`, `execMember`, `execSubmitted`, `execStarted`, and `execEnded` fields to job list and status JSON responses, enabling submitted-date and completed-date sorting. [#1187](https://github.com/zowe/zo/pull/1187)
+- `python`: Exposed job execution metadata and UTC timestamps through the job bindings. [#1187](https://github.com/zowe/zo/pull/1187)
 
 ## `1.0.2`
 
