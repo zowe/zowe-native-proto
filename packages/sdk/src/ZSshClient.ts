@@ -11,7 +11,7 @@
 
 import { posix } from "node:path";
 import type { Stream } from "node:stream";
-import { ImperativeError, Logger } from "@zowe/imperative";
+import { Censor, ImperativeError, Logger } from "@zowe/imperative";
 import type { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import type {
     ClientOptions,
@@ -324,7 +324,7 @@ export class ZSshClient extends RpcClientApi implements Disposable {
                 silenced: false,
                 timeoutId,
             });
-            const requestStr = JSON.stringify(rpcRequest);
+            const requestStr = JSON.stringify(Censor.censorObject(rpcRequest));
             Logger.getAppLogger().trace(`Sending request: ${requestStr}`);
             this.mSshStream.stdin.write(`${requestStr}\n`);
         }).finally(() => clearTimeout(timeoutId));

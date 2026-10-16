@@ -10,7 +10,7 @@
  */
 
 import { EventEmitter, Readable } from "node:stream";
-import { Logger } from "@zowe/imperative";
+import { Censor, Logger } from "@zowe/imperative";
 import { type ISshSession, SshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import { Client, type ClientCallback, type ConnectConfig } from "ssh2";
 import type { ReadableStreamRpc } from "../lib";
@@ -355,6 +355,58 @@ describe("ZSshClient", () => {
             const client = await ZSshClient.create(new SshSession(fakeSession));
             await expect(client.request({ command: "ping" })).rejects.toMatchObject({ errorCode: "ECONNCLOSED" });
             expect(sshStream.stdin.write).not.toHaveBeenCalled();
+        });
+
+        it("should censor sensitive information when trace logging a request", async () => {
+            interface MySensitiveInfo extends CommandRequest {
+                password: string;
+                tokenValue: string;
+                passphrase: string;
+                aNonSensitiveArg: string;
+            }
+            const logTraceMock = vi.fn();
+            vi.spyOn(Logger, "getAppLogger").mockReturnValue({
+                debug: () => {},
+                trace: logTraceMock,
+            } as any);
+            const request: MySensitiveInfo = {
+                command: "test",
+                password: "hunter2",
+                tokenValue: "omgsecret0454654",
+                passphrase: "letmein",
+                aNonSensitiveArg: "do not censor me",
+            };
+            const sshStream = {
+                stdin: { write: vi.fn(), writable: true },
+                stdout: new EventEmitter(),
+                stderr: new EventEmitter(),
+            };
+
+            setupMockSshClient({ sshStream });
+            const client = await ZSshClient.create(new SshSession(fakeSession));
+            const response = client.request(request);
+            (client as any).processResponses(`${JSON.stringify(rpcResponseGood)}\n`);
+            expect(await response).toEqual({ success: true });
+            expect(sshStream.stdin.write).toHaveBeenCalled();
+            const { command, ...rest } = request;
+
+            const rpcRequest: RpcRequest = {
+                jsonrpc: "2.0",
+                method: command,
+                params: rest,
+                id: 1,
+            };
+            expect(logTraceMock).toHaveBeenCalledWith(
+                `Sending request: ${JSON.stringify({
+                    ...rpcRequest,
+                    params: {
+                        ...rpcRequest.params,
+                        tokenValue: Censor.CENSOR_RESPONSE,
+                        password: Censor.CENSOR_RESPONSE,
+                        passphrase: Censor.CENSOR_RESPONSE,
+                    },
+                })}`,
+            );
         });
 
         it("should respect numWorkers option", async () => {
