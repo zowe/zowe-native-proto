@@ -324,8 +324,8 @@ export class ZSshClient extends RpcClientApi implements Disposable {
                 silenced: false,
                 timeoutId,
             });
-            const requestStr = JSON.stringify(Censor.censorObject(rpcRequest));
-            Logger.getAppLogger().trace(`Sending request: ${requestStr}`);
+            const requestStr = JSON.stringify(rpcRequest);
+            Logger.getAppLogger().trace(`Sending request: ${JSON.stringify(Censor.censorObject(rpcRequest))}`);
             this.mSshStream.stdin.write(`${requestStr}\n`);
         }).finally(() => clearTimeout(timeoutId));
     }
