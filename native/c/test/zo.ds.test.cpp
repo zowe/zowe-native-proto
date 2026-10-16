@@ -922,6 +922,7 @@ void zo_ds_tests()
           std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
         TestLog("Job " + jobid + " retcode='" + final_job.retcode + "'");
+        zjb_delete(&zjb, jobid);
         if (check_rc && final_job.retcode.find("CC 0000") == std::string::npos)
           throw std::runtime_error("Job failed with retcode='" + final_job.retcode + "'");
       };
