@@ -10,7 +10,7 @@
  */
 
 import { EventEmitter, Readable } from "node:stream";
-import { Censor, EnvironmentalVariableSettings, ImperativeConfig, Logger } from "@zowe/imperative";
+import { Censor, Logger } from "@zowe/imperative";
 import { type ISshSession, SshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import { Client, type ClientCallback, type ConnectConfig } from "ssh2";
 import type { ReadableStreamRpc } from "../lib";
