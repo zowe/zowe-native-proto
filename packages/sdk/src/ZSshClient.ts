@@ -481,12 +481,15 @@ export class ZSshClient extends RpcClientApi implements Disposable {
                 continue;
             }
 
-            Logger.getAppLogger().trace(`Received response: ${responses[i]}`);
             let response: RpcResponse | RpcNotification;
             try {
                 response = JSON.parse(responses[i]);
+                Logger.getAppLogger().trace(`Received response: ${JSON.stringify(Censor.censorObject(response))}`);
             } catch {
-                const errMsg = Logger.getAppLogger().error("Invalid JSON response: %s", responses[i]);
+                const errMsg = Logger.getAppLogger().error(
+                    "Invalid JSON response: %s",
+                    Censor.censorRawData(responses[i]),
+                );
                 this.mErrHandler(new Error(errMsg));
                 continue;
             }

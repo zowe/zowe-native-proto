@@ -10,7 +10,7 @@
  */
 
 import { EventEmitter, Readable } from "node:stream";
-import { Censor, Logger } from "@zowe/imperative";
+import { Censor, EnvironmentalVariableSettings, ImperativeConfig, Logger } from "@zowe/imperative";
 import { type ISshSession, SshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import { Client, type ClientCallback, type ConnectConfig } from "ssh2";
 import type { ReadableStreamRpc } from "../lib";
@@ -385,8 +385,19 @@ describe("ZSshClient", () => {
             setupMockSshClient({ sshStream });
             const client = await ZSshClient.create(new SshSession(fakeSession));
             const response = client.request(request);
-            (client as any).processResponses(`${JSON.stringify(rpcResponseGood)}\n`);
-            expect(await response).toEqual({ success: true });
+
+            const responseUncensored: RpcResponse = {
+                jsonrpc: "2.0",
+                result: {
+                    password: "secretlyAPassword",
+                    tokenValue: "2898293839",
+                    passphrase: "post-it",
+                    okField: "puppy",
+                },
+                id: 1,
+            };
+            (client as any).processResponses(`${JSON.stringify(responseUncensored)}\n`);
+            expect(await response).toEqual(responseUncensored.result);
             expect(sshStream.stdin.write).toHaveBeenCalled();
             const { command, ...rest } = request;
 
@@ -401,6 +412,17 @@ describe("ZSshClient", () => {
                     ...rpcRequest,
                     params: {
                         ...rpcRequest.params,
+                        tokenValue: Censor.CENSOR_RESPONSE,
+                        password: Censor.CENSOR_RESPONSE,
+                        passphrase: Censor.CENSOR_RESPONSE,
+                    },
+                })}`,
+            );
+            expect(logTraceMock).toHaveBeenCalledWith(
+                `Received response: ${JSON.stringify({
+                    ...responseUncensored,
+                    result: {
+                        ...responseUncensored.result,
                         tokenValue: Censor.CENSOR_RESPONSE,
                         password: Censor.CENSOR_RESPONSE,
                         passphrase: Censor.CENSOR_RESPONSE,
@@ -526,6 +548,23 @@ describe("ZSshClient", () => {
             expect(writeMock.mock.calls[0]).toEqual([`${JSON.stringify(rpcRequest)}\n`]);
         });
 
+        it("should censor a JSON response that fails to parse in logging", async () => {
+            const writeMock = vi.fn();
+            const client: ZSshClient = new (ZSshClient as any)();
+            (client as any).mSshStream = { stdin: { write: writeMock } };
+            (client as any).mErrHandler = vi.fn();
+            const censorRawDataMock = vi.spyOn(Censor, "censorRawData");
+
+            const logErrorMock = vi.fn();
+            vi.spyOn(Logger, "getAppLogger").mockReturnValue({
+                debug: () => {},
+                trace: () => {},
+                error: logErrorMock,
+            } as any);
+            const badJsonResponse = "This is not JSON password:ilovedogs";
+            (client as any).processResponses(`${badJsonResponse}\n`);
+            expect(censorRawDataMock).toHaveBeenCalledWith(badJsonResponse);
+        });
         it("should surface a structured error payload via causeErrors and additionalDetails", async () => {
             const errorData = { success: false, safReturns: { safReturnCode: 8 } };
             const rpcResponseStructuredError: RpcResponse = {
