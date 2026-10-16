@@ -549,18 +549,9 @@ describe("ZSshClient", () => {
         });
 
         it("should censor a JSON response that fails to parse in logging", async () => {
-            const writeMock = vi.fn();
             const client: ZSshClient = new (ZSshClient as any)();
-            (client as any).mSshStream = { stdin: { write: writeMock } };
             (client as any).mErrHandler = vi.fn();
             const censorRawDataMock = vi.spyOn(Censor, "censorRawData");
-
-            const logErrorMock = vi.fn();
-            vi.spyOn(Logger, "getAppLogger").mockReturnValue({
-                debug: () => {},
-                trace: () => {},
-                error: logErrorMock,
-            } as any);
             const badJsonResponse = "This is not JSON password:ilovedogs";
             (client as any).processResponses(`${badJsonResponse}\n`);
             expect(censorRawDataMock).toHaveBeenCalledWith(badJsonResponse);
