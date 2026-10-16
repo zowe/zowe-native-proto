@@ -8,6 +8,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 - Added the `zowe zo delete vsam` command with `--erase` and `--purge` options to delete VSAM clusters over SSH. [#490](https://github.com/zowe/zowex/issues/490)
 - Corrected the `create data-set-member` success message to say `Member` instead of `Dataset`. [#639](https://github.com/zowe/zowex/issues/639)
+- Added support for SSH agents (`IdentityAgent` in SSH config) with the `--agent` option. [#342](https://github.com/zowe/zowex/issues/342)
 
 ## `1.0.1`
 

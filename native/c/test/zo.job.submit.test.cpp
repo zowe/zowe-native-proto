@@ -91,10 +91,10 @@ void zo_job_submit_tests(std::vector<std::string> &_jobs, std::vector<std::strin
       Expect(stdout_output).ToContain("Submitted JCL");
 
       // Extract jobid for cleanup if possible
-      size_t pos = stdout_output.find("JOB");
+      size_t pos = stdout_output.find("(JOB");
       if (pos != std::string::npos)
       {
-        jobid = stdout_output.substr(pos, 8);
+        jobid = stdout_output.substr(pos + 1, 8);
         _jobs.push_back(jobid);
       }
     });
@@ -110,10 +110,10 @@ void zo_job_submit_tests(std::vector<std::string> &_jobs, std::vector<std::strin
       Expect(stdout_output).ToContain("Submitted JCL");
 
       // Extract jobid for cleanup
-      size_t pos = stdout_output.find("JOB");
+      size_t pos = stdout_output.find("(JOB");
       if (pos != std::string::npos)
       {
-        jobid = stdout_output.substr(pos, 8);
+        jobid = stdout_output.substr(pos + 1, 8);
         _jobs.push_back(jobid);
       }
     });
@@ -345,10 +345,10 @@ void zo_job_submit_tests(std::vector<std::string> &_jobs, std::vector<std::strin
       Expect(stdout_output).ToContain("Submitted");
 
       // Extract jobid for cleanup
-      size_t pos = stdout_output.find("JOB");
+      size_t pos = stdout_output.find("(JOB");
       if (pos != std::string::npos)
       {
-        std::string jobid = stdout_output.substr(pos, 8);
+        std::string jobid = stdout_output.substr(pos + 1, 8);
         _jobs.push_back(jobid);
       }
     });
@@ -374,10 +374,10 @@ void zo_job_submit_tests(std::vector<std::string> &_jobs, std::vector<std::strin
       Expect(stdout_output).ToContain("Submitted");
 
       // Extract jobid for cleanup
-      size_t pos = stdout_output.find("JOB");
+      size_t pos = stdout_output.find("(JOB");
       if (pos != std::string::npos)
       {
-        std::string jobid = stdout_output.substr(pos, 8);
+        std::string jobid = stdout_output.substr(pos + 1, 8);
         _jobs.push_back(jobid);
       }
     });
@@ -402,10 +402,10 @@ void zo_job_submit_tests(std::vector<std::string> &_jobs, std::vector<std::strin
       Expect(stdout_output).ToContain("Submitted");
 
       // Extract jobid for cleanup
-      size_t pos = stdout_output.find("JOB");
+      size_t pos = stdout_output.find("(JOB");
       if (pos != std::string::npos)
       {
-        std::string jobid = stdout_output.substr(pos, 8);
+        std::string jobid = stdout_output.substr(pos + 1, 8);
         _jobs.push_back(jobid);
       }
     });
@@ -454,10 +454,10 @@ void zo_job_submit_tests(std::vector<std::string> &_jobs, std::vector<std::strin
       Expect(stdout_output).ToContain("Submitted");
 
       // Extract jobid for cleanup
-      size_t pos = stdout_output.find("JOB");
+      size_t pos = stdout_output.find("(JOB");
       if (pos != std::string::npos)
       {
-        std::string jobid = stdout_output.substr(pos, 8);
+        std::string jobid = stdout_output.substr(pos + 1, 8);
         _jobs.push_back(jobid);
       }
     });
@@ -656,6 +656,14 @@ void zo_job_submit_tests(std::vector<std::string> &_jobs, std::vector<std::strin
       int rc = execute_command(command, stdout_output, stderr_output);
       Expect(rc).Not().ToBe(0);
       Expect(stderr_output).ToContain("cannot wait for unknown status");
+
+      // Extract jobid for cleanup
+      size_t pos = stdout_output.find("(JOB");
+      if (pos != std::string::npos)
+      {
+        std::string jobid = stdout_output.substr(pos + 1, 8);
+        _jobs.push_back(jobid);
+      }
     });
 
     it("should successfully submit JCL with CRLF line endings", [&]()
