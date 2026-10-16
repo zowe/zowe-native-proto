@@ -696,7 +696,7 @@ void zo_ds_tests()
         {
           TestVsamGuard cluster(organization);
           std::string response;
-          const int rc = execute_command_with_output(zo_command + " delete vsam '" + cluster.name() + "'", response);
+          const int rc = execute_command_with_output(zo_command + " ds delete-vsam '" + cluster.name() + "'", response);
           ExpectWithContext(rc, response).ToBe(0);
           Expect(response).ToContain("VSAM cluster '" + cluster.name() + "' deleted");
 
@@ -724,7 +724,7 @@ void zo_ds_tests()
         std::transform(lower_name.begin(), lower_name.end(), lower_name.begin(), [](unsigned char c)
         { return std::tolower(c); });
         std::string response;
-        const int rc = execute_command_with_output(zo_command + " delete vsam '" + lower_name + "'", response);
+        const int rc = execute_command_with_output(zo_command + " ds delete-vsam '" + lower_name + "'", response);
         ExpectWithContext(rc, response).ToBe(0);
         Expect(response).ToContain("VSAM cluster '" + cluster.name() + "' deleted");
       });
@@ -733,26 +733,26 @@ void zo_ds_tests()
       {
         TestVsamGuard cluster("NONINDEXED", true);
         std::string response;
-        int rc = execute_command_with_output(zo_command + " delete vsam '" + cluster.name() + "'", response);
+        int rc = execute_command_with_output(zo_command + " ds delete-vsam '" + cluster.name() + "'", response);
         ExpectWithContext(rc, response).Not().ToBe(0);
         Expect(response).ToContain("IDCAMS returned nonzero RC");
         Expect(response).ToContain(" NOERASE -");
         Expect(response).Not().ToContain(" ERASE -");
 
-        rc = execute_command_with_output(zo_command + " delete vsam '" + cluster.name() + "' --erase", response);
+        rc = execute_command_with_output(zo_command + " ds delete-vsam '" + cluster.name() + "' --erase", response);
         ExpectWithContext(rc, response).Not().ToBe(0);
         Expect(response).ToContain("IDCAMS returned nonzero RC");
         Expect(response).ToContain(" ERASE -");
         Expect(response).Not().ToContain(" NOERASE -");
 
-        rc = execute_command_with_output(zo_command + " delete vsam '" + cluster.name() + "' --purge", response);
+        rc = execute_command_with_output(zo_command + " ds delete-vsam '" + cluster.name() + "' --purge", response);
         ExpectWithContext(rc, response).ToBe(0);
       });
 
       it("should report IDCAMS diagnostics for a missing cluster", []() -> void
       {
         std::string response;
-        const int rc = execute_command_with_output(zo_command + " delete vsam '" + get_random_ds(3) + ".VSAM'", response);
+        const int rc = execute_command_with_output(zo_command + " ds delete-vsam '" + get_random_ds(3) + ".VSAM'", response);
         ExpectWithContext(rc, response).Not().ToBe(0);
         Expect(response).ToContain("IDCAMS returned nonzero RC");
         Expect(response).ToContain("IDC3012I");
@@ -766,7 +766,7 @@ void zo_ds_tests()
         for (const auto &dsn : invalid_names)
         {
           std::string response;
-          const int rc = execute_command_with_output(zo_command + " delete vsam '" + dsn + "'", response);
+          const int rc = execute_command_with_output(zo_command + " ds delete-vsam '" + dsn + "'", response);
           ExpectWithContext(rc, response).Not().ToBe(0);
           Expect(response).ToContain("invalid VSAM cluster name");
         }
@@ -776,7 +776,7 @@ void zo_ds_tests()
       {
         const std::string dsn = get_random_ds(3) + ".LONGQUALIFIER";
         std::string response;
-        const int rc = execute_command_with_output(zo_command + " delete vsam '" + dsn + "'", response);
+        const int rc = execute_command_with_output(zo_command + " ds delete-vsam '" + dsn + "'", response);
         ExpectWithContext(rc, response).Not().ToBe(0);
         Expect(response).ToContain("IDCAMS returned nonzero RC");
       });
@@ -787,7 +787,7 @@ void zo_ds_tests()
         _ds.push_back(dsn);
         _create_ds(dsn, "--dsorg PS");
         std::string response;
-        const int rc = execute_command_with_output(zo_command + " delete vsam '" + dsn + "' --purge", response);
+        const int rc = execute_command_with_output(zo_command + " ds delete-vsam '" + dsn + "' --purge", response);
         ExpectWithContext(rc, response).Not().ToBe(0);
         const int list_rc = execute_command_with_output(zo_command + " ds list '" + dsn + "' --exact-match", response);
         Expect(list_rc).ToBe(0);

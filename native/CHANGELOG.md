@@ -4,9 +4,12 @@ All notable changes to the native code for "zowex" are documented in this file.
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## Recent Changes
+
+- Added the `zo ds delete-vsam` command and the `deleteVsam` RPC method to delete VSAM clusters with optional erase and purge behavior. [#490](https://github.com/zowe/zowex/issues/490)
+
 ## `1.0.2`
 
-- Added `zo delete vsam` and `zo ds delete-vsam` commands and the `deleteVsam` RPC method to delete VSAM clusters with optional erase and purge behavior. [#490](https://github.com/zowe/zowex/issues/490)
 - `c`: Clarified the `zowex ds create-member` success message to indicate it creates only the member and not the data set. [#639](https://github.com/zowe/zowex/issues/639)
 - `c`: Fixed the `--encoding` help text for `zowex data-set write`, `zowex uss write`, and `zowex job submit-jcl`, which described reading contents instead of converting the input. [#649](https://github.com/zowe/zowex/issues/649)
 - `c`: `ResultTable` columns are now named (`add_column("name", width)`), and `data-set list`, `data-set list-members`, `job list`, `job list-files`, and `job view-status` accept a new `--response-format-header`/`--rfh` option that prints those names as a header row in table and CSV output.

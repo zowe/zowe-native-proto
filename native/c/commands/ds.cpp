@@ -1238,20 +1238,12 @@ void register_commands(parser::Command &root_command)
   ds_delete_cmd->set_handler(handle_data_set_delete);
   data_set_cmd->add_command(ds_delete_cmd);
 
-  auto make_vsam_delete_command = [](const std::string &name)
-  {
-    auto cmd = command_ptr(new Command(name, "delete a VSAM cluster"));
-    cmd->add_positional_arg("dsn", "VSAM cluster name", ArgType_Single, true);
-    cmd->add_keyword_arg("erase", make_aliases("--erase"), "Overwrite the cluster's data component with binary zeros before deletion", ArgType_Flag, false, ArgValue(false));
-    cmd->add_keyword_arg("purge", make_aliases("--purge"), "Delete the cluster even if its retention period has not expired", ArgType_Flag, false, ArgValue(false));
-    cmd->set_handler(handle_vsam_delete);
-    return cmd;
-  };
-  data_set_cmd->add_command(make_vsam_delete_command("delete-vsam"));
-
-  auto delete_cmd = command_ptr(new Command("delete", "delete z/OS resources"));
-  delete_cmd->add_command(make_vsam_delete_command("vsam"));
-  root_command.add_command(delete_cmd);
+  auto ds_delete_vsam_cmd = command_ptr(new Command("delete-vsam", "delete a VSAM cluster"));
+  ds_delete_vsam_cmd->add_positional_arg("dsn", "VSAM cluster name", ArgType_Single, true);
+  ds_delete_vsam_cmd->add_keyword_arg("erase", make_aliases("--erase"), "Overwrite the cluster's data component with binary zeros before deletion", ArgType_Flag, false, ArgValue(false));
+  ds_delete_vsam_cmd->add_keyword_arg("purge", make_aliases("--purge"), "Delete the cluster even if its retention period has not expired", ArgType_Flag, false, ArgValue(false));
+  ds_delete_vsam_cmd->set_handler(handle_vsam_delete);
+  data_set_cmd->add_command(ds_delete_vsam_cmd);
 
   // Restore subcommand
   auto ds_restore_cmd = command_ptr(new Command("restore", "restore/recall data set"));
