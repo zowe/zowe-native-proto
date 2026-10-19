@@ -38,9 +38,8 @@ export const VsamDefinition: ICommandDefinition = {
     options: [
         {
             name: "erase",
-            description: "Overwrite the cluster's data component with binary zeros before deletion",
+            description: "Overwrite the cluster's data component with binary zeros before deletion. Use --no-erase to force NOERASE. If omitted, the cluster's definition applies",
             type: "boolean",
-            defaultValue: false,
         },
         {
             name: "purge",

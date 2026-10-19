@@ -270,8 +270,9 @@ void create_seq(ZDS *zds, const std::string &dsn)
 TestVsamGuard::TestVsamGuard(const std::string &organization, bool retained)
     : m_dsn(get_random_ds(3) + ".VSAM")
 {
+  // Supported VSAM cluster organizations: INDEXED (KSDS), NONINDEXED (ESDS), NUMBERED (RRDS), LINEAR (LDS)
   if (organization != "INDEXED" && organization != "NONINDEXED" && organization != "NUMBERED" && organization != "LINEAR")
-    throw std::invalid_argument("Invalid VSAM organization");
+    throw std::invalid_argument("Invalid VSAM organization: '" + organization + "'");
 
   ZDS zds{};
   const std::string temporary_dsn = get_random_ds(3);

@@ -18,8 +18,8 @@ export default class DeleteVsamHandler extends SshBaseHandler {
         const dsname = params.arguments.name;
         const response = await client.ds.deleteVsam({
             dsname,
-            erase: params.arguments.erase ?? false,
-            purge: params.arguments.purge ?? false,
+            erase: params.arguments.erase,
+            purge: params.arguments.purge,
         });
 
         params.response.data.setObj(response);

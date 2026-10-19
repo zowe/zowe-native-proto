@@ -54,7 +54,7 @@ export interface DeleteVsamRequest extends common.CommandRequest<"deleteVsam"> {
      */
     dsname: string;
     /**
-     * Overwrite the data component with binary zeros before deletion. Defaults to false (NOERASE).
+     * Overwrite the data component with binary zeros before deletion (ERASE), or force NOERASE when false. If omitted, the cluster's own definition applies.
      */
     erase?: boolean;
     /**

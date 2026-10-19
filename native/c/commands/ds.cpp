@@ -867,8 +867,23 @@ int handle_vsam_delete(InvocationContext &context)
     return RTNCD_FAILURE;
   }
 
-  std::string idcams_input = " DELETE -\n " + dsn + " -\n CLUSTER -\n ";
-  idcams_input += context.get<bool>("erase", false) ? "ERASE -\n " : "NOERASE -\n ";
+  // ERASE/NOERASE overrides how the cluster was defined, so omit both when the user gave no preference
+  std::string erase_option;
+  if (const bool *erase = context.get_if<bool>("erase"))
+  {
+    erase_option = *erase ? "ERASE -\n " : "NOERASE -\n ";
+  }
+  else if (const std::string *erase_str = context.get_if<std::string>("erase"))
+  {
+    if (*erase_str != "true" && *erase_str != "false")
+    {
+      context.error_stream() << "Error: --erase must be 'true' or 'false'." << std::endl;
+      return RTNCD_FAILURE;
+    }
+    erase_option = *erase_str == "true" ? "ERASE -\n " : "NOERASE -\n ";
+  }
+
+  std::string idcams_input = " DELETE -\n " + dsn + " -\n CLUSTER -\n " + erase_option;
   idcams_input += context.get<bool>("purge", false) ? "PURGE\n" : "NOPURGE\n";
   std::string idcams_output;
   std::string idcams_error;
@@ -1240,7 +1255,7 @@ void register_commands(parser::Command &root_command)
 
   auto ds_delete_vsam_cmd = command_ptr(new Command("delete-vsam", "delete a VSAM cluster"));
   ds_delete_vsam_cmd->add_positional_arg("dsn", "VSAM cluster name", ArgType_Single, true);
-  ds_delete_vsam_cmd->add_keyword_arg("erase", make_aliases("--erase"), "Overwrite the cluster's data component with binary zeros before deletion", ArgType_Flag, false, ArgValue(false));
+  ds_delete_vsam_cmd->add_keyword_arg("erase", make_aliases("--erase"), "Overwrite the cluster's data component with binary zeros before deletion (true|false). Defaults to the cluster's definition", ArgType_Single, false);
   ds_delete_vsam_cmd->add_keyword_arg("purge", make_aliases("--purge"), "Delete the cluster even if its retention period has not expired", ArgType_Flag, false, ArgValue(false));
   ds_delete_vsam_cmd->set_handler(handle_vsam_delete);
   data_set_cmd->add_command(ds_delete_vsam_cmd);

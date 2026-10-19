@@ -705,7 +705,7 @@ void zo_ds_tests()
         });
       }
 
-      for (const std::string options : {"--erase", "--purge", "--erase --purge"})
+      for (const std::string options : {"--erase true", "--erase false", "--purge", "--erase true --purge"})
       {
         it("should delete a cluster with " + options, [options]() -> void
         {
@@ -736,10 +736,13 @@ void zo_ds_tests()
         int rc = execute_command_with_output(zo_command + " ds delete-vsam '" + cluster.name() + "'", response);
         ExpectWithContext(rc, response).Not().ToBe(0);
         Expect(response).ToContain("IDCAMS returned nonzero RC");
-        Expect(response).ToContain(" NOERASE -");
-        Expect(response).Not().ToContain(" ERASE -");
+        Expect(response).Not().ToContain("ERASE");
 
-        rc = execute_command_with_output(zo_command + " ds delete-vsam '" + cluster.name() + "' --erase", response);
+        rc = execute_command_with_output(zo_command + " ds delete-vsam '" + cluster.name() + "' --erase false", response);
+        ExpectWithContext(rc, response).Not().ToBe(0);
+        Expect(response).ToContain(" NOERASE -");
+
+        rc = execute_command_with_output(zo_command + " ds delete-vsam '" + cluster.name() + "' --erase true", response);
         ExpectWithContext(rc, response).Not().ToBe(0);
         Expect(response).ToContain("IDCAMS returned nonzero RC");
         Expect(response).ToContain(" ERASE -");
