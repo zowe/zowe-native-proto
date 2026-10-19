@@ -4,6 +4,10 @@ All notable changes to the Client code for "@zowe/zowex-for-zowe-sdk" are docume
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## Recent Changes
+
+- BugFix: Censored sensitive info when logging RPC request and response details in ZSshClient. [#1190](https://github.com/zowe/zo/pull/1190)
+
 ## `1.0.2`
 
 - Added an optional `dsn` field to `exportCertificate`/`importCertificate` (RPC), letting a certificate be exported to, or imported from, a sequential data set or PDS/E member. `importCertificate`'s `file` field is now optional since `dsn` can satisfy it instead. [#1126](https://github.com/zowe/zowex/pull/1126)
