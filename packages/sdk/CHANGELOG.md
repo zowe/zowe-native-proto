@@ -6,6 +6,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Recent Changes
 
+- BugFix: Censored sensitive info when logging RPC request and response details in ZSshClient. [#1190](https://github.com/zowe/zo/pull/1190)
 - Added support for the `deleteVsam` command to delete VSAM clusters with optional erase and purge behavior. [#490](https://github.com/zowe/zowex/issues/490)
 
 ## `1.0.2`
