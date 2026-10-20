@@ -545,17 +545,21 @@ int ZJBMTCOM(ZJB *zjb, STAT *PTR64 stat, ZJB_JOB_INFO **PTR64 job_info, int *ent
       memset(&statjqtrsp->execution, 0, sizeof(statjqtrsp->execution));
       stat->stattrsa = statjqp;
       stat->stattype = statvrbo;
-      STATJQ *PTR32 expanded_job = NULL;
-      rc = ZJBMGJQ(zjb, &ssob, stat, &expanded_job);
-      if (RTNCD_SUCCESS != rc)
+      // Execution data is optional: the job may have been purged since the query.
+      memset(&zenv, 0, sizeof(ZRCVY_ENV));
+      if (0 == enable_recovery(&zenv))
       {
-        storage_free64(*job_info);
-        *job_info = NULL;
-        *entries = 0;
-        return rc;
+        rc = iefssreq(&ssobp);
       }
+      else
+      {
+        rc = RTNCD_FAILURE;
+      }
+      disable_recovery(&zenv);
 
-      STATVE *PTR32 statvep = (STATVE * PTR32) statjqp->stjqvrbo;
+      STATVE *PTR32 statvep = NULL;
+      if (RTNCD_SUCCESS == rc && 0 == ssob.ssobretn)
+        statvep = (STATVE * PTR32) statjqp->stjqvrbo;
       if (statvep != NULL)
       {
         STATJVHD *PTR32 statjvhdp = (STATJVHD * PTR32)((unsigned char *PTR32)statvep + statvep->stveohdr);
