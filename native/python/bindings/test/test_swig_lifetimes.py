@@ -11,9 +11,12 @@ import zusf_py
 import zjb_py as jobs
 import zds_py as ds
 import zkr_py as certs
+import zsys_py as system
 
 
 @pytest.mark.parametrize("vector_type,item_type,field", [
+    (system.ApfEntryVector, system.ApfEntry, "dsname"),
+    (system.LinklistEntryVector, system.LinklistEntry, "dsname"),
     (jobs.ZJobVector, jobs.ZJob, "jobid"),
     (ds.ZDSEntryVector, ds.ZDSEntry, "name"),
     (certs.ZKRCertInfoVector, certs.ZKRCertInfo, "label"),

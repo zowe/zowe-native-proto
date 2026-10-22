@@ -21,6 +21,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("wheel", type=Path)
     parser.add_argument("--functional", action="store_true", help="Include dataset, job and key-ring lifecycle tests")
+    parser.add_argument("--system", action="store_true", help="Include read-only system integration tests")
     parser.add_argument("--owner", help="z/OS user ID for functional test resources")
     parser.add_argument("--keep-venv", action="store_true", help="Preserve the installed test environment")
     args = parser.parse_args()
@@ -31,7 +32,7 @@ def main():
     if args.functional and (not args.owner or not re.fullmatch(r"[A-Z@$#][A-Z0-9@$#]{0,7}", args.owner)):
         parser.error("Functional tests require --owner with an uppercase z/OS user ID")
     wheel = args.wheel.resolve()
-    work = Path(tempfile.mkdtemp(prefix="zbind-wheel-tests-", dir="/tmp"))
+    work = Path(tempfile.mkdtemp(prefix="zbind-wheel-tests-"))
     print(f"Validation artifacts: {work}", flush=True)
     env = os.environ.copy()
     env.pop("PYTHONPATH", None)
@@ -50,7 +51,9 @@ def main():
         with target.open("wb") as output:
             subprocess.run(["iconv", "-f", "IBM-1047", "-t", "UTF-8", str(source)], stdout=output, check=True)
         subprocess.run(["chtag", "-t", "-c", "UTF-8", str(target)], check=True)
-    selected = ["test_wheel_installation.py", "test_swig_lifetimes.py"]
+    selected = ["test_wheel_installation.py", "test_swig_lifetimes.py", "test_zsys.py"]
+    if args.system or args.functional:
+        selected.append("test_zsys_integration.py")
     if args.functional:
         prefix = "W" + uuid.uuid4().hex[:7].upper()
         uss = work / "uss"
@@ -74,7 +77,10 @@ assert not matches, "Scratch dataset prefix already exists"
         subprocess.run([python, "-c", probe, f"{args.owner}.{prefix}"], cwd=tests, env=env, check=True)
         selected += ["test_zds.py", "test_zjb.py", "test_zusf.py", "test_zkr.py"]
     with (work / "tests.log").open("wb") as output:
-        result = subprocess.run([python, "-m", "pytest", "-q", *selected,
+        # Do not collect ancestor packages when TMPDIR is inside a source checkout.
+        result = subprocess.run([python, "-m", "pytest", "-q", "-c", os.devnull,
+                                 f"--rootdir={tests}", f"--confcutdir={tests}",
+                                 "--import-mode=importlib", *selected,
                                  f"--basetemp={work / 'pytest-temp'}",
                                  f"--junitxml={work / 'results.xml'}"],
                                 cwd=tests, env=env, stdout=output, stderr=subprocess.STDOUT)
@@ -85,7 +91,7 @@ assert not matches, "Scratch dataset prefix already exists"
         raise SystemExit(result.returncode)
     run_logged([python, "-m", "pip", "uninstall", "--quiet", "-y", "zo"], work, env)
     run_logged([python, "-m", "pip", "install", "--quiet", "--no-index", str(wheel)], work, env)
-    subprocess.run([python, "-c", "import zds_py, zjb_py, zusf_py, zkr_py"], cwd=tests, env=env, check=True)
+    subprocess.run([python, "-c", "import zds_py, zjb_py, zusf_py, zkr_py, zsys_py"], cwd=tests, env=env, check=True)
     if not args.keep_venv:
         shutil.rmtree(work / "venv")
 

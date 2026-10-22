@@ -18,7 +18,7 @@ def test_installed_wheel_metadata():
     assert metadata["Root-Is-Purelib"] == "false"
 
 
-@pytest.mark.parametrize("name", ["zusf_py", "zds_py", "zjb_py", "zkr_py"])
+@pytest.mark.parametrize("name", ["zusf_py", "zds_py", "zjb_py", "zkr_py", "zsys_py"])
 def test_installed_module_locations(name):
     proxy = importlib.import_module(name)
     native = importlib.import_module(f"_{name}")

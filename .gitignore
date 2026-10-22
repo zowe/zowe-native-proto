@@ -23,6 +23,8 @@ tsconfig.tsbuildinfo
 zowe.config.json
 zowe.schema.json
 native/python/bindings/test/fixtures/env.yml
+native/python/bindings/test/fixture-lib/
+native/python/bindings/test/fixture-temp/
 test.py
 test-results.xml
 pybi_results.xml
