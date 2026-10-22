@@ -30,7 +30,7 @@
 | Copy data set            | ✅              | ❌   | ✅               | ✅              | ❌                  | ✅              | ✅              | ✅       |
 | Compress data set        | ➖              | ❌   | ✅               | ❌              | ❌                  | ❌              | ❌              | ❌       |
 | Search data sets         | 🚧 <sup>3</sup> | ❌   | 🚧 <sup>3</sup>  | ✅              | ❌                  | ✅              | ❌              | ✅       |
-| Resolve ALIAS data sets  | ✅ <sup>5</sup> | ❌   | ✅               | ✅              | ❌                  | ✅              | ✅              | ✅       |
+| Resolve ALIAS data sets  | ✅ <sup>5</sup> | ❌   | ✅ <sup>5</sup>  | ✅              | ❌                  | ✅              | ✅              | ✅       |
 | Invoke AMS (VSAM)        | ✅              | ❌   | 🚧 <sup>4</sup>  | ❌              | ❌                  | ❌              | ❌              | ➖       |
 
 1. RECFM=U (undefined record format) data sets are read-only; write attempts return an error.
