@@ -6,6 +6,9 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Recent Changes
 
+- `python`: Added `zsys_py` to the `zo` distribution for system symbols, PARMLIB, PROCLIB, subsystems, APF, LNKLST, and bounded SYSLOG reads, with UTF-8 text and structured diagnostics.
+- `c`: Moved PROCLIB and SYSLOG orchestration into shared system APIs while retaining the legacy job entry points; fixed PROCLIB capacity handling and VSAM read storage ownership.
+
 - `python`: Name the Python distribution `zo` and read its version from the same `package.json` used by the native binary; update wheel staging, posting, and installation checks. [#1181](https://github.com/zowe/zowex/pull/1181)
 - `python`: Default release wheels to `py3-none-any` filename and metadata tags so pip accepts them across z/OS platform-tag conventions; retain native runtime checks during import. [#1181](https://github.com/zowe/zowex/pull/1181)
 - `c`: Corrected PDS directory used-count handling so full 256-byte blocks, including those in `SYS1.PARMLIB`, list successfully and member parsing stays within the active entry bytes. [#1181](https://github.com/zowe/zowex/pull/1181)

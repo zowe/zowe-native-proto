@@ -11,7 +11,7 @@ can be rebuilt for a different target.
 `make wheel` builds a pip-installable wheel using IBM Python 3.11. The npm build
 includes native copies for IBM Python 3.11, 3.13, and 3.14; the loader selects the
 copy matching the active interpreter. Imports are `zds_py`, `zjb_py`, `zusf_py`,
-and `zkr_py`.
+`zkr_py`, and `zsys_py`.
 
 The Python distribution is named `zo`. Its version comes from the root
 `package.json`, the same release version used by the native `zo` binary, so
@@ -33,7 +33,7 @@ Select a supported IBM Python interpreter, then run:
 ```sh
 python -m venv my-venv
 my-venv/bin/python -m pip install --no-index /path/to/zo-1.0.2-py3-none-any.whl
-my-venv/bin/python -c 'import zds_py, zjb_py, zusf_py, zkr_py'
+my-venv/bin/python -c 'import zds_py, zjb_py, zusf_py, zkr_py, zsys_py'
 ```
 
 Installation needs no compiler, SWIG, source checkout, or `PYTHONPATH`. The system
@@ -114,20 +114,30 @@ links the specified runtime variants, and writes the wheel to the bindings'
 
 ### Verify the installed wheel
 
-For each target interpreter, the runner creates a fresh venv and stages tests in
-`/tmp` outside the source package:
+For each target interpreter, the runner creates a fresh venv and stages a separate
+copy of the tests. Set `TMPDIR` to an existing
+directory with sufficient space if the default `/tmp` filesystem is small:
 
 ```sh
 python test/run_wheel_tests.py /path/to/zo-1.0.2-py3-none-any.whl
+python test/run_wheel_tests.py /path/to/zo-1.0.2-py3-none-any.whl --system
 python test/run_wheel_tests.py /path/to/zo-1.0.2-py3-none-any.whl --functional --owner YOURID
 ```
 
 The first command tests installation, wheel metadata, native module selection,
-UTF-8 USS reads, and SWIG lifetimes. The second also creates disposable dataset,
+UTF-8 USS reads, system input validation, and SWIG lifetimes. The second adds
+read-only system integration tests. The third also creates disposable dataset,
 USS, job, and certificate/key-ring resources under the specified user. Tests use
 the configured `PIP_INDEX_URL` to obtain pytest/PyYAML; keep credentials in the environment.
 Logs and JUnit reports remain in the reported validation directory. Successful
 runs check uninstall/reinstall, then remove the venv unless `--keep-venv` is set.
+
+`npm run z:python:wheel -- --test` validates installation and read-only system calls
+on all three selected runtimes before downloading the wheel. It runs sequentially
+and places temporary environments in its build staging directory. The Python CI workflow
+runs this matrix when the repository variable `ZRS_PYTHON_WHEEL_MATRIX` is `true`;
+`ZRS_PYTHON_ROOT` can select the provisioned runtime directory. Source-based tests,
+including the isolated system adapter fixture, run in the ordinary Python CI job.
 
 ### Post development artifacts to a PR
 
@@ -149,7 +159,7 @@ intend to post in `dist/`; multiple wheels cause an error. Move
 
 ## Available Functions
 
-The bindings are split across four modules, each generated from the corresponding `*_py.hpp` header. All functions raise a Python exception on failure instead of returning an error code. The `zds_py`, `zjb_py`, and `zusf_py` modules use `RuntimeError`; see the `zkr_py` section below for its exception types.
+The bindings are split across five modules, each generated from the corresponding `*_py.hpp` header. All functions raise a Python exception on failure instead of returning an error code. The `zds_py`, `zjb_py`, and `zusf_py` modules use `RuntimeError`; see the `zkr_py` and `zsys_py` sections below for structured exceptions.
 
 ### `zds_py` — Data Sets
 
@@ -207,6 +217,92 @@ The bindings are split across four modules, each generated from the correspondin
 **Supporting types:**
 
 - `ListOptions(all_files: bool = False, long_format: bool = False, max_depth: int = 1)`
+
+### `zsys_py` — System information and SYSLOG
+
+Together with `zkr_py`, this module covers all 21 canonical commands under `zo system`.
+Calls execute locally on z/OS under the Python process's identity and retain the GIL.
+
+| Function | Result |
+| --- | --- |
+| `display_symbol(symbol)` | Symbol value as `str`; pass a bare name such as `SYSNAME`. |
+| `list_parmlib()` | Sequence of dataset names in native search order. |
+| `list_proclib()` | Sequence of JES PROCLIB dataset names. |
+| `list_subsystems(filter="*")` | Sequence of subsystem names using the native matching rules. |
+| `list_apf()` | Sequence of `ApfEntry` objects with `dsname` and `volume` fields. |
+| `list_linklist()` | Sequence of `LinklistEntry` objects with `dsname`, `volume`, and `apf` fields. |
+| `view_syslog(*, date=None, time=None, seconds_ago=None, max_lines=None)` | `SyslogResult`. |
+
+Listing results preserve order and duplicates. They support iteration, indexing, and
+`len()`; use `list(result)` when a built-in list is needed. Entries retained after the
+result variable is deleted keep their storage alive. Avoid mutating a result vector
+while retaining its elements. Dataset names, volumes, and subsystem names lose only
+fixed-field trailing blanks. Symbol values and SYSLOG record text retain their content.
+All returned text is converted from IBM-1047 to UTF-8, including embedded NULs in records.
+
+Symbol names are uppercased and prefixed with `&` internally. Names must contain
+1–126 ASCII letters, digits, or `@`, `#`, `$`, `_`. Subsystem filters accept the same
+characters plus `*`, with a maximum of four characters. Unresolved symbols retain
+the native service's result or error behavior.
+
+SYSLOG options use the z/OS system offset used by the native reader, independently
+of Python's process `TZ` setting. The existing CLI keeps its process-time behavior.
+
+| Options | Resolved start | Default line limit |
+| --- | --- | --- |
+| None | Current time minus 30 seconds | 10,000 |
+| `seconds_ago=N` | Current time minus N seconds | 10,000 |
+| `date` and `time` | Both supplied values | 100 |
+| Only `date` | Supplied date and current time | 100 |
+| Only `time` | Current date and supplied time | 100 |
+
+`seconds_ago` accepts integers 1–86,400 and excludes `date` and `time`.
+`max_lines` accepts integers 1–10,000. Booleans are not counts. `None` means omitted;
+empty strings and zero are invalid. Dates must be real calendar dates in `YYYY-MM-DD`
+within 1900–2185; times must use `HH:MM:SS` without fractional seconds or trailing text.
+
+`SyslogResult` owns `data`, `start_date`, `start_time`, `end_date`, `end_time`,
+`returned_lines`, and `has_more`. Empty reads have empty data/end fields and zero lines.
+`has_more` means the native reader reached the limit; it does not prove another record
+exists. End timestamps have second precision. They cannot support lossless pagination,
+so this API does not automatically continue a read.
+Native SYSLOG positioning determines which records are available; a future start
+does not guarantee an empty result. Native services can also reject dates accepted
+by the argument validator (for example, an unsupported CONVTOD date).
+
+Invalid types raise `TypeError`, invalid values raise `ValueError`, and native failures
+raise `ZsysError`, a `RuntimeError` subclass. It exposes `operation`, `rc`, `service_name`,
+`detail_rc`, `service_rc`, `service_rsn`, and `service_rsn_secondary`. Unavailable native
+fields remain empty or zero. A failed read raises instead of returning partial data as
+success.
+
+```python
+import zsys_py as system
+
+print(system.display_symbol("sysname"))
+for entry in system.list_linklist():
+    print(entry.dsname, entry.volume, entry.apf)
+
+try:
+    result = system.view_syslog(seconds_ago=300, max_lines=250)
+    print(result.data, end="")
+    print(result.start_date, result.start_time, result.returned_lines)
+except system.ZsysError as error:
+    print(error.operation, error.service_name, error.rc, str(error))
+```
+
+The native `zsys.cpp` owns PROCLIB/SYSLOG operations and shared CLI option resolution.
+`zspool.cpp` owns the allocation protocol shared with job spool reads. Existing
+`zjb_list_proclib`, `zjb_read_syslog`, and their legacy types remain available as
+compatibility entry points. CLI parsing remains unchanged; Python applies its stricter
+validation before shared resolution. Certificate and key-ring APIs remain in `zkr_py`.
+
+Build only this module with `make build-zsys`. Run `make setup test-zsys` in `test/`
+with the extension build directory on `PYTHONPATH`. `test_zsys.py` exercises contracts
+without system authority; `test_zsys_integration.py` calls read-only system services.
+Set `ZSYS_TEST_ZO` to the freshly built executable for CLI parity checks. Installed-wheel
+validation runs the contract suite by default; add `--system` to
+`test/run_wheel_tests.py` for system integration tests on each bundled runtime.
 
 ### `zkr_py` — Certificates and key rings
 
@@ -433,9 +529,13 @@ not. Data sets have no tag, so `zds` converts only when you pass an explicit cod
 binding converts default-codepage content itself and leaves explicitly encoded content for
 `zds` to convert. Incoming etags and codepage names are converted to EBCDIC in both cases.
 
-Each extension uses a distinct `SWIG_TYPE_TABLE` so loading all four modules does not route
+Each extension uses a distinct `SWIG_TYPE_TABLE` so loading all five modules does not route
 an iterator through another DLL's proxy. Certificate result vectors retain their parent
 object, allowing expressions such as `list_certificates(...).items` without dangling storage.
+
+`zsys_py` converts ASCII identifiers to IBM-1047 on input. Its symbol values, list
+fields, SYSLOG records, and diagnostics use a length-aware IBM-1047 to UTF-8 converter
+on output; the older modules' Latin-1 `e2a` helpers are unchanged.
 
 **`zkr_py`'s `bytes` payloads: the one boundary with no conversion in either direction.** `export_certificate`,
 `export_certificate_to_file`/`_to_dsn`, and `import_certificate`/`_from_file`/`_from_dsn` all take or
