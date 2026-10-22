@@ -1,0 +1,5 @@
+__pycache__/
+*.o
+*.so
+*.lst
+/utf8/
