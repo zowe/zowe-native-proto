@@ -20,11 +20,10 @@
 #include <ctime>
 #include <unistd.h>
 #include <stdio.h>
-#include "iazbtokp.h"
-#include "iefzb4d0.h"
-#include "iefzb4d2.h"
 #include "zds.hpp"
 #include "zjb.hpp"
+#include "zsys.hpp"
+#include "zspool.hpp"
 #include "zjbm.h"
 #include "zssitype.h"
 #include "ztype.h"
@@ -34,18 +33,11 @@
 #include "zdstype.h"
 #include "zdyn.h"
 #include "dcbd.h"
-#include "ihapsa.h"
-#include "cvt.h"
 #include "zdbg.h"
-
-typedef struct iazbtokp IAZBTOKP;
 
 void zjb_build_job_response(ZJB_JOB_INFO *PTR64, int, std::vector<ZJob> &);
 
-#define BTOKLEN (293 - 254) // 293 is the full length, minus the max optional buffer area for logs (less 254)
-
 // NOTE(Kelosky): see struct __S99struc via 'showinc' compiler option in <stdio.h>
-// NOTE(Kelosky): In the future, to allocate the logical SYSLOG concatenation for a system specify the following data set name (in DALDSNAM).
 // https://www.ibm.com/docs/en/zos/3.1.0?topic=allocation-specifying-data-set-name-daldsnam
 int zjb_read_job_content_by_key(ZJB *zjb, const std::string &jobid, int key, std::string &response)
 {
@@ -190,321 +182,22 @@ int zjb_read_job_jcl(ZJB *zjb, const std::string &jobid, std::string &response)
   return zjb_read_job_content_by_dsn(zjb, jcl_dsn, response);
 }
 
-#define NUM_TEXT_UNITS 5
-
-// Disable optimization for this function since `ibm-clang` -O2 removes required assignments.
-__attribute__((optnone)) static int zjb_read_job_dynamic_allocation(ZJB *zjb, std::string jobdsn, std::string &ddname)
-{
-  int rc = 0;
-
-  unsigned char *p = nullptr;
-
-  unsigned char token[80] = {0};
-  bool use_stvsctkn = false;
-  if (0 != memcmp(zjb->token, token, sizeof(token)))
-  {
-    use_stvsctkn = true;
-  }
-
-  // calculate total size needed, obtain, & clear
-  int total_size_needed = sizeof(IAZBTOKP) + (sizeof(S99TUNIT_X) * NUM_TEXT_UNITS) + (sizeof(S99TUPL) * NUM_TEXT_UNITS) + sizeof(__S99parms) + sizeof(__S99rbx_t) + sizeof(token);
-  unsigned char *parms = (unsigned char *)__malloc31(total_size_needed);
-  if (parms == nullptr)
-  {
-    ZDIAG_SET_MSG(&zjb->diag, "Failed to allocate 31-bit memory for job parms when reading %s", jobdsn.c_str());
-    return RTNCD_FAILURE;
-  }
-  memset(parms, 0x00, total_size_needed);
-
-  // carve up storage to needed structs
-  IAZBTOKP *PTR32 iazbtokp = (IAZBTOKP * PTR32) parms;
-  S99TUNIT_X *PTR32 s99tunit_x = (S99TUNIT_X * PTR32)(parms + sizeof(IAZBTOKP));
-  S99TUPL *PTR32 s99tupl = (S99TUPL * PTR32)(parms + sizeof(IAZBTOKP) + (sizeof(S99TUNIT_X) * NUM_TEXT_UNITS));
-  __S99parms *PTR32 s99parms = (__S99parms * PTR32)(parms + sizeof(IAZBTOKP) + (sizeof(S99TUNIT_X) * NUM_TEXT_UNITS) + (sizeof(S99TUPL) * NUM_TEXT_UNITS));
-  __S99rbx_t *PTR32 s99parmsx = (__S99rbx_t * PTR32)(parms + sizeof(IAZBTOKP) + (sizeof(S99TUNIT_X) * NUM_TEXT_UNITS) + (sizeof(S99TUPL) * NUM_TEXT_UNITS) + sizeof(__S99parms));
-  unsigned char *PTR32 token31 = (unsigned char *PTR32)(parms + sizeof(IAZBTOKP) + (sizeof(S99TUNIT_X) * NUM_TEXT_UNITS) + (sizeof(S99TUPL) * NUM_TEXT_UNITS) + sizeof(__S99parms) + sizeof(__S99rbx_t));
-
-  if (use_stvsctkn)
-  {
-    memcpy(token31, zjb->token, sizeof(zjb->token));
-  }
-
-  // https://www.ibm.com/docs/en/zos/3.1.0?topic=allocation-building-browse-token-dalbrtkn
-  short int len = sizeof(iazbtokp->btokid);
-  memcpy(iazbtokp->btokpl1, &len, sizeof(len));
-  memcpy(iazbtokp->btokid, "BTOK", sizeof(iazbtokp->btokid));
-  len = sizeof(iazbtokp->btokver);
-  memcpy(iazbtokp->btokpl2, &len, sizeof(len));
-
-  if (use_stvsctkn)
-  {
-    iazbtokp->btoktype = btokstkn;
-  }
-  else
-  {
-    iazbtokp->btoktype = btokbrws;
-  }
-  iazbtokp->btokvers = btokvrnm;
-  len = sizeof(iazbtokp->btokiotp);
-
-  if (use_stvsctkn)
-  {
-    memcpy(&iazbtokp->btokiotp[0], &token31, sizeof(token31));
-  }
-
-  memcpy(iazbtokp->btokpl3, &len, sizeof(len));
-  len = sizeof(iazbtokp->btokjkey);
-  memcpy(iazbtokp->btokpl4, &len, sizeof(len));
-  len = sizeof(iazbtokp->btokasid);
-  memcpy(iazbtokp->btokpl5, &len, sizeof(len));
-  memset(iazbtokp->btokasid, 0xFF, sizeof(iazbtokp->btokasid));
-  len = sizeof(iazbtokp->btokrcid);
-  memcpy(iazbtokp->btokpl6, &len, sizeof(len));
-  len = sizeof(iazbtokp->btoklogs);
-  memcpy(iazbtokp->btokpl7, &len, sizeof(len));
-
-  // --- set text units
-
-  short int plen = 0;
-  short int dynkey = 0;
-  short int numparms = 1;
-  int i = -1;
-
-  i++;
-  dynkey = daldsnam;
-  numparms = 1;
-  plen = strlen(jobdsn.c_str());
-  memcpy(s99tunit_x[i].s99tunit.s99tukey, &dynkey, sizeof(dynkey));
-  memcpy(s99tunit_x[i].s99tunit.s99tunum, &numparms, sizeof(numparms));
-  memcpy(s99tunit_x[i].s99tunit.s99tulng, &plen, sizeof(plen));
-  memcpy(&s99tunit_x[i].s99tunit.s99tupar, jobdsn.c_str(), plen);
-
-  i++;
-  dynkey = dalstats;
-  numparms = 1;
-  plen = 1;
-  memcpy(s99tunit_x[i].s99tunit.s99tukey, &dynkey, sizeof(dynkey));
-  memcpy(s99tunit_x[i].s99tunit.s99tunum, &numparms, sizeof(numparms));
-  memcpy(s99tunit_x[i].s99tunit.s99tulng, &plen, sizeof(plen));
-  s99tunit_x[i].s99tunit.s99tupar = DISP_SHR;
-
-  i++;
-  dynkey = dalbrtkn;
-  numparms = 7; // "# must be 7" // https://www.ibm.com/docs/en/zos/3.1.0?topic=njdaf-spool-data-set-browse-token-specification-key-006e
-  plen = BTOKLEN;
-  memcpy(s99tunit_x[i].s99tunit.s99tukey, &dynkey, sizeof(dynkey));
-  memcpy(s99tunit_x[i].s99tunit.s99tunum, &numparms, sizeof(numparms));
-  memcpy(s99tunit_x[i].s99tunit.s99tulng, &plen, sizeof(plen)); //
-  memcpy(s99tunit_x[i].s99tunit.s99tulng, iazbtokp, BTOKLEN);   // NOTE(Kelosky): not using s99tupar for data, iazbtokp starts with half word of the "FIRST" parm.
-
-  i++;
-  dynkey = daluassr;
-  numparms = 0;
-  plen = 0;
-  memcpy(s99tunit_x[i].s99tunit.s99tukey, &dynkey, sizeof(dynkey));
-  memcpy(s99tunit_x[i].s99tunit.s99tunum, &numparms, sizeof(numparms));
-  memcpy(s99tunit_x[i].s99tunit.s99tulng, &plen, sizeof(plen));
-
-  i++;
-  dynkey = dalrtddn;
-  numparms = 1;
-  plen = 8;
-  memcpy(s99tunit_x[i].s99tunit.s99tukey, &dynkey, sizeof(dynkey));
-  memcpy(s99tunit_x[i].s99tunit.s99tunum, &numparms, sizeof(numparms));
-  memcpy(s99tunit_x[i].s99tunit.s99tulng, &plen, sizeof(plen));
-
-  // these need to be contiguous and can point to non contiguous storage
-  for (int j = 0; j <= i; j++)
-  {
-    s99tupl[j].s99tuptr = (void *PTR32) & s99tunit_x[j];
-  }
-
-  // set high bit in last entry
-  p = (unsigned char *PTR32) & s99tupl[i].s99tuptr;
-  *p = *p | s99tupln;
-
-  memcpy(s99parmsx->__S99EID, "S99RBX", sizeof(s99parmsx->__S99EID));
-  s99parmsx->__S99EVER = s99rbxvr;
-  s99parmsx->__S99EOPTS = s99parmsx->__S99EOPTS | s99ermsg; // IEFDB476 can free message blocks
-  s99parmsx->__S99ESUBP = 0;
-  s99parmsx->__S99EMGSV = s99parmsx->__S99EMGSV | s99xinfo;
-
-  // --- set rb
-
-  s99parms->__S99RBLN = sizeof(__S99parms);
-  s99parms->__S99VERB = s99vrbal; // allocation
-  s99parms->__S99FLAG1 = 0x4000;  // s99nocnv;
-  s99parms->__S99TXTPP = s99tupl;
-
-  // s99parms->__S99S99X = s99parmsx; // TODO(Kelosky): reenable when we look at s99parmsx->__S99ENMSG and free
-
-  // https://www.ibm.com/docs/en/zos/3.1.0?topic=list-coding-dynamic-allocation-request
-  // https://www.ibm.com/docs/en/zos/3.1.0?topic=guide-dynamic-allocation
-  rc = svc99(s99parms);
-
-  // TODO(Kelosky): parse s99parmsx->__S99ENMSG and free
-  if (0 != rc && 0 != s99parms->__S99ERROR)
-  {
-    strcpy(zjb->diag.service_name, "svc99");
-    zjb->diag.service_rc = rc;
-    ZDIAG_SET_MSG(&zjb->diag, "Could not allocate job spool file '%s', rc: '%d' s99error: '%d' s99info: '%d'", jobdsn.c_str(), rc, s99parms->__S99ERROR, s99parms->__S99INFO);
-    zjb->diag.detail_rc = ZJB_RTNCD_SERVICE_FAILURE;
-    zjb->diag.service_rsn = s99parms->__S99ERROR;
-    zjb->diag.service_rsn_secondary = s99parms->__S99INFO;
-    free(parms);
-    return RTNCD_FAILURE;
-  }
-
-  short ddnamelen = 0;
-  memcpy(&ddnamelen, s99tunit_x[4].s99tunit.s99tulng, sizeof(ddnamelen));
-
-  char cddname[8 + 1] = {0};
-  memcpy(cddname, &s99tunit_x[4].s99tunit.s99tupar, ddnamelen);
-  ddname = std::string(cddname);
-
-  free(parms);
-
-  return rc;
-}
-
-static int zjb_free_job_dynamic_allocation(ZJB *zjb, std::string ddname)
-{
-  int rc = 0;
-
-  // free DD
-  __dyn_t ip;
-  dyninit(&ip);
-  ip.__ddname = (char *)ddname.c_str(); // e.g. SYS00001
-  rc = dynfree(&ip);
-
-  if (0 != rc && 0 == zjb->diag.e_msg_len) // only set error if no error message was already set
-  {
-    strcpy(zjb->diag.service_name, "dynfree");
-    zjb->diag.service_rc = rc;
-    ZDIAG_SET_MSG(&zjb->diag, "dynfree failed with %d", rc);
-    zjb->diag.detail_rc = ZJB_RTNCD_SERVICE_FAILURE;
-    return RTNCD_FAILURE;
-  }
-
-  return rc;
-}
-
 int zjb_read_syslog(ZJB *zjb, ZJBSyslogOptions &opts, ZJBSyslogResponse &response)
 {
-  int rc = 0;
-  std::string ddname;
-  ZDS zds = {};
-  response.has_more = false;
-  response.end_date.clear();
-  response.end_time.clear();
-  response.returned_lines = 0;
-
-  //
-  // get system name
-  //
-  struct psa *psa = (struct psa *)0;
-  struct cvt *cvt = (struct cvt *)psa->flccvt;
-  char *sysname_char = (char *)cvt->cvtsname;
-  std::string sysname_str = std::string(sysname_char, sizeof(cvt->cvtsname));
-  std::string dsn = zut_rtrim(sysname_str) + ".SYSLOG" + ".SYSTEM"; // https://www.ibm.com/docs/en/zos/3.1.0?topic=allocation-specifying-data-set-name-daldsnam
-
-  //
-  // get input timestamp from format HH:MM:SS.CC to binary format (low bit represents 0.01 of a second) for CONVTOD
-  //
-  int hh = 0, mm = 0, ss = 0, cs = 0;
-  sscanf(opts.time.c_str(), "%d:%d:%d.%d", &hh, &mm, &ss, &cs);
-  uint32_t ts_binary = ((uint32_t)hh * 360000) + ((uint32_t)mm * 6000) + ((uint32_t)ss * 100) + (uint32_t)cs;
-
-  //
-  // subtract to convert local time -> UTC for CONVTOD (which uses default offset=0/UTC)
-  //
-  int32_t tz_offset_cs = (int32_t)((double)cvt->cvttz * 1.048576 / 0.01); // documented in cvt.h
-  ts_binary -= (uint32_t)tz_offset_cs;
-  memcpy(&zds.ts_binary, &ts_binary, sizeof(ts_binary)); // low half is unused
-
-  //
-  // prepare date for `pack`
-  //
-  std::string date_compact;
-  for (char c : opts.date)
-  {
-    if (c != '-')
-      date_compact += c;
-  }
-  memcpy(&zds.ebcdic_date, date_compact.c_str(), sizeof(zds.ebcdic_date));
-  zds.max_lines = opts.max_lines;
-
-  rc = zjb_read_job_dynamic_allocation(zjb, dsn, ddname);
-  if (0 != rc)
-  {
-    return rc;
-  }
-
-  zds.encoding_opts.data_type = zjb->encoding_opts.data_type;
-  memcpy((void *)&zds.encoding_opts.codepage, (const void *)&zjb->encoding_opts.codepage, sizeof(zjb->encoding_opts.codepage));
-
-  rc = zds_read_vsam(&zds, ddname, response.data);
-  memcpy(&zjb->diag, &zds.diag, sizeof(ZDIAG));
-  response.has_more = (zds.has_more != 0);
-  response.returned_lines = zds.returned_lines;
-
-  if (rc == 0 && !response.data.empty())
-  {
-    // Undo UTC->local in signed arithmetic; uint32 wraparound doesn't align to a day boundary.
-    const int32_t CS_PER_DAY = 24 * 360000;
-    uint32_t utc_cs = 0;
-    memcpy(&utc_cs, &zds.ts_binary, sizeof(utc_cs));
-    int32_t local_cs = (int32_t)utc_cs + tz_offset_cs;
-
-    // Normalize into [0, CS_PER_DAY) and track midnight crossings for the date adjustment.
-    int day_shift = 0;
-    while (local_cs < 0)
-    {
-      local_cs += CS_PER_DAY;
-      day_shift--;
-    }
-    while (local_cs >= CS_PER_DAY)
-    {
-      local_cs -= CS_PER_DAY;
-      day_shift++;
-    }
-
-    unsigned end_hh = local_cs / 360000;
-    unsigned end_mm = (local_cs / 6000) % 60;
-    unsigned end_ss = (local_cs / 100) % 60;
-
-    char ebcdic_date_formatted[8 + 1 + 1 + 1] = {}; // date + hyphens + null
-    if (day_shift != 0)
-    {
-      // mktime normalizes the out-of-range day across month/year/leap-year boundaries.
-      int year = 0, month = 0, day = 0;
-      sscanf((const char *)zds.ebcdic_date, "%4d%2d%2d", &year, &month, &day);
-      struct tm t = {};
-      t.tm_year = year - 1900;
-      t.tm_mon = month - 1;
-      t.tm_mday = day + day_shift;
-      t.tm_hour = 12; // noon keeps any DST/boundary effects away from the date
-      mktime(&t);
-      snprintf(ebcdic_date_formatted, sizeof(ebcdic_date_formatted), "%04d-%02d-%02d", t.tm_year + 1900, t.tm_mon + 1, t.tm_mday);
-    }
-    else
-    {
-      snprintf(ebcdic_date_formatted, sizeof(ebcdic_date_formatted), "%.4s-%.2s-%.2s", zds.ebcdic_date, 4 + zds.ebcdic_date, 6 + zds.ebcdic_date);
-    }
-    response.end_date = std::string(ebcdic_date_formatted);
-    // NOTE(Kelosky): centiseconds is not used for the end time because it cannot be used for input
-    // unsigned end_cs = local_cs % 100U;
-    char end_time_buf[16] = {};
-    snprintf(end_time_buf, sizeof(end_time_buf), "%02u:%02u:%02u", end_hh, end_mm, end_ss);
-    response.end_time = end_time_buf;
-  }
-
-  int newrc = zjb_free_job_dynamic_allocation(zjb, ddname);
-  if (0 != newrc && 0 == rc)
-  {
-    return newrc;
-  }
-
+  ZSyslogOptions system_opts;
+  system_opts.date = opts.date;
+  system_opts.time = opts.time;
+  system_opts.max_lines = opts.max_lines;
+  system_opts.encoding_opts = zjb->encoding_opts;
+  memcpy(system_opts.allocation.token, zjb->token, sizeof(zjb->token));
+  ZSyslogResponse system_response;
+  system_response.data.swap(response.data);
+  const int rc = zsys_read_syslog(zjb->diag, system_opts, system_response);
+  response.data.swap(system_response.data);
+  response.has_more = system_response.has_more;
+  response.end_date = std::move(system_response.end_date);
+  response.end_time = std::move(system_response.end_time);
+  response.returned_lines = system_response.returned_lines;
   return rc;
 }
 
@@ -556,7 +249,10 @@ int zjb_read_job_content_by_dsn(ZJB *zjb, const std::string &dsn, std::string &r
     }
   }
 
-  rc = zjb_read_job_dynamic_allocation(zjb, dsn, ddname);
+  ZSpoolOptions allocation;
+  allocation.dsname = dsn;
+  memcpy(allocation.token, zjb->token, sizeof(zjb->token));
+  rc = zspool_allocate(zjb->diag, allocation, ddname);
   if (0 != rc)
   {
     return rc;
@@ -570,7 +266,7 @@ int zjb_read_job_content_by_dsn(ZJB *zjb, const std::string &dsn, std::string &r
   rc = zds_read(read_opts, response);
   memcpy(&zjb->diag, &zds.diag, sizeof(ZDIAG));
 
-  int newrc = zjb_free_job_dynamic_allocation(zjb, ddname);
+  int newrc = zspool_free(zjb->diag, ddname);
   if (0 != newrc && 0 == rc)
   {
     return newrc;
@@ -927,23 +623,7 @@ int zjb_list_by_owner(ZJB *zjb, const std::string &owner_name, const std::string
 
 int zjb_list_proclib(ZJB *zjb, std::vector<std::string> &proclib)
 {
-  int rc = 0;
-  ZJB_JOB_INFO *PTR64 job_info = nullptr;
-  int entries = 0;
-  char buffer[MAX_DSN_ENTRY_SIZE] = {0};
-  int buffer_size = sizeof(buffer);
-  rc = ZJBMLPRC(zjb, buffer, &buffer_size, &entries);
-
-  if (RTNCD_SUCCESS == rc)
-  {
-    for (int i = 0; i < entries; i++)
-    {
-      std::string dsn(buffer + (i * DSN_ENTRY_SIZE), DSN_ENTRY_SIZE);
-      proclib.push_back(dsn);
-    }
-  }
-
-  return rc;
+  return zsys_list_proclib(zjb->diag, proclib);
 }
 
 void zjb_build_job_response(ZJB_JOB_INFO *PTR64 job_info, int entries, std::vector<ZJob> &jobs)

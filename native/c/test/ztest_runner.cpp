@@ -12,6 +12,7 @@
 #include "zstorage.test.hpp"
 #include "zut.test.hpp"
 #include "zjb.test.hpp"
+#include "zsys.test.hpp"
 #include "zds.test.hpp"
 #include "zkr.test.hpp"
 #include "zcn.test.hpp"
@@ -55,6 +56,7 @@ int main(int argc, char *argv[])
         zo_uss_tests();
         zut_tests();
         zjb_tests();
+        zsys_tests();
         zds_tests();
         zkr_tests();
         zcn_tests();

@@ -64,7 +64,7 @@ for filename in bindings_files:
         print(f"Warning: bindings file not found: {filename}")
 
 # 3. Copy C++ core sources
-core_sources = ["zusf.cpp", "zds.cpp", "zjb.cpp", "zut.cpp", "zkr.cpp", "zkrio.cpp"]
+core_sources = ["zusf.cpp", "zds.cpp", "zjb.cpp", "zut.cpp", "zkr.cpp", "zkrio.cpp", "zsys.cpp", "zspool.cpp"]
 for filename in core_sources:
     src = os.path.join(C_DIR, filename)
     if os.path.exists(src):
@@ -116,7 +116,7 @@ ztype = "."
 # and the Metal C routines it calls. Let's compile those translations in EBCDIC and leave the 
 # SWIG wrappers in ASCII. The conversion.hpp should bridge the two.
 EBCDIC_CHAR_MODE = "-fzos-le-char-mode=ebcdic"
-CORE_SOURCES = {"zusf.cpp", "zds.cpp", "zjb.cpp", "zut.cpp", "zkr.cpp", "zkrio.cpp"}
+CORE_SOURCES = {"zusf.cpp", "zds.cpp", "zjb.cpp", "zut.cpp", "zkr.cpp", "zkrio.cpp", "zsys.cpp", "zspool.cpp"}
 GSKCMS_SIDEDECK = "/usr/lib/GSKCMS64.x"
 
 
@@ -173,7 +173,7 @@ zds_py_module = Extension("_zds_py",
                           )
 
 zjb_py_module = Extension("_zjb_py",
-                          sources=["zjb_py_wrap.cxx", "zjb_py.cpp", "zjb.cpp", "zut.cpp", "zds.cpp"],
+                          sources=["zjb_py_wrap.cxx", "zjb_py.cpp", "zjb.cpp", "zsys.cpp", "zspool.cpp", "zut.cpp", "zds.cpp"],
                           language="c++",
                           extra_objects=[
                               "zjbm.o",

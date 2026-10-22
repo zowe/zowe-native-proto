@@ -114,6 +114,9 @@ build-out/zkr.test.o \
 build-out/zkr.o \
 build-out/zam.o \
 build-out/zam24.o \
+build-out/zsys.test.o \
+build-out/zsys.o \
+build-out/zspool.o \
 build-out/zjb.test.o \
 build-out/zjb.o \
 build-out/zjbm.o \
@@ -189,6 +192,12 @@ build-out/zam24.o:
 
 build-out/zjb.o:
 	ln -sf ../../build-out/zjb.o build-out/zjb.o
+
+build-out/zsys.o:
+	ln -sf ../../build-out/zsys.o build-out/zsys.o
+
+build-out/zspool.o:
+	ln -sf ../../build-out/zspool.o build-out/zspool.o
 
 build-out/zjbm.o:
 	ln -sf ../../build-out/zjbm.o build-out/zjbm.o
@@ -266,6 +275,9 @@ build-out/zstorage.metal.test.o: build-out/zstorage.metal.test.s
 	$(ASM) $(ASM_FLAGS) $(ASM_LIST_FLAG) $(MACLIBS) -o $@ $^
 
 build-out/zut.test.o: zut.test.cpp
+	$(CXX) $(CXXFLAGS) $(CPP_LIST_FLAG) -c $^ -o $@
+
+build-out/zsys.test.o: zsys.test.cpp
 	$(CXX) $(CXXFLAGS) $(CPP_LIST_FLAG) -c $^ -o $@
 
 build-out/zjb.test.o: zjb.test.cpp

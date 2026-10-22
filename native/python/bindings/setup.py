@@ -114,7 +114,8 @@ zds_py_module = Extension("_zds_py",
 
 zjb_py_module = Extension("_zjb_py",
                           sources=["zjb_py_wrap.cxx", "zjb_py.cpp",
-                                   f"{C_PATH}/zjb.cpp", f"{C_PATH}/zut.cpp", f"{C_PATH}/zds.cpp"],
+                                   f"{C_PATH}/zjb.cpp", f"{C_PATH}/zsys.cpp", f"{C_PATH}/zspool.cpp",
+                                   f"{C_PATH}/zut.cpp", f"{C_PATH}/zds.cpp"],
                           language="c++",
                           extra_objects=[
                               f"{build_out_path}/zjbm.o",

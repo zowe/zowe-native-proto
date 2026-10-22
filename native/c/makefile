@@ -89,7 +89,7 @@ SERVER_OBJS = $(OUT_DIR)/server/builder.o \
 	$(OUT_DIR)/server/validator.o \
 	$(OUT_DIR)/server/worker.o
 
-SWIG_EXTENDER_OBJS = $(OUT_DIR_SWIG)/zut.o $(OUT_DIR_SWIG)/zds.o $(OUT_DIR_SWIG)/zjb.o $(OUT_DIR_SWIG)/zcn.o $(OUT_DIR_SWIG)/zusf.o $(OUT_DIR_SWIG)/ztso.o $(OUT_DIR_SWIG)/zkr.o $(OUT_DIR_SWIG)/zkrio.o
+SWIG_EXTENDER_OBJS = $(OUT_DIR_SWIG)/zut.o $(OUT_DIR_SWIG)/zds.o $(OUT_DIR_SWIG)/zjb.o $(OUT_DIR_SWIG)/zsys.o $(OUT_DIR_SWIG)/zspool.o $(OUT_DIR_SWIG)/zcn.o $(OUT_DIR_SWIG)/zusf.o $(OUT_DIR_SWIG)/ztso.o $(OUT_DIR_SWIG)/zkr.o $(OUT_DIR_SWIG)/zkrio.o
 
 all: libzut.so libzut.a libzds.so libzds.a libzusf.so libzusf.a libzcn.so libzcn.a libzjb.so libzjb.a libzkr.so libzkr.a zo zoa
 swig-extenders: $(OUT_DIR_SWIG) $(SWIG_EXTENDER_OBJS)
@@ -253,13 +253,25 @@ $(OUT_DIR_SWIG)/zjb.o: $(OUT_DIR_SWIG) zjb.cpp
 	@echo 'Building $(OUT_DIR_SWIG)/zjb.o with SWIG macro'
 	$(CXX) $(SWIG_FLAGS) -o $@ zjb.cpp
 
-$(OUT_DIR)/libzjb.so: $(OUT_DIR)/zjb.o $(OUT_DIR)/zjbm.o $(OUT_DIR)/libzds.a $(OUT_DIR)/libzut.a
+$(OUT_DIR)/zsys.o: zsys.cpp
+	$(CXX) $(CPP_FLAGS) -o $@ $^
+
+$(OUT_DIR)/zspool.o: zspool.cpp
+	$(CXX) $(CPP_FLAGS) -o $@ $^
+
+$(OUT_DIR_SWIG)/zsys.o: $(OUT_DIR_SWIG) zsys.cpp
+	$(CXX) $(SWIG_FLAGS) -o $@ zsys.cpp
+
+$(OUT_DIR_SWIG)/zspool.o: $(OUT_DIR_SWIG) zspool.cpp
+	$(CXX) $(SWIG_FLAGS) -o $@ zspool.cpp
+
+$(OUT_DIR)/libzjb.so: $(OUT_DIR)/zjb.o $(OUT_DIR)/zsys.o $(OUT_DIR)/zspool.o $(OUT_DIR)/zjbm.o $(OUT_DIR)/libzds.a $(OUT_DIR)/libzut.a
 	@echo 'Building $(OUT_DIR)/libzjb.so'
 	$(CXX) $(DLL_BND_FLAGS) -o $@ $^
 
 libzjb.so: $(OUT_DIR) $(OUT_DIR)/libzjb.so
 
-$(OUT_DIR)/libzjb.a: $(OUT_DIR)/zjb.o $(OUT_DIR)/zjbm.o $(OUT_DIR)/libzds.a $(OUT_DIR)/libzut.a
+$(OUT_DIR)/libzjb.a: $(OUT_DIR)/zjb.o $(OUT_DIR)/zsys.o $(OUT_DIR)/zspool.o $(OUT_DIR)/zjbm.o $(OUT_DIR)/libzds.a $(OUT_DIR)/libzut.a
 	@echo 'Building $(OUT_DIR)/libzjb.a'
 	ar -rv $@ $^
 
