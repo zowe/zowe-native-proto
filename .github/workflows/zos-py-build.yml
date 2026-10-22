@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - ".github/workflows/zos-py-build.yml"
+      - "scripts/buildTools.ts"
       - "native/python/**"
       # zkr_py shares these native/c sources with zowex (see native/python/bindings/
       # setup.py); listed individually rather than all of native/c/** since this job
@@ -12,6 +13,20 @@ on:
       - "native/c/zkr.cpp"
       - "native/c/zkrio.hpp"
       - "native/c/zkrio.cpp"
+      - "native/c/zsys.cpp"
+      - "native/c/zsys.hpp"
+      - "native/c/zspool.cpp"
+      - "native/c/zspool.hpp"
+      - "native/c/zjb.cpp"
+      - "native/c/zjb.hpp"
+      - "native/c/zjbm.c"
+      - "native/c/zjbm.h"
+      - "native/c/zds.cpp"
+      - "native/c/zds.hpp"
+      - "native/c/zut.cpp"
+      - "native/c/zut.hpp"
+      - "native/c/ztype.h"
+      - "native/c/makefile"
   # push:
   #   branches:
   #     - main
@@ -37,7 +52,7 @@ jobs:
     runs-on: ubuntu-latest
     concurrency:
       group: "zos-build"
-    timeout-minutes: 30
+    timeout-minutes: 60
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -109,6 +124,13 @@ jobs:
 
       - name: Test Python Bindings
         run: npm run z:python:test
+
+      # Enable on runners provisioned with all three IBM Python installations.
+      - name: Build and validate the installed wheel runtime matrix
+        if: vars.ZRS_PYTHON_WHEEL_MATRIX == 'true'
+        env:
+          ZPY_PYTHON_ROOT: ${{ vars.ZRS_PYTHON_ROOT || '/usr/lpp/IBM/cyp' }}
+        run: npm run z:python:wheel -- --test
 
       # dorny/test-reporter needs `checks: write`, which GitHub downgrades to read-only for
       # pull_request runs from forks, so skip it there rather than failing the job on a

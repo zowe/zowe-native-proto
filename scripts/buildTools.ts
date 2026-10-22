@@ -1268,9 +1268,17 @@ ${preBuildCmd || ":"}
         "_zbind_loader.py",
     ];
     const interfaces = fs.readdirSync(path.join(root, bindings)).filter((name) => /\.(cpp|hpp|i)$/.test(name));
+    const nativeSources = fs
+        .readdirSync(path.join(root, "native/c"))
+        .filter((name) => /\.(c|cpp|h|hpp)$/.test(name))
+        .map((name) => `native/c/${name}`);
+    const wheelTests = args.includes("--test")
+        ? fs.readdirSync(path.join(root, bindings, "test")).filter((name) => name.endsWith(".py"))
+        : [];
     const files = [
-        ...tracked,
+        ...new Set([...tracked, ...nativeSources]),
         ...[...buildFiles, ...interfaces].map((name) => `${bindings}/${name}`),
+        ...wheelTests.map((name) => `${bindings}/test/${name}`),
         "LICENSE",
         "package.json",
     ];
@@ -1304,6 +1312,21 @@ ${preBuildCmd || ":"}
             `${quoteWheelShell(python)} ${quoteWheelShell(`${stage}/${bindings}/package_wheel.py`)} --build-from-stdin`,
             JSON.stringify({ runtimes, indexUrl: process.env.PIP_INDEX_URL }),
         );
+        if (args.includes("--test")) {
+            const validateWheel = `from pathlib import Path
+import os, subprocess, sys
+wheel, = Path(sys.argv[1]).glob('*.whl')
+temporary = wheel.parent / 'test-tmp'
+temporary.mkdir(exist_ok=True)
+env = dict(os.environ, TMPDIR=str(temporary))
+subprocess.run([sys.executable, sys.argv[2], str(wheel), '--system'], env=env, check=True)
+`;
+            for (const [minor, runtime] of Object.entries(runtimes)) {
+                console.log(`Testing the installed wheel with IBM Python 3.${minor}...`);
+                const command = `${quoteWheelShell(runtime)} -c ${quoteWheelShell(validateWheel)} ${quoteWheelShell(`${stage}/${bindings}/dist`)} ${quoteWheelShell(`${stage}/${bindings}/test/run_wheel_tests.py`)}`;
+                console.log(await run(command));
+            }
+        }
         const result = JSON.parse(
             await run(
                 `${pythonCommand(pythonWheelDownloadSource)} ${quoteWheelShell(`${stage}/native/python/bindings/dist`)}`,
