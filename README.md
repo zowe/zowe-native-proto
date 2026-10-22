@@ -145,7 +145,7 @@ graph LR
   subgraph z/OS Server
   zo["C++ CLI Binary (zo)"]-->cpp
   ioserver["C++ I/O Server (zo server)"]-->cpp["C++ Libraries (Backend)"]
-  python["Python REST API (experimental)"]-->cpp
+  python["Python bindings (experimental)"]-->cpp
   sdk<-->|SSH|ioserver
   subgraph Mainframe Resources
   ds[Data Sets]
@@ -160,4 +160,5 @@ graph LR
   click cli "https://github.com/zowe/zowex/blob/main/doc/client/architecture.md#cli-plug-in"
   click ioserver "https://github.com/zowe/zowex/blob/main/doc/backend/server/architecture.md"
   click zo "https://github.com/zowe/zowex/blob/main/doc/backend/zo_architecture.md"
+  click python "https://github.com/zowe/zowex/blob/main/native/python/bindings/README.md"
 ```

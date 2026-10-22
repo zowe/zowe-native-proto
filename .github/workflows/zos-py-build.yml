@@ -6,7 +6,7 @@ on:
       - ".github/workflows/zos-py-build.yml"
       - "scripts/buildTools.ts"
       - "native/python/**"
-      # zkr_py shares these native/c sources with zowex (see native/python/bindings/
+      # The Python bindings share these native/c sources with zo (see native/python/bindings/
       # setup.py); listed individually rather than all of native/c/** since this job
       # shares the zos-build concurrency group and takes ~20 minutes.
       - "native/c/zkr.hpp"

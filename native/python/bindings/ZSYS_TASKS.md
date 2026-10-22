@@ -19,6 +19,7 @@ Approved scope: [ZSYS_PLAN.md](ZSYS_PLAN.md). Existing native and Python APIs re
 - [x] Run native, existing-binding, system-binding, and installed-wheel checks on available supported runtimes.
 - [x] Run appropriate local checks and review the complete diff for compatibility and scope.
 - [x] Download the validated wheel and verify its checksum, contents, and RECORD hashes locally.
+- [x] Audit the API matrix and remaining integration references; correct system support flags, module/encoding documentation, bundle examples, and test help.
 
 ## Compatibility decisions
 
@@ -57,6 +58,12 @@ The implementation is split into six local commits in dependency order, each wit
 4. Python contracts, native adapter fixtures, integration, lifetime, and installed-wheel tests.
 5. CI triggers and the optional installed-wheel runtime matrix.
 6. API documentation, approved plan, completed task/validation record, and changelog.
+
+A follow-up documentation commit corrects `doc/apis.md`, the architecture and
+bindings guides, precompiled-bundle examples, test help, and the CI dependency comment.
+The audit also checked all five module registrations, shared job/system link
+dependencies, package manifests, and test/CI entry points. No additional missing
+system-binding registrations or package entries were found.
 
 The commits remain local until the user authorizes a push. The personal `test.py` examples retain their existing ignore rule.
 

@@ -111,14 +111,17 @@
 
 ## System
 
+The `zo` Python distribution provides these operations and [SYSLOG reads](#other)
+through [`zsys_py`](../native/python/bindings/README.md#zsys_py--system-information-and-syslog).
+
 | Operation       | z/OSMF | FTP | `zo`<br>Backend | `zo`<br>Server | Python<br>Bindings | Node.js<br>SDK | CLI<br>Plug-in | VS Code |
 | --------------- | ------ | --- | --------------- | -------------- | ------------------ | -------------- | -------------- | ------- |
-| Display symbol  | ❌      | ❌   | ✅               | ❌              | ❌                  | ❌              | ❌              | ➖       |
-| List APF libs   | ❌      | ❌   | ✅               | ✅              | ❌                  | ✅              | ❌              | ➖       |
-| List linklist   | ❌      | ❌   | ✅               | ✅              | ❌                  | ✅              | ❌              | ➖       |
-| List parmlib    | ❌      | ❌   | ✅               | ✅              | ❌                  | ✅              | ❌              | ➖       |
-| List proclib    | ❌      | ❌   | ✅               | ✅              | ❌                  | ✅              | ❌              | ➖       |
-| List subsystems | ❌      | ❌   | ✅               | ❌              | ❌                  | ❌              | ❌              | ➖       |
+| Display symbol  | ❌      | ❌   | ✅               | ❌              | ✅                  | ❌              | ❌              | ➖       |
+| List APF libs   | ❌      | ❌   | ✅               | ✅              | ✅                  | ✅              | ❌              | ➖       |
+| List linklist   | ❌      | ❌   | ✅               | ✅              | ✅                  | ✅              | ❌              | ➖       |
+| List parmlib    | ❌      | ❌   | ✅               | ✅              | ✅                  | ✅              | ❌              | ➖       |
+| List proclib    | ❌      | ❌   | ✅               | ✅              | ✅                  | ✅              | ❌              | ➖       |
+| List subsystems | ❌      | ❌   | ✅               | ❌              | ✅                  | ❌              | ❌              | ➖       |
 
 ## Certificates
 
@@ -147,7 +150,7 @@ bindings.
 
 | Operation            | z/OSMF | FTP | `zo`<br>Backend | `zo`<br>Server | Python<br>Bindings | Node.js<br>SDK | CLI<br>Plug-in | VS Code |
 | -------------------- | ------ | --- | --------------- | -------------- | ------------------ | -------------- | -------------- | ------- |
-| Read system log      | ✅      | ❌   | ✅               | ✅              | ❌                  | ✅              | ❌              | ➖       |
+| Read system log      | ✅      | ❌   | ✅               | ✅              | ✅                  | ✅              | ❌              | ➖       |
 | Get server status    | ✅      | ❌   | ✅               | ✅              | ❌                  | ✅              | ❌              | ❌       |
 | Change user password | ✅      | ❌   | ❌               | ❌              | ❌                  | ❌              | ➖              | ➖       |
 | Issue SSH command    | ✅      | ❌   | ✅               | ✅              | ❌                  | ✅              | ❌              | ❌       |

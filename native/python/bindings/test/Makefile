@@ -103,6 +103,7 @@ help:
 	@echo "  test-zusf   - Run USS tests only"
 	@echo "  test-zkr    - Run certificate/key ring tests only"
 	@echo "  test-zsys   - Run system contracts and read-only integration tests"
+	@echo "  test-zsys-fixture - Run isolated system adapter tests"
 	@echo "  test-swig   - Run cross-module iterator and result lifetime tests"
 	@echo "  clean       - Remove all test result files"
 	@echo "  setup       - Setup the test environment"

@@ -93,6 +93,11 @@ sys.path.insert(0, "/path/to/zbind_bin_dist")
 from zusf_py import list_uss_dir
 from zjb_py import list_jobs_by_owner
 from zds_py import list_data_sets
+from zkr_py import list_rings
+from zsys_py import display_symbol, view_syslog
+
+print(display_symbol("SYSNAME"))
+print(view_syslog(seconds_ago=300, max_lines=25).data)
 ```
 
 ### Option B: Use as a Python Package
@@ -103,6 +108,7 @@ import zbind_bin_dist
 
 # Access modules as sub-modules
 print(zbind_bin_dist.zusf_py.list_uss_dir("/tmp"))
+print(zbind_bin_dist.zsys_py.display_symbol("SYSNAME"))
 ```
 """
 with open(os.path.join(PRECOMPILED_DIR, "README.md"), "w") as f:

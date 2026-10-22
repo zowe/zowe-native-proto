@@ -300,6 +300,8 @@ validation before shared resolution. Certificate and key-ring APIs remain in `zk
 Build only this module with `make build-zsys`. Run `make setup test-zsys` in `test/`
 with the extension build directory on `PYTHONPATH`. `test_zsys.py` exercises contracts
 without system authority; `test_zsys_integration.py` calls read-only system services.
+After generating the SWIG wrappers, run `make setup test-zsys-fixture` in `test/`
+to exercise conversion, errors, and ownership with isolated native service substitutes.
 Set `ZSYS_TEST_ZO` to the freshly built executable for CLI parity checks. Installed-wheel
 validation runs the contract suite by default; add `--system` to
 `test/run_wheel_tests.py` for system integration tests on each bundled runtime.
@@ -346,10 +348,10 @@ are handled by the native service layer and raise `ZkrError`. Catch `RuntimeErro
 to handle both plain I/O failures and `ZkrError`, or catch `ZkrError` separately
 when its structured diagnostics are needed.
 
-Unlike the other three modules, functions here take a keyword argument by name where it makes the call
-readable (`export_certificate(owner, ring, label, format="p12", password=...)`) — see
-[`%feature("kwargs")` below](#why-calls-across-the-line-need-extern-c) for why that needed an extra
-directive the other `.i` files don't have.
+`zkr_py` and `zsys_py` enable named arguments with SWIG's `%feature("kwargs")`,
+for example `export_certificate(owner, ring, label, format="p12", password=...)`
+and `list_subsystems(filter="JES*")`. The Python `view_syslog` wrapper requires
+keyword arguments. The dataset, job, and USS modules use positional arguments.
 
 ## Architecture
 
@@ -400,6 +402,11 @@ precompiled bundle ships the finished `.so` next to the `*_py.py`.
 `extra_objects` list is the same `zdsm.o` / `zutm.o` / `zam.o` / `zam24.o` / `zutm31.o` /
 `zutcall24.o` set `zds_py` and `zjb_py` already need for the `native/c/zds.cpp` it shares with them,
 plus that one side deck.
+
+`zsys_py` links `zsys.cpp`, `zspool.cpp`, `zds.cpp`, and `zut.cpp`, plus the
+six shared Metal objects shown above and `zjbm.o` for JES PROCLIB queries.
+`zjb_py` also links `zsys.cpp` and `zspool.cpp` for its compatibility entry points
+and spool reads. Each extension has its own `SWIG_TYPE_TABLE`.
 
 ### Where the ASCII/EBCDIC line falls
 
@@ -512,16 +519,18 @@ with two limits:
 
 ### Which strings get converted
 
-The rule is simple: **convert the text yourself only if the shared layer will not.** The two columns
-below differ because the shared layers disagree about who converts file content.
+**Convert text in the binding only when the shared layer does not.** The modules
+handle file content differently; `zsys_py` also converts its native text to UTF-8.
 
-| what crosses | `zds_py` / `zjb_py` | `zusf_py` | `zkr_py` |
-| --- | --- | --- | --- |
-| DSN / path / jobid / owner / prefix / tag | `a2e` | `a2e` | `a2e` |
-| codepage name, etag going in | `a2e` | `a2e` | n/a |
-| etag coming back | `e2a` | `e2a` | n/a |
-| `diag.e_msg`, listing text, `ZJob` / `ZDSEntry` / `ZKRCertInfo` fields | `e2a` | `e2a` | `e2a` |
-| file or data set **content** | `a2e` / `e2a` for the default codepage; none for an explicit codepage | none | see below |
+| what crosses | `zds_py` / `zjb_py` | `zusf_py` | `zkr_py` | `zsys_py` |
+| --- | --- | --- | --- | --- |
+| identifiers going in (DSN, path, jobid, owner, prefix, tag, symbol, filter) | `a2e` | `a2e` | `a2e` | `a2e` |
+| codepage name, etag going in | `a2e` | `a2e` | n/a | n/a |
+| etag coming back | `e2a` | `e2a` | n/a | n/a |
+| diagnostics, listing text, and result fields | `e2a` | `e2a` | `e2a` | IBM-1047 to UTF-8 |
+| file or data set **content** | `a2e` / `e2a` for the default codepage; none for an explicit codepage | none | see below | n/a |
+| SYSLOG date/time going in | n/a | n/a | n/a | `a2e` |
+| symbol values, SYSLOG records, and date/time coming back | n/a | n/a | n/a | IBM-1047 to UTF-8 |
 
 `zusf` converts content in both directions on its own: it checks the requested codepage and the file
 tag together, so leaving the content untouched is what makes it round-trip whether the file is tagged or
