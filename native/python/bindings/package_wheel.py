@@ -13,7 +13,7 @@ import sysconfig
 import tempfile
 import zipfile
 
-MODULES = ("zusf_py", "zds_py", "zjb_py", "zkr_py")
+MODULES = ("zusf_py", "zds_py", "zjb_py", "zkr_py", "zsys_py")
 
 
 def parse_runtime(value):
@@ -180,7 +180,7 @@ def main():
                         "--outdir", str(work / "dist")], cwd=bindings, env=env, check=True)
         commands = [json.loads(line) for line in (work / "links.jsonl").read_text(encoding="utf-8").splitlines()]
         if len(commands) != len(MODULES):
-            raise RuntimeError("Expected a fresh link command for each of the four modules")
+            raise RuntimeError("Expected a fresh link command for each of the five modules")
         base_deck = commands[0][python_side_deck_index(commands[0])]
         runtimes = {"cp311": base_deck, **dict(args.runtime)}
         args.runtimes = runtimes

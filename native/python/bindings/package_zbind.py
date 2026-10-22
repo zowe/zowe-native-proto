@@ -28,6 +28,7 @@ bindings_files = [
     "zusf_py.cpp", "zusf_py.hpp", "zusf_py.py", "zusf_py_wrap.cxx",
     "zds_py.cpp", "zds_py.hpp", "zds_py.py", "zds_py_wrap.cxx",
     "zjb_py.cpp", "zjb_py.hpp", "zjb_py.py", "zjb_py_wrap.cxx",
+    "zsys_py.cpp", "zsys_py.hpp", "zsys_py.py", "zsys_py_wrap.cxx",
     "zkr_py.cpp", "zkr_py.hpp", "zkr_py.py", "zkr_py_wrap.cxx",
     "conversion.hpp"
 ]
@@ -188,6 +189,22 @@ zjb_py_module = Extension("_zjb_py",
                           extra_compile_args=["-D_EXT", "-D_OPEN_SYS_FILE_EXT=1"],
                           )
 
+zsys_py_module = Extension("_zsys_py",
+                          sources=["zsys_py_wrap.cxx", "zsys_py.cpp", "zsys.cpp", "zspool.cpp", "zut.cpp", "zds.cpp"],
+                          language="c++",
+                          extra_objects=[
+                              "zjbm.o",
+                              "zutm.o",
+                              "zutm31.o",
+                              "zam.o",
+                              "zdsm.o",
+                              "zam24.o",
+                              "zutcall24.o",
+                          ],
+                          include_dirs=[chdsect, ztype],
+                          extra_compile_args=["-D_EXT", "-D_OPEN_SYS_FILE_EXT=1"],
+                          )
+
 zkr_py_module = Extension("_zkr_py",
                           sources=["zkr_py_wrap.cxx", "zkr_py.cpp", "zkr.cpp", "zkrio.cpp", "zds.cpp", "zut.cpp"],
                           language="c++",
@@ -204,7 +221,7 @@ zkr_py_module = Extension("_zkr_py",
                           extra_compile_args=["-D_EXT", "-D_OPEN_SYS_FILE_EXT=1"],
                           )
 
-ext_modules = [zusf_py_module, zds_py_module, zjb_py_module, zkr_py_module]
+ext_modules = [zusf_py_module, zds_py_module, zjb_py_module, zkr_py_module, zsys_py_module]
 for extension in ext_modules:
     extension.define_macros.append(("SWIG_TYPE_TABLE", extension.name))
 
@@ -213,7 +230,7 @@ setup(name="zo",
       description="Zowe Remote SSH Python Bindings (Self-contained Bundle)",
       cmdclass={"build_ext": BuildExtMixedCharMode},
       ext_modules=ext_modules,
-      py_modules=["zusf_py", "zds_py", "zjb_py", "zkr_py"],
+      py_modules=["zusf_py", "zds_py", "zjb_py", "zkr_py", "zsys_py"],
       )
 """
 

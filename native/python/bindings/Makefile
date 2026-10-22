@@ -29,6 +29,7 @@ _SWIG_LIB = \
 SWIG=$(_SWIG_ENV) $(_SWIG_LIB) swig
 PYTHON=python
 WHEEL_ARGS=
+BUILD_EXT_ARGS=
 
 # Install requirements-build.txt in a build venv before invoking this target.
 wheel:
@@ -43,32 +44,38 @@ swig-wrappers:
 	$(SWIG) -python -c++ zjb_py.i
 	$(SWIG) -python -c++ zds_py.i
 	$(SWIG) -python -c++ zkr_py.i
+	$(SWIG) -python -c++ zsys_py.i
 
 # Build Python extensions
 build: swig-wrappers
 	@echo '\nBuilding Python extensions'
-	$(_SWIG_ENV) python setup.py build_ext
+	$(_SWIG_ENV) python setup.py build_ext $(BUILD_EXT_ARGS)
 
 # Build specific modules only
 build-zusf:
 	@echo '\nBuilding zusf_py module only'
 	$(SWIG) -python -c++ zusf_py.i
-	$(_SWIG_ENV) ZBIND_MODULES=zusf python setup.py build_ext
+	$(_SWIG_ENV) ZBIND_MODULES=zusf python setup.py build_ext $(BUILD_EXT_ARGS)
 
 build-zds:
 	@echo '\nBuilding zds_py module only'
 	$(SWIG) -python -c++ zds_py.i
-	$(_SWIG_ENV) ZBIND_MODULES=zds python setup.py build_ext
+	$(_SWIG_ENV) ZBIND_MODULES=zds python setup.py build_ext $(BUILD_EXT_ARGS)
 
 build-zjb:
 	@echo '\nBuilding zjb_py module only'
 	$(SWIG) -python -c++ zjb_py.i
-	$(_SWIG_ENV) ZBIND_MODULES=zjb python setup.py build_ext
+	$(_SWIG_ENV) ZBIND_MODULES=zjb python setup.py build_ext $(BUILD_EXT_ARGS)
 
 build-zkr:
 	@echo '\nBuilding zkr_py module only'
 	$(SWIG) -python -c++ zkr_py.i
-	$(_SWIG_ENV) ZBIND_MODULES=zkr python setup.py build_ext
+	$(_SWIG_ENV) ZBIND_MODULES=zkr python setup.py build_ext $(BUILD_EXT_ARGS)
+
+build-zsys:
+	@echo '\nBuilding zsys_py module only'
+	$(SWIG) -python -c++ zsys_py.i
+	$(_SWIG_ENV) ZBIND_MODULES=zsys python setup.py build_ext $(BUILD_EXT_ARGS)
 
 # Run SWIG extenders in the C directory
 swig-extenders:
@@ -86,6 +93,7 @@ help:
 	@echo "  build-zds     - Build zds_py module only"
 	@echo "  build-zjb     - Build zjb_py module only"
 	@echo "  build-zkr     - Build zkr_py module only"
+	@echo "  build-zsys    - Build zsys_py module only"
 	@echo "  clean         - Clean generated files"
 	@echo "  wheel         - Build a z/OS wheel for explicitly selected Python runtimes"
 	@echo "  help          - Show this help message"
@@ -101,4 +109,4 @@ clean:
 	rm -rf build/
 	rm -rf ../../c/build-out/swig
 
-.PHONY: all help swig-wrappers swig-extenders build clean build-zusf build-zds build-zjb build-zkr wheel
+.PHONY: all help swig-wrappers swig-extenders build clean build-zusf build-zds build-zjb build-zkr build-zsys wheel

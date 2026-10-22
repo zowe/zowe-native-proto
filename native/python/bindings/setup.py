@@ -130,6 +130,24 @@ zjb_py_module = Extension("_zjb_py",
                           extra_compile_args=["-D_EXT", "-D_OPEN_SYS_FILE_EXT=1"],
                           )
 
+zsys_py_module = Extension("_zsys_py",
+                          sources=["zsys_py_wrap.cxx", "zsys_py.cpp",
+                                   f"{C_PATH}/zsys.cpp", f"{C_PATH}/zspool.cpp",
+                                   f"{C_PATH}/zut.cpp", f"{C_PATH}/zds.cpp"],
+                          language="c++",
+                          extra_objects=[
+                              f"{build_out_path}/zjbm.o",
+                              f"{build_out_path}/zutm.o",
+                              f"{build_out_path}/zutm31.o",
+                              f"{build_out_path}/zam.o",
+                              f"{build_out_path}/zdsm.o",
+                              f"{build_out_path}/zam24.o",
+                              f"{build_out_path}/zutcall24.o",
+                          ],
+                          include_dirs=[chdsect, ztype],
+                          extra_compile_args=["-D_EXT", "-D_OPEN_SYS_FILE_EXT=1"],
+                          )
+
 zkr_py_module = Extension("_zkr_py",
                           sources=["zkr_py_wrap.cxx", "zkr_py.cpp",
                                    f"{C_PATH}/zkr.cpp", f"{C_PATH}/zkrio.cpp",
@@ -161,7 +179,7 @@ def get_modules_to_build():
         modules_to_build = {m.strip() for m in modules_to_build if m.strip()}
     else:
         # If no specific modules requested, build all
-        modules_to_build = {'zusf', 'zds', 'zjb', 'zkr'}
+        modules_to_build = {'zusf', 'zds', 'zjb', 'zkr', 'zsys'}
 
     return modules_to_build
 
@@ -189,6 +207,10 @@ if 'zkr' in modules_to_build:
     ext_modules.append(zkr_py_module)
     py_modules.append("zkr_py")
 
+if 'zsys' in modules_to_build:
+    ext_modules.append(zsys_py_module)
+    py_modules.append("zsys_py")
+
 print(f"Building modules: {', '.join(modules_to_build)}")
 
 # Each DLL must use its own SWIG iterator proxy. On z/OS, routing an iterator
@@ -200,8 +222,8 @@ for extension in ext_modules:
         extension.py_limited_api = True
 
 if ABI3_BUILD:
-    if modules_to_build != {'zusf', 'zds', 'zjb', 'zkr'}:
-        raise ValueError("The release wheel requires all four binding modules")
+    if modules_to_build != {'zusf', 'zds', 'zjb', 'zkr', 'zsys'}:
+        raise ValueError("The release wheel requires all five binding modules")
     # Embed the Metal C helpers, avoiding a runtime dependency on libzut.so.
     zusf_py_module.libraries = []
     zusf_py_module.library_dirs = []
