@@ -876,7 +876,6 @@ int ZJBMLPRC(ZJB *zjb, char *buffer, int *buffer_size, int *entries)
   }
 
   JPRHDR *PTR32 jprhdr = (JPRHDR * PTR32) jproc.jprclptr; // --> first PROCLIB
-  char *dsn_buffer = buffer;
 
   while (jprhdr)
   {
@@ -887,10 +886,7 @@ int ZJBMLPRC(ZJB *zjb, char *buffer, int *buffer_size, int *entries)
 
     for (int i = 0; i < jprgeni->jprdscnt; i++)
     {
-      memcpy(dsn_buffer, jprdsinf->jprddsn, DSN_ENTRY_SIZE);
-      dsn_buffer += DSN_ENTRY_SIZE;
-      *entries = *entries + 1;
-      if (*entries > MAX_DSN_ENTRIES)
+      if (zjb_append_proclib(buffer, entries, jprdsinf->jprddsn) != RTNCD_SUCCESS)
       {
         zjb->diag.detail_rc = ZJB_RTNCD_INSUFFICIENT_BUFFER;
         ZDIAG_SET_MSG(&zjb->diag, "max DSN entries reached '%d', results truncated", MAX_DSN_ENTRIES);
@@ -908,6 +904,8 @@ int ZJBMLPRC(ZJB *zjb, char *buffer, int *buffer_size, int *entries)
   }
 
   ssjp.ssjpfreq = ssjpprrs; // free storage
+  int query_rc = rc;
+  ZDIAG query_diag = zjb->diag;
   memset(&zenv, 0, sizeof(ZRCVY_ENV));
   if (0 == enable_recovery(&zenv))
   {
@@ -920,5 +918,18 @@ int ZJBMLPRC(ZJB *zjb, char *buffer, int *buffer_size, int *entries)
   }
   disable_recovery(&zenv);
 
+  if (query_rc != RTNCD_SUCCESS)
+  {
+    zjb->diag = query_diag;
+    return query_rc;
+  }
+  if (rc == RTNCD_SUCCESS && (ssob.ssobretn != 0 || ssjp.ssjpretn != 0))
+  {
+    strcpy(zjb->diag.service_name, "IEFSSREQ");
+    zjb->diag.service_rc = ssob.ssobretn;
+    zjb->diag.service_rsn = ssjp.ssjpretn;
+    ZDIAG_SET_MSG(&zjb->diag, "PROCLIB release failed: SSOBRETN '%d', SSJPRETN '%d'", ssob.ssobretn, ssjp.ssjpretn);
+    return RTNCD_FAILURE;
+  }
   return rc;
 }

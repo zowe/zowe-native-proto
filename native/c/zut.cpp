@@ -27,6 +27,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include "zut.hpp"
+#include <memory>
 #include "zlogger.hpp"
 #include "zutm.h"
 #include <ios>
@@ -473,17 +474,18 @@ unsigned char zut_get_key()
 }
 
 int zut_substitute_symbol(const std::string &pattern, std::string &result)
+try
 {
   SYMBOL_DATA *parms = (SYMBOL_DATA *)__malloc31(sizeof(SYMBOL_DATA));
   if (parms == nullptr)
   {
     return RTNCD_FAILURE;
   }
+  std::unique_ptr<void, decltype(&free)> storage(parms, free);
   memset(parms, 0x00, sizeof(SYMBOL_DATA));
 
   if (pattern.size() >= sizeof(parms->input))
   {
-    free(parms);
     return RTNCD_FAILURE;
   }
 
@@ -493,13 +495,16 @@ int zut_substitute_symbol(const std::string &pattern, std::string &result)
   int rc = ZUTSYMBP(parms);
   if (RTNCD_SUCCESS != rc)
   {
-    free(parms);
     return rc;
   }
   parms->output[sizeof(parms->output) - 1] = '\0';
   result += std::string(parms->output);
-  free(parms);
   return RTNCD_SUCCESS;
+}
+
+catch (...)
+{
+  return RTNCD_FAILURE;
 }
 
 int zut_convert_dsect()
@@ -629,6 +634,7 @@ int zut_hello(const std::string &name)
 }
 
 int zut_list_subsystems(ZDIAG &diag, std::vector<std::string> &subsystems, std::string filter)
+try
 {
   int rc = 0;
   JQRY_HEADER *area = nullptr;
@@ -640,6 +646,8 @@ int zut_list_subsystems(ZDIAG &diag, std::vector<std::string> &subsystems, std::
     return rc;
   }
 
+  auto release_area = [](JQRY_HEADER *value) { ZUTMSREL(&value->jqrylen, value); };
+  std::unique_ptr<JQRY_HEADER, decltype(release_area)> storage(area, release_area);
   JQRY_SUBSYS_ENTRY *subsys_entry = nullptr;
   subsys_entry = (JQRY_SUBSYS_ENTRY *)((unsigned char *)area + sizeof(JQRY_HEADER));
   int next_entry = sizeof(JQRY_HEADER) + sizeof(JQRY_VT_ENTRY) * 2; // NOTE(Kelosky): 2 is the number of vector tables
@@ -669,16 +677,27 @@ int zut_list_subsystems(ZDIAG &diag, std::vector<std::string> &subsystems, std::
     subsys_entry = (JQRY_SUBSYS_ENTRY *)((unsigned char *)subsys_entry + next_entry);
   }
 
-  ZUTMSREL(&area->jqrylen, area);
-
   return rc;
 }
 
+catch (...)
+{
+  ZDIAG_SET_MSG(&diag, "Could not allocate system list result storage");
+  return RTNCD_FAILURE;
+}
+
 int zut_list_apf(ZDIAG &diag, std::vector<std::pair<std::string, std::string>> &apf)
+try
 {
   int rc = 0;
   int size = sizeof(struct apfhdr);
   struct apfhdr *answer_fixed = (struct apfhdr *)__malloc31(size);
+  if (answer_fixed == nullptr)
+  {
+    ZDIAG_SET_MSG(&diag, "Could not allocate list query storage");
+    return RTNCD_FAILURE;
+  }
+  std::unique_ptr<void, decltype(&free)> fixed_storage(answer_fixed, free);
   int answer_len = size;
   int rsn = 0;
   rc = ZUTMAPFQ(&diag, answer_fixed, &answer_len, &rsn);
@@ -688,12 +707,16 @@ int zut_list_apf(ZDIAG &diag, std::vector<std::pair<std::string, std::string>> &
     {
       int needed_len = answer_fixed->apfhtlen;
       struct apfhdr *answer_dynamic = (struct apfhdr *)__malloc31(needed_len);
+      if (answer_dynamic == nullptr)
+      {
+        ZDIAG_SET_MSG(&diag, "Could not allocate list query storage");
+        return RTNCD_FAILURE;
+      }
+      std::unique_ptr<void, decltype(&free)> dynamic_storage(answer_dynamic, free);
       rc = ZUTMAPFQ(&diag, answer_dynamic, &needed_len, &rsn);
 
       if (0 != rc)
       {
-        free(answer_fixed);
-        free(answer_dynamic);
         return rc;
       }
 
@@ -705,17 +728,20 @@ int zut_list_apf(ZDIAG &diag, std::vector<std::pair<std::string, std::string>> &
         apf.push_back(std::make_pair(dsn, volume));
         apfe = (struct apfe *)((unsigned char *)apfe + apfe->apfelen);
       }
-      free(answer_dynamic);
     }
     else
     {
-      free(answer_fixed);
       return rc;
     }
   }
 
-  free(answer_fixed);
   return rc;
+}
+
+catch (...)
+{
+  ZDIAG_SET_MSG(&diag, "Could not allocate system list result storage");
+  return RTNCD_FAILURE;
 }
 
 static void zut_extract_linklist_entries(DLAAHDR *answer, std::vector<ZLinklstEntry> &linklist)
@@ -738,10 +764,17 @@ static void zut_extract_linklist_entries(DLAAHDR *answer, std::vector<ZLinklstEn
 }
 
 int zut_list_linklist(ZDIAG &diag, std::vector<ZLinklstEntry> &linklist)
+try
 {
   int rc = 0;
   int size = sizeof(DLAAHDR);
   DLAAHDR *answer_fixed = (DLAAHDR *)__malloc31(size);
+  if (answer_fixed == nullptr)
+  {
+    ZDIAG_SET_MSG(&diag, "Could not allocate list query storage");
+    return RTNCD_FAILURE;
+  }
+  std::unique_ptr<void, decltype(&free)> fixed_storage(answer_fixed, free);
   int answer_len = size;
   int rsn = 0;
   rc = ZUTMDYNQ(&diag, answer_fixed, &answer_len, &rsn);
@@ -751,21 +784,23 @@ int zut_list_linklist(ZDIAG &diag, std::vector<ZLinklstEntry> &linklist)
     {
       int needed_len = answer_fixed->dlaahtlen;
       DLAAHDR *answer_dynamic = (DLAAHDR *)__malloc31(needed_len);
+      if (answer_dynamic == nullptr)
+      {
+        ZDIAG_SET_MSG(&diag, "Could not allocate list query storage");
+        return RTNCD_FAILURE;
+      }
+      std::unique_ptr<void, decltype(&free)> dynamic_storage(answer_dynamic, free);
       rc = ZUTMDYNQ(&diag, answer_dynamic, &needed_len, &rsn);
 
       if (0 != rc)
       {
-        free(answer_fixed);
-        free(answer_dynamic);
         return rc;
       }
 
       zut_extract_linklist_entries(answer_dynamic, linklist);
-      free(answer_dynamic);
     }
     else
     {
-      free(answer_fixed);
       return rc;
     }
   }
@@ -774,11 +809,17 @@ int zut_list_linklist(ZDIAG &diag, std::vector<ZLinklstEntry> &linklist)
     zut_extract_linklist_entries(answer_fixed, linklist);
   }
 
-  free(answer_fixed);
   return rc;
 }
 
+catch (...)
+{
+  ZDIAG_SET_MSG(&diag, "Could not allocate system list result storage");
+  return RTNCD_FAILURE;
+}
+
 int zut_list_parmlib(ZDIAG &diag, std::vector<std::string> &parmlibs)
+try
 {
   int rc = 0;
   PARMLIB_DSNS dsns = {0};
@@ -806,6 +847,12 @@ int zut_list_parmlib(ZDIAG &diag, std::vector<std::string> &parmlibs)
   }
 
   return rc;
+}
+
+catch (...)
+{
+  ZDIAG_SET_MSG(&diag, "Could not allocate system list result storage");
+  return RTNCD_FAILURE;
 }
 
 char zut_get_hex_char(int num)

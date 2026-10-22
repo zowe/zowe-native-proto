@@ -15,6 +15,7 @@
 #include "ztype.h"
 #include "zssitype.h"
 #include "zjbtype.h"
+#include <string.h>
 
 ZNP_PACK_ON
 typedef struct
@@ -55,5 +56,15 @@ extern "C"
 #if defined(__cplusplus)
 }
 #endif
+
+// Shared with the Metal query so capacity tests exercise the actual copy guard.
+static int zjb_append_proclib(char *buffer, int *entries, const void *dsn)
+{
+  if (*entries < 0 || *entries >= MAX_DSN_ENTRIES)
+    return RTNCD_FAILURE;
+  memcpy(buffer + (*entries * DSN_ENTRY_SIZE), dsn, DSN_ENTRY_SIZE);
+  *entries += 1;
+  return RTNCD_SUCCESS;
+}
 
 #endif

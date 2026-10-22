@@ -989,7 +989,7 @@ int zds_read_vsam(ZDS *zds, std::string ddname, std::string &response)
 {
   int rc = 0;
 
-  IO_CTRL *ioc = new IO_CTRL();
+  IO_CTRL *ioc = nullptr;
 
   rc = ZDSOIVSM(zds, &ioc, ddname.c_str());
   if (rc != RTNCD_SUCCESS)
@@ -1000,7 +1000,9 @@ int zds_read_vsam(ZDS *zds, std::string ddname, std::string &response)
   rc = ZDSPIVSM(zds, ioc);
   if (rc != RTNCD_SUCCESS)
   {
+    ZDIAG read_diag = zds->diag;
     ZDSCIVSM(zds, ioc);
+    zds->diag = read_diag;
     return rc;
   }
 
@@ -1011,8 +1013,17 @@ int zds_read_vsam(ZDS *zds, std::string ddname, std::string &response)
     rc = ZDSRIVSM(zds, ioc);
     if (rc == RTNCD_SUCCESS)
     {
-      response.append(ioc->buffer, ioc->ifgacb.acblrecl);
-      response.append(1, '\n');
+      try
+      {
+        response.append(ioc->buffer, ioc->ifgacb.acblrecl);
+        response.append(1, '\n');
+      }
+      catch (...)
+      {
+        ZDSCIVSM(zds, ioc);
+        ZDIAG_SET_MSG(&zds->diag, "Could not allocate VSAM result storage");
+        return RTNCD_FAILURE;
+      }
       lines_read++;
       if (lines_read >= zds->max_lines)
       {
@@ -1026,7 +1037,9 @@ int zds_read_vsam(ZDS *zds, std::string ddname, std::string &response)
     }
     else
     {
+      ZDIAG read_diag = zds->diag;
       ZDSCIVSM(zds, ioc);
+      zds->diag = read_diag;
       return rc;
     }
   }

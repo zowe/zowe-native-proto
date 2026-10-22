@@ -138,6 +138,9 @@ void zut_set_dd_with_padding(char arr[8], const char *ddname);
  * @param result Reference to a string where the result will be stored
  * @return Return code (0 for success, non-zero for error)
  */
+#ifdef SWIG
+extern "C"
+#endif
 int zut_substitute_symbol(const std::string &symbol, std::string &result);
 
 /**
@@ -416,6 +419,9 @@ int zut_free_dynalloc_dds(ZDIAG &diag, const std::vector<std::string> &list);
  * @param apf Reference to vector of APF names
  * @return Return code (0 for success, non-zero for error)
  */
+#ifdef SWIG
+extern "C"
+#endif
 int zut_list_apf(ZDIAG &diag, std::vector<std::pair<std::string, std::string>> &apf);
 
 /**
@@ -434,6 +440,9 @@ struct ZLinklstEntry
  * @param linklist Reference to vector of link list data set entries
  * @return Return code (0 for success, non-zero for error)
  */
+#ifdef SWIG
+extern "C"
+#endif
 int zut_list_linklist(ZDIAG &diag, std::vector<ZLinklstEntry> &linklist);
 
 /**
@@ -442,6 +451,9 @@ int zut_list_linklist(ZDIAG &diag, std::vector<ZLinklstEntry> &linklist);
  * @param parmlibs Reference to vector of parmlib names
  * @return Return code (0 for success, non-zero for error)
  */
+#ifdef SWIG
+extern "C"
+#endif
 int zut_list_parmlib(ZDIAG &diag, std::vector<std::string> &parmlibs);
 
 /**
@@ -450,6 +462,9 @@ int zut_list_parmlib(ZDIAG &diag, std::vector<std::string> &parmlibs);
  * @param subsystems Reference to vector of subsystem names
  * @return Return code (0 for success, non-zero for error)
  */
+#ifdef SWIG
+extern "C"
+#endif
 int zut_list_subsystems(ZDIAG &diag, std::vector<std::string> &subsystems, std::string filter = "*");
 
 /**
