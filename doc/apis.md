@@ -30,14 +30,13 @@
 | Copy data set            | ✅              | ❌   | ✅               | ✅              | ❌                  | ✅              | ✅              | ✅       |
 | Compress data set        | ➖              | ❌   | ✅               | ❌              | ❌                  | ❌              | ❌              | ❌       |
 | Search data sets         | 🚧 <sup>3</sup> | ❌   | 🚧 <sup>3</sup>  | ✅              | ❌                  | ✅              | ❌              | ✅       |
-| Resolve ALIAS data sets  | ✅ <sup>5</sup> | ❌   | ✅ <sup>5</sup>  | ✅              | ❌                  | ✅              | ✅              | ✅       |
+| Resolve ALIAS data sets  | ✅              | ❌   | ✅               | ✅              | ❌                  | ✅              | ✅              | ✅       |
 | Invoke AMS (VSAM)        | ✅              | ❌   | 🚧 <sup>4</sup>  | ❌              | ❌                  | ❌              | ❌              | ➖       |
 
 1. RECFM=U (undefined record format) data sets are read-only; write attempts return an error.
 2. Does not support some migration utilities like CA Disk.
 3. Limited options compared to ISPF `srchfor`.
 4. Some `IDCAMS` operations are supported like resolving data set aliases.
-5. Uses `IDCAMS` to retrieve the target data set name.
 
 ## USS Files
 
