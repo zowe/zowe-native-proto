@@ -6,6 +6,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## `1.0.2`
 
+- `c`: Secured default `zo tool ccnedsct` listings by replacing predictable `/tmp` paths with exclusively created, unique files in user-owned `0700` directories under `~/.zowex/ccnedsct`, enforcing `0700` file permissions and rejecting unsafe output directories.
 - `c`: Clarified the `zowex ds create-member` success message to indicate it creates only the member and not the data set. [#639](https://github.com/zowe/zowex/issues/639)
 - `c`: Fixed the `--encoding` help text for `zowex data-set write`, `zowex uss write`, and `zowex job submit-jcl`, which described reading contents instead of converting the input. [#649](https://github.com/zowe/zowex/issues/649)
 - `c`: `ResultTable` columns are now named (`add_column("name", width)`), and `data-set list`, `data-set list-members`, `job list`, `job list-files`, and `job view-status` accept a new `--response-format-header`/`--rfh` option that prints those names as a header row in table and CSV output.
